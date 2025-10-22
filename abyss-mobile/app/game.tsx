@@ -254,8 +254,8 @@ export default function GameScreen() {
 
           {/* Slot Grid */}
           <View style={[styles.gridWrapper, {
-            top: gridPosition.top,
-            left: gridPosition.left,
+            top: gridPosition.top as unknown as number,
+            left: gridPosition.left as unknown as number,
             width: gridPosition.width,
             height: gridPosition.height,
           }]}>
