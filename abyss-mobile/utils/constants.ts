@@ -1,0 +1,1 @@
+export const ABYSS_CONTRACT_ADDRESS = process.env.EXPO_PUBLIC_ABYSS_CONTRACT || '';
