@@ -1,17 +1,155 @@
-# Abyss Game
-Roguelite slot game on Starknet with infinite player support, level progression, leaderboards, and player reset functionality.
+<div align="center">
 
-## Features
+<img src="./abyss-mobile/assets/images/icon.png" alt="Abyss" width="200"/>
 
-- **Infinite Players**: No limit on number of players
-- **Level Progression**: Dynamic level system with increasing score thresholds
-- **Spins System**: 5 spins per level - lose if you run out without leveling up
-- **Historical Leaderboard**: Top 10 players with persistent best scores (only updates when player achieves new best)
-- **Player Reset**: Reset player progress while preserving leaderboard history
-- **Real-time Updates**: Automatic leaderboard updates only for new best scores
-- **Admin Control**: Only admin can update scores and reset players
+# Abyss
 
-## Contract Functions
+**Dive into the Abyss - A Blockchain-Powered Slot Machine Game**
+
+[![Starknet](https://img.shields.io/badge/Powered%20by-Starknet-FF4500?style=for-the-badge&logo=ethereum)](https://www.starknet.io)
+[![React Native](https://img.shields.io/badge/React%20Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
+[![Cairo](https://img.shields.io/badge/Cairo-E95420?style=for-the-badge)](https://www.cairo-lang.org/)
+
+*A thrilling roguelite slot game where skill meets luck on the blockchain*
+
+[Play Now](#getting-started) • [Features](#features) • [Documentation](#documentation)
+
+</div>
+
+---
+
+## 🎰 About
+
+Abyss is a blockchain-powered slot machine game that combines classic casino gameplay with modern decentralized technology. Built on Starknet, it features:
+
+- **🎮 Two Game Modes**: Free to Play for practice, Gambling for competitive stakes
+- **📊 Global Leaderboard**: Compete with players worldwide
+- **⬆️ Level Progression**: Unlock higher levels with increasing challenges
+- **🎨 Pixel Art Aesthetic**: Retro-inspired visuals with modern UX
+- **📱 Mobile-First**: Optimized for iOS and Android devices
+- **🔒 Privacy-Focused**: Your wallet stays on your device, no personal data collected
+
+## ✨ Features
+
+### 🎮 Gameplay
+- **Pattern Matching System**: Match 3+ symbols horizontally, vertically, or diagonally
+- **Dynamic Multipliers**: 2x to 10x multipliers based on pattern type
+- **Level Progression**: 10+ unique levels with increasing difficulty
+- **Spins System**: 5 spins per level - strategize to advance before running out
+- **666 Pattern**: Beware the cursed pattern that ends your game instantly!
+
+### 🏆 Competition
+- **Global Leaderboard**: Top 10 competitive players displayed in real-time
+- **Session Tracking**: All game sessions recorded on-chain for transparency
+- **Dual Modes**: Practice in Free to Play or compete in Gambling mode
+- **Historical Stats**: Track your progress across levels and sessions
+
+### 🛠️ Technical
+- **Starknet Blockchain**: Secure, transparent game state management
+- **Infinite Scalability**: No limit on concurrent players or sessions
+- **Local Wallet**: Your keys never leave your device
+- **Haptic Feedback**: Immersive tactile responses for every game event
+- **Offline Tolerance**: Graceful handling of network interruptions
+
+---
+
+## 🎯 How to Play
+
+1. **Launch the App** → Accept Terms of Service
+2. **Choose Your Mode** → Free to Play (practice) or Gambling (competitive)
+3. **Tap to Spin** → Watch the 5x3 grid reveal symbols
+4. **Match Patterns** → Score points with 3+ matching symbols
+5. **Level Up** → Reach the threshold before running out of spins
+6. **Avoid 666** → Three sixes end your game immediately!
+7. **Climb the Leaderboard** → Compete for the top 10 spots
+
+---
+
+## 🎨 Symbols & Scoring
+
+| Symbol | Points | Rarity |
+|--------|--------|--------|
+| 🎰 Seven | 7 | Rare |
+| 💎 Diamond | 5 | Uncommon |
+| 🍒 Cherry | 4 | Common |
+| 🪙 Coin | 3 | Common |
+| 🍋 Lemon | 2 | Common |
+| ⚠️ Six | 0 | Cursed |
+
+### Pattern Multipliers
+- **Horizontal 3-match**: 2x
+- **Horizontal 4-match**: 5x
+- **Horizontal 5-match**: 10x
+- **Vertical 3-match**: 3x
+- **Diagonal 3-match**: 4x
+
+---
+
+## 📱 Getting Started
+
+### Prerequisites
+- iOS 14.0+ or Android 8.0+
+- Internet connection
+- ~100MB storage space
+
+### Installation
+
+**iOS (App Store)**
+```bash
+# Coming soon to the App Store
+```
+
+**Android (Google Play)**
+```bash
+# Coming soon to Google Play
+```
+
+**Build from Source**
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/abyss.git
+cd abyss/abyss-mobile
+
+# Install dependencies
+npm install
+
+# Run on iOS
+npm run ios
+
+# Run on Android
+npm run android
+```
+
+---
+
+## 🏗️ Project Structure
+
+```
+abyss/
+├── abyss-mobile/          # React Native mobile app
+│   ├── app/              # Expo Router screens
+│   ├── components/       # Reusable UI components
+│   ├── hooks/           # Custom React hooks
+│   ├── utils/           # Helper functions
+│   ├── constants/       # Game configuration
+│   ├── assets/          # Images, fonts, icons
+│   └── legal/           # Privacy policy, app store docs
+├── contracts/           # Cairo smart contracts
+│   └── src/            # Contract source code
+└── README.md           # This file
+```
+
+---
+
+## 🔗 Smart Contract
+
+The Abyss smart contract is deployed on Starknet and handles:
+- Session creation and management
+- Score tracking and validation
+- Leaderboard updates
+- Level progression logic
+
+### Contract Functions
 
 ### Session Management
 - `create_session()` - Create a new game session **[ADMIN ONLY]**
@@ -152,10 +290,57 @@ let contract = deploy("AbyssGame", @array![admin_address]);
 // Only admin can update scores
 dispatcher.update_player_score(player_address, 100);
 
-// Only admin can reset players  
+// Only admin can reset players
 dispatcher.reset_player(player_address);
 
 // Anyone can read data
 let player_data = dispatcher.get_player_data(player_address);
 let leaderboard = dispatcher.get_leaderboard();
 ```
+
+---
+
+## 📖 Documentation
+
+For more detailed information:
+- **[Privacy Policy](./abyss-mobile/legal/PRIVACY_POLICY.md)** - Learn about our privacy practices
+- **[App Store Submission](./abyss-mobile/legal/APP_STORE_SUBMISSION.md)** - App store details and marketing materials
+- **[Smart Contract Documentation](#contract-functions)** - Full contract API reference
+
+---
+
+## 🤝 Community & Support
+
+- **Telegram**: [Join our community](https://t.me/+JB4RkO3eZrFhNjYx)
+- **Issues**: Report bugs or request features via GitHub Issues
+- **Contributing**: Pull requests are welcome!
+
+---
+
+## ⚖️ Legal
+
+### Entertainment Only
+Abyss is designed purely for entertainment purposes. No real money gambling is involved.
+
+### Privacy
+We respect your privacy. Your wallet is created locally on your device, and we don't collect personal information. See our [Privacy Policy](./abyss-mobile/legal/PRIVACY_POLICY.md) for details.
+
+---
+
+## Acknowledgments
+
+Built with:
+- [Starknet](https://www.starknet.io) - Layer 2 scaling solution
+- [React Native](https://reactnative.dev/) - Cross-platform mobile framework
+- [Expo](https://expo.dev/) - React Native tooling
+- [Cairo](https://www.cairo-lang.org/) - Smart contract language
+= [Aegis](https://aegis.cavos.xyz)
+---
+
+<div align="center">
+
+**Dive into the Abyss. Will you reach the top, or will the 666 claim you?**
+
+Made with <3 by Cavos
+
+</div>
