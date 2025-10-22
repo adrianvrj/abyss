@@ -13,47 +13,41 @@ Dimensions.addEventListener('change', () => {
 
 /**
  * Slot machine positioning utilities
- * These values can be easily adjusted to fine-tune the grid positioning
- * on the slot machine image
+ * The grid should be positioned relative to the slot machine image center,
+ * not the screen, to ensure consistent placement across all devices
  */
 
 export interface SlotMachinePosition {
-  top: number;
-  left: number;
-  translateX: number;
-  translateY: number;
+  top: string;
+  left: string;
   width: number;
   height: number;
 }
 
 /**
  * Get the positioning configuration for the slot grid
- * Adjust these values to center the grid on the slot machine's screen
+ * Using percentage-based positioning relative to slot machine container
+ * This ensures the grid stays centered regardless of device size
  */
 export function getSlotGridPosition(): SlotMachinePosition {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getScreenDimensions();
-  
+
   return {
-    // Position the grid at the center of the screen
-    top: SCREEN_HEIGHT * 0.5,
-    left: SCREEN_WIDTH * 0.5,
-    
-    // Translate to center the grid on the slot machine's screen
-    // Fine-tuned positioning for better centering
-    translateX: -(SCREEN_WIDTH * 0.3779), // Horizontal centering - increased for better alignment
-    translateY: -(SCREEN_HEIGHT * 0.134), // Vertical centering - increased for better alignment
-    
-    // Grid container dimensions - adjusted for better fit
-    width: SCREEN_WIDTH * 0.7,  // Width of the grid area - increased for better visibility
-    height: SCREEN_HEIGHT * 0.15, // Height of the grid area - increased for better visibility
+    // Use percentage positioning to stay centered on the slot machine
+    top: '45%', // Center vertically
+    left: '47%', // Center horizontally
+
+    // Grid container dimensions - adjusted for proper fit within the slot machine screen
+    width: SCREEN_WIDTH * 0.65,  // Slightly narrower for better fit
+    height: SCREEN_HEIGHT * 0.45, // Taller to accommodate 3 rows properly
   };
 }
 
 /**
  * Get responsive symbol size based on screen dimensions
+ * Ensures symbols are visible but not too large
  */
 export function getSymbolSize(): number {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getScreenDimensions();
-  return Math.min(SCREEN_HEIGHT * 0.08, SCREEN_WIDTH * 0.12);
+  return Math.min(SCREEN_HEIGHT * 0.07, SCREEN_WIDTH * 0.12);
 }
-

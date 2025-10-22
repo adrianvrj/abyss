@@ -256,16 +256,12 @@ export default function GameScreen() {
           <View style={[styles.gridWrapper, {
             top: gridPosition.top,
             left: gridPosition.left,
-            transform: [
-              { translateX: gridPosition.translateX },
-              { translateY: gridPosition.translateY }
-            ],
             width: gridPosition.width,
             height: gridPosition.height,
           }]}>
-            <SlotGrid 
-              grid={state.grid} 
-              symbolSize={symbolSize} 
+            <SlotGrid
+              grid={state.grid}
+              symbolSize={symbolSize}
               isSpinning={state.isSpinning}
             />
           </View>
@@ -431,6 +427,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+    transform: [
+      { translateX: '-50%' },
+      { translateY: '-50%' }
+    ],
   },
   hintWrapper: {
     position: 'absolute',
