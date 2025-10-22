@@ -1,6 +1,6 @@
 # Privacy Policy for Abyss
 
-**Last Updated: January 22, 2025**
+**Last Updated: October 22, 2025**
 
 ---
 
