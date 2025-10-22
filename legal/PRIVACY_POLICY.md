@@ -8,24 +8,42 @@
 
 Welcome to Abyss ("we," "us," "our," or "the App"). We are committed to protecting your privacy and being transparent about our data practices. This Privacy Policy explains how Abyss handles information when you use our blockchain-powered slot machine game.
 
-**The Short Version: We don't collect, store, or share any of your personal data. Period.**
+**The Short Version: We only collect your wallet address and game data for blockchain functionality. No personal information is collected.**
+
+---
+
+## Information We Collect
+
+Abyss collects minimal information necessary for game functionality:
+
+### Wallet Information
+- ✅ **Wallet address** (your public blockchain address)
+- ✅ **Game session data** (scores, levels, spins, game outcomes)
+- ✅ **Leaderboard data** (rankings, total scores)
+
+**How we use this:**
+- To record your game sessions on the blockchain
+- To update and display the global leaderboard
+- To track your progress and levels
+- To enable competitive gameplay
+
+**Important:** Your wallet address is public on the blockchain and cannot be linked to your personal identity unless you choose to share that connection.
 
 ---
 
 ## Information We DO NOT Collect
 
-Abyss is designed with privacy as a core principle. We **DO NOT** collect:
+We **DO NOT** collect:
 
 - ❌ Personal information (name, email, phone number, address)
 - ❌ Device identifiers (IMEI, MAC address, advertising IDs)
 - ❌ Location data (GPS, IP address-based location)
-- ❌ Usage analytics or statistics
-- ❌ Gameplay data on our servers
+- ❌ Usage analytics or behavioral tracking
 - ❌ Crash reports or diagnostic data
 - ❌ Contact lists or photos
-- ❌ Any other personal information
-
-**We have no servers.** We have no databases. We have no way to collect your data because we simply don't collect it.
+- ❌ Payment information or financial data
+- ❌ Browsing history or activity outside the app
+- ❌ Any information that identifies you personally
 
 ---
 
