@@ -177,7 +177,7 @@ Abyss requests the following standard permissions:
 
 ## Children's Privacy
 
-Abyss is rated **12+** due to simulated gambling themes.
+Abyss is rated **12+** as a precautionary measure due to slot machine imagery, though no actual gambling occurs.
 
 **We do not knowingly collect information from anyone, including children under 13.**
 
@@ -186,23 +186,40 @@ Because we don't collect any personal information, we are compliant with:
 - GDPR (General Data Protection Regulation) age requirements
 - Other international children's privacy laws
 
-Parents: If you have concerns about your child using Abyss, you can:
-- Review the game with them
-- Disable the gambling mode (use Free to Play mode only)
-- Monitor their device usage
+Parents: Abyss is a safe, entertainment-only game with no gambling. However, you can:
+- Review the game with your child
+- Explain that this is entertainment, not real gambling
+- Monitor their device usage as you would with any game
 
 ---
 
-## Entertainment Only
+## Entertainment Only - No Gambling
 
-**IMPORTANT:** Abyss is designed purely for entertainment purposes.
+**IMPORTANT:** Abyss is designed purely for entertainment purposes. **This is NOT a gambling application.**
 
-- ❌ No real money gambling
-- ❌ No in-app purchases
-- ❌ No virtual currency sales
-- ❌ No connection to real-world casinos or gambling services
+**What Abyss IS:**
+- ✅ A skill-based entertainment game
+- ✅ A pattern-matching slot machine simulator
+- ✅ A blockchain gaming experience
+- ✅ Completely free to play
 
-The "Gambling" mode refers to blockchain-based gameplay, not real money wagering.
+**What Abyss is NOT:**
+- ❌ **NOT real money gambling** - No real money is ever involved
+- ❌ **NOT a casino** - This is a game, not gambling
+- ❌ **NOT betting or wagering** - No stakes, no payouts, no winnings
+- ❌ **NOT in-app purchases** - Nothing to buy
+- ❌ **NOT virtual currency sales** - No currency to purchase
+- ❌ **NOT connected to any real-world casinos or gambling services**
+
+**About the "Gambling" Mode:**
+The name "Gambling" in our app refers to the **competitive game mode** where your score is recorded on the blockchain leaderboard. It is purely a naming convention for the competitive nature of the gameplay, similar to "competitive mode" in other games. **No money, cryptocurrency, or anything of value is ever wagered, won, or lost.** This is entertainment software only.
+
+**Legal Clarification:**
+This application does not constitute gambling under any jurisdiction's laws because:
+1. No money or anything of value is risked
+2. No prizes or payouts are awarded
+3. The blockchain wallet is used solely for gameplay state management
+4. All gameplay is for entertainment purposes only
 
 ---
 
@@ -348,7 +365,7 @@ Here's what you need to know:
 ✅ **Game data goes on public blockchain only**
 ✅ **No tracking, analytics, or advertising**
 ✅ **Full control over your wallet and keys**
-✅ **Entertainment only - no real gambling**
+✅ **Pure entertainment - NOT gambling, no money involved**
 ✅ **Open and transparent about what we do**
 
 **Questions?** Join our Telegram community or email us. We're happy to explain anything.
