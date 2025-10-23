@@ -59,7 +59,7 @@ export default function ModeSelectionScreen() {
             style={styles.option}
             onPress={() => handleModeSelect('competitive')}
           >
-            <Text style={styles.optionText}>&gt; gambling</Text>
+            <Text style={styles.optionText}>&gt; degen</Text>
           </Pressable>
 
           <Pressable
