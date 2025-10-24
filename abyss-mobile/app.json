@@ -35,7 +35,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.cavos.abyss",
-      "screenOrientation": "landscape"
+      "screenOrientation": "landscape",
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",

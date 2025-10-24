@@ -1,13 +1,14 @@
-import { View, Text, StyleSheet, Pressable, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Switch, Alert, ScrollView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Theme } from '../constants/Theme';
 import { getSettings, saveSettings, AppSettings } from '../utils/settingsStorage';
-import { getPrivateKey } from '../utils/secureStorage';
+import { getPrivateKey, clearSecureStorage } from '../utils/secureStorage';
 import * as Haptics from 'expo-haptics';
 import { useAegis } from '@cavos/aegis';
 
@@ -120,6 +121,53 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleClearWallet = async () => {
+    Alert.alert(
+      'clear wallet & data',
+      'this will DELETE your wallet and all app data. you will get a NEW wallet address. make sure you have exported your private key if you need it!',
+      [
+        {
+          text: 'cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'clear everything',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Clear secure storage (private key)
+              await clearSecureStorage();
+
+              // Clear all AsyncStorage data (settings, etc.)
+              await AsyncStorage.clear();
+
+              // Haptic feedback
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+              // Show success alert
+              Alert.alert(
+                'data cleared!',
+                'all data has been cleared. the app will restart with a new wallet.',
+                [
+                  {
+                    text: 'restart',
+                    onPress: () => {
+                      // Navigate to root to trigger new wallet generation
+                      router.replace('/');
+                    }
+                  }
+                ]
+              );
+            } catch (error) {
+              console.error('Failed to clear wallet:', error);
+              Alert.alert('error', 'failed to clear wallet data');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -143,7 +191,11 @@ export default function SettingsScreen() {
         </View>
 
         {/* Settings List */}
-        <View style={styles.settingsList}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.settingsList}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Haptics Setting */}
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
@@ -182,7 +234,18 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="download-outline" size={24} color="#ff0000" />
           </Pressable>
-        </View>
+
+          {/* Clear Wallet & Data */}
+          <Pressable style={styles.dangerItem} onPress={handleClearWallet}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.dangerLabel}>clear wallet & data</Text>
+              <Text style={styles.settingDescription}>
+                delete wallet and get a new address (cannot be undone)
+              </Text>
+            </View>
+            <Ionicons name="trash-outline" size={24} color="#ff0000" />
+          </Pressable>
+        </ScrollView>
       </Animated.View>
     </SafeAreaView>
   );
@@ -217,8 +280,12 @@ const styles = StyleSheet.create({
   spacer: {
     width: 32,
   },
+  scrollView: {
+    flex: 1,
+  },
   settingsList: {
     gap: Theme.spacing.md,
+    paddingBottom: Theme.spacing.xl,
   },
   settingItem: {
     flexDirection: 'row',

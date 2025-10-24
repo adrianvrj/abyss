@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { AegisProvider } from '@cavos/aegis';
+import { aegisConfig } from '@/utils/aegisConfig';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,12 +32,7 @@ export default function RootLayout() {
   }
 
   return (
-    <AegisProvider config={{
-      network: 'SN_SEPOLIA',
-      appName: 'Abyss Game',
-      appId: 'app-pwoeZT2RJ5SbVrz9yMdzp8sRXYkLrL6Z',
-      enableLogging: true,
-    }}>
+    <AegisProvider config={aegisConfig}>
       <ErrorBoundary>
         <Stack
           screenOptions={{
