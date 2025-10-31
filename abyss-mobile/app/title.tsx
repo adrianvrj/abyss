@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated';
@@ -37,28 +37,39 @@ export default function TitleScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Pressable style={styles.pressable} onPress={handlePress}>
-        <Animated.View entering={FadeIn.duration(600)} style={styles.content}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>ABYSS</Text>
-            <Image
-              source={require('../assets/images/abyss-logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-          <Animated.Text style={[styles.subtitle, tickAnimatedStyle]}>tap to continue...</Animated.Text>
-        </Animated.View>
-      </Pressable>
-    </SafeAreaView>
+    <ImageBackground
+      source={require('../assets/images/bg-welcome.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <Pressable style={styles.pressable} onPress={handlePress}>
+          <Animated.View entering={FadeIn.duration(600)} style={styles.content}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>ABYSS</Text>
+              <Image
+                source={require('../assets/images/abyss-logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+            <Animated.Text style={[styles.subtitle, tickAnimatedStyle]}>tap to continue...</Animated.Text>
+          </Animated.View>
+        </Pressable>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: 'transparent',
   },
   pressable: {
     flex: 1,
@@ -76,14 +87,15 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.xl,
   },
   logo: {
-    width: 80,
-    height: 80,
-    marginLeft: Theme.spacing.lg,
+    width: 55,
+    height: 55,
+    marginLeft: Theme.spacing.md,
+    marginTop: 18,
   },
   title: {
     fontFamily: Theme.fonts.title,
-    fontSize: 120,
-    color: Theme.colors.primary,
+    fontSize: 110,
+    color: Theme.colors.white,
     textTransform: 'uppercase',
   },
   subtitle: {

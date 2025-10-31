@@ -2,7 +2,7 @@ export const ABYSS_CONTRACT_ABI = [
     {
         "type": "impl",
         "name": "AbyssGameImpl",
-        "interface_name": "abyss_game::IAbyssGame"
+        "interface_name": "abyss_game::contracts::abyss_game::IAbyssGame"
     },
     {
         "type": "enum",
@@ -20,7 +20,7 @@ export const ABYSS_CONTRACT_ABI = [
     },
     {
         "type": "struct",
-        "name": "abyss_game::GameSession",
+        "name": "abyss_game::contracts::abyss_game::GameSession",
         "members": [
             {
                 "name": "session_id",
@@ -62,7 +62,7 @@ export const ABYSS_CONTRACT_ABI = [
     },
     {
         "type": "struct",
-        "name": "abyss_game::LeaderboardEntry",
+        "name": "abyss_game::contracts::abyss_game::LeaderboardEntry",
         "members": [
             {
                 "name": "player_address",
@@ -83,8 +83,94 @@ export const ABYSS_CONTRACT_ABI = [
         ]
     },
     {
+        "type": "struct",
+        "name": "abyss_game::contracts::abyss_game::SessionMarket",
+        "members": [
+            {
+                "name": "refresh_count",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "item_slot_1",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "item_slot_2",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "item_slot_3",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "item_slot_4",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "item_slot_5",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "item_slot_6",
+                "type": "core::integer::u32"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "abyss_game::contracts::abyss_game::PlayerItem",
+        "members": [
+            {
+                "name": "item_id",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "quantity",
+                "type": "core::integer::u32"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "abyss_game::contracts::abyss_game::Item",
+        "members": [
+            {
+                "name": "item_id",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "name",
+                "type": "core::felt252"
+            },
+            {
+                "name": "description",
+                "type": "core::felt252"
+            },
+            {
+                "name": "price",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "sell_price",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "effect_type",
+                "type": "core::integer::u8"
+            },
+            {
+                "name": "effect_value",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "target_symbol",
+                "type": "core::felt252"
+            }
+        ]
+    },
+    {
         "type": "interface",
-        "name": "abyss_game::IAbyssGame",
+        "name": "abyss_game::contracts::abyss_game::IAbyssGame",
         "items": [
             {
                 "type": "function",
@@ -133,7 +219,7 @@ export const ABYSS_CONTRACT_ABI = [
                 ],
                 "outputs": [
                     {
-                        "type": "abyss_game::GameSession"
+                        "type": "abyss_game::contracts::abyss_game::GameSession"
                     }
                 ],
                 "state_mutability": "view"
@@ -200,6 +286,18 @@ export const ABYSS_CONTRACT_ABI = [
             },
             {
                 "type": "function",
+                "name": "end_own_session",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
                 "name": "get_level_threshold",
                 "inputs": [
                     {
@@ -220,7 +318,7 @@ export const ABYSS_CONTRACT_ABI = [
                 "inputs": [],
                 "outputs": [
                     {
-                        "type": "core::array::Array::<abyss_game::LeaderboardEntry>"
+                        "type": "core::array::Array::<abyss_game::contracts::abyss_game::LeaderboardEntry>"
                     }
                 ],
                 "state_mutability": "view"
@@ -290,6 +388,165 @@ export const ABYSS_CONTRACT_ABI = [
                     }
                 ],
                 "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "buy_item_from_market",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "market_slot",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "sell_item",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "item_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "quantity",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "refresh_market",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "get_session_market",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "abyss_game::contracts::abyss_game::SessionMarket"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_session_items",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::array::Array::<abyss_game::contracts::abyss_game::PlayerItem>"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_item_info",
+                "inputs": [
+                    {
+                        "name": "item_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "abyss_game::contracts::abyss_game::Item"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_total_items",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_session_item_quantity",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "item_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_session_inventory_count",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_refresh_cost",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "state_mutability": "view"
             }
         ]
     },
@@ -300,12 +557,16 @@ export const ABYSS_CONTRACT_ABI = [
             {
                 "name": "admin_address",
                 "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "chip_token_address",
+                "type": "core::starknet::contract_address::ContractAddress"
             }
         ]
     },
     {
         "type": "event",
-        "name": "abyss_game::AbyssGame::Event",
+        "name": "abyss_game::contracts::abyss_game::AbyssGame::Event",
         "kind": "enum",
         "variants": []
     }

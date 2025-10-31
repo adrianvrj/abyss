@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, BackHandler, NativeScrollEvent, NativeSyntheticEvent, AppState, AppStateStatus } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, BackHandler, NativeScrollEvent, NativeSyntheticEvent, AppState, AppStateStatus, ImageBackground } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -69,7 +69,12 @@ export default function TermsOfServiceScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ImageBackground
+      source={require('../assets/images/bg-welcome.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>{CURRENT_TOS.title}</Text>
@@ -147,14 +152,20 @@ export default function TermsOfServiceScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: 'transparent',
   },
   header: {
     paddingHorizontal: Theme.spacing.md,

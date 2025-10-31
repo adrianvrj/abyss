@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Switch, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Switch, Alert, ScrollView, ImageBackground } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -170,23 +170,33 @@ export default function SettingsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading settings...</Text>
-        </View>
-      </SafeAreaView>
+      <ImageBackground
+        source={require('../assets/images/bg-welcome.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading settings...</Text>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
+    <ImageBackground
+      source={require('../assets/images/bg-welcome.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
         {/* Header */}
         <View style={styles.headerContainer}>
           <Pressable style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
           </Pressable>
-          <Text style={styles.header}>settings</Text>
           <View style={styles.spacer} />
         </View>
 
@@ -248,13 +258,19 @@ export default function SettingsScreen() {
         </ScrollView>
       </Animated.View>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,

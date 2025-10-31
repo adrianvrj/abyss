@@ -34,7 +34,8 @@ export function useGameLogic(
   initialSpins: number,
   sessionId: number,
   config: GameConfig = DEFAULT_GAME_CONFIG,
-  onPatternsDetected?: (patterns: Pattern[]) => void
+  onPatternsDetected?: (patterns: Pattern[]) => void,
+  scoreMultiplier: number = 1.0
 ): [GameLogicState, GameLogicActions] {
   const { playPatternHit, playLevelUp, playSpin, playSpinAnimation, playGameOver } = useGameFeedback();
   
@@ -80,12 +81,13 @@ export function useGameLogic(
         // Normal spin - calculate score
         patterns = detectPatterns(grid, config);
         const scoreBreakdown = calculateScore(grid, patterns, config);
-        scoreToAdd = scoreBreakdown.totalScore;
-        
+        // Apply score multiplier from items
+        scoreToAdd = Math.round(scoreBreakdown.totalScore * scoreMultiplier);
+
         patterns.forEach(pattern => {
           playPatternHit(pattern.type);
         });
-        
+
         // Play continuous spin animation feedback
         playSpinAnimation();
       }

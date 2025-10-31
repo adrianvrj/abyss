@@ -6,7 +6,7 @@ export const Theme = {
   },
   fonts: {
     title: 'Ramagothic',
-    body: 'PixelifySans_400Regular',
+    body: 'PressStart2P',
   },
   spacing: {
     xs: 4,

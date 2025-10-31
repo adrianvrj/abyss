@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { getHapticsEnabled } from '../utils/settingsStorage';
@@ -12,6 +12,39 @@ export interface GameFeedbackActions {
 }
 
 export function useGameFeedback(): GameFeedbackActions {
+  const spinSound = useRef<Audio.Sound | null>(null);
+
+  // Initialize audio on mount
+  useEffect(() => {
+    const initAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        // Load spin sound
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/sounds/spin.mp3')
+        );
+        spinSound.current = sound;
+      } catch (error) {
+        console.error('Failed to initialize audio:', error);
+      }
+    };
+
+    initAudio();
+
+    // Cleanup on unmount
+    return () => {
+      if (spinSound.current) {
+        spinSound.current.unloadAsync();
+      }
+    };
+  }, []);
 
   // Load sound effects
   const loadSounds = useCallback(async () => {
@@ -124,9 +157,30 @@ export function useGameFeedback(): GameFeedbackActions {
   // Play spin animation feedback (rhythmic during animation)
   const playSpinAnimation = useCallback(async () => {
     const hapticsEnabled = await getHapticsEnabled();
-    if (!hapticsEnabled) return;
 
     try {
+      // Play spin sound
+      if (spinSound.current) {
+        try {
+          await spinSound.current.setPositionAsync(0);
+          await spinSound.current.playAsync();
+
+          // Stop the sound after 6 seconds (animation duration)
+          setTimeout(async () => {
+            try {
+              await spinSound.current?.stopAsync();
+            } catch (error) {
+              console.error('Failed to stop spin sound:', error);
+            }
+          }, 6000);
+        } catch (error) {
+          console.error('Failed to play spin sound:', error);
+        }
+      }
+
+      // Play haptic feedback if enabled
+      if (!hapticsEnabled) return;
+
       // Start with stronger initial feedback
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 

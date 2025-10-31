@@ -12,7 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { Theme } from '../constants/Theme';
 import { Pattern } from '../utils/patternDetector';
 import { calculatePatternBonus } from '../utils/scoreCalculator';
-import { DEFAULT_GAME_CONFIG } from '../constants/GameConfig';
+import { DEFAULT_GAME_CONFIG, GameConfig } from '../constants/GameConfig';
 import { getHapticsEnabled } from '../utils/settingsStorage';
 
 interface PatternDisplayProps {
@@ -200,44 +200,53 @@ export function ScoreDisplay({
 
 interface PatternHitAnimationsProps {
   patterns: Pattern[];
+  gameConfig?: GameConfig;
   onAllAnimationsComplete?: () => void;
+  onCurrentPatternChange?: (index: number) => void;
 }
 
-export function PatternHitAnimations({ 
-  patterns, 
-  onAllAnimationsComplete 
+export function PatternHitAnimations({
+  patterns,
+  gameConfig = DEFAULT_GAME_CONFIG,
+  onAllAnimationsComplete,
+  onCurrentPatternChange
 }: PatternHitAnimationsProps) {
   const [currentPatternIndex, setCurrentPatternIndex] = React.useState(0);
-  const [showPattern, setShowPattern] = React.useState(false);
   const [showScore, setShowScore] = React.useState(false);
   const [isComplete, setIsComplete] = React.useState(false);
 
   useEffect(() => {
     if (patterns.length === 0) return;
-    // Start showing patterns
+    // Start showing patterns - just show highlight (no text message)
     setCurrentPatternIndex(0);
-    setShowPattern(true);
     setIsComplete(false);
-  }, [patterns]);
 
-  const handlePatternComplete = () => {
-    setShowPattern(false);
-    // Show score after pattern disappears
+    // Notify parent of current pattern
+    onCurrentPatternChange?.(0);
+
+    // Show score after a brief delay to see the highlight
     setTimeout(() => {
       setShowScore(true);
-    }, 200);
-  };
+    }, 1500);
+  }, [patterns]);
 
   const handleScoreComplete = () => {
     setShowScore(false);
-    
+
     // Move to next pattern or complete
     setTimeout(() => {
       if (currentPatternIndex + 1 < patterns.length) {
-        setCurrentPatternIndex(prev => prev + 1);
-        setShowPattern(true);
+        const nextIndex = currentPatternIndex + 1;
+        setCurrentPatternIndex(nextIndex);
+        onCurrentPatternChange?.(nextIndex);
+
+        // Show score for next pattern after delay
+        setTimeout(() => {
+          setShowScore(true);
+        }, 1500);
       } else {
         setIsComplete(true);
+        onCurrentPatternChange?.(-1); // Signal no pattern should be highlighted
         onAllAnimationsComplete?.();
       }
     }, 200);
@@ -248,19 +257,10 @@ export function PatternHitAnimations({
   }
 
   const currentPattern = patterns[currentPatternIndex];
-  const score = calculatePatternBonus(currentPattern, DEFAULT_GAME_CONFIG);
+  const score = calculatePatternBonus(currentPattern, gameConfig);
 
   return (
     <View style={styles.animationsContainer}>
-      {showPattern && (
-        <PatternDisplay
-          pattern={currentPattern}
-          isVisible={true}
-          delay={0}
-          onAnimationComplete={handlePatternComplete}
-        />
-      )}
-      
       {showScore && (
         <ScoreDisplay
           score={score}
@@ -276,9 +276,9 @@ export function PatternHitAnimations({
 const styles = StyleSheet.create({
   animationsContainer: {
     position: 'absolute',
-    top: '25%',
+    top: '45%',
     left: 0,
-    right: 0,
+    right: "8.1%",
     alignItems: 'center',
     zIndex: 1000,
   },

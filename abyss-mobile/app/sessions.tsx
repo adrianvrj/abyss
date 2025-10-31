@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, ImageBackground } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -46,7 +46,7 @@ export default function SessionsScreen() {
       const isCompetitive = mode === 'competitive';
 
       // Create new session using contract
-      const txHash = await newSession(playerAddress, isCompetitive);
+      const txHash = await newSession(playerAddress, aegisAccount, isCompetitive);
 
       // Show success status
       setTransactionStatus({
@@ -101,8 +101,13 @@ export default function SessionsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
+    <ImageBackground
+      source={require('../assets/images/bg-welcome.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
         {/* Transaction Status */}
         <TransactionStatusComponent 
           transaction={transactionStatus} 
@@ -114,7 +119,6 @@ export default function SessionsScreen() {
           <Pressable style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
           </Pressable>
-          <Text style={styles.header}>your sessions</Text>
           <Pressable style={styles.newGameButton} onPress={handleNewGame}>
             <Ionicons name="add-circle-outline" size={24} color={Theme.colors.primary} />
           </Pressable>
@@ -150,15 +154,21 @@ export default function SessionsScreen() {
             </View>
           )}
         </ScrollView>
-      </Animated.View>
-    </SafeAreaView>
+        </Animated.View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
@@ -176,7 +186,6 @@ const styles = StyleSheet.create({
   },
   header: {
     fontFamily: Theme.fonts.body,
-    fontSize: 24,
     color: Theme.colors.primary,
     flex: 1,
     textAlign: 'center',

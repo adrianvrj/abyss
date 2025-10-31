@@ -1,13 +1,15 @@
-import { View, Text, Pressable, StyleSheet, ScrollView, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, Pressable, StyleSheet, ScrollView, Image, ImageBackground, ActivityIndicator } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Theme } from '../constants/Theme';
 import { SymbolType } from '../types';
-import { DEFAULT_GAME_CONFIG } from '../constants/GameConfig';
+import { DEFAULT_GAME_CONFIG, GameConfig } from '../constants/GameConfig';
 import { symbolSources } from '../components/SlotGrid';
+import { getSessionItems, getItemInfo, ContractItem } from '../utils/abyssContract';
+import { applyItemEffects } from '../utils/itemEffects';
 
 // Pattern visualization component
 const PatternVisualization = ({ patternType }: { patternType: string }) => {
@@ -75,7 +77,39 @@ const PatternVisualization = ({ patternType }: { patternType: string }) => {
 
 export default function SymbolsInfoScreen() {
   const router = useRouter();
+  const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
+  const parsedSessionId = parseInt(sessionId || '0', 10);
+
   const [activeTab, setActiveTab] = useState<'symbols' | 'patterns'>('symbols');
+  const [loading, setLoading] = useState(false);
+  const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
+  const [ownedItems, setOwnedItems] = useState<ContractItem[]>([]);
+
+  // Load items and apply effects
+  useEffect(() => {
+    const loadItemsAndEffects = async () => {
+      if (parsedSessionId > 0) {
+        try {
+          setLoading(true);
+          const playerItems = await getSessionItems(parsedSessionId);
+          const items = await Promise.all(
+            playerItems.map(pi => getItemInfo(Number(pi.item_id)))
+          );
+          setOwnedItems(items);
+
+          const effects = applyItemEffects(DEFAULT_GAME_CONFIG, items);
+          setGameConfig(effects.modifiedConfig);
+        } catch (error) {
+          console.error('Failed to load items:', error);
+          setGameConfig(DEFAULT_GAME_CONFIG);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadItemsAndEffects();
+  }, [parsedSessionId]);
 
   const handleBack = () => {
     router.back();
@@ -89,18 +123,27 @@ export default function SymbolsInfoScreen() {
     setActiveTab('patterns');
   };
 
-  const symbols = DEFAULT_GAME_CONFIG.symbols;
-  const patterns = DEFAULT_GAME_CONFIG.patternMultipliers;
+  const symbols = gameConfig.symbols;
+  const patterns = gameConfig.patternMultipliers;
+
+  // Helper to check if value was modified
+  const wasModified = (currentValue: number, originalValue: number) => {
+    return currentValue !== originalValue;
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
+    <ImageBackground
+      source={require('../assets/images/bg-welcome.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
         {/* Header with back button */}
         <View style={styles.headerContainer}>
           <Pressable style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
           </Pressable>
-          <Text style={styles.header}>symbols & patterns</Text>
         </View>
 
         {/* Tab Navigation */}
@@ -130,54 +173,96 @@ export default function SymbolsInfoScreen() {
           {/* Symbols Section */}
           {activeTab === 'symbols' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Symbols</Text>
-              
-              {symbols.map((symbol, index) => (
-                <View key={symbol.type} style={styles.symbolRow}>
-                  <Image 
-                    source={symbolSources[symbol.type as keyof typeof symbolSources]} 
-                    style={styles.symbolImage}
-                  />
-                  <View style={styles.symbolInfo}>
-                    <Text style={styles.symbolName}>{symbol.type.toUpperCase()}</Text>
-                    <Text style={styles.symbolReward}>Points: {symbol.points}</Text>
-                    <Text style={styles.symbolProbability}>
-                      {symbol.probability}%
-                    </Text>
-                  </View>
-                </View>
-              ))}
+
+              {loading ? (
+                <ActivityIndicator size="large" color={Theme.colors.primary} />
+              ) : (
+                symbols.map((symbol, index) => {
+                  const originalSymbol = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbol.type);
+                  const pointsModified = originalSymbol && wasModified(symbol.points, originalSymbol.points);
+                  const probModified = originalSymbol && wasModified(symbol.probability, originalSymbol.probability);
+
+                  return (
+                    <View key={symbol.type} style={styles.symbolRow}>
+                      <Image
+                        source={symbolSources[symbol.type as keyof typeof symbolSources]}
+                        style={styles.symbolImage}
+                      />
+                      <View style={styles.symbolInfo}>
+                        <Text style={styles.symbolName}>{symbol.type.toUpperCase()}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.symbolReward, pointsModified && styles.modifiedValue]}>
+                            Points: {symbol.points}
+                          </Text>
+                          {pointsModified && originalSymbol && (
+                            <Text style={styles.originalValue}> ({originalSymbol.points})</Text>
+                          )}
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.symbolProbability, probModified && styles.modifiedValue]}>
+                            {symbol.probability.toFixed(1)}%
+                          </Text>
+                          {probModified && originalSymbol && (
+                            <Text style={styles.originalValue}> ({originalSymbol.probability.toFixed(1)}%)</Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
             </View>
           )}
 
           {/* Patterns Section */}
           {activeTab === 'patterns' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Patterns</Text>
-              
-              {patterns.map((pattern, index) => (
-                <View key={pattern.type} style={styles.patternRow}>
-                  <PatternVisualization patternType={pattern.type} />
-                  <View style={styles.patternInfo}>
-                    <Text style={styles.patternName}>
-                      {pattern.type.replace('-', ' ').toUpperCase()}
-                    </Text>
-                    <Text style={styles.patternMultiplier}>{pattern.multiplier}x</Text>
-                  </View>
-                </View>
-              ))}
+
+              {loading ? (
+                <ActivityIndicator size="large" color={Theme.colors.primary} />
+              ) : (
+                patterns.map((pattern, index) => {
+                  const originalPattern = DEFAULT_GAME_CONFIG.patternMultipliers.find(p => p.type === pattern.type);
+                  const multiplierModified = originalPattern && wasModified(pattern.multiplier, originalPattern.multiplier);
+
+                  return (
+                    <View key={pattern.type} style={styles.patternRow}>
+                      <PatternVisualization patternType={pattern.type} />
+                      <View style={styles.patternInfo}>
+                        <Text style={styles.patternName}>
+                          {pattern.type.replace('-', ' ').toUpperCase()}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.patternMultiplier, multiplierModified && styles.modifiedValue]}>
+                            {pattern.multiplier}x
+                          </Text>
+                          {multiplierModified && originalPattern && (
+                            <Text style={styles.originalValue}> ({originalPattern.multiplier}x)</Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
             </View>
           )}
         </ScrollView>
-      </Animated.View>
-    </SafeAreaView>
+        </Animated.View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
@@ -325,5 +410,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFD700',
     fontWeight: 'bold',
+  },
+  modifiedValue: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  originalValue: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
+    textDecorationLine: 'line-through',
   },
 });

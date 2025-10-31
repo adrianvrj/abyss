@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, Linking, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Linking, Image, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -35,8 +35,13 @@ export default function ModeSelectionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <ImageBackground
+      source={require('../assets/images/bg-welcome.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
         {/* App Icon at Top */}
         <View style={styles.topSection}>
           <Image
@@ -86,15 +91,21 @@ export default function ModeSelectionScreen() {
             <SettingsIcon size={32} color={Theme.colors.primary} />
           </Pressable>
         </View>
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
@@ -106,28 +117,33 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Theme.spacing.xl,
     alignItems: 'center',
+    paddingTop: Theme.spacing.xl,
   },
   appIcon: {
     width: 35,
     height: 35,
   },
   menuOptions: {
+    paddingTop: Theme.spacing.xl,
     alignItems: 'center',
-    gap: Theme.spacing.sm,
+    gap: Theme.spacing.xl,
   },
   option: {
     paddingVertical: Theme.spacing.sm,
   },
   optionText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 24,
-    color: Theme.colors.primary,
+    fontSize: 18,
+    color: Theme.colors.white,
   },
   bottomSection: {
     position: 'absolute',
     bottom: Theme.spacing.xl,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    gap: Theme.spacing.xl,
+    justifyContent: 'space-between',
+    paddingHorizontal: Theme.spacing.xl,
   },
   iconButton: {
     padding: Theme.spacing.xs,

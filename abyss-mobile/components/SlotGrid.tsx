@@ -9,11 +9,16 @@ import Animated, {
   withDelay,
 } from 'react-native-reanimated';
 import { SymbolType } from '../types';
+import { Theme } from '../constants/Theme';
+import { Pattern } from '../utils/patternDetector';
+import PatternLines from './PatternLines';
 
 interface SlotGridProps {
   grid: SymbolType[][];
   symbolSize: number;
   isSpinning?: boolean;
+  patterns?: Pattern[];
+  showPatternLines?: boolean;
 }
 
 export const symbolSources = {
@@ -100,10 +105,12 @@ function SlotColumn({
   );
 }
 
-export default function SlotGrid({ 
-  grid, 
-  symbolSize, 
-  isSpinning = false
+export default function SlotGrid({
+  grid,
+  symbolSize,
+  isSpinning = false,
+  patterns = [],
+  showPatternLines = false
 }: SlotGridProps) {
   // Temporary test grid for debugging
   const testGrid: SymbolType[][] = [
@@ -132,7 +139,7 @@ export default function SlotGrid({
           <Text style={styles.debugText}>Using Test Grid</Text>
         </View>
       )}
-      
+
       {columns.map((columnSymbols, colIndex) => (
         <SlotColumn
           key={colIndex}
@@ -142,6 +149,16 @@ export default function SlotGrid({
           columnIndex={colIndex}
         />
       ))}
+
+      {/* Pattern lines overlay */}
+      {showPatternLines && patterns.length > 0 && (
+        <PatternLines
+          patterns={patterns}
+          symbolSize={symbolSize}
+          gridGap={4}
+          gridPadding={8}
+        />
+      )}
     </View>
   );
 }
@@ -153,6 +170,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4, // Reduced gap for better fit
     paddingHorizontal: 8,
+    borderWidth: 3,
+    borderColor: Theme.colors.primary,
+    borderRadius: 8,
+    padding: 8,
   },
   column: {
     overflow: 'hidden',

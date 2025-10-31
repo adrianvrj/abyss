@@ -34,8 +34,8 @@ export function getSlotGridPosition(): SlotMachinePosition {
 
   return {
     // Use percentage positioning to stay centered on the slot machine
-    top: '45%', // Center vertically
-    left: '47%', // Center horizontally
+    top: '54%', // Center vertically
+    left: '46%', // Center horizontally
 
     // Grid container dimensions - adjusted for proper fit within the slot machine screen
     width: SCREEN_WIDTH * 0.65,  // Slightly narrower for better fit
@@ -49,5 +49,5 @@ export function getSlotGridPosition(): SlotMachinePosition {
  */
 export function getSymbolSize(): number {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getScreenDimensions();
-  return Math.min(SCREEN_HEIGHT * 0.07, SCREEN_WIDTH * 0.12);
+  return Math.min(SCREEN_HEIGHT * 0.086, SCREEN_WIDTH * 0.12);
 }

@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { PixelifySans_400Regular } from '@expo-google-fonts/pixelify-sans';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Asset } from 'expo-asset';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { AegisProvider } from '@cavos/aegis';
 import { aegisConfig } from '@/utils/aegisConfig';
@@ -12,14 +13,33 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Ramagothic: require('../assets/fonts/ramagothicbold.ttf'),
+    PressStart2P: require('../assets/fonts/PressStart2P.ttf'),
     PixelifySans_400Regular,
   });
+  const [backgroundsLoaded, setBackgroundsLoaded] = useState(false);
+
+  // Preload background images
+  useEffect(() => {
+    async function loadBackgrounds() {
+      try {
+        await Promise.all([
+          Asset.fromModule(require('../assets/images/bg-welcome.png')).downloadAsync(),
+          Asset.fromModule(require('../assets/images/bg-in-game.png')).downloadAsync(),
+        ]);
+        setBackgroundsLoaded(true);
+      } catch (error) {
+        console.error('Background loading error:', error);
+        setBackgroundsLoaded(true); // Continue anyway
+      }
+    }
+    loadBackgrounds();
+  }, []);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if ((fontsLoaded || fontError) && backgroundsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, backgroundsLoaded]);
 
   useEffect(() => {
     if (fontError) {
@@ -27,7 +47,7 @@ export default function RootLayout() {
     }
   }, [fontError]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !backgroundsLoaded) {
     return null;
   }
 
@@ -38,7 +58,11 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             animation: 'fade',
-            animationDuration: 500,
+            animationDuration: 200,
+            gestureEnabled: false,
+            contentStyle: {
+              backgroundColor: 'transparent',
+            },
           }}
         >
           <Stack.Screen name="index" />
@@ -47,6 +71,8 @@ export default function RootLayout() {
           <Stack.Screen name="mode-selection" />
           <Stack.Screen name="sessions" />
           <Stack.Screen name="game" />
+          <Stack.Screen name="market" />
+          <Stack.Screen name="inventory" />
           <Stack.Screen name="leaderboard" />
           <Stack.Screen name="settings" />
         </Stack>

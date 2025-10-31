@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Pressable, ImageBackground } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -110,27 +110,44 @@ export default function LeaderboardScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading leaderboard...</Text>
-        </View>
-      </SafeAreaView>
+      <ImageBackground
+        source={require('../assets/images/bg-welcome.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading leaderboard...</Text>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      </SafeAreaView>
+      <ImageBackground
+        source={require('../assets/images/bg-welcome.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ImageBackground
+      source={require('../assets/images/bg-welcome.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
       <View style={styles.titleContainer}>
         <Pressable style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
@@ -148,14 +165,20 @@ export default function LeaderboardScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: 'transparent',
   },
   titleContainer: {
     flexDirection: 'row',
@@ -197,7 +220,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 14,
+    fontSize: 12,
     color: Theme.colors.primary,
     fontWeight: 'bold',
   },
@@ -209,7 +232,7 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.white,
   },
   currentUserText: {
