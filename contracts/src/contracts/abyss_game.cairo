@@ -149,6 +149,15 @@ pub trait IAbyssGame<TContractState> {
 
     /// Get refresh cost for a session
     fn get_refresh_cost(self: @TContractState, session_id: u32) -> u32;
+
+    /// Claim prize from competitive pool (only for top 3 leaderboard)
+    fn claim_prize(ref self: TContractState);
+
+    /// Get current prize pool balance
+    fn get_prize_pool(self: @TContractState) -> u256;
+
+    /// Get treasury address
+    fn get_treasury(self: @TContractState) -> ContractAddress;
 }
 
 
@@ -175,6 +184,15 @@ pub mod AbyssGame {
 
         // Chip token address (ERC20)
         chip_token: ContractAddress,
+
+        // Treasury address - receives 2 CHIP per competitive session
+        treasury: ContractAddress,
+
+        // Prize pool - accumulated 3 CHIP per competitive session
+        prize_pool: u256,
+
+        // Track if player has claimed their prize
+        has_claimed: Map<ContractAddress, bool>,
 
         // Session data mapping: session_id -> GameSession
         sessions: Map<u32, GameSession>,
@@ -218,9 +236,11 @@ pub mod AbyssGame {
     // CONSTRUCTOR: Initialize contract with admin address
     // ═══════════════════════════════════════════════════════════════════════════
     #[constructor]
-    fn constructor(ref self: ContractState, admin_address: ContractAddress, chip_token_address: ContractAddress) {
+    fn constructor(ref self: ContractState, admin_address: ContractAddress, chip_token_address: ContractAddress, treasury_address: ContractAddress) {
         self.admin.write(admin_address);
         self.chip_token.write(chip_token_address);
+        self.treasury.write(treasury_address);
+        self.prize_pool.write(0);
         self.total_sessions.write(0);
         self.total_competitive_sessions.write(0);
         self.total_casual_sessions.write(0);
@@ -244,15 +264,25 @@ pub mod AbyssGame {
             let caller = get_caller_address();
             assert(caller == player_address, 'Can only create own session');
 
-            // If competitive session, transfer 1 CHIP token to admin
+            // If competitive session, transfer 5 CHIP tokens (3 to contract, 2 to treasury)
             if is_competitive {
                 let chip_token = IERC20Dispatcher { contract_address: self.chip_token.read() };
-                let one_chip: u256 = 1_000_000_000_000_000_000; // 1 CHIP (18 decimals)
-                let admin = self.admin.read();
+                let three_chips: u256 = 3_000_000_000_000_000_000; // 3 CHIP
+                let two_chips: u256 = 2_000_000_000_000_000_000; // 2 CHIP
+                let treasury = self.treasury.read();
+                let contract_address = starknet::get_contract_address();
 
-                // Transfer 1 CHIP from player to admin
-                let transfer_success = chip_token.transfer_from(caller, admin, one_chip);
-                assert(transfer_success, 'CHIP transfer failed');
+                // Transfer 3 CHIP from player to contract (prize pool)
+                let transfer_pool_success = chip_token.transfer_from(caller, contract_address, three_chips);
+                assert(transfer_pool_success, 'Pool transfer failed');
+
+                // Transfer 2 CHIP from player to treasury
+                let transfer_treasury_success = chip_token.transfer_from(caller, treasury, two_chips);
+                assert(transfer_treasury_success, 'Treasury transfer failed');
+
+                // Update prize pool
+                let current_pool = self.prize_pool.read();
+                self.prize_pool.write(current_pool + three_chips);
             }
 
             // Generate new session ID
@@ -686,6 +716,69 @@ pub mod AbyssGame {
         fn get_refresh_cost(self: @ContractState, session_id: u32) -> u32 {
             let market = self.session_markets.entry(session_id).read();
             5 + (market.refresh_count * 2)
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // PRIZE POOL: Claim prizes for top 3 leaderboard
+        // ─────────────────────────────────────────────────────────────────────────
+        fn claim_prize(ref self: ContractState) {
+            let caller = get_caller_address();
+
+            // Check if already claimed
+            assert(!self.has_claimed.entry(caller).read(), 'Prize already claimed');
+
+            // Get leaderboard
+            let leaderboard_count = self.leaderboard_count.read();
+            assert(leaderboard_count >= 3, 'Not enough players');
+
+            // Find caller's position in top 3
+            let mut position: u32 = 0;
+            let mut found = false;
+            let mut i: u32 = 0;
+            while i < 3 && i < leaderboard_count {
+                let entry = self.leaderboard.entry(i).read();
+                if entry.player_address == caller {
+                    position = i;
+                    found = true;
+                    break;
+                };
+                i += 1;
+            };
+
+            assert(found, 'Not in top 3');
+
+            // Calculate prize based on position
+            let total_pool = self.prize_pool.read();
+            let prize_amount = if position == 0 {
+                // 1st place: 60%
+                (total_pool * 60) / 100
+            } else if position == 1 {
+                // 2nd place: 30%
+                (total_pool * 30) / 100
+            } else {
+                // 3rd place: 10%
+                (total_pool * 10) / 100
+            };
+
+            // Mark as claimed
+            self.has_claimed.entry(caller).write(true);
+
+            // Transfer prize
+            let chip_token = IERC20Dispatcher { contract_address: self.chip_token.read() };
+            let transfer_success = chip_token.transfer(caller, prize_amount);
+            assert(transfer_success, 'Prize transfer failed');
+
+            // Deduct from prize pool
+            let new_pool = total_pool - prize_amount;
+            self.prize_pool.write(new_pool);
+        }
+
+        fn get_prize_pool(self: @ContractState) -> u256 {
+            self.prize_pool.read()
+        }
+
+        fn get_treasury(self: @ContractState) -> ContractAddress {
+            self.treasury.read()
         }
     }
 

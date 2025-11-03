@@ -1,1 +1,2 @@
 export const ABYSS_CONTRACT_ADDRESS = process.env.EXPO_PUBLIC_ABYSS_CONTRACT || '';
+export const CHIP_CONTRACT_ADDRESS = process.env.EXPO_PUBLIC_CHIP_CONTRACT_ADDRESS || '';

@@ -5,9 +5,11 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Theme } from '../constants/Theme';
 import TelegramIcon from '../components/TelegramIcon';
 import SettingsIcon from '../components/SettingsIcon';
+import { useAegis } from '@cavos/aegis';
 
 export default function ModeSelectionScreen() {
   const router = useRouter();
+  const { aegisAccount } = useAegis();
 
   const handleModeSelect = (mode: 'casual' | 'competitive') => {
     router.push(`/sessions?mode=${mode}`);

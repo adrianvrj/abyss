@@ -1,6 +1,6 @@
 import { AegisSDK } from '@cavos/aegis';
 import { aegisConfig } from './aegisConfig';
-import { ABYSS_CONTRACT_ADDRESS } from './constants';
+import { ABYSS_CONTRACT_ADDRESS, CHIP_CONTRACT_ADDRESS } from './constants';
 import { ABYSS_CONTRACT_ABI } from '@/abi/abyssContract';
 import { shortString } from 'starknet';
 
@@ -45,17 +45,29 @@ export interface PlayerItem {
     quantity: number;
 }
 
-export async function newSession(playerAddress: string, account: AegisSDK, isCompetitive: boolean) {
+export async function newSession(account: AegisSDK, isCompetitive: boolean) {
     try {
-        const tx = await account.execute(
-            ABYSS_CONTRACT_ADDRESS,
-            'create_session',
-            [
-                account.address,
-                isCompetitive ? 1 : 0,
-            ]
-        );
+        let calls = [
+            {
+                contractAddress: CHIP_CONTRACT_ADDRESS,
+                entrypoint: "approve",
+                calldata: [
+                    ABYSS_CONTRACT_ADDRESS,
+                    5 * 10 ** 18,
+                    0n
+                ]
 
+            },
+            {
+                contractAddress: ABYSS_CONTRACT_ADDRESS,
+                entrypoint: 'create_session',
+                calldata: [
+                    account.address,
+                    isCompetitive ? 1 : 0,
+                ]
+            },
+        ]
+        const tx = await account.executeBatch(calls);
         return tx.transactionHash;
     } catch (error) {
         console.error('Failed to create session:', error);
@@ -143,6 +155,17 @@ export async function getLeaderboard() {
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_leaderboard',
+        [],
+        ABYSS_CONTRACT_ABI
+    )
+    return data;
+}
+
+export async function getPrizePool() {
+    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    const data = await aegis.call(
+        ABYSS_CONTRACT_ADDRESS,
+        'get_prize_pool',
         [],
         ABYSS_CONTRACT_ABI
     )

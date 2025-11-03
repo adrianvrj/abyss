@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, ScrollView, ImageBackground } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, ImageBackground, Linking, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -10,6 +10,18 @@ import { ModeType } from '../types';
 import { getPlayerSessions, newSession } from '../utils/abyssContract';
 import { useAegis } from '@cavos/aegis';
 import { TransactionStatusComponent, TransactionStatus } from '../components/TransactionStatus';
+import { Contract, RpcProvider } from 'starknet';
+
+// ERC20 ABI for balanceOf
+const ERC20_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    inputs: [{ name: 'account', type: 'core::starknet::contract_address::ContractAddress' }],
+    outputs: [{ type: 'core::integer::u256' }],
+    state_mutability: 'view',
+  },
+];
 
 export default function SessionsScreen() {
   const router = useRouter();
@@ -18,6 +30,7 @@ export default function SessionsScreen() {
   const [transactionStatus, setTransactionStatus] = useState<TransactionStatus | null>(null);
   const [sessions, setSessions] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chipBalance, setChipBalance] = useState<string>('0');
 
   const mockSessions = MOCK_SESSIONS[mode as ModeType] || MOCK_SESSIONS.casual;
 
@@ -46,7 +59,7 @@ export default function SessionsScreen() {
       const isCompetitive = mode === 'competitive';
 
       // Create new session using contract
-      const txHash = await newSession(playerAddress, aegisAccount, isCompetitive);
+      const txHash = await newSession(aegisAccount, isCompetitive);
 
       // Show success status
       setTransactionStatus({
@@ -71,11 +84,23 @@ export default function SessionsScreen() {
     }
   };
 
+  const fetchChipBalance = async () => {
+    try {
+      if (!aegisAccount.address) return;
+
+      const balance = await aegisAccount.getTokenBalance(process.env.EXPO_PUBLIC_CHIP_CONTRACT_ADDRESS || '', 18);
+      setChipBalance(balance);
+    } catch (error) {
+      console.error('Failed to fetch CHIP balance:', error);
+      setChipBalance('0');
+    }
+  };
+
   const fetchSessions = async () => {
     try {
       setLoading(true);
       const data = await getPlayerSessions(aegisAccount.address || '', mode === 'competitive');
-      
+
       // Convert BigInt array to number array
       const sessionIds = data.map((id: bigint) => Number(id));
       setSessions(sessionIds);
@@ -90,6 +115,9 @@ export default function SessionsScreen() {
 
   useEffect(() => {
     fetchSessions();
+    if (mode === 'competitive') {
+      fetchChipBalance();
+    }
   }, []);
 
   const handleBack = () => {
@@ -98,6 +126,26 @@ export default function SessionsScreen() {
 
   const dismissTransactionStatus = () => {
     setTransactionStatus(null);
+  };
+
+  const handleBuyChips = async () => {
+    try {
+      // Format address to be 66 characters (0x + 64 hex chars)
+      let formattedAddress = aegisAccount.address;
+      if (formattedAddress && formattedAddress.startsWith('0x')) {
+        const hexPart = formattedAddress.slice(2);
+        const paddedHex = hexPart.padStart(64, '0');
+        formattedAddress = '0x' + paddedHex;
+      }
+
+      const buyUrl = `http://192.168.1.10:3000/purchase/${formattedAddress}`;
+      const canOpen = await Linking.canOpenURL(buyUrl);
+      if (canOpen) {
+        await Linking.openURL(buyUrl);
+      }
+    } catch (error) {
+      console.error('Failed to open buy chips URL:', error);
+    }
   };
 
   return (
@@ -114,15 +162,37 @@ export default function SessionsScreen() {
           onDismiss={dismissTransactionStatus}
         />
 
-        {/* Header with back button and new game */}
+        {/* Header with back button, chip balance, and new game */}
         <View style={styles.headerContainer}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
-          </Pressable>
+          <View style={styles.leftSection}>
+            <Pressable style={styles.backButton} onPress={handleBack}>
+              <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
+            </Pressable>
+            {mode === 'competitive' && (
+              <>
+                <View style={styles.balanceDisplay}>
+                  <Text style={styles.balanceLabel}>CHIPS:</Text>
+                  <Text style={styles.balanceValue}>{chipBalance}</Text>
+                </View>
+                <Pressable style={styles.buyChipsButton} onPress={handleBuyChips}>
+                  <Ionicons name="add-circle" size={16} color={Theme.colors.background} />
+                  <Text style={styles.buyChipsText}>Buy</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
           <Pressable style={styles.newGameButton} onPress={handleNewGame}>
             <Ionicons name="add-circle-outline" size={24} color={Theme.colors.primary} />
           </Pressable>
         </View>
+
+        {/* Cost info for competitive mode */}
+        {mode === 'competitive' && (
+          <View style={styles.costInfoContainer}>
+            <Ionicons name="information-circle-outline" size={16} color={Theme.colors.primary} />
+            <Text style={styles.costInfoText}>Session price: 5 CHIPS</Text>
+          </View>
+        )}
 
         <ScrollView
           style={styles.sessionsList}
@@ -178,10 +248,15 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: Theme.spacing.xl,
   },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
   backButton: {
-    marginRight: Theme.spacing.md,
     padding: Theme.spacing.sm,
   },
   header: {
@@ -233,5 +308,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Theme.colors.white,
     opacity: 0.7,
+  },
+  balanceDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  balanceLabel: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 12,
+    color: Theme.colors.white,
+    opacity: 0.8,
+  },
+  balanceValue: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 16,
+    color: Theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  buyChipsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Theme.colors.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  buyChipsText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 10,
+    color: Theme.colors.background,
+    fontWeight: 'bold',
+  },
+  costInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 132, 28, 0.1)',
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: Theme.spacing.md,
+  },
+  costInfoText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 11,
+    color: Theme.colors.primary,
   },
 });

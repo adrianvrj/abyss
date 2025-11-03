@@ -6,7 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useAegis } from '@cavos/aegis';
 import { Theme } from '../constants/Theme';
-import { getLeaderboard } from '../utils/abyssContract';
+import { getLeaderboard, getPrizePool } from '../utils/abyssContract';
 
 interface LeaderboardEntry {
   player_address: bigint;
@@ -21,9 +21,12 @@ export default function LeaderboardScreen() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [prizePool, setPrizePool] = useState<string>('0');
+  const [showPrizeModal, setShowPrizeModal] = useState(false);
 
   useEffect(() => {
     loadLeaderboard();
+    loadPrizePool();
   }, []);
 
   const loadLeaderboard = async () => {
@@ -40,6 +43,35 @@ export default function LeaderboardScreen() {
       setError('Failed to load leaderboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPrizePool = async () => {
+    try {
+      const pool: any = await getPrizePool();
+      console.log('Prize pool raw data:', pool);
+
+      // Handle different possible return formats
+      let poolInWei: bigint;
+
+      if (typeof pool === 'bigint') {
+        poolInWei = pool;
+      } else if (pool && typeof pool === 'object' && 'low' in pool) {
+        // u256 format { low, high }
+        poolInWei = BigInt(pool.low);
+      } else if (pool && typeof pool === 'object' && '0' in pool) {
+        // Array format [low, high]
+        poolInWei = BigInt(pool[0]);
+      } else {
+        // Try to convert directly
+        poolInWei = BigInt(pool);
+      }
+
+      const poolInChips = Number(poolInWei) / 10**18;
+      setPrizePool(poolInChips.toFixed(0));
+    } catch (err) {
+      console.error('Failed to load prize pool:', err);
+      setPrizePool('0');
     }
   };
 
@@ -153,7 +185,9 @@ export default function LeaderboardScreen() {
           <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
         </Pressable>
         <Text style={styles.subtitle}>Top 10 Players</Text>
-        <View style={styles.spacer} />
+        <Pressable style={styles.prizeButton} onPress={() => setShowPrizeModal(true)}>
+          <Ionicons name="trophy" size={24} color={Theme.colors.primary} />
+        </Pressable>
       </View>
 
       <FlatList
@@ -165,6 +199,217 @@ export default function LeaderboardScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
+
+      {/* Prize Pool Overlay - Sin Modal */}
+      {showPrizeModal && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+          zIndex: 1000,
+        }}>
+          <View style={{
+            backgroundColor: '#1a1a1a',
+            borderRadius: 12,
+            padding: 20,
+            width: '100%',
+            maxWidth: 400,
+            borderWidth: 2,
+            borderColor: Theme.colors.primary,
+          }}>
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 15,
+            }}>
+              <Ionicons name="trophy" size={24} color={Theme.colors.primary} />
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 16,
+                color: Theme.colors.primary,
+                fontWeight: 'bold',
+              }}>Prize Pool</Text>
+              <Pressable onPress={() => setShowPrizeModal(false)}>
+                <Ionicons name="close" size={20} color={Theme.colors.primary} />
+              </Pressable>
+            </View>
+
+            {/* Total Pool */}
+            <Text style={{
+              fontFamily: Theme.fonts.body,
+              fontSize: 10,
+              color: 'rgba(255, 255, 255, 0.8)',
+              textAlign: 'center',
+              marginBottom: 12,
+            }}>Total Pool</Text>
+            <Text style={{
+              fontFamily: Theme.fonts.body,
+              fontSize: 24,
+              color: Theme.colors.primary,
+              fontWeight: 'bold',
+              textAlign: 'center',
+              marginBottom: 12,
+            }}>{prizePool} CHIPS</Text>
+
+            {/* Divider */}
+            <View style={{ height: 2, backgroundColor: Theme.colors.primary, marginVertical: 12 }} />
+
+            {/* Distribution Title */}
+            <Text style={{
+              fontFamily: Theme.fonts.body,
+              fontSize: 12,
+              color: Theme.colors.white,
+              marginBottom: 12,
+              textAlign: 'center',
+            }}>Prize Distribution</Text>
+
+            {/* 1st Place */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: 'rgba(255, 132, 28, 0.2)',
+            }}>
+              <View style={{
+                backgroundColor: Theme.colors.primary,
+                paddingVertical: 3,
+                paddingHorizontal: 8,
+                borderRadius: 4,
+                minWidth: 35,
+                alignItems: 'center',
+              }}>
+                <Text style={{
+                  fontFamily: Theme.fonts.body,
+                  fontSize: 8,
+                  color: '#000',
+                  fontWeight: 'bold',
+                }}>1st</Text>
+              </View>
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 9,
+                color: Theme.colors.white,
+                flex: 1,
+                marginHorizontal: 8,
+              }}>60% of pool</Text>
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 10,
+                color: Theme.colors.primary,
+                fontWeight: 'bold',
+              }}>{(Number(prizePool) * 0.6).toFixed(0)} CHIPS</Text>
+            </View>
+
+            {/* 2nd Place */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: 'rgba(255, 132, 28, 0.2)',
+            }}>
+              <View style={{
+                backgroundColor: Theme.colors.primary,
+                paddingVertical: 3,
+                paddingHorizontal: 8,
+                borderRadius: 4,
+                minWidth: 35,
+                alignItems: 'center',
+              }}>
+                <Text style={{
+                  fontFamily: Theme.fonts.body,
+                  fontSize: 8,
+                  color: '#000',
+                  fontWeight: 'bold',
+                }}>2nd</Text>
+              </View>
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 9,
+                color: Theme.colors.white,
+                flex: 1,
+                marginHorizontal: 8,
+              }}>30% of pool</Text>
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 10,
+                color: Theme.colors.primary,
+                fontWeight: 'bold',
+              }}>{(Number(prizePool) * 0.3).toFixed(0)} CHIPS</Text>
+            </View>
+
+            {/* 3rd Place */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: 'rgba(255, 132, 28, 0.2)',
+            }}>
+              <View style={{
+                backgroundColor: Theme.colors.primary,
+                paddingVertical: 3,
+                paddingHorizontal: 8,
+                borderRadius: 4,
+                minWidth: 35,
+                alignItems: 'center',
+              }}>
+                <Text style={{
+                  fontFamily: Theme.fonts.body,
+                  fontSize: 8,
+                  color: '#000',
+                  fontWeight: 'bold',
+                }}>3rd</Text>
+              </View>
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 9,
+                color: Theme.colors.white,
+                flex: 1,
+                marginHorizontal: 8,
+              }}>10% of pool</Text>
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 10,
+                color: Theme.colors.primary,
+                fontWeight: 'bold',
+              }}>{(Number(prizePool) * 0.1).toFixed(0)} CHIPS</Text>
+            </View>
+
+            {/* Close Button */}
+            <Pressable
+              style={{
+                backgroundColor: Theme.colors.primary,
+                paddingVertical: 12,
+                borderRadius: 8,
+                alignItems: 'center',
+                marginTop: 15,
+              }}
+              onPress={() => setShowPrizeModal(false)}
+            >
+              <Text style={{
+                fontFamily: Theme.fonts.body,
+                fontSize: 14,
+                color: '#000',
+                fontWeight: 'bold',
+              }}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       </SafeAreaView>
     </ImageBackground>
   );
@@ -191,8 +436,8 @@ const styles = StyleSheet.create({
   backButton: {
     padding: Theme.spacing.xs,
   },
-  spacer: {
-    width: 32, // Same width as back button to center title
+  prizeButton: {
+    padding: Theme.spacing.xs,
   },
   title: {
     fontFamily: Theme.fonts.title,

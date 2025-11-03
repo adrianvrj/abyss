@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --primary: #FF841C;
+  --error: #FF4444;
+  --success: #44FF44;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-error: var(--error);
+  --color-success: var(--success);
+  --font-ramagothic: var(--font-ramagothic);
+  --font-press-start: var(--font-press-start);
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  --shadow-pixel: 4px 4px 0px 0px rgba(255, 132, 28, 0.5);
+  --shadow-pixel-lg: 8px 8px 0px 0px rgba(255, 132, 28, 0.5);
+  --shadow-pixel-white: 4px 4px 0px 0px rgba(255, 255, 255, 0.3);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-press-start), monospace;
+}

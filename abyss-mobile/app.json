@@ -2,7 +2,7 @@
   "expo": {
     "name": "Abyss",
     "slug": "abyss-mobile",
-    "version": "0.1.0",
+    "version": "1.0.1",
     "orientation": "landscape",
     "jsEngine": "hermes",
     "icon": "./assets/images/icon.png",
