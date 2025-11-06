@@ -1,5 +1,5 @@
 import { View, Image, StyleSheet, Text } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -30,6 +30,16 @@ export const symbolSources = {
   coin: require('../assets/images/coin.png'),
 };
 
+// Available symbols for random generation
+const ALL_SYMBOLS: SymbolType[] = ['diamond', 'cherry', 'lemon', 'seven', 'six', 'coin'];
+
+// Generate random symbols for animation
+function getRandomSymbols(count: number): SymbolType[] {
+  return Array.from({ length: count }, () =>
+    ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)]
+  );
+}
+
 // Component for a single spinning column
 function SlotColumn({
   symbols,
@@ -45,8 +55,19 @@ function SlotColumn({
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
 
+  // Display symbols - random during spin, final when stopped
+  const [displaySymbols, setDisplaySymbols] = useState<SymbolType[]>(symbols);
+
   useEffect(() => {
     if (isSpinning) {
+      // Show random symbols during spin
+      setDisplaySymbols(getRandomSymbols(symbols.length));
+
+      // Keep randomizing symbols during animation
+      const interval = setInterval(() => {
+        setDisplaySymbols(getRandomSymbols(symbols.length));
+      }, 100); // Change symbols every 100ms
+
       // Each column starts spinning with a slight delay
       const delay = columnIndex * 100;
 
@@ -68,7 +89,12 @@ function SlotColumn({
           false
         )
       );
+
+      return () => clearInterval(interval);
     } else {
+      // Show final symbols when stopped
+      setDisplaySymbols(symbols);
+
       // Stop spinning - bounce to final position
       opacity.value = withTiming(1, { duration: 200 });
       translateY.value = withTiming(0, {
@@ -76,7 +102,7 @@ function SlotColumn({
         easing: Easing.out(Easing.back(1.5))
       });
     }
-  }, [isSpinning, columnIndex, symbolSize]);
+  }, [isSpinning, columnIndex, symbolSize, symbols]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -88,7 +114,7 @@ function SlotColumn({
   return (
     <View style={styles.column}>
       <Animated.View style={animatedStyle}>
-        {symbols.map((symbol, rowIndex) => (
+        {displaySymbols.map((symbol, rowIndex) => (
           <View key={rowIndex} style={[styles.cell, { height: symbolSize + 8 }]}>
             <Image
               source={symbolSources[symbol]}

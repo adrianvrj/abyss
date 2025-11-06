@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, Image, ImageBackground, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { Asset } from 'expo-asset';
 import { Theme } from '../constants/Theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -19,8 +21,16 @@ import {
   SessionMarket as SessionMarketType,
   ItemEffectType,
 } from '../utils/abyssContract';
-import { getItemImage } from '../utils/itemImages';
+import { getItemImage, itemImages } from '../utils/itemImages';
 import { useAegis } from '@cavos/aegis';
+
+// Preload all item images
+const preloadImages = async () => {
+  const imageAssets = Object.values(itemImages).map(image =>
+    Asset.fromModule(image).downloadAsync()
+  );
+  await Promise.all(imageAssets);
+};
 
 export default function MarketScreen() {
   const { sessionId } = useLocalSearchParams();
@@ -39,8 +49,17 @@ export default function MarketScreen() {
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   useEffect(() => {
+    // Preload images on mount
+    preloadImages();
     loadMarketData();
   }, [sessionId]);
+
+  // Reload data when screen comes back into focus (e.g., returning from inventory)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMarketData();
+    }, [sessionId])
+  );
 
   async function loadMarketData() {
     try {
@@ -69,7 +88,7 @@ export default function MarketScreen() {
       );
       setMarketItems(items);
 
-      // Fetch inventory to check owned items
+      // Fetch inventory count
       const invCount = await getSessionInventoryCount(parsedSessionId);
       setInventoryCount(Number(invCount));
 
@@ -116,12 +135,10 @@ export default function MarketScreen() {
       await buyItemFromMarket(parsedSessionId, marketSlot, aegisAccount);
 
       // Wait 6 seconds for the contract to update
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Reload market data and balance from contract
       await loadMarketData();
-
-      Alert.alert('Success!', `Purchased ${item.name}`);
     } catch (error: any) {
       console.error('Buy item error:', error);
 
@@ -144,49 +161,36 @@ export default function MarketScreen() {
   async function handleRefreshMarket() {
     if (!marketData) return;
 
-    const refreshCost = (Number(marketData.refresh_count) + 1) * 10; // Cost increases with each refresh
+    // Calculate refresh cost using same formula as contract: 5 + (refresh_count * 2)
+    const refreshCost = 5 + (Number(marketData.refresh_count) * 2);
 
     if (balance < refreshCost) {
       Alert.alert('Insufficient Balance', `Market refresh costs ${refreshCost} points`);
       return;
     }
 
-    Alert.alert(
-      'Refresh Market',
-      `This will cost ${refreshCost} points and give you 6 new random items.\n\nContinue?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Refresh',
-          onPress: async () => {
-            setRefreshing(true);
-            try {
-              // Execute refresh transaction
-              const txHash = await refreshMarket(parsedSessionId, aegisAccount);
-              console.log('Refresh market tx:', txHash);
+    setRefreshing(true);
+    try {
+      // Execute refresh transaction
+      const txHash = await refreshMarket(parsedSessionId, aegisAccount);
+      console.log('Refresh market tx:', txHash);
 
-              // Wait 5 seconds for the contract to update
-              await new Promise(resolve => setTimeout(resolve, 5000));
+      // Wait for the contract to update
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-              // Reload market data from contract
-              await loadMarketData();
-
-              Alert.alert('Success', 'Market refreshed with new items!');
-            } catch (error: any) {
-              console.error('Refresh market error:', error);
-              const message = error.message || '';
-              if (message.includes('Insufficient')) {
-                Alert.alert('Error', 'Not enough balance');
-              } else {
-                Alert.alert('Error', 'Failed to refresh market. Please try again.');
-              }
-            } finally {
-              setRefreshing(false);
-            }
-          }
-        }
-      ]
-    );
+      // Reload market data from contract
+      await loadMarketData();
+    } catch (error: any) {
+      console.error('Refresh market error:', error);
+      const message = error.message || '';
+      if (message.includes('Insufficient')) {
+        Alert.alert('Error', 'Not enough balance');
+      } else {
+        Alert.alert('Error', 'Failed to refresh market. Please try again.');
+      }
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function getEffectTypeLabel(effectType: ItemEffectType): string {
@@ -282,7 +286,8 @@ export default function MarketScreen() {
     );
   }
 
-  const refreshCost = marketData ? (Number(marketData.refresh_count) + 1) * 10 : 10;
+  // Calculate refresh cost using same formula as contract: 5 + (refresh_count * 2)
+  const refreshCost = marketData ? 5 + (Number(marketData.refresh_count) * 2) : 5;
   const currentItem = marketItems[currentItemIndex];
   const isOwned = currentItem ? ownedItemIds.has(currentItem.item_id) : false;
   const isInventoryFull = inventoryCount >= 6 && !isOwned;
@@ -300,23 +305,20 @@ export default function MarketScreen() {
         <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
           {/* Header with Balance */}
           <View style={styles.header}>
-            <View style={styles.balanceContainer}>
-              <Text style={styles.balanceValue}>{balance}</Text>
-              <Image
-                source={require('../assets/images/coin.png')}
-                style={{ width: 24, height: 24 }}
-                resizeMode="contain"
-              />
-              {currentItem && (
-                <Pressable
-                  style={styles.infoButtonHeader}
-                  onPress={() => setShowInfoModal(true)}
-                >
-                  <Ionicons name="information-circle" size={28} color={Theme.colors.primary} />
-                </Pressable>
-              )}
-            </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Pressable style={styles.backButton} onPress={handleBack}>
+                <Ionicons name="arrow-back" size={28} color={Theme.colors.primary} />
+              </Pressable>
+              <View style={styles.balanceContainer}>
+                <Text style={styles.balanceValue}>{balance}</Text>
+                <Image
+                  source={require('../assets/images/coin.png')}
+                  style={{ width: 24, height: 24 }}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+            <View style={styles.refreshContainer}>
               <Pressable
                 style={styles.refreshButton}
                 onPress={handleRefreshMarket}
@@ -328,9 +330,14 @@ export default function MarketScreen() {
                   <Ionicons name="refresh" size={24} color={Theme.colors.primary} />
                 )}
               </Pressable>
-              <Pressable style={styles.backButton} onPress={handleBack}>
-                <Ionicons name="close" size={28} color={Theme.colors.primary} />
-              </Pressable>
+              <View style={styles.refreshCostContainer}>
+                <Text style={styles.refreshCostText}>{refreshCost}</Text>
+                <Image
+                  source={require('../assets/images/coin.png')}
+                  style={styles.refreshCoinIcon}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
           </View>
 
@@ -352,14 +359,14 @@ export default function MarketScreen() {
               <View style={styles.carouselContainer}>
                 {/* Item Display */}
                 <View style={styles.itemDisplayContainer}>
-                  {/* Item Image - Large, centered */}
-                  <View style={styles.itemImageWrapper}>
+                  {/* Item Image - Large, centered - Clickable */}
+                  <Pressable style={styles.itemImageWrapper} onPress={() => setShowInfoModal(true)}>
                     <Image
                       source={getItemImage(currentItem.item_id)}
                       style={styles.itemImageLarge}
                       resizeMode="contain"
                     />
-                  </View>
+                  </Pressable>
 
                   {/* Navigation Arrows and Buy Button */}
                 <View style={styles.navigationContainer}>
@@ -397,6 +404,11 @@ export default function MarketScreen() {
                     <Ionicons name="chevron-forward" size={48} color={Theme.colors.primary} />
                   </Pressable>
                 </View>
+
+                  {/* Position Indicator */}
+                  <Text style={styles.positionIndicator}>
+                    {currentItemIndex + 1}/{marketItems.length}
+                  </Text>
               </View>
             </View>
             )
@@ -608,8 +620,27 @@ const styles = StyleSheet.create({
     color: Theme.colors.primary,
     fontWeight: 'bold',
   },
+  refreshContainer: {
+    alignItems: 'center',
+  },
   refreshButton: {
     padding: Theme.spacing.xs,
+  },
+  refreshCostContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  refreshCostText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 12,
+    color: Theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  refreshCoinIcon: {
+    width: 16,
+    height: 16,
   },
   backButton: {
     padding: Theme.spacing.xs,
@@ -767,5 +798,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Theme.colors.background,
     fontWeight: 'bold',
+  },
+  positionIndicator: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: Theme.spacing.md,
+    textAlign: 'center',
   },
 });

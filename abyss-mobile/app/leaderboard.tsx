@@ -49,7 +49,6 @@ export default function LeaderboardScreen() {
   const loadPrizePool = async () => {
     try {
       const pool: any = await getPrizePool();
-      console.log('Prize pool raw data:', pool);
 
       // Handle different possible return formats
       let poolInWei: bigint;

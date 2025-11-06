@@ -68,6 +68,7 @@ export async function newSession(account: AegisSDK, isCompetitive: boolean) {
             },
         ]
         const tx = await account.executeBatch(calls);
+        await aegis.waitForTransaction(tx.transactionHash);
         return tx.transactionHash;
     } catch (error) {
         console.error('Failed to create session:', error);
@@ -127,7 +128,7 @@ export async function spin(sessionId: number, score: number) {
                 score,
             ],
         );
-
+        await aegis.waitForTransaction(tx.transactionHash);
         return tx.transactionHash;
     } catch (error) {
         console.error('Contract spin error:', error);
@@ -143,6 +144,8 @@ export async function endSession(sessionId: number) {
             'end_session',
             [sessionId],
         );
+        await aegis.waitForTransaction(tx.transactionHash);
+        return tx.transactionHash;
     }
     catch (error) {
         console.error('Failed to end session:', error);
@@ -188,7 +191,6 @@ export async function getSessionMarket(sessionId: number): Promise<SessionMarket
         [sessionId],
         ABYSS_CONTRACT_ABI
     );
-    console.log(data);
     return data as SessionMarket;
 }
 
@@ -259,6 +261,7 @@ export async function buyItemFromMarket(sessionId: number, marketSlot: number, a
             'buy_item_from_market',
             [sessionId, marketSlot]
         );
+        await aegis.waitForTransaction(tx.transactionHash);
         return tx.transactionHash;
     } catch (error) {
         console.error('Failed to buy item:', error);
@@ -280,6 +283,7 @@ export async function sellItem(sessionId: number, itemId: number, quantity: numb
             'sell_item',
             [sessionId, itemId, quantity]
         );
+        await aegis.waitForTransaction(tx.transactionHash);
         return tx.transactionHash;
     } catch (error) {
         console.error('Failed to sell item:', error);
@@ -301,6 +305,7 @@ export async function refreshMarket(sessionId: number, account: AegisSDK): Promi
             'refresh_market',
             [sessionId]
         );
+        await aegis.waitForTransaction(tx.transactionHash);
         return tx.transactionHash;
     } catch (error) {
         console.error('Failed to refresh market:', error);

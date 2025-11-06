@@ -66,6 +66,9 @@ export function useGameLogic(
       let scoreToAdd = 0;
       let patterns: Pattern[] = [];
 
+      // Always play spin animation feedback (for both normal and 666)
+      playSpinAnimation();
+
       if (is666) {
         // 666 triggered - instant loss
         scoreToAdd = 0; // This will reset the score
@@ -87,9 +90,6 @@ export function useGameLogic(
         patterns.forEach(pattern => {
           playPatternHit(pattern.type);
         });
-
-        // Play continuous spin animation feedback
-        playSpinAnimation();
       }
 
       // Store previous state for rollback
@@ -102,7 +102,7 @@ export function useGameLogic(
 
       // Update state immediately but keep original score (only update spins)
       const newSpinsLeft = prev.spinsLeft - 1;
-      const isGameOver = newSpinsLeft <= 0;
+      const isGameOver = newSpinsLeft <= 0 || is666; // Game over if no spins OR 666
 
       const updatedState = {
         grid,
@@ -110,7 +110,7 @@ export function useGameLogic(
         spinsLeft: newSpinsLeft,
         isSpinning: true,
         patterns,
-        is666: false,
+        is666: is666, // Preserve the 666 flag
         gameOver: isGameOver,
         lastSpinScore: scoreToAdd,
         transactionStatus: 'pending' as const,
@@ -149,27 +149,30 @@ export function useGameLogic(
       setTimeout(async () => {
         try {
           // Update score only when animation ends
-          const newScore = previousState.score + scoreToAdd;
-          
+          let newScore = is666 ? 0 : previousState.score + scoreToAdd; // Reset to 0 on 666
+
           // Check for level progression (same logic as contract)
           let newLevel = previousState.level;
           let finalSpinsLeft = newSpinsLeft;
-          
+
           // Level thresholds (matching contract logic)
           const levelThresholds = [33, 66, 333, 666, 999, 1333, 1666, 1999, 2333, 2666];
-          
-          // Check if player leveled up
-          while (newScore >= (levelThresholds[newLevel - 1] || 3000 * newLevel)) {
-            newLevel += 1;
+
+          // Only check level progression if not 666
+          if (!is666) {
+            // Check if player leveled up
+            while (newScore >= (levelThresholds[newLevel - 1] || 3000 * newLevel)) {
+              newLevel += 1;
+            }
+
+            // If leveled up, reset spins to 5
+            if (newLevel > previousState.level) {
+              finalSpinsLeft = 5;
+              playLevelUp();
+            }
           }
-          
-          // If leveled up, reset spins to 5
-          if (newLevel > previousState.level) {
-            finalSpinsLeft = 5;
-            playLevelUp();
-          }
-          
-          const finalGameOver = finalSpinsLeft <= 0;
+
+          const finalGameOver = finalSpinsLeft <= 0 || is666;
 
           setState(prev => ({
             ...prev,
@@ -177,12 +180,13 @@ export function useGameLogic(
             spinsLeft: finalSpinsLeft,
             level: newLevel,
             gameOver: finalGameOver,
+            is666: is666, // Keep 666 flag for game over screen
             isSpinning: false,
             transactionStatus: 'idle'
           }));
 
-          // End session if game is over (no spins left)
-          if (finalGameOver && sessionId > 0) {
+          // End session if game is over (no spins left or 666)
+          if (finalGameOver && sessionId > 0 && !is666) { // Don't call again if already called on 666
             endSession(sessionId).catch(error => {
               console.error('Failed to end session on game over:', error);
             });
@@ -194,15 +198,15 @@ export function useGameLogic(
             score: newScore,
             spinsLeft: finalSpinsLeft,
             isComplete: finalGameOver,
-            is666: false,
+            is666: is666,
             timestamp: Date.now(),
           });
 
-          // Call pattern callback after animation ends
-          if (onPatternsDetected && patterns.length > 0) {
+          // Call pattern callback after animation ends (only for non-666 spins)
+          if (!is666 && onPatternsDetected && patterns.length > 0) {
             onPatternsDetected(patterns);
           }
-          
+
         } catch (error) {
           console.error('Animation error:', error);
           setState(prev => ({ ...prev, isSpinning: false }));

@@ -9,7 +9,6 @@ const PRIVATE_KEY_STORAGE_KEY = 'aegis_account_private_key';
 export async function storePrivateKey(privateKey: string): Promise<void> {
   try {
     await SecureStore.setItemAsync(PRIVATE_KEY_STORAGE_KEY, privateKey);
-    console.log('Private key stored securely');
   } catch (error) {
     console.error('Failed to store private key:', error);
     throw new Error('Failed to store private key securely');
@@ -50,7 +49,6 @@ export async function hasPrivateKey(): Promise<boolean> {
 export async function removePrivateKey(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(PRIVATE_KEY_STORAGE_KEY);
-    console.log('Private key removed from secure storage');
   } catch (error) {
     console.error('Failed to remove private key:', error);
     throw new Error('Failed to remove private key from secure storage');
@@ -63,7 +61,6 @@ export async function removePrivateKey(): Promise<void> {
 export async function clearSecureStorage(): Promise<void> {
   try {
     await removePrivateKey();
-    console.log('Secure storage cleared');
   } catch (error) {
     console.error('Failed to clear secure storage:', error);
     throw new Error('Failed to clear secure storage');

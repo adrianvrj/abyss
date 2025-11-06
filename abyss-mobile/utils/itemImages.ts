@@ -1,5 +1,5 @@
 // Item image mapping - React Native requires static paths
-export const itemImages: { [key: number]: any } = {
+export const itemImages: Record<number, any> = {
   1: require('../assets/images/item1.png'),
   2: require('../assets/images/item2.png'),
   3: require('../assets/images/item3.png'),

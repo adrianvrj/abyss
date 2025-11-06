@@ -21,7 +21,6 @@ export const preloadAssets = async (): Promise<void> => {
     });
 
     await Promise.all(imageAssets);
-    console.log('✓ All assets loaded successfully');
   } catch (error) {
     console.error('✗ Asset loading error:', error);
     throw error;

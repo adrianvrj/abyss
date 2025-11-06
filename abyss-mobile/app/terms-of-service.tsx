@@ -57,7 +57,6 @@ export default function TermsOfServiceScreen() {
       ) {
         // App has come to the foreground
         // State is automatically preserved by React
-        console.log('App returned to foreground on ToS screen');
       }
 
       appState.current = nextAppState;

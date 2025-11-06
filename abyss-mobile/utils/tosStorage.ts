@@ -47,7 +47,6 @@ export async function storeToSAcceptance(version: string): Promise<void> {
     };
 
     await AsyncStorage.setItem(TOS_STORAGE_KEY, JSON.stringify(acceptance));
-    console.log('ToS acceptance stored successfully');
   } catch (error) {
     console.error('Failed to store ToS acceptance:', error);
     throw new Error('Failed to store ToS acceptance');
@@ -69,7 +68,6 @@ export async function hasAcceptedCurrentToS(currentVersion: string): Promise<boo
 
     // Check if version matches and accepted is true
     if (acceptance.version !== currentVersion) {
-      console.log('ToS version mismatch - new acceptance required');
       return false;
     }
 

@@ -72,7 +72,6 @@ export function generateSymbols(config: GameConfig = DEFAULT_GAME_CONFIG): Gener
 
   if (is666) {
     const grid = generate666Grid(config.symbols);
-    console.log('Generated 666 grid:', grid);
     return {
       grid,
       is666: true,

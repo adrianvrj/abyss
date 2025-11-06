@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ImageBackground, Dimensions, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, Dimensions, Pressable, ActivityIndicator, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef } from 'react';
@@ -17,9 +17,6 @@ import { getSessionData, getSessionItems, getItemInfo, ContractItem } from '../u
 import { Pattern } from '../utils/patternDetector';
 import { applyItemEffects, calculateBonusSpins, calculateScoreMultiplier, AppliedEffects } from '../utils/itemEffects';
 import { useFocusEffect } from '@react-navigation/native';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function GameScreen() {
   const { sessionId, score } = useLocalSearchParams<{ sessionId: string; score: string }>();
@@ -387,7 +384,14 @@ export default function GameScreen() {
           >
             {/* Header with score and spins */}
             <View style={styles.header}>
-              <Text style={styles.scoreText}>Score: {state.score}</Text>
+              <View style={styles.scoreContainer}>
+                <Text style={styles.scoreText}>{state.score}</Text>
+                <Image
+                  source={require('../assets/images/coin.png')}
+                  style={{ width: 24, height: 24 }}
+                  resizeMode="contain"
+                />
+              </View>
               <Text style={styles.spinsText}>Spins: {state.spinsLeft}</Text>
             </View>
 
@@ -512,6 +516,13 @@ const styles = StyleSheet.create({
     zIndex: 10,
     paddingTop: Theme.spacing.md,
   },
+  scoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: Theme.spacing.sm,
+    marginVertical: Theme.spacing.xs,
+  },
   scoreText: {
     fontFamily: Theme.fonts.body,
     fontSize: 18,
@@ -595,35 +606,32 @@ const styles = StyleSheet.create({
     fontFamily: Theme.fonts.body,
   },
   levelContainer: {
+    position: 'absolute',
+    top: 55,
+    left: Theme.spacing.lg,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.xs,
-    borderRadius: 8,
-    marginHorizontal: Theme.spacing.md,
-    marginBottom: Theme.spacing.sm,
-    alignSelf: 'center',
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: 12,
+    borderRadius: 6,
   },
   levelText: {
     color: Theme.colors.primary,
-    fontSize: 16,
-    textAlign: 'center',
+    fontSize: 14,
     fontFamily: Theme.fonts.body,
     fontWeight: 'bold',
   },
   nextLevelContainer: {
+    position: 'absolute',
+    top: 85,
+    left: Theme.spacing.lg,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.xs,
-    borderRadius: 8,
-    marginHorizontal: Theme.spacing.md,
-    marginBottom: Theme.spacing.sm,
-    alignSelf: 'flex-start',
-    marginTop: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   nextLevelText: {
     color: '#FF0000', // Red color
-    fontSize: 14,
-    textAlign: 'center',
+    fontSize: 12,
     fontFamily: Theme.fonts.body,
     fontWeight: 'normal',
   },

@@ -8,7 +8,7 @@ function getScreenDimensions() {
 
 // Add dimension change listener to ensure positioning updates
 Dimensions.addEventListener('change', () => {
-  console.log('Screen dimensions changed, positioning will be recalculated');
+  // Positioning will be recalculated
 });
 
 /**

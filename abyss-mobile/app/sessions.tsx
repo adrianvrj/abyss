@@ -72,7 +72,7 @@ export default function SessionsScreen() {
       setTimeout(async () => {
         await fetchSessions();
         setTransactionStatus(null); // Clear success message
-      }, 5000);
+      }, 1000);
 
     } catch (error) {
       console.error('Failed to create session:', error);

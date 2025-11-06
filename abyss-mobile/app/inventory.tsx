@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Image, ImageBackground, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, ImageBackground, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { Asset } from 'expo-asset';
 import { Theme } from '../constants/Theme';
 import {
   getSessionItems,
@@ -13,8 +14,26 @@ import {
   ContractItem,
   ItemEffectType,
 } from '../utils/abyssContract';
-import { getItemImage } from '../utils/itemImages';
+import { getItemImage, itemImages } from '../utils/itemImages';
 import { useAegis } from '@cavos/aegis';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Preload all item images
+const preloadImages = async () => {
+  const imageAssets = Object.values(itemImages).map(image =>
+    Asset.fromModule(image).downloadAsync()
+  );
+  await Promise.all(imageAssets);
+};
+
+// Responsive sizing calculations
+const itemImageSize = 220;
+const cardMaxWidth = Math.min(SCREEN_WIDTH * 0.85, 350);
+const effectBadgeFontSize = SCREEN_WIDTH < 375 ? 11 : 12;
+const sellButtonFontSize = SCREEN_WIDTH < 375 ? 14 : 15;
+const emptySlotFontSize = SCREEN_WIDTH < 375 ? 24 : 32;
+const arrowSize = SCREEN_WIDTH < 375 ? 40 : 48;
 
 export default function InventoryScreen() {
   const { sessionId } = useLocalSearchParams();
@@ -26,8 +45,13 @@ export default function InventoryScreen() {
   const [ownedItems, setOwnedItems] = useState<ContractItem[]>([]);
   const [balance, setBalance] = useState(0);
   const [sellingItemId, setSellingItemId] = useState<number | null>(null);
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
+  const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
   useEffect(() => {
+    // Preload images on mount
+    preloadImages();
     loadInventory();
   }, [sessionId]);
 
@@ -56,42 +80,41 @@ export default function InventoryScreen() {
     }
   }
 
-  async function handleSellItem(item: ContractItem) {
-    Alert.alert(
-      'Sell Item',
-      `${item.name}\n\nYou will receive: ${item.sell_price} points`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sell',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setSellingItemId(item.item_id);
+  function handleSellItem(item: ContractItem) {
+    setItemToSell(item);
+    setShowSellModal(true);
+  }
 
-              if (!aegisAccount) {
-                throw new Error('Aegis account not found');
-              }
+  async function confirmSellItem() {
+    if (!itemToSell) return;
 
-              await sellItem(parsedSessionId, item.item_id, 1, aegisAccount);
+    try {
+      setSellingItemId(itemToSell.item_id);
+      setShowSellModal(false);
 
-              // Wait 6 seconds for the contract to update
-              await new Promise(resolve => setTimeout(resolve, 6000));
+      if (!aegisAccount) {
+        throw new Error('Aegis account not found');
+      }
 
-              // Reload inventory and balance from contract
-              await loadInventory();
+      await sellItem(parsedSessionId, itemToSell.item_id, 1, aegisAccount);
 
-              Alert.alert('Sold!', `Received ${item.sell_price} points`);
-            } catch (error) {
-              console.error('Sell item error:', error);
-              Alert.alert('Error', 'Failed to sell item. Please try again.');
-            } finally {
-              setSellingItemId(null);
-            }
-          }
-        }
-      ]
-    );
+      // Wait for the contract to update
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Reload inventory and balance from contract
+      await loadInventory();
+    } catch (error) {
+      console.error('Sell item error:', error);
+      Alert.alert('Error', 'Failed to sell item. Please try again.');
+    } finally {
+      setSellingItemId(null);
+      setItemToSell(null);
+    }
+  }
+
+  function cancelSell() {
+    setShowSellModal(false);
+    setItemToSell(null);
   }
 
   function getEffectTypeLabel(effectType: ItemEffectType): string {
@@ -132,24 +155,23 @@ export default function InventoryScreen() {
   }
 
   function getEffectDetails(item: ContractItem): string {
-    const label = getEffectTypeLabel(item.effect_type);
     const value = item.effect_value;
 
     switch (item.effect_type) {
       case ItemEffectType.DirectScoreBonus:
-        return `${label}: +${value} points to ${item.target_symbol}`;
+        return `+${value} points to ${item.target_symbol}`;
       case ItemEffectType.SymbolProbabilityBoost:
-        return `${label}: +${value}% chance for ${item.target_symbol}`;
+        return `+${value}% chance for ${item.target_symbol}`;
       case ItemEffectType.PatternMultiplierBoost:
-        return `${label}: +${value}% to all patterns`;
+        return `+${value}% to all patterns`;
       case ItemEffectType.ScoreMultiplier:
-        return `${label}: +${value}% to all scores`;
+        return `+${value}% to all scores`;
       case ItemEffectType.SpinBonus:
-        return `${label}: +${value} extra spins`;
+        return `+${value} extra spins`;
       case ItemEffectType.LevelProgressionBonus:
-        return `${label}: -${value}% level requirements`;
+        return `-${value}% level requirements`;
       default:
-        return label;
+        return 'Unknown effect';
     }
   }
 
@@ -157,10 +179,16 @@ export default function InventoryScreen() {
     router.back();
   };
 
+  // Create array with items + empty slots (total 6)
+  const inventorySlots = [...ownedItems];
+  while (inventorySlots.length < 6) {
+    inventorySlots.push(null as any); // Add null for empty slots
+  }
+
   if (loading) {
     return (
       <ImageBackground
-        source={require('../assets/images/bg-in-game.png')}
+        source={require('../assets/images/bg-welcome.png')}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
@@ -176,7 +204,7 @@ export default function InventoryScreen() {
 
   return (
     <ImageBackground
-      source={require('../assets/images/bg-in-game.png')}
+      source={require('../assets/images/bg-welcome.png')}
       style={styles.backgroundImage}
       resizeMode="cover"
     >
@@ -187,94 +215,117 @@ export default function InventoryScreen() {
             <Pressable style={styles.backButton} onPress={handleBack}>
               <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
             </Pressable>
-            <Text style={styles.title}>Inventory</Text>
-            <View style={styles.spacer} />
           </View>
 
-          {/* Stats Bar */}
-          <View style={styles.statsBar}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Balance:</Text>
-              <Text style={styles.statValue}>{balance}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Items:</Text>
-              <Text style={styles.statValue}>{ownedItems.length}/6</Text>
-            </View>
-          </View>
+          {/* Inventory Carousel */}
+          <View style={styles.carouselContainer}>
+            <View style={styles.carouselContent}>
+              {/* Previous Arrow */}
+              <Pressable
+                style={styles.arrowButton}
+                onPress={() => setCurrentItemIndex(prev => prev === 0 ? 5 : prev - 1)}
+              >
+                <Ionicons name="chevron-back" size={arrowSize} color={Theme.colors.primary} />
+              </Pressable>
 
-          {/* Inventory Items List */}
-          {ownedItems.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="bag-outline" size={64} color="rgba(255, 255, 255, 0.3)" />
-              <Text style={styles.emptyText}>No items owned</Text>
-              <Text style={styles.emptySubtext}>Visit the market to purchase items</Text>
-            </View>
-          ) : (
-            <ScrollView
-              style={styles.scrollView}
-              contentContainerStyle={styles.listContainer}
-              showsVerticalScrollIndicator={false}
-            >
-              {ownedItems.map((item, index) => {
-                const isSelling = sellingItemId === item.item_id;
+              {/* Current Item Card */}
+              <View style={styles.itemCardContainer}>
+                <View style={styles.itemCard}>
+                  {inventorySlots[currentItemIndex] ? (
+                    <>
+                      {/* Item Image Container with overflow */}
+                      <View style={styles.itemImageContainer}>
+                        <Image
+                          source={getItemImage(inventorySlots[currentItemIndex].item_id)}
+                          style={[styles.itemImage, { width: itemImageSize, height: itemImageSize }]}
+                          resizeMode="contain"
+                        />
+                      </View>
 
-                return (
-                  <Pressable
-                    key={index}
-                    style={[styles.itemCard, isSelling && styles.itemCardDisabled]}
-                    onPress={() => !isSelling && handleSellItem(item)}
-                    disabled={isSelling}
-                  >
-                    {/* Item Image */}
-                    <View style={styles.itemImageContainer}>
-                      <Image
-                        source={getItemImage(item.item_id)}
-                        style={styles.itemImage}
-                        resizeMode="contain"
-                      />
-                    </View>
-
-                    {/* Item Info */}
-                    <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemDescription}>{item.description}</Text>
-
-                      {/* Effect Details */}
-                      <View style={[styles.effectBadge, { backgroundColor: getEffectTypeColor(item.effect_type) }]}>
-                        <Text style={styles.effectBadgeText}>
-                          {getEffectDetails(item)}
+                      {/* Effect Badge */}
+                      <View style={[styles.effectBadge, { backgroundColor: getEffectTypeColor(inventorySlots[currentItemIndex].effect_type) }]}>
+                        <Text style={[styles.effectBadgeText, { fontSize: effectBadgeFontSize }]}>
+                          {getEffectDetails(inventorySlots[currentItemIndex])}
                         </Text>
                       </View>
 
-                      {/* Sell Price */}
-                      <View style={styles.sellPriceContainer}>
-                        <Text style={styles.sellPriceLabel}>Sell for:</Text>
-                        <Text style={styles.sellPrice}>{item.sell_price} pts</Text>
-                      </View>
-                    </View>
+                      {/* Sell Button */}
+                      <Pressable
+                        style={[styles.sellButton, sellingItemId === inventorySlots[currentItemIndex].item_id && styles.sellButtonDisabled]}
+                        onPress={() => handleSellItem(inventorySlots[currentItemIndex])}
+                        disabled={sellingItemId === inventorySlots[currentItemIndex].item_id}
+                      >
+                        {sellingItemId === inventorySlots[currentItemIndex].item_id ? (
+                          <ActivityIndicator size="small" color={Theme.colors.background} />
+                        ) : (
+                          <>
+                            <Image
+                              source={require('../assets/images/coin.png')}
+                              style={styles.sellButtonIcon}
+                              resizeMode="contain"
+                            />
+                            <Text style={[styles.sellButtonText, { fontSize: sellButtonFontSize }]}>sell</Text>
+                          </>
+                        )}
+                      </Pressable>
 
-                    {/* Sell Icon */}
-                    <View style={styles.sellIconContainer}>
-                      {isSelling ? (
-                        <ActivityIndicator size="small" color={Theme.colors.primary} />
-                      ) : (
-                        <Ionicons name="cash-outline" size={24} color="#4CAF50" />
-                      )}
-                    </View>
+                      {/* Position Indicator */}
+                      <Text style={styles.positionIndicator}>
+                        {currentItemIndex + 1}/6
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      {/* Empty Slot */}
+                      <Text style={[styles.emptySlotText, { fontSize: emptySlotFontSize }]}>empty</Text>
 
-                    {/* Loading overlay for selling */}
-                    {isSelling && (
-                      <View style={styles.sellingOverlay}>
-                        <ActivityIndicator size="small" color={Theme.colors.primary} />
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          )}
+                      {/* Position Indicator */}
+                      <Text style={styles.positionIndicator}>
+                        {currentItemIndex + 1}/6
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+
+              {/* Next Arrow */}
+              <Pressable
+                style={styles.arrowButton}
+                onPress={() => setCurrentItemIndex(prev => prev === 5 ? 0 : prev + 1)}
+              >
+                <Ionicons name="chevron-forward" size={arrowSize} color={Theme.colors.primary} />
+              </Pressable>
+            </View>
+          </View>
         </Animated.View>
+
+        {/* Sell Confirmation Modal */}
+        {showSellModal && itemToSell && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Sell for</Text>
+
+              <View style={styles.modalPriceValue}>
+                <Text style={styles.modalPriceText}>{itemToSell.sell_price}</Text>
+                <Image
+                  source={require('../assets/images/coin.png')}
+                  style={styles.modalCoinIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.modalQuestionText}>?</Text>
+              </View>
+
+              <View style={styles.modalButtons}>
+                <Pressable style={styles.modalCancelButton} onPress={cancelSell}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.modalConfirmButton} onPress={confirmSellItem}>
+                  <Text style={styles.modalConfirmText}>Sell</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     </ImageBackground>
   );
@@ -309,47 +360,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Theme.spacing.md,
+    marginBottom: Theme.spacing.lg,
   },
   backButton: {
     padding: Theme.spacing.xs,
-  },
-  title: {
-    fontFamily: Theme.fonts.body,
-    fontSize: 24,
-    color: Theme.colors.primary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  spacer: {
-    width: 32,
-  },
-  statsBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 4,
-    marginBottom: Theme.spacing.md,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Theme.spacing.xs,
-  },
-  statLabel: {
-    fontFamily: Theme.fonts.body,
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  statValue: {
-    fontFamily: Theme.fonts.body,
-    fontSize: 18,
-    color: Theme.colors.primary,
-    fontWeight: 'bold',
   },
   emptyContainer: {
     flex: 1,
@@ -370,94 +384,180 @@ const styles = StyleSheet.create({
     marginTop: Theme.spacing.xs,
     textAlign: 'center',
   },
-  scrollView: {
+  carouselContainer: {
     flex: 1,
-  },
-  listContainer: {
-    paddingBottom: Theme.spacing.xl,
-    gap: Theme.spacing.md,
-  },
-  itemCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 8,
-    padding: Theme.spacing.md,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  itemCardDisabled: {
-    opacity: 0.6,
-  },
-  itemImageContainer: {
-    width: 80,
-    height: 80,
+  carouselContent: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Theme.spacing.md,
-  },
-  itemImage: {
-    width: 70,
-    height: 70,
-  },
-  itemInfo: {
+    width: '100%',
     flex: 1,
   },
-  itemName: {
-    fontFamily: Theme.fonts.body,
-    fontSize: 16,
-    color: Theme.colors.primary,
-    marginBottom: Theme.spacing.xs,
-    fontWeight: 'bold',
+  arrowButton: {
+    padding: Theme.spacing.md,
   },
-  itemDescription: {
-    fontFamily: Theme.fonts.body,
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: Theme.spacing.sm,
+  itemCardContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderWidth: 2,
+    borderColor: Theme.colors.primary,
+    borderRadius: 12,
+    padding: Theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 350,
+    height: 350,
+  },
+  itemImageContainer: {
+    height: 160,
+    width: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Theme.spacing.md,
+    overflow: 'visible',
+  },
+  itemImage: {
+    // Image will overflow this container
   },
   effectBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginBottom: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: Theme.spacing.lg,
   },
   effectBadgeText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 11,
     color: Theme.colors.white,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
-  sellPriceContainer: {
+  sellButton: {
+    backgroundColor: Theme.colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Theme.spacing.xs,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    gap: 8,
+    minWidth: 140,
   },
-  sellPriceLabel: {
-    fontFamily: Theme.fonts.body,
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
+  sellButtonDisabled: {
+    opacity: 0.6,
   },
-  sellPrice: {
+  sellButtonIcon: {
+    width: 22,
+    height: 22,
+  },
+  sellButtonText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 15,
-    color: '#4CAF50',
+    color: Theme.colors.white,
     fontWeight: 'bold',
+    textTransform: 'lowercase',
   },
-  sellIconContainer: {
-    marginLeft: Theme.spacing.sm,
-    padding: Theme.spacing.xs,
+  emptySlotText: {
+    fontFamily: Theme.fonts.body,
+    color: 'rgba(255, 255, 255, 0.3)',
+    fontWeight: 'bold',
+    textTransform: 'lowercase',
   },
-  sellingOverlay: {
+  positionIndicator: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: Theme.spacing.md,
+    textAlign: 'center',
+  },
+  modalOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    zIndex: 1000,
+  },
+  modalContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 2,
+    borderColor: Theme.colors.primary,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 28,
+    color: Theme.colors.primary,
+    fontWeight: 'bold',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  modalPriceValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 32,
+  },
+  modalPriceText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 48,
+    color: Theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  modalQuestionText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 48,
+    color: Theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  modalCoinIcon: {
+    width: 42,
+    height: 42,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 12,
     borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  modalCancelText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 16,
+    color: Theme.colors.white,
+    fontWeight: 'bold',
+  },
+  modalConfirmButton: {
+    flex: 1,
+    backgroundColor: Theme.colors.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 16,
+    color: Theme.colors.background,
+    fontWeight: 'bold',
   },
 });

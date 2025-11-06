@@ -580,8 +580,19 @@ pub mod AbyssGame {
             assert(item.item_id == item_id, 'Item does not exist');
 
             // Check if item already owned (only 1 of each item allowed)
-            let current_quantity = self.session_inventory.entry((session_id, item_id)).read();
-            assert(current_quantity == 0, 'Item already owned');
+            let mut item_already_owned = false;
+            let mut i = 0;
+            while i < unique_item_count {
+                if self.session_item_ids.entry((session_id, i)).read() == item_id {
+                    item_already_owned = true;
+                    break;
+                }
+                i += 1;
+            };
+            assert(!item_already_owned, 'Item already owned');
+
+            // Check inventory limit (max 6 unique items)
+            assert(unique_item_count < 6, 'Inventory full');
 
             // Calculate total cost
             let total_cost = item.price;
@@ -598,28 +609,9 @@ pub mod AbyssGame {
 
             self.sessions.entry(session_id).write(session);
 
-            // Check if item was previously owned (exists in item_ids array)
-            let mut item_exists_in_array = false;
-            let mut i = 0;
-            while i < unique_item_count {
-                if self.session_item_ids.entry((session_id, i)).read() == item_id {
-                    item_exists_in_array = true;
-                    break;
-                }
-                i += 1;
-            };
-
-            // Only add to array if it doesn't exist yet
-            if !item_exists_in_array {
-                // Check inventory limit (max 6 unique items)
-                assert(unique_item_count < 6, 'Inventory full (max 6 items)');
-
-                self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
-                self.session_item_count.entry(session_id).write(unique_item_count + 1);
-            }
-
-            // Set item quantity to 1
-            self.session_inventory.entry((session_id, item_id)).write(1);
+            // Add item to array
+            self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
+            self.session_item_count.entry(session_id).write(unique_item_count + 1);
         }
 
         fn refresh_market(ref self: ContractState, session_id: u32) {
@@ -656,18 +648,29 @@ pub mod AbyssGame {
             // Verify caller is session owner
             assert(caller == session.player_address, 'Only owner can sell items');
             assert(session.is_active, 'Session is not active');
-            assert(quantity > 0, 'Quantity must be positive');
 
-            // Check if session owns the item
-            let current_quantity = self.session_inventory.entry((session_id, item_id)).read();
-            assert(current_quantity >= quantity, 'Insufficient items');
+            // Find item in array
+            let item_count = self.session_item_count.entry(session_id).read();
+            let mut item_index: Option<u32> = Option::None;
+            let mut i = 0;
+            while i < item_count {
+                if self.session_item_ids.entry((session_id, i)).read() == item_id {
+                    item_index = Option::Some(i);
+                    break;
+                }
+                i += 1;
+            };
+
+            // Assert item exists
+            assert(item_index.is_some(), 'Item not owned');
+            let found_index = item_index.unwrap();
 
             // Get item info
             let item = self.items.entry(item_id).read();
             assert(item.item_id == item_id, 'Item does not exist');
 
-            // Calculate sell value
-            let total_value = item.sell_price * quantity;
+            // Calculate sell value (always quantity 1 since we only have 1 of each item)
+            let total_value = item.sell_price;
 
             // Add score to both score and total_score
             session.score += total_value;
@@ -675,9 +678,19 @@ pub mod AbyssGame {
 
             self.sessions.entry(session_id).write(session);
 
-            // Remove item from inventory
-            let new_quantity = current_quantity - quantity;
-            self.session_inventory.entry((session_id, item_id)).write(new_quantity);
+            // Remove item from array by shifting all items after it
+            let mut j = found_index;
+            while j < item_count - 1 {
+                let next_item_id = self.session_item_ids.entry((session_id, j + 1)).read();
+                self.session_item_ids.entry((session_id, j)).write(next_item_id);
+                j += 1;
+            };
+
+            // Clear the last slot
+            self.session_item_ids.entry((session_id, item_count - 1)).write(0);
+
+            // Decrement item count
+            self.session_item_count.entry(session_id).write(item_count - 1);
         }
 
         fn get_session_items(self: @ContractState, session_id: u32) -> Array<PlayerItem> {
@@ -687,9 +700,9 @@ pub mod AbyssGame {
             let mut i = 0;
             while i < item_count {
                 let item_id = self.session_item_ids.entry((session_id, i)).read();
-                let quantity = self.session_inventory.entry((session_id, item_id)).read();
-                if quantity > 0 {
-                    items_array.append(PlayerItem { item_id, quantity });
+                if item_id > 0 {
+                    // All items have quantity 1 (we only allow 1 of each item)
+                    items_array.append(PlayerItem { item_id, quantity: 1 });
                 }
                 i += 1;
             };
