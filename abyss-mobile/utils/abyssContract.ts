@@ -17,6 +17,7 @@ export enum ItemEffectType {
     DirectScoreBonus = 3,
     SpinBonus = 4,
     LevelProgressionBonus = 5,
+    SixSixSixProtection = 6,
 }
 
 export interface ContractItem {
@@ -292,6 +293,30 @@ export async function sellItem(sessionId: number, itemId: number, quantity: numb
 }
 
 /**
+ * Consume an item (remove from inventory without getting score back)
+ * Used for consumable items like Biblia
+ * @param sessionId - The session ID
+ * @param itemId - The item ID to consume
+ * @param quantity - The quantity to consume (always 1 for now)
+ * @param account - The user's Aegis account
+ * @returns Transaction hash
+ */
+export async function consumeItem(sessionId: number, itemId: number, quantity: number, account: AegisSDK): Promise<string> {
+    try {
+        const tx = await account.execute(
+            ABYSS_CONTRACT_ADDRESS,
+            'consume_item',
+            [sessionId, itemId, quantity]
+        );
+        await aegis.waitForTransaction(tx.transactionHash);
+        return tx.transactionHash;
+    } catch (error) {
+        console.error('Failed to consume item:', error);
+        throw error;
+    }
+}
+
+/**
  * Refresh the market items for a session
  * Costs increase with each refresh
  * @param sessionId - The session ID
@@ -327,4 +352,21 @@ export async function getSessionInventoryCount(sessionId: number): Promise<numbe
         ABYSS_CONTRACT_ABI
     );
     return data as number;
+}
+
+/**
+ * Get 666 probability based on level
+ * Returns probability * 10 (e.g., 6 = 0.6%, 12 = 1.2%)
+ * @param level - Current level
+ * @returns Probability value (multiply by 0.1 to get percentage)
+ */
+export async function get666Probability(level: number): Promise<number> {
+    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    const data = await aegis.call(
+        ABYSS_CONTRACT_ADDRESS,
+        'get_666_probability',
+        [level],
+        ABYSS_CONTRACT_ABI
+    );
+    return Number(data);
 }

@@ -32,6 +32,18 @@ export const itemImages: Record<number, any> = {
   30: require('../assets/images/item30.png'),
   31: require('../assets/images/item31.png'),
   32: require('../assets/images/item32.png'),
+  33: require('../assets/images/item33.png'),
+  34: require('../assets/images/item34.png'),
+  35: require('../assets/images/item35.png'),
+  36: require('../assets/images/item36.png'),
+  37: require('../assets/images/item37.png'),
+  38: require('../assets/images/item38.png'),
+  39: require('../assets/images/item39.png'),
+  40: require('../assets/images/item40.png'), // Biblia
+  41: require('../assets/images/item41.png'),
+  42: require('../assets/images/item42.png'),
+  43: require('../assets/images/item43.png'),
+  44: require('../assets/images/item44.png'),
 };
 
 export function getItemImage(itemId: number) {
