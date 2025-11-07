@@ -112,7 +112,7 @@ export default function PurchasePage({ params }: PageProps) {
             />
           </div>
           <h1 className="font-[family-name:var(--font-ramagothic)] text-primary text-4xl md:text-6xl mb-8">
-            Success!
+            SUCCESS!
           </h1>
           <p className="font-[family-name:var(--font-press-start)] text-foreground text-sm mb-8">
             Your payment was successful. CHIP tokens will be minted to your address shortly.

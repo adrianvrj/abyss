@@ -8,6 +8,7 @@ import { Theme } from '../constants/Theme';
 import { DEFAULT_GAME_CONFIG } from '../constants/GameConfig';
 import SlotGrid, { symbolSources } from '../components/SlotGrid';
 import { PatternHitAnimations } from '../components/PatternHitDisplay';
+import BibliaSaveAnimation from '../components/BibliaSaveAnimation';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { wp, hp } from '../utils/dimensions';
 import { getSlotGridPosition, getSymbolSize } from '../utils/slotMachinePositioning';
@@ -17,10 +18,14 @@ import { getSessionData, getSessionItems, getItemInfo, ContractItem } from '../u
 import { Pattern } from '../utils/patternDetector';
 import { applyItemEffects, calculateBonusSpins, calculateScoreMultiplier, AppliedEffects } from '../utils/itemEffects';
 import { useFocusEffect } from '@react-navigation/native';
+import { useAegis } from '@cavos/aegis';
+import { calculate666Probability } from '../utils/probability666';
+import { getLevelThreshold } from '../utils/levelThresholds';
 
 export default function GameScreen() {
   const { sessionId, score } = useLocalSearchParams<{ sessionId: string; score: string }>();
   const router = useRouter();
+  const { aegisAccount } = useAegis();
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [sessionDataLoaded, setSessionDataLoaded] = useState(false);
   const [sessionData, setSessionData] = useState<any>(null);
@@ -51,7 +56,9 @@ export default function GameScreen() {
       setHitPatterns(patterns);
       setShowPatternAnimations(true);
     },
-    scoreMultiplier
+    scoreMultiplier,
+    ownedItems,
+    aegisAccount
   );
   const [showPatternAnimations, setShowPatternAnimations] = useState(false);
   const [hitPatterns, setHitPatterns] = useState<Pattern[]>([]);
@@ -171,16 +178,7 @@ export default function GameScreen() {
 
   // Get score threshold needed to reach next level (matches contract logic)
   const getScoreNeededForNextLevel = (currentLevel: number) => {
-    // These are the points needed AT each level to advance to the next
-    // Index 0 = level 1 needs 33, Index 1 = level 2 needs 66, etc.
-    const levelThresholds = [33, 66, 333, 666, 999, 1333, 1666, 1999, 2333, 2666];
-
-    // Get threshold for current level (what you need to score at this level)
-    if (currentLevel <= 10) {
-      return levelThresholds[currentLevel - 1] || 0;
-    } else {
-      return 3000 * currentLevel;
-    }
+    return getLevelThreshold(currentLevel);
   };
 
   // Load session data from contract
@@ -400,6 +398,14 @@ export default function GameScreen() {
               <Text style={styles.levelText}>Level {state.level}</Text>
             </View>
 
+            {/* 666 Probability indicator */}
+            <View style={styles.probabilityContainer}>
+              <Ionicons name="warning" size={16} color="#ff4444" />
+              <Text style={styles.probabilityText}>
+                666 Risk: {calculate666Probability(state.level).toFixed(1)}%
+              </Text>
+            </View>
+
             {/* Points needed for next level */}
             <View style={styles.nextLevelContainer}>
               <Text style={styles.nextLevelText}>
@@ -437,6 +443,15 @@ export default function GameScreen() {
                 gameConfig={appliedEffects?.modifiedConfig}
                 onAllAnimationsComplete={handlePatternAnimationsComplete}
                 onCurrentPatternChange={handleCurrentPatternChange}
+              />
+            )}
+
+            {/* Biblia Save Animation */}
+            {state.bibliaSaved && (
+              <BibliaSaveAnimation
+                onComplete={() => {
+                  // Animation complete, nothing to do (flag already reset in useGameLogic)
+                }}
               />
             )}
 
@@ -620,9 +635,29 @@ const styles = StyleSheet.create({
     fontFamily: Theme.fonts.body,
     fontWeight: 'bold',
   },
-  nextLevelContainer: {
+  probabilityContainer: {
     position: 'absolute',
     top: 85,
+    left: Theme.spacing.lg,
+    backgroundColor: 'rgba(255, 68, 68, 0.15)',
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 68, 68, 0.3)',
+  },
+  probabilityText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 11,
+    color: '#ff4444',
+    fontWeight: 'bold',
+  },
+  nextLevelContainer: {
+    position: 'absolute',
+    top: 115,
     left: Theme.spacing.lg,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     paddingHorizontal: Theme.spacing.sm,

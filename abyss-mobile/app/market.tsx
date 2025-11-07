@@ -113,8 +113,8 @@ export default function MarketScreen() {
     }
 
     // Check inventory full
-    if (inventoryCount >= 6) {
-      Alert.alert('Inventory Full', 'You can only own 6 items at a time');
+    if (inventoryCount >= 7) {
+      Alert.alert('Inventory Full', 'You can only own 7 items at a time');
       return;
     }
 
@@ -147,7 +147,7 @@ export default function MarketScreen() {
       if (message.includes('already owned')) {
         Alert.alert('Error', 'Item already owned');
       } else if (message.includes('Inventory full')) {
-        Alert.alert('Error', 'Inventory full (max 6 items)');
+        Alert.alert('Error', 'Inventory full (max 7 items)');
       } else if (message.includes('Insufficient')) {
         Alert.alert('Error', 'Not enough balance');
       } else {
@@ -158,11 +158,27 @@ export default function MarketScreen() {
     }
   }
 
+  // Calculate refresh cost using same formula as contract
+  function calculateRefreshCost(refreshCount: number): number {
+    const costs = [2, 5, 16, 24, 48, 62, 86, 112, 190, 280, 345, 526, 891, 1200];
+
+    if (refreshCount < costs.length) {
+      return costs[refreshCount];
+    }
+
+    // After 13 refreshes, cost increases by 50% each time
+    let cost = 1200;
+    const extraRefreshes = refreshCount - 13;
+    for (let i = 0; i < extraRefreshes; i++) {
+      cost = cost + Math.floor(cost / 2);
+    }
+    return cost;
+  }
+
   async function handleRefreshMarket() {
     if (!marketData) return;
 
-    // Calculate refresh cost using same formula as contract: 5 + (refresh_count * 2)
-    const refreshCost = 5 + (Number(marketData.refresh_count) * 2);
+    const refreshCost = calculateRefreshCost(Number(marketData.refresh_count));
 
     if (balance < refreshCost) {
       Alert.alert('Insufficient Balance', `Market refresh costs ${refreshCost} points`);
@@ -286,11 +302,11 @@ export default function MarketScreen() {
     );
   }
 
-  // Calculate refresh cost using same formula as contract: 5 + (refresh_count * 2)
-  const refreshCost = marketData ? 5 + (Number(marketData.refresh_count) * 2) : 5;
+  // Calculate refresh cost using same formula as contract
+  const refreshCost = marketData ? calculateRefreshCost(Number(marketData.refresh_count)) : 2;
   const currentItem = marketItems[currentItemIndex];
   const isOwned = currentItem ? ownedItemIds.has(currentItem.item_id) : false;
-  const isInventoryFull = inventoryCount >= 6 && !isOwned;
+  const isInventoryFull = inventoryCount >= 7 && !isOwned;
   const canAfford = currentItem ? balance >= currentItem.price : false;
   const isPurchasing = purchasingSlot === (currentItemIndex + 1); // marketSlot is 1-indexed
   const canPurchase = currentItem && !isOwned && !isInventoryFull && canAfford && !isPurchasing;
@@ -342,12 +358,12 @@ export default function MarketScreen() {
           </View>
 
           {/* Inventory Full Message */}
-          {inventoryCount >= 6 ? (
+          {inventoryCount >= 7 ? (
             <View style={styles.inventoryFullContainer}>
               <Ionicons name="albums" size={80} color={Theme.colors.primary} />
               <Text style={styles.inventoryFullTitle}>Inventory Full</Text>
               <Text style={styles.inventoryFullText}>
-                You have reached the maximum of 6 items.
+                You have reached the maximum of 7 items.
               </Text>
               <Text style={styles.inventoryFullText}>
                 Sell items from your inventory to make space for new purchases.

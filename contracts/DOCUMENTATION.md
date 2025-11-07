@@ -117,13 +117,6 @@ Helper functions for leaderboard management:
 - **Player Control**: Players can end their own sessions
 - **Access Control**: All state-changing functions verify caller
 
-## 🚀 Future Enhancements
-
-The contract is prepared for modular refactoring:
-- Game logic separated into modules
-- Configurable game settings
-- Extensible pattern detection system
-
 DO NOT DELETE
 
 ```

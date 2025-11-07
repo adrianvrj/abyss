@@ -34,6 +34,7 @@ pub mod ItemEffectTypeValues {
     pub const DirectScoreBonus: u8 = 3;
     pub const SpinBonus: u8 = 4;
     pub const LevelProgressionBonus: u8 = 5;
+    pub const SixSixSixProtection: u8 = 6;
 }
 
 /// Item definition
@@ -126,6 +127,9 @@ pub trait IAbyssGame<TContractState> {
     /// Sell an item from a session for score
     fn sell_item(ref self: TContractState, session_id: u32, item_id: u32, quantity: u32);
 
+    /// Consume an item (remove from inventory without getting score back)
+    fn consume_item(ref self: TContractState, session_id: u32, item_id: u32, quantity: u32);
+
     /// Refresh the market items for a session
     fn refresh_market(ref self: TContractState, session_id: u32);
 
@@ -140,6 +144,9 @@ pub trait IAbyssGame<TContractState> {
 
     /// Get total number of available items in the shop
     fn get_total_items(self: @TContractState) -> u32;
+
+    /// Get 666 probability based on level (returns percentage * 10 for precision)
+    fn get_666_probability(self: @TContractState, level: u32) -> u32;
 
     /// Get quantity of a specific item in session inventory
     fn get_session_item_quantity(self: @TContractState, session_id: u32, item_id: u32) -> u32;
@@ -456,27 +463,62 @@ pub mod AbyssGame {
             if level == 1 {
                 33
             } else if level == 2 {
-                66
+                100
             } else if level == 3 {
-                333
+                250
             } else if level == 4 {
-                666
+                500
             } else if level == 5 {
-                999
+                850
             } else if level == 6 {
-                1333
-            } else if level == 7 {
-                1666
-            } else if level == 8 {
-                1999
-            } else if level == 9 {
-                2333
-            } else if level == 10 {
-                2666
+                1300
+            } else if level <= 12 {
+                // Phase 2: Intermediate (Levels 7-12)
+                // Formula: previous × 1.4 + (level × 100)
+                let mut threshold: u32 = 1300;
+                let mut i: u32 = 7;
+                while i <= level {
+                    threshold = (threshold * 14) / 10 + (i * 100);
+                    i += 1;
+                };
+                threshold
+            } else if level <= 20 {
+                // Phase 3: Advanced (Levels 13-20)
+                // Formula: previous × 1.35 + (level² × 50)
+                let mut threshold: u32 = 12500; // Level 12 final threshold
+                let mut i: u32 = 13;
+                while i <= level {
+                    let level_squared = i * i;
+                    threshold = (threshold * 135) / 100 + (level_squared * 50);
+                    i += 1;
+                };
+                threshold
+            } else if level <= 30 {
+                // Phase 4: Elite (Levels 21-30)
+                // Formula: previous × 1.38 + (level³ × 20)
+                let mut threshold: u32 = 142000; // Level 20 final threshold
+                    let mut i: u32 = 21;
+                while i <= level {
+                    let level_cubed = i * i * i;
+                    threshold = (threshold * 138) / 100 + (level_cubed * 20);
+                    i += 1;
+                };
+                threshold
             } else {
                 // For levels beyond 10, use a pattern: base * level
                 let base_score = 3000;
-                base_score * level
+                base_score * level;
+                // Phase 5: Impossible (Levels 31+)
+                // Formula: previous × 1.42 + (level⁴ × 5)
+                let mut threshold: u32 = 3500000; // Level 30 final threshold
+                let mut i: u32 = 31;
+                while i <= level {
+                    let level_squared = i * i;
+                    let level_fourth = level_squared * level_squared;
+                    threshold = (threshold * 142) / 100 + (level_fourth * 5);
+                    i += 1;
+                };
+                threshold
             }
         }
 
@@ -554,7 +596,7 @@ pub mod AbyssGame {
             assert(session.is_active, 'Session is not active');
             assert(market_slot >= 1 && market_slot <= 6, 'Invalid market slot');
 
-            // Check inventory limit (max 6 unique items)
+            // Check inventory limit (max 7 unique items)
             let unique_item_count = self.session_item_count.entry(session_id).read();
 
             // Get item from market slot
@@ -591,8 +633,8 @@ pub mod AbyssGame {
             };
             assert(!item_already_owned, 'Item already owned');
 
-            // Check inventory limit (max 6 unique items)
-            assert(unique_item_count < 6, 'Inventory full');
+            // Check inventory limit (max 7 unique items)
+            assert(unique_item_count < 7, 'Inventory full');
 
             // Calculate total cost
             let total_cost = item.price;
@@ -622,9 +664,11 @@ pub mod AbyssGame {
             assert(caller == session.player_address, 'Only owner can refresh');
             assert(session.is_active, 'Session is not active');
 
-            // Calculate refresh cost
+            // Read market to get refresh count
             let market = self.session_markets.entry(session_id).read();
-            let refresh_cost = 5 + (market.refresh_count * 2);
+
+            // Calculate refresh cost using the progressive formula
+            let refresh_cost = self.get_refresh_cost(session_id);
 
             assert(session.score >= refresh_cost, 'Insufficient score');
 
@@ -693,6 +737,51 @@ pub mod AbyssGame {
             self.session_item_count.entry(session_id).write(item_count - 1);
         }
 
+        fn consume_item(ref self: ContractState, session_id: u32, item_id: u32, quantity: u32) {
+            let caller = get_caller_address();
+            let session = self.sessions.entry(session_id).read();
+
+            // Verify caller is session owner
+            assert(caller == session.player_address, 'Only owner can consume items');
+            assert(session.is_active, 'Session is not active');
+
+            // Find item in array
+            let item_count = self.session_item_count.entry(session_id).read();
+            let mut item_index: Option<u32> = Option::None;
+            let mut i = 0;
+            while i < item_count {
+                if self.session_item_ids.entry((session_id, i)).read() == item_id {
+                    item_index = Option::Some(i);
+                    break;
+                }
+                i += 1;
+            };
+
+            // Assert item exists
+            assert(item_index.is_some(), 'Item not owned');
+            let found_index = item_index.unwrap();
+
+            // Get item info (to verify it exists)
+            let item = self.items.entry(item_id).read();
+            assert(item.item_id == item_id, 'Item does not exist');
+
+            // No score added - item is simply consumed
+
+            // Remove item from array by shifting all items after it
+            let mut j = found_index;
+            while j < item_count - 1 {
+                let next_item_id = self.session_item_ids.entry((session_id, j + 1)).read();
+                self.session_item_ids.entry((session_id, j)).write(next_item_id);
+                j += 1;
+            };
+
+            // Clear the last slot
+            self.session_item_ids.entry((session_id, item_count - 1)).write(0);
+
+            // Decrement item count
+            self.session_item_count.entry(session_id).write(item_count - 1);
+        }
+
         fn get_session_items(self: @ContractState, session_id: u32) -> Array<PlayerItem> {
             let mut items_array = ArrayTrait::new();
             let item_count = self.session_item_count.entry(session_id).read();
@@ -718,6 +807,41 @@ pub mod AbyssGame {
             self.total_items.read()
         }
 
+        fn get_666_probability(self: @ContractState, level: u32) -> u32 {
+            // Probability progression:
+            // Level 1-5: 0% (0)
+            // Level 6-9: 1.2% (12)
+            // Level 10-13: 2.4% (24)
+            // Level 14-17: 4.8% (48)
+            // Level 18-21: 9.6% (96)
+            // Level 22+: 9.6% (96) - CAPPED
+
+            if level <= 5 {
+                // First 5 levels: no risk
+                0
+            } else {
+                let base_probability: u32 = 12; // 1.2%
+                let tier = (level - 6) / 4; // 0-based tier starting from level 6, increases every 4 levels
+
+                // Calculate 2^tier (doubling each tier)
+                let mut multiplier: u32 = 1;
+                let mut i: u32 = 0;
+                while i < tier {
+                    multiplier = multiplier * 2;
+                    i += 1;
+                };
+
+                let probability = base_probability * multiplier;
+
+                // Cap at 9.6% (96)
+                if probability > 96 {
+                    96
+                } else {
+                    probability
+                }
+            }
+        }
+
         fn get_session_item_quantity(self: @ContractState, session_id: u32, item_id: u32) -> u32 {
             self.session_inventory.entry((session_id, item_id)).read()
         }
@@ -728,7 +852,50 @@ pub mod AbyssGame {
 
         fn get_refresh_cost(self: @ContractState, session_id: u32) -> u32 {
             let market = self.session_markets.entry(session_id).read();
-            5 + (market.refresh_count * 2)
+            let count = market.refresh_count;
+
+            // Progressive cost formula
+            // 0: 2, 1: 5, 2: 16, 3: 24, 4: 48, 5: 62, 6: 86, 7: 112, 8: 190, 9: 280, 10: 345, 11: 526, 12: 891, 13: 1200
+            if count == 0 {
+                2
+            } else if count == 1 {
+                5
+            } else if count == 2 {
+                16
+            } else if count == 3 {
+                24
+            } else if count == 4 {
+                48
+            } else if count == 5 {
+                62
+            } else if count == 6 {
+                86
+            } else if count == 7 {
+                112
+            } else if count == 8 {
+                190
+            } else if count == 9 {
+                280
+            } else if count == 10 {
+                345
+            } else if count == 11 {
+                526
+            } else if count == 12 {
+                891
+            } else if count == 13 {
+                1200
+            } else {
+                // After 13 refreshes, cost increases by 50% each time
+                let base_cost: u32 = 1200;
+                let extra_refreshes = count - 13;
+                let mut cost = base_cost;
+                let mut i: u32 = 0;
+                while i < extra_refreshes {
+                    cost = cost + (cost / 2); // Increase by 50%
+                    i += 1;
+                };
+                cost
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────────
@@ -1297,7 +1464,179 @@ pub mod AbyssGame {
                 target_symbol: 'coin',
             });
 
-            self.total_items.write(32);
+            // ═══════════════════════════════════════════════════════════════════
+            // ADDITIONAL SEVEN ITEMS
+            // ═══════════════════════════════════════════════════════════════════
+
+            // Item 33: Seven Score Boost (Very High tier)
+            self.items.entry(33).write(Item {
+                item_id: 33,
+                name: 'Lucky Ring',
+                description: '+25 points to seven',
+                price: 350,
+                sell_price: 262,
+                effect_type: 3, // DirectScoreBonus
+                effect_value: 25,
+                target_symbol: 'seven',
+            });
+
+            // Item 34: Seven Probability Boost (Very High tier)
+            self.items.entry(34).write(Item {
+                item_id: 34,
+                name: 'Crystal Ball',
+                description: '+35% seven probability',
+                price: 280,
+                sell_price: 210,
+                effect_type: 2, // SymbolProbabilityBoost
+                effect_value: 35,
+                target_symbol: 'seven',
+            });
+
+            // ═══════════════════════════════════════════════════════════════════
+            // ADDITIONAL DIAMOND ITEMS
+            // ═══════════════════════════════════════════════════════════════════
+
+            // Item 35: Diamond Score Boost (Very High tier)
+            self.items.entry(35).write(Item {
+                item_id: 35,
+                name: 'Jewel Crown',
+                description: '+18 points to diamond',
+                price: 300,
+                sell_price: 225,
+                effect_type: 3, // DirectScoreBonus
+                effect_value: 18,
+                target_symbol: 'diamond',
+            });
+
+            // Item 36: Diamond Probability Boost (Very High tier)
+            self.items.entry(36).write(Item {
+                item_id: 36,
+                name: 'Magic Wand',
+                description: '+30% diamond probability',
+                price: 260,
+                sell_price: 195,
+                effect_type: 2, // SymbolProbabilityBoost
+                effect_value: 30,
+                target_symbol: 'diamond',
+            });
+
+            // ═══════════════════════════════════════════════════════════════════
+            // ADDITIONAL LEMON ITEMS
+            // ═══════════════════════════════════════════════════════════════════
+
+            // Item 37: Lemon Probability Boost (High tier)
+            self.items.entry(37).write(Item {
+                item_id: 37,
+                name: 'Rusty Gear',
+                description: '+24% lemon probability',
+                price: 120,
+                sell_price: 90,
+                effect_type: 2, // SymbolProbabilityBoost
+                effect_value: 24,
+                target_symbol: 'lemon',
+            });
+
+            // Item 38: Lemon Score Boost (Very High tier)
+            self.items.entry(38).write(Item {
+                item_id: 38,
+                name: 'Ancient Scroll',
+                description: '+28 points to lemon',
+                price: 320,
+                sell_price: 240,
+                effect_type: 3, // DirectScoreBonus
+                effect_value: 28,
+                target_symbol: 'lemon',
+            });
+
+            // ═══════════════════════════════════════════════════════════════════
+            // ADDITIONAL COIN ITEMS
+            // ═══════════════════════════════════════════════════════════════════
+
+            // Item 39: Coin Score Boost (Low tier)
+            self.items.entry(39).write(Item {
+                item_id: 39,
+                name: 'Rusty Nail',
+                description: '+5 points to coin',
+                price: 28,
+                sell_price: 21,
+                effect_type: 3, // DirectScoreBonus
+                effect_value: 5,
+                target_symbol: 'coin',
+            });
+
+            // // Item 40: Coin Probability Boost (Very High tier)
+            // self.items.entry(40).write(Item {
+            //     item_id: 40,
+            //     name: 'Fortune Cookie',
+            //     description: '+35% coin probability',
+            //     price: 290,
+            //     sell_price: 217,
+            //     effect_type: 2, // SymbolProbabilityBoost
+            //     effect_value: 35,
+            //     target_symbol: 'coin',
+            // });
+
+            // // ═══════════════════════════════════════════════════════════════════
+            // // ADDITIONAL PATTERN ITEMS
+            // // ═══════════════════════════════════════════════════════════════════
+
+            // // Item 41: Pattern Boost (Ultra High tier)
+            // self.items.entry(41).write(Item {
+            //     item_id: 41,
+            //     name: 'Demon Horn',
+            //     description: '+200% pattern multiplier',
+            //     price: 1200,
+            //     sell_price: 900,
+            //     effect_type: 1, // PatternMultiplierBoost
+            //     effect_value: 200,
+            //     target_symbol: '',
+            // });
+
+            // // ═══════════════════════════════════════════════════════════════════
+            // // ADDITIONAL SPIN ITEMS
+            // // ═══════════════════════════════════════════════════════════════════
+
+            // // Item 42: Spin Bundle (Very Low tier)
+            // self.items.entry(42).write(Item {
+            //     item_id: 42,
+            //     name: 'Broken Watch',
+            //     description: '+2 extra spins',
+            //     price: 45,
+            //     sell_price: 33,
+            //     effect_type: 4, // SpinBonus
+            //     effect_value: 2,
+            //     target_symbol: '',
+            // });
+
+            // // Item 43: Mega Spin Bundle (Ultra High tier)
+            // self.items.entry(43).write(Item {
+            //     item_id: 43,
+            //     name: 'Time Machine',
+            //     description: '+15 extra spins',
+            //     price: 350,
+            //     sell_price: 262,
+            //     effect_type: 4, // SpinBonus
+            //     effect_value: 15,
+            //     target_symbol: '',
+            // });
+
+            // ═══════════════════════════════════════════════════════════════════
+            // SPECIAL PROTECTION ITEM
+            // ═══════════════════════════════════════════════════════════════════
+
+            // Item 44: Biblia - 666 Protection (Consumable)
+            self.items.entry(40).write(Item {
+                item_id: 40,
+                name: 'Biblia',
+                description: 'Protects from 666 once',
+                price: 500,
+                sell_price: 375,
+                effect_type: 6, // Special: 666 Protection (new type)
+                effect_value: 1, // Single use
+                target_symbol: 'six',
+            });
+
+            self.total_items.write(40);
         }
 
         /// Initialize market for a new session

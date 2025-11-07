@@ -5,8 +5,10 @@ import { generateSymbols } from '../utils/symbolGenerator';
 import { detectPatterns, Pattern } from '../utils/patternDetector';
 import { calculateScore } from '../utils/scoreCalculator';
 import { persistGameState } from '../utils/gameStorage';
-import { spin as contractSpin, getSessionData, endSession } from '../utils/abyssContract';
+import { spin as contractSpin, getSessionData, endSession, consumeItem, ContractItem } from '../utils/abyssContract';
 import { useGameFeedback } from './useGameFeedback';
+import { calculate666Probability, hasBibliaProtection } from '../utils/probability666';
+import { getLevelThreshold } from '../utils/levelThresholds';
 
 export interface GameLogicState {
   grid: SymbolType[][];
@@ -20,6 +22,7 @@ export interface GameLogicState {
   transactionStatus: 'idle' | 'pending' | 'success' | 'error';
   transactionHash?: string;
   level: number;
+  bibliaSaved: boolean; // Flag to show Biblia animation
 }
 
 export interface GameLogicActions {
@@ -35,7 +38,9 @@ export function useGameLogic(
   sessionId: number,
   config: GameConfig = DEFAULT_GAME_CONFIG,
   onPatternsDetected?: (patterns: Pattern[]) => void,
-  scoreMultiplier: number = 1.0
+  scoreMultiplier: number = 1.0,
+  ownedItems: ContractItem[] = [],
+  aegisAccount: any = null
 ): [GameLogicState, GameLogicActions] {
   const { playPatternHit, playLevelUp, playSpin, playSpinAnimation, playGameOver } = useGameFeedback();
   
@@ -52,6 +57,7 @@ export function useGameLogic(
       lastSpinScore: 0,
       transactionStatus: 'idle',
       level: 1,
+      bibliaSaved: false,
     };
   });
 
@@ -60,25 +66,55 @@ export function useGameLogic(
       if (prev.spinsLeft <= 0 || prev.isSpinning || prev.gameOver) {
         return prev;
       }
-      
-      // Generate symbols and calculate score immediately
-      const { grid, is666 } = generateSymbols(config);
+
+      // Calculate dynamic 666 probability based on level
+      const dynamic666Probability = calculate666Probability(prev.level);
+      const configWithDynamicProbability = {
+        ...config,
+        probability666: dynamic666Probability
+      };
+
+      // Generate symbols with dynamic probability
+      const { grid, is666 } = generateSymbols(configWithDynamicProbability);
       let scoreToAdd = 0;
       let patterns: Pattern[] = [];
+      let hasBiblia = hasBibliaProtection(ownedItems);
 
       // Always play spin animation feedback (for both normal and 666)
       playSpinAnimation();
 
       if (is666) {
-        // 666 triggered - instant loss
-        scoreToAdd = 0; // This will reset the score
-        playGameOver();
-
-        // End session immediately for 666
-        if (sessionId > 0) {
-          endSession(sessionId).catch(error => {
-            console.error('Failed to end session on 666:', error);
+        // Check if player has Biblia protection
+        if (hasBiblia && aegisAccount) {
+          // Biblia protects - consume it (remove from inventory without score)
+          consumeItem(sessionId, 40, 1, aegisAccount).then(() => {
+            // Biblia was consumed, continue playing
+          }).catch(error => {
+            console.error('Failed to consume Biblia:', error);
           });
+
+          // Continue as normal spin (Biblia saved the player)
+          patterns = detectPatterns(grid, config);
+          const scoreBreakdown = calculateScore(grid, patterns, config);
+          scoreToAdd = Math.round(scoreBreakdown.totalScore * scoreMultiplier);
+
+          patterns.forEach(pattern => {
+            playPatternHit(pattern.type);
+          });
+
+          // Mark that Biblia saved the player (for animation)
+          // This will be set in the state update below
+        } else {
+          // No protection - 666 triggered, instant loss
+          scoreToAdd = 0; // This will reset the score
+          playGameOver();
+
+          // End session immediately for 666
+          if (sessionId > 0) {
+            endSession(sessionId).catch(error => {
+              console.error('Failed to end session on 666:', error);
+            });
+          }
         }
       } else {
         // Normal spin - calculate score
@@ -102,7 +138,8 @@ export function useGameLogic(
 
       // Update state immediately but keep original score (only update spins)
       const newSpinsLeft = prev.spinsLeft - 1;
-      const isGameOver = newSpinsLeft <= 0 || is666; // Game over if no spins OR 666
+      const bibliaSavedPlayer = is666 && hasBiblia; // Biblia saved if 666 occurred and player had Biblia
+      const isGameOver = bibliaSavedPlayer ? false : (newSpinsLeft <= 0 || is666); // Game over if no spins OR 666 (unless Biblia saved)
 
       const updatedState = {
         grid,
@@ -110,11 +147,12 @@ export function useGameLogic(
         spinsLeft: newSpinsLeft,
         isSpinning: true,
         patterns,
-        is666: is666, // Preserve the 666 flag
+        is666: bibliaSavedPlayer ? false : is666, // Don't mark as 666 if Biblia saved
         gameOver: isGameOver,
         lastSpinScore: scoreToAdd,
         transactionStatus: 'pending' as const,
         level: prev.level,
+        bibliaSaved: bibliaSavedPlayer, // Flag for Biblia animation
       };
 
       // Start transaction in parallel with animation
@@ -149,19 +187,17 @@ export function useGameLogic(
       setTimeout(async () => {
         try {
           // Update score only when animation ends
-          let newScore = is666 ? 0 : previousState.score + scoreToAdd; // Reset to 0 on 666
+          // If Biblia saved, don't reset score to 0
+          let newScore = (is666 && !bibliaSavedPlayer) ? 0 : previousState.score + scoreToAdd;
 
           // Check for level progression (same logic as contract)
           let newLevel = previousState.level;
           let finalSpinsLeft = newSpinsLeft;
 
-          // Level thresholds (matching contract logic)
-          const levelThresholds = [33, 66, 333, 666, 999, 1333, 1666, 1999, 2333, 2666];
-
-          // Only check level progression if not 666
-          if (!is666) {
+          // Only check level progression if not 666 or if Biblia saved
+          if (!is666 || bibliaSavedPlayer) {
             // Check if player leveled up
-            while (newScore >= (levelThresholds[newLevel - 1] || 3000 * newLevel)) {
+            while (newScore >= getLevelThreshold(newLevel)) {
               newLevel += 1;
             }
 
@@ -172,7 +208,7 @@ export function useGameLogic(
             }
           }
 
-          const finalGameOver = finalSpinsLeft <= 0 || is666;
+          const finalGameOver = bibliaSavedPlayer ? (finalSpinsLeft <= 0) : (finalSpinsLeft <= 0 || is666);
 
           setState(prev => ({
             ...prev,
@@ -180,9 +216,10 @@ export function useGameLogic(
             spinsLeft: finalSpinsLeft,
             level: newLevel,
             gameOver: finalGameOver,
-            is666: is666, // Keep 666 flag for game over screen
+            is666: bibliaSavedPlayer ? false : is666, // Don't keep 666 flag if Biblia saved
             isSpinning: false,
-            transactionStatus: 'idle'
+            transactionStatus: 'idle',
+            bibliaSaved: false, // Reset flag after animation
           }));
 
           // End session if game is over (no spins left or 666)
@@ -230,6 +267,7 @@ export function useGameLogic(
       lastSpinScore: 0,
       transactionStatus: 'idle',
       level: 1,
+      bibliaSaved: false,
     });
   }, [initialScore, initialSpins, config]);
 
