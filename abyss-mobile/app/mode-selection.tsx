@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Theme } from '../constants/Theme';
-import TelegramIcon from '../components/TelegramIcon';
 import SettingsIcon from '../components/SettingsIcon';
 import { useAegis } from '@cavos/aegis';
 
@@ -83,7 +82,11 @@ export default function ModeSelectionScreen() {
             style={styles.iconButton}
             onPress={handleTelegram}
           >
-            <TelegramIcon size={32} color={Theme.colors.primary} />
+            <Image
+              source={require('../assets/images/tg_icon.png')}
+              style={styles.telegramIcon}
+              resizeMode="contain"
+            />
           </Pressable>
 
           <Pressable
@@ -149,5 +152,9 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: Theme.spacing.xs,
+  },
+  telegramIcon: {
+    width: 32,
+    height: 32,
   },
 });

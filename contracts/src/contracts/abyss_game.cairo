@@ -995,12 +995,53 @@ pub mod AbyssGame {
         /// Update the leaderboard with a new session entry
         fn update_leaderboard(ref self: ContractState, player_address: ContractAddress, session_id: u32, new_score: u32, new_level: u32) {
             let current_count = self.leaderboard_count.read();
-            let mut insert_position = current_count; // Default to append
-            let mut should_insert = true;
-            
-            // Find the correct position to insert
+
+            // First, check if player already has an entry in the leaderboard
+            let mut player_existing_position: Option<u32> = Option::None;
+            let mut player_existing_score: u32 = 0;
             let mut i = 0;
             while i < current_count {
+                let entry = self.leaderboard.entry(i).read();
+                if entry.player_address == player_address {
+                    player_existing_position = Option::Some(i);
+                    player_existing_score = entry.total_score;
+                    break;
+                };
+                i += 1;
+            };
+
+            // If player exists with a better or equal score, don't update
+            match player_existing_position {
+                Option::Some(pos) => {
+                    if player_existing_score >= new_score {
+                        // Player already has a better score, do nothing
+                        return;
+                    } else {
+                        // Player has a worse score, remove the old entry
+                        // Shift all entries after the old position up
+                        let mut j = pos;
+                        while j < current_count - 1 {
+                            let next_entry = self.leaderboard.entry(j + 1).read();
+                            self.leaderboard.entry(j).write(next_entry);
+                            j += 1;
+                        };
+                        // Decrease count since we removed an entry
+                        self.leaderboard_count.write(current_count - 1);
+                    }
+                },
+                Option::None => {
+                    // Player doesn't exist, continue with normal insert
+                }
+            };
+
+            // Now insert the new score in the correct position
+            let updated_count = self.leaderboard_count.read();
+            let mut insert_position = updated_count; // Default to append
+            let mut should_insert = true;
+
+            // Find the correct position to insert
+            let mut i = 0;
+            while i < updated_count {
                 let entry = self.leaderboard.entry(i).read();
                 if new_score > entry.total_score || (new_score == entry.total_score && new_level > entry.level) {
                     insert_position = i;
@@ -1009,15 +1050,15 @@ pub mod AbyssGame {
                 };
                 i += 1;
             };
-            
+
             // If leaderboard is full (10 entries) and new score doesn't qualify, don't insert
-            if current_count >= 10 && insert_position >= 10 {
+            if updated_count >= 10 && insert_position >= 10 {
                 should_insert = false;
             };
-            
+
             if should_insert {
                 // Shift entries down if inserting in middle
-                let mut j = current_count;
+                let mut j = updated_count;
                 while j > insert_position {
                     if j < 10 { // Only shift if within bounds
                         let entry_to_move = self.leaderboard.entry(j - 1).read();
@@ -1025,7 +1066,7 @@ pub mod AbyssGame {
                     };
                     j -= 1;
                 };
-                
+
                 // Insert new entry
                 let new_entry = LeaderboardEntry {
                     player_address,
@@ -1034,10 +1075,10 @@ pub mod AbyssGame {
                     total_score: new_score,
                 };
                 self.leaderboard.entry(insert_position).write(new_entry);
-                
+
                 // Update count if adding new entry
-                if current_count < 10 {
-                    self.leaderboard_count.write(current_count + 1);
+                if updated_count < 10 {
+                    self.leaderboard_count.write(updated_count + 1);
                 };
             }
         }
@@ -1471,7 +1512,7 @@ pub mod AbyssGame {
             // Item 33: Seven Score Boost (Very High tier)
             self.items.entry(33).write(Item {
                 item_id: 33,
-                name: 'Lucky Ring',
+                name: 'Ticket',
                 description: '+25 points to seven',
                 price: 350,
                 sell_price: 262,
@@ -1483,7 +1524,7 @@ pub mod AbyssGame {
             // Item 34: Seven Probability Boost (Very High tier)
             self.items.entry(34).write(Item {
                 item_id: 34,
-                name: 'Crystal Ball',
+                name: 'Devil Train',
                 description: '+35% seven probability',
                 price: 280,
                 sell_price: 210,
@@ -1499,7 +1540,7 @@ pub mod AbyssGame {
             // Item 35: Diamond Score Boost (Very High tier)
             self.items.entry(35).write(Item {
                 item_id: 35,
-                name: 'Jewel Crown',
+                name: 'Fake Dollar',
                 description: '+18 points to diamond',
                 price: 300,
                 sell_price: 225,
@@ -1511,7 +1552,7 @@ pub mod AbyssGame {
             // Item 36: Diamond Probability Boost (Very High tier)
             self.items.entry(36).write(Item {
                 item_id: 36,
-                name: 'Magic Wand',
+                name: 'Bull Skull',
                 description: '+30% diamond probability',
                 price: 260,
                 sell_price: 195,
@@ -1527,7 +1568,7 @@ pub mod AbyssGame {
             // Item 37: Lemon Probability Boost (High tier)
             self.items.entry(37).write(Item {
                 item_id: 37,
-                name: 'Rusty Gear',
+                name: 'Fake Coin',
                 description: '+24% lemon probability',
                 price: 120,
                 sell_price: 90,
@@ -1539,7 +1580,7 @@ pub mod AbyssGame {
             // Item 38: Lemon Score Boost (Very High tier)
             self.items.entry(38).write(Item {
                 item_id: 38,
-                name: 'Ancient Scroll',
+                name: 'Pocket Watch',
                 description: '+28 points to lemon',
                 price: 320,
                 sell_price: 240,
@@ -1555,7 +1596,7 @@ pub mod AbyssGame {
             // Item 39: Coin Score Boost (Low tier)
             self.items.entry(39).write(Item {
                 item_id: 39,
-                name: 'Rusty Nail',
+                name: 'Knight Helmet',
                 description: '+5 points to coin',
                 price: 28,
                 sell_price: 21,
@@ -1627,7 +1668,7 @@ pub mod AbyssGame {
             // Item 44: Biblia - 666 Protection (Consumable)
             self.items.entry(40).write(Item {
                 item_id: 40,
-                name: 'Biblia',
+                name: 'La Biblia',
                 description: 'Protects from 666 once',
                 price: 500,
                 sell_price: 375,

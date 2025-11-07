@@ -48,7 +48,7 @@ mod Chip {
 
     #[constructor]
     fn constructor(ref self: ContractState, default_admin: ContractAddress, minter: ContractAddress) {
-        self.erc20.initializer("Chip", "CHP");
+        self.erc20.initializer("Chip", "CHIP");
         self.accesscontrol.initializer();
 
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, default_admin);
