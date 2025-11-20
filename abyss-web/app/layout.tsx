@@ -15,8 +15,9 @@ const ramagothic = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Abyss - Purchase CHIPS",
-  description: "Purchase CHIP tokens for the Abyss game",
+  title: "Abyss",
+  description: "A thrilling roguelite slot game where skill meets luck on the blockchain. Built on Starknet. Play for free or compete for prizes.",
+  keywords: "Abyss, slot machine, blockchain game, Starknet, crypto game, NFT game, decentralized gaming",
 };
 
 export default function RootLayout({

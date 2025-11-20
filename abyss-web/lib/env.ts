@@ -29,9 +29,15 @@ export const env = {
 } as const;
 
 // Validate environment variables on server startup
-if (typeof window === 'undefined') {
+// Skip validation during build phase to avoid warnings for static pages
+// Validation will happen at runtime when API routes are actually called
+const isBuildTime = process.env.npm_lifecycle_event === 'build' || 
+                    process.argv.includes('build') ||
+                    process.env.NEXT_PHASE === 'phase-production-build';
+
+if (typeof window === 'undefined' && !isBuildTime) {
   try {
-    // Only validate in production or when explicitly requested
+    // Only validate in production runtime or when explicitly requested
     if (process.env.NODE_ENV === 'production' || process.env.VALIDATE_ENV === 'true') {
       env.stripeSecretKey();
       env.stripeWebhookSecret();
