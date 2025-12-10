@@ -138,7 +138,8 @@ export default function SessionsScreen() {
         formattedAddress = '0x' + paddedHex;
       }
 
-      const buyUrl = `http://192.168.100.105:3000/purchase/${formattedAddress}`;
+      const baseUrl = process.env.EXPO_PUBLIC_WEB_URL || 'http://192.168.100.105:3000';
+      const buyUrl = `${baseUrl}/purchase/${formattedAddress}`;
       const canOpen = await Linking.canOpenURL(buyUrl);
       if (canOpen) {
         await Linking.openURL(buyUrl);

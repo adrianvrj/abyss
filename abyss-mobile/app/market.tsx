@@ -17,12 +17,14 @@ import {
   getSessionData,
   getSessionInventoryCount,
   getSessionItems,
+  isMarketSlotPurchased,
   ContractItem,
   SessionMarket as SessionMarketType,
   ItemEffectType,
 } from '../utils/abyssContract';
 import { getItemImage, itemImages } from '../utils/itemImages';
 import { useAegis } from '@cavos/aegis';
+import { saveMarketCache, loadMarketCache, clearMarketCache, updatePurchasedSlots } from '../utils/marketCache';
 
 // Preload all item images
 const preloadImages = async () => {
@@ -47,6 +49,7 @@ export default function MarketScreen() {
   const [purchasingSlot, setPurchasingSlot] = useState<number | null>(null);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [purchasedInCurrentMarket, setPurchasedInCurrentMarket] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     // Preload images on mount
@@ -61,9 +64,35 @@ export default function MarketScreen() {
     }, [sessionId])
   );
 
-  async function loadMarketData() {
+  async function loadMarketData(forceRefresh: boolean = false) {
     try {
+      // Try to load from cache first (unless forced refresh)
+      if (!forceRefresh) {
+        const cached = await loadMarketCache(parsedSessionId);
+        if (cached) {
+          console.log('Loading market from cache');
+          setMarketData(cached.marketData);
+          setMarketItems(cached.marketItems);
+          setPurchasedInCurrentMarket(new Set(cached.purchasedSlots));
+
+          // Still fetch balance and inventory (these change frequently)
+          const sessionData = await getSessionData(parsedSessionId);
+          setBalance(Number(sessionData.score));
+
+          const invCount = await getSessionInventoryCount(parsedSessionId);
+          setInventoryCount(Number(invCount));
+
+          const playerItems = await getSessionItems(parsedSessionId);
+          const ownedIds = new Set(playerItems.map(pi => Number(pi.item_id)));
+          setOwnedItemIds(ownedIds);
+
+          return;
+        }
+      }
+
+      // Show loading spinner only when fetching from blockchain
       setLoading(true);
+      console.log('Loading market from blockchain');
 
       // Fetch session data for balance
       const sessionData = await getSessionData(parsedSessionId);
@@ -97,6 +126,19 @@ export default function MarketScreen() {
       const ownedIds = new Set(playerItems.map(pi => Number(pi.item_id)));
       setOwnedItemIds(ownedIds);
 
+      // Fetch purchased status for each market slot
+      const purchasedSlots = new Set<number>();
+      for (let slot = 1; slot <= 6; slot++) {
+        const isPurchased = await isMarketSlotPurchased(parsedSessionId, slot);
+        if (isPurchased) {
+          purchasedSlots.add(slot);
+        }
+      }
+      setPurchasedInCurrentMarket(purchasedSlots);
+
+      // Save to cache
+      await saveMarketCache(parsedSessionId, market, items, purchasedSlots);
+
     } catch (error) {
       console.error('Failed to load market:', error);
       Alert.alert('Error', 'Failed to load market data');
@@ -109,6 +151,12 @@ export default function MarketScreen() {
     // Check if already owned
     if (ownedItemIds.has(item.item_id)) {
       Alert.alert('Cannot Purchase', 'You already own this item');
+      return;
+    }
+
+    // Check if this slot was already purchased in current market
+    if (purchasedInCurrentMarket.has(marketSlot)) {
+      Alert.alert('Cannot Purchase', 'You already purchased this item. Sell it or refresh the market to buy it again.');
       return;
     }
 
@@ -134,11 +182,26 @@ export default function MarketScreen() {
 
       await buyItemFromMarket(parsedSessionId, marketSlot, aegisAccount);
 
-      // Wait 6 seconds for the contract to update
+      // Add slot to purchased list for current market session
+      const updatedPurchasedSlots = new Set([...purchasedInCurrentMarket, marketSlot]);
+      setPurchasedInCurrentMarket(updatedPurchasedSlots);
+
+      // Update cache with new purchased slot
+      await updatePurchasedSlots(parsedSessionId, updatedPurchasedSlots);
+
+      // Wait for the contract to update
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Reload market data and balance from contract
-      await loadMarketData();
+      // Reload only balance and inventory (market items stay the same)
+      const sessionData = await getSessionData(parsedSessionId);
+      setBalance(Number(sessionData.score));
+
+      const invCount = await getSessionInventoryCount(parsedSessionId);
+      setInventoryCount(Number(invCount));
+
+      const playerItems = await getSessionItems(parsedSessionId);
+      const ownedIds = new Set(playerItems.map(pi => Number(pi.item_id)));
+      setOwnedItemIds(ownedIds);
     } catch (error: any) {
       console.error('Buy item error:', error);
 
@@ -188,14 +251,19 @@ export default function MarketScreen() {
     setRefreshing(true);
     try {
       // Execute refresh transaction
-      const txHash = await refreshMarket(parsedSessionId, aegisAccount);
-      console.log('Refresh market tx:', txHash);
+      await refreshMarket(parsedSessionId, aegisAccount);
+
+      // Clear cache since market is refreshed
+      await clearMarketCache(parsedSessionId);
+
+      // Reset purchased items tracking since market is refreshed
+      setPurchasedInCurrentMarket(new Set());
 
       // Wait for the contract to update
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Reload market data from contract
-      await loadMarketData();
+      // Force reload market data from blockchain
+      await loadMarketData(true);
     } catch (error: any) {
       console.error('Refresh market error:', error);
       const message = error.message || '';
@@ -305,11 +373,13 @@ export default function MarketScreen() {
   // Calculate refresh cost using same formula as contract
   const refreshCost = marketData ? calculateRefreshCost(Number(marketData.refresh_count)) : 2;
   const currentItem = marketItems[currentItemIndex];
+  const currentSlot = currentItemIndex + 1; // marketSlot is 1-indexed
   const isOwned = currentItem ? ownedItemIds.has(currentItem.item_id) : false;
+  const wasPurchased = purchasedInCurrentMarket.has(currentSlot);
   const isInventoryFull = inventoryCount >= 7 && !isOwned;
   const canAfford = currentItem ? balance >= currentItem.price : false;
-  const isPurchasing = purchasingSlot === (currentItemIndex + 1); // marketSlot is 1-indexed
-  const canPurchase = currentItem && !isOwned && !isInventoryFull && canAfford && !isPurchasing;
+  const isPurchasing = purchasingSlot === currentSlot;
+  const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && !isPurchasing;
 
   return (
     <ImageBackground
@@ -373,60 +443,94 @@ export default function MarketScreen() {
             /* Item Carousel */
             currentItem && (
               <View style={styles.carouselContainer}>
-                {/* Item Display */}
-                <View style={styles.itemDisplayContainer}>
-                  {/* Item Image - Large, centered - Clickable */}
-                  <Pressable style={styles.itemImageWrapper} onPress={() => setShowInfoModal(true)}>
-                    <Image
-                      source={getItemImage(currentItem.item_id)}
-                      style={styles.itemImageLarge}
-                      resizeMode="contain"
-                    />
-                  </Pressable>
+                {/* Show empty slot if item was purchased */}
+                {wasPurchased ? (
+                  <View style={styles.itemDisplayContainer}>
+                    {/* Empty slot icon - same size as item images */}
+                    <View style={styles.itemImageWrapper}>
+                      <Ionicons
+                        name="close-circle-outline"
+                        size={Math.min(SCREEN_WIDTH * 0.5, 200)}
+                        color="rgba(255, 132, 28, 0.3)"
+                      />
+                      <Text style={styles.emptySlotText}>SOLD OUT</Text>
+                      <Text style={styles.emptySlotSubtext}>This item was sold</Text>
+                    </View>
 
-                  {/* Navigation Arrows and Buy Button */}
-                <View style={styles.navigationContainer}>
-                  <Pressable style={styles.arrowButton} onPress={handlePreviousItem}>
-                    <Ionicons name="chevron-back" size={48} color={Theme.colors.primary} />
-                  </Pressable>
+                    {/* Navigation Arrows */}
+                    <View style={styles.navigationContainer}>
+                      <Pressable style={styles.arrowButton} onPress={handlePreviousItem}>
+                        <Ionicons name="chevron-back" size={48} color={Theme.colors.primary} />
+                      </Pressable>
 
-                  {/* Buy Button */}
-                  <Pressable
-                    style={[styles.buyButton, !canPurchase && styles.buyButtonDisabled]}
-                    onPress={() => canPurchase && handleBuyItem(currentItemIndex + 1, currentItem)}
-                    disabled={!canPurchase}
-                  >
-                    {isPurchasing ? (
-                      <ActivityIndicator size="small" color={Theme.colors.background} />
-                    ) : (
-                      <>
-                        <Image
-                          source={require('../assets/images/coin.png')}
-                          style={{
-                            width: 28,
-                            height: 28,
-                            opacity: isOwned || !canAfford ? 0.5 : 1
-                          }}
-                          resizeMode="contain"
-                        />
-                        <Text style={styles.buyButtonText}>
-                          {isOwned ? 'OWNED' : currentItem.price}
-                        </Text>
-                      </>
-                    )}
-                  </Pressable>
+                      <View style={{ width: 120 }} />
 
-                  <Pressable style={styles.arrowButton} onPress={handleNextItem}>
-                    <Ionicons name="chevron-forward" size={48} color={Theme.colors.primary} />
-                  </Pressable>
+                      <Pressable style={styles.arrowButton} onPress={handleNextItem}>
+                        <Ionicons name="chevron-forward" size={48} color={Theme.colors.primary} />
+                      </Pressable>
+                    </View>
+
+                    {/* Position Indicator */}
+                    <Text style={styles.positionIndicator}>
+                      {currentItemIndex + 1}/{marketItems.length}
+                    </Text>
+                  </View>
+                ) : (
+                  /* Normal Item Display */
+                  <View style={styles.itemDisplayContainer}>
+                    {/* Item Image - Large, centered - Clickable */}
+                    <Pressable style={styles.itemImageWrapper} onPress={() => setShowInfoModal(true)}>
+                      <Image
+                        source={getItemImage(currentItem.item_id)}
+                        style={styles.itemImageLarge}
+                        resizeMode="contain"
+                      />
+                    </Pressable>
+
+                    {/* Navigation Arrows and Buy Button */}
+                  <View style={styles.navigationContainer}>
+                    <Pressable style={styles.arrowButton} onPress={handlePreviousItem}>
+                      <Ionicons name="chevron-back" size={48} color={Theme.colors.primary} />
+                    </Pressable>
+
+                    {/* Buy Button */}
+                    <Pressable
+                      style={[styles.buyButton, !canPurchase && styles.buyButtonDisabled]}
+                      onPress={() => canPurchase && handleBuyItem(currentItemIndex + 1, currentItem)}
+                      disabled={!canPurchase}
+                    >
+                      {isPurchasing ? (
+                        <ActivityIndicator size="small" color={Theme.colors.background} />
+                      ) : (
+                        <>
+                          <Image
+                            source={require('../assets/images/coin.png')}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              opacity: isOwned || !canAfford ? 0.5 : 1
+                            }}
+                            resizeMode="contain"
+                          />
+                          <Text style={styles.buyButtonText}>
+                            {isOwned ? 'OWNED' : currentItem.price}
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+
+                    <Pressable style={styles.arrowButton} onPress={handleNextItem}>
+                      <Ionicons name="chevron-forward" size={48} color={Theme.colors.primary} />
+                    </Pressable>
+                  </View>
+
+                    {/* Position Indicator */}
+                    <Text style={styles.positionIndicator}>
+                      {currentItemIndex + 1}/{marketItems.length}
+                    </Text>
                 </View>
-
-                  {/* Position Indicator */}
-                  <Text style={styles.positionIndicator}>
-                    {currentItemIndex + 1}/{marketItems.length}
-                  </Text>
+                )}
               </View>
-            </View>
             )
           )}
         </Animated.View>
@@ -613,6 +717,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: Theme.spacing.sm,
     lineHeight: 24,
+  },
+  emptySlotText: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 28,
+    color: Theme.colors.primary,
+    fontWeight: 'bold',
+    marginTop: Theme.spacing.md,
+    textAlign: 'center',
+  },
+  emptySlotSubtext: {
+    fontFamily: Theme.fonts.body,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+    marginTop: Theme.spacing.xs,
   },
   header: {
     flexDirection: 'row',

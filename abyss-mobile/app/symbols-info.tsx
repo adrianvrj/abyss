@@ -177,39 +177,41 @@ export default function SymbolsInfoScreen() {
               {loading ? (
                 <ActivityIndicator size="large" color={Theme.colors.primary} />
               ) : (
-                symbols.map((symbol, index) => {
-                  const originalSymbol = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbol.type);
-                  const pointsModified = originalSymbol && wasModified(symbol.points, originalSymbol.points);
-                  const probModified = originalSymbol && wasModified(symbol.probability, originalSymbol.probability);
+                symbols
+                  .filter(symbol => symbol.type !== 'six') // Filter out six symbol
+                  .map((symbol, index) => {
+                    const originalSymbol = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbol.type);
+                    const pointsModified = originalSymbol && wasModified(symbol.points, originalSymbol.points);
+                    const probModified = originalSymbol && wasModified(symbol.probability, originalSymbol.probability);
 
-                  return (
-                    <View key={symbol.type} style={styles.symbolRow}>
-                      <Image
-                        source={symbolSources[symbol.type as keyof typeof symbolSources]}
-                        style={styles.symbolImage}
-                      />
-                      <View style={styles.symbolInfo}>
-                        <Text style={styles.symbolName}>{symbol.type.toUpperCase()}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={[styles.symbolReward, pointsModified && styles.modifiedValue]}>
-                            Points: {symbol.points}
-                          </Text>
-                          {pointsModified && originalSymbol && (
-                            <Text style={styles.originalValue}> ({originalSymbol.points})</Text>
-                          )}
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={[styles.symbolProbability, probModified && styles.modifiedValue]}>
-                            {symbol.probability.toFixed(1)}%
-                          </Text>
-                          {probModified && originalSymbol && (
-                            <Text style={styles.originalValue}> ({originalSymbol.probability.toFixed(1)}%)</Text>
-                          )}
+                    return (
+                      <View key={symbol.type} style={styles.symbolRow}>
+                        <Image
+                          source={symbolSources[symbol.type as keyof typeof symbolSources]}
+                          style={styles.symbolImage}
+                        />
+                        <View style={styles.symbolInfo}>
+                          <Text style={styles.symbolName}>{symbol.type.toUpperCase()}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={[styles.symbolReward, pointsModified && styles.modifiedValue]}>
+                              Points: {symbol.points}
+                            </Text>
+                            {pointsModified && originalSymbol && (
+                              <Text style={styles.originalValue}> ({originalSymbol.points})</Text>
+                            )}
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={[styles.symbolProbability, probModified && styles.modifiedValue]}>
+                              {symbol.probability.toFixed(1)}%
+                            </Text>
+                            {probModified && originalSymbol && (
+                              <Text style={styles.originalValue}> ({originalSymbol.probability.toFixed(1)}%)</Text>
+                            )}
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  );
-                })
+                    );
+                  })
               )}
             </View>
           )}

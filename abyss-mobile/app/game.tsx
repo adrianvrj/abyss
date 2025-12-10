@@ -367,11 +367,7 @@ export default function GameScreen() {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Pressable
-          style={styles.pressableArea}
-          onPress={handleSpin}
-          disabled={state.isSpinning || showPatternAnimations}
-        >
+        <View style={styles.gameArea}>
           <ImageBackground
             source={require('../assets/images/slot_machine.png')}
             style={styles.background}
@@ -380,6 +376,12 @@ export default function GameScreen() {
               console.error('Slot machine image failed to load:', error.nativeEvent.error);
             }}
           >
+            {/* Clickable area for spin - only over slot machine */}
+            <Pressable
+              onPress={handleSpin}
+              disabled={state.isSpinning || showPatternAnimations}
+              style={styles.slotMachineClickArea}
+            />
             {/* Header with score and spins */}
             <View style={styles.header}>
               <View style={styles.scoreContainer}>
@@ -463,17 +465,29 @@ export default function GameScreen() {
             )}
 
             {/* Info button in bottom right */}
-            <Pressable style={styles.infoButton} onPress={handleSymbolsInfo}>
+            <Pressable
+              style={styles.infoButton}
+              onPress={handleSymbolsInfo}
+              onPressIn={(e) => e.stopPropagation()}
+            >
               <Ionicons name="information-circle-outline" size={28} color={Theme.colors.primary} />
             </Pressable>
 
             {/* Exit button in bottom left */}
-            <Pressable style={styles.exitButton} onPress={handleExit}>
+            <Pressable
+              style={styles.exitButton}
+              onPress={handleExit}
+              onPressIn={(e) => e.stopPropagation()}
+            >
               <Ionicons name="exit-outline" size={28} color={Theme.colors.primary} />
             </Pressable>
 
             {/* Market button in top right */}
-            <Pressable style={styles.marketButton} onPress={handleMarket}>
+            <Pressable
+              style={styles.marketButton}
+              onPress={handleMarket}
+              onPressIn={(e) => e.stopPropagation()}
+            >
               <Ionicons name="storefront" size={24} color={Theme.colors.primary} />
               {ownedItems.length > 0 && (
                 <View style={styles.itemBadge}>
@@ -483,7 +497,11 @@ export default function GameScreen() {
             </Pressable>
 
             {/* Inventory button below market */}
-            <Pressable style={styles.inventoryButton} onPress={handleInventory}>
+            <Pressable
+              style={styles.inventoryButton}
+              onPress={handleInventory}
+              onPressIn={(e) => e.stopPropagation()}
+            >
               <Ionicons name="bag-handle" size={24} color={Theme.colors.primary} />
               {ownedItems.length > 0 && (
                 <View style={styles.itemBadge}>
@@ -497,7 +515,7 @@ export default function GameScreen() {
               <View style={styles.flashOverlay} />
             )}
           </ImageBackground>
-        </Pressable>
+        </View>
       </SafeAreaView>
     </ImageBackground>
   );
@@ -513,8 +531,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  pressableArea: {
+  gameArea: {
     flex: 1,
+  },
+  slotMachineClickArea: {
+    position: 'absolute',
+    top: '25%',
+    left: '15%',
+    right: '15%',
+    bottom: '25%',
+    zIndex: 1,
   },
   background: {
     flex: 1,
@@ -557,6 +583,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
+    zIndex: 10,
   },
   exitButton: {
     position: 'absolute',
@@ -567,6 +594,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
+    zIndex: 10,
   },
   marketButton: {
     position: 'absolute',
@@ -577,6 +605,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
+    zIndex: 10,
   },
   inventoryButton: {
     position: 'absolute',
@@ -587,6 +616,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
+    zIndex: 10,
   },
   itemBadge: {
     position: 'absolute',

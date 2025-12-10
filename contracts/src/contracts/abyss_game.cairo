@@ -157,6 +157,9 @@ pub trait IAbyssGame<TContractState> {
     /// Get refresh cost for a session
     fn get_refresh_cost(self: @TContractState, session_id: u32) -> u32;
 
+    /// Check if a market slot has been purchased
+    fn is_market_slot_purchased(self: @TContractState, session_id: u32, market_slot: u32) -> bool;
+
     /// Claim prize from competitive pool (only for top 3 leaderboard)
     fn claim_prize(ref self: TContractState);
 
@@ -236,6 +239,11 @@ pub mod AbyssGame {
 
         // Market storage
         session_markets: Map<u32, SessionMarket>,
+
+        // Track which market slots have been purchased in current market
+        // (session_id, market_slot) -> bool (true if purchased)
+        market_slot_purchased: Map<(u32, u32), bool>,
+
         nonce: u64,
     }
 
@@ -596,6 +604,10 @@ pub mod AbyssGame {
             assert(session.is_active, 'Session is not active');
             assert(market_slot >= 1 && market_slot <= 6, 'Invalid market slot');
 
+            // Check if this slot was already purchased in current market
+            let slot_purchased = self.market_slot_purchased.entry((session_id, market_slot)).read();
+            assert(!slot_purchased, 'Item already purchased');
+
             // Check inventory limit (max 7 unique items)
             let unique_item_count = self.session_item_count.entry(session_id).read();
 
@@ -651,6 +663,9 @@ pub mod AbyssGame {
 
             self.sessions.entry(session_id).write(session);
 
+            // Mark this market slot as purchased
+            self.market_slot_purchased.entry((session_id, market_slot)).write(true);
+
             // Add item to array
             self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
             self.session_item_count.entry(session_id).write(unique_item_count + 1);
@@ -676,6 +691,14 @@ pub mod AbyssGame {
             session.score -= refresh_cost;
             session.total_score -= refresh_cost;
             self.sessions.entry(session_id).write(session);
+
+            // Clear purchased status for all slots (new market)
+            self.market_slot_purchased.entry((session_id, 1)).write(false);
+            self.market_slot_purchased.entry((session_id, 2)).write(false);
+            self.market_slot_purchased.entry((session_id, 3)).write(false);
+            self.market_slot_purchased.entry((session_id, 4)).write(false);
+            self.market_slot_purchased.entry((session_id, 5)).write(false);
+            self.market_slot_purchased.entry((session_id, 6)).write(false);
 
             // Generate new market items
             InternalImpl::generate_market_items(ref self, session_id, market.refresh_count + 1);
@@ -808,20 +831,19 @@ pub mod AbyssGame {
         }
 
         fn get_666_probability(self: @ContractState, level: u32) -> u32 {
-            // Probability progression:
-            // Level 1-5: 0% (0)
-            // Level 6-9: 1.2% (12)
-            // Level 10-13: 2.4% (24)
-            // Level 14-17: 4.8% (48)
-            // Level 18-21: 9.6% (96)
-            // Level 22+: 9.6% (96) - CAPPED
+            // Probability progression (every 3 levels):
+            // Level 1-3: 0% (0)
+            // Level 4-6: 2.4% (24)
+            // Level 7-9: 4.8% (48)
+            // Level 10-12: 9.6% (96)
+            // Level 13+: 9.6% (96) - CAPPED
 
-            if level <= 5 {
-                // First 5 levels: no risk
+            if level <= 3 {
+                // First 3 levels: no risk
                 0
             } else {
-                let base_probability: u32 = 12; // 1.2%
-                let tier = (level - 6) / 4; // 0-based tier starting from level 6, increases every 4 levels
+                let base_probability: u32 = 24; // 2.4%
+                let tier = (level - 4) / 3; // 0-based tier starting from level 4, increases every 3 levels
 
                 // Calculate 2^tier (doubling each tier)
                 let mut multiplier: u32 = 1;
@@ -848,6 +870,10 @@ pub mod AbyssGame {
 
         fn get_session_inventory_count(self: @ContractState, session_id: u32) -> u32 {
             self.session_item_count.entry(session_id).read()
+        }
+
+        fn is_market_slot_purchased(self: @ContractState, session_id: u32, market_slot: u32) -> bool {
+            self.market_slot_purchased.entry((session_id, market_slot)).read()
         }
 
         fn get_refresh_cost(self: @ContractState, session_id: u32) -> u32 {
@@ -995,12 +1021,53 @@ pub mod AbyssGame {
         /// Update the leaderboard with a new session entry
         fn update_leaderboard(ref self: ContractState, player_address: ContractAddress, session_id: u32, new_score: u32, new_level: u32) {
             let current_count = self.leaderboard_count.read();
-            let mut insert_position = current_count; // Default to append
-            let mut should_insert = true;
-            
-            // Find the correct position to insert
+
+            // First, check if player already has an entry in the leaderboard
+            let mut player_existing_position: Option<u32> = Option::None;
+            let mut player_existing_score: u32 = 0;
             let mut i = 0;
             while i < current_count {
+                let entry = self.leaderboard.entry(i).read();
+                if entry.player_address == player_address {
+                    player_existing_position = Option::Some(i);
+                    player_existing_score = entry.total_score;
+                    break;
+                };
+                i += 1;
+            };
+
+            // If player exists with a better or equal score, don't update
+            match player_existing_position {
+                Option::Some(pos) => {
+                    if player_existing_score >= new_score {
+                        // Player already has a better score, do nothing
+                        return;
+                    } else {
+                        // Player has a worse score, remove the old entry
+                        // Shift all entries after the old position up
+                        let mut j = pos;
+                        while j < current_count - 1 {
+                            let next_entry = self.leaderboard.entry(j + 1).read();
+                            self.leaderboard.entry(j).write(next_entry);
+                            j += 1;
+                        };
+                        // Decrease count since we removed an entry
+                        self.leaderboard_count.write(current_count - 1);
+                    }
+                },
+                Option::None => {
+                    // Player doesn't exist, continue with normal insert
+                }
+            };
+
+            // Now insert the new score in the correct position
+            let updated_count = self.leaderboard_count.read();
+            let mut insert_position = updated_count; // Default to append
+            let mut should_insert = true;
+
+            // Find the correct position to insert
+            let mut i = 0;
+            while i < updated_count {
                 let entry = self.leaderboard.entry(i).read();
                 if new_score > entry.total_score || (new_score == entry.total_score && new_level > entry.level) {
                     insert_position = i;
@@ -1009,15 +1076,15 @@ pub mod AbyssGame {
                 };
                 i += 1;
             };
-            
+
             // If leaderboard is full (10 entries) and new score doesn't qualify, don't insert
-            if current_count >= 10 && insert_position >= 10 {
+            if updated_count >= 10 && insert_position >= 10 {
                 should_insert = false;
             };
-            
+
             if should_insert {
                 // Shift entries down if inserting in middle
-                let mut j = current_count;
+                let mut j = updated_count;
                 while j > insert_position {
                     if j < 10 { // Only shift if within bounds
                         let entry_to_move = self.leaderboard.entry(j - 1).read();
@@ -1025,7 +1092,7 @@ pub mod AbyssGame {
                     };
                     j -= 1;
                 };
-                
+
                 // Insert new entry
                 let new_entry = LeaderboardEntry {
                     player_address,
@@ -1034,10 +1101,10 @@ pub mod AbyssGame {
                     total_score: new_score,
                 };
                 self.leaderboard.entry(insert_position).write(new_entry);
-                
+
                 // Update count if adding new entry
-                if current_count < 10 {
-                    self.leaderboard_count.write(current_count + 1);
+                if updated_count < 10 {
+                    self.leaderboard_count.write(updated_count + 1);
                 };
             }
         }
@@ -1471,7 +1538,7 @@ pub mod AbyssGame {
             // Item 33: Seven Score Boost (Very High tier)
             self.items.entry(33).write(Item {
                 item_id: 33,
-                name: 'Lucky Ring',
+                name: 'Ticket',
                 description: '+25 points to seven',
                 price: 350,
                 sell_price: 262,
@@ -1483,7 +1550,7 @@ pub mod AbyssGame {
             // Item 34: Seven Probability Boost (Very High tier)
             self.items.entry(34).write(Item {
                 item_id: 34,
-                name: 'Crystal Ball',
+                name: 'Devil Train',
                 description: '+35% seven probability',
                 price: 280,
                 sell_price: 210,
@@ -1499,7 +1566,7 @@ pub mod AbyssGame {
             // Item 35: Diamond Score Boost (Very High tier)
             self.items.entry(35).write(Item {
                 item_id: 35,
-                name: 'Jewel Crown',
+                name: 'Fake Dollar',
                 description: '+18 points to diamond',
                 price: 300,
                 sell_price: 225,
@@ -1511,7 +1578,7 @@ pub mod AbyssGame {
             // Item 36: Diamond Probability Boost (Very High tier)
             self.items.entry(36).write(Item {
                 item_id: 36,
-                name: 'Magic Wand',
+                name: 'Bull Skull',
                 description: '+30% diamond probability',
                 price: 260,
                 sell_price: 195,
@@ -1527,7 +1594,7 @@ pub mod AbyssGame {
             // Item 37: Lemon Probability Boost (High tier)
             self.items.entry(37).write(Item {
                 item_id: 37,
-                name: 'Rusty Gear',
+                name: 'Fake Coin',
                 description: '+24% lemon probability',
                 price: 120,
                 sell_price: 90,
@@ -1539,7 +1606,7 @@ pub mod AbyssGame {
             // Item 38: Lemon Score Boost (Very High tier)
             self.items.entry(38).write(Item {
                 item_id: 38,
-                name: 'Ancient Scroll',
+                name: 'Pocket Watch',
                 description: '+28 points to lemon',
                 price: 320,
                 sell_price: 240,
@@ -1555,7 +1622,7 @@ pub mod AbyssGame {
             // Item 39: Coin Score Boost (Low tier)
             self.items.entry(39).write(Item {
                 item_id: 39,
-                name: 'Rusty Nail',
+                name: 'Knight Helmet',
                 description: '+5 points to coin',
                 price: 28,
                 sell_price: 21,
@@ -1627,7 +1694,7 @@ pub mod AbyssGame {
             // Item 44: Biblia - 666 Protection (Consumable)
             self.items.entry(40).write(Item {
                 item_id: 40,
-                name: 'Biblia',
+                name: 'La Biblia',
                 description: 'Protects from 666 once',
                 price: 500,
                 sell_price: 375,
@@ -1657,6 +1724,14 @@ pub mod AbyssGame {
             let item_4 = Self::generate_random_item_id(@self, session_id, current_nonce, 4);
             let item_5 = Self::generate_random_item_id(@self, session_id, current_nonce, 5);
             let item_6 = Self::generate_random_item_id(@self, session_id, current_nonce, 6);
+
+            // Clear purchased status for all slots (new market)
+            self.market_slot_purchased.entry((session_id, 1)).write(false);
+            self.market_slot_purchased.entry((session_id, 2)).write(false);
+            self.market_slot_purchased.entry((session_id, 3)).write(false);
+            self.market_slot_purchased.entry((session_id, 4)).write(false);
+            self.market_slot_purchased.entry((session_id, 5)).write(false);
+            self.market_slot_purchased.entry((session_id, 6)).write(false);
 
             // Save market state
             let market = SessionMarket {

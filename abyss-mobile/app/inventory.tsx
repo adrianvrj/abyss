@@ -179,9 +179,9 @@ export default function InventoryScreen() {
     router.back();
   };
 
-  // Create array with items + empty slots (total 6)
+  // Create array with items + empty slots (total 7)
   const inventorySlots = [...ownedItems];
-  while (inventorySlots.length < 6) {
+  while (inventorySlots.length < 7) {
     inventorySlots.push(null as any); // Add null for empty slots
   }
 
@@ -223,7 +223,7 @@ export default function InventoryScreen() {
               {/* Previous Arrow */}
               <Pressable
                 style={styles.arrowButton}
-                onPress={() => setCurrentItemIndex(prev => prev === 0 ? 5 : prev - 1)}
+                onPress={() => setCurrentItemIndex(prev => prev === 0 ? 6 : prev - 1)}
               >
                 <Ionicons name="chevron-back" size={arrowSize} color={Theme.colors.primary} />
               </Pressable>
@@ -271,7 +271,7 @@ export default function InventoryScreen() {
 
                       {/* Position Indicator */}
                       <Text style={styles.positionIndicator}>
-                        {currentItemIndex + 1}/6
+                        {currentItemIndex + 1}/7
                       </Text>
                     </>
                   ) : (
@@ -281,7 +281,7 @@ export default function InventoryScreen() {
 
                       {/* Position Indicator */}
                       <Text style={styles.positionIndicator}>
-                        {currentItemIndex + 1}/6
+                        {currentItemIndex + 1}/7
                       </Text>
                     </>
                   )}
@@ -291,7 +291,7 @@ export default function InventoryScreen() {
               {/* Next Arrow */}
               <Pressable
                 style={styles.arrowButton}
-                onPress={() => setCurrentItemIndex(prev => prev === 5 ? 0 : prev + 1)}
+                onPress={() => setCurrentItemIndex(prev => prev === 6 ? 0 : prev + 1)}
               >
                 <Ionicons name="chevron-forward" size={arrowSize} color={Theme.colors.primary} />
               </Pressable>
