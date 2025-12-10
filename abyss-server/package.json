@@ -3,6 +3,9 @@
     "version": "1.0.0",
     "description": "Backend server for Abyss mobile game",
     "main": "dist/index.js",
+    "engines": {
+        "node": ">=18.0.0"
+    },
     "scripts": {
         "start": "node dist/index.js",
         "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
@@ -12,12 +15,12 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "@cavos/aegis": "^0.1.17",
+        "@cavos/aegis": "^0.1.18",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",
         "express": "^4.19.2",
-        "starknet": "^6.11.0",
-        "react": "^18.3.1"
+        "react": "^18.3.1",
+        "starknet": "^6.11.0"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
