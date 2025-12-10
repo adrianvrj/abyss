@@ -51,32 +51,32 @@ export function PatternDisplay({
 
       setTimeout(() => triggerHaptic(), delay);
 
-      // Animate in with delay
+      // Animate in with delay (FAST)
       opacity.value = withDelay(
         delay,
         withSequence(
-          withTiming(1, { duration: 400, easing: Easing.out(Easing.back(1.2)) }),
-          withDelay(1000, withTiming(0, { duration: 300 }))
+          withTiming(1, { duration: 150, easing: Easing.out(Easing.back(1.2)) }),
+          withDelay(300, withTiming(0, { duration: 100 }))
         )
       );
 
       translateY.value = withDelay(
         delay,
-        withTiming(0, { duration: 400, easing: Easing.out(Easing.back(1.2)) })
+        withTiming(0, { duration: 150, easing: Easing.out(Easing.back(1.2)) })
       );
 
       scale.value = withDelay(
         delay,
         withSequence(
-          withTiming(1.05, { duration: 400, easing: Easing.out(Easing.back(1.2)) }),
-          withDelay(1000, withTiming(0.9, { duration: 300 }))
+          withTiming(1.05, { duration: 150, easing: Easing.out(Easing.back(1.2)) }),
+          withDelay(300, withTiming(0.9, { duration: 100 }))
         )
       );
 
-      // Call completion callback after animation
+      // Call completion callback after animation (total ~550ms)
       setTimeout(() => {
         onAnimationComplete?.();
-      }, delay + 1700);
+      }, delay + 550);
     } else {
       opacity.value = 0;
       translateY.value = 30;
@@ -148,32 +148,32 @@ export function ScoreDisplay({
 
       setTimeout(() => triggerHaptic(), delay);
 
-      // Animate in with delay
+      // Animate in with delay (FAST)
       opacity.value = withDelay(
         delay,
         withSequence(
-          withTiming(1, { duration: 400, easing: Easing.out(Easing.back(1.2)) }),
-          withDelay(1000, withTiming(0, { duration: 300 }))
+          withTiming(1, { duration: 150, easing: Easing.out(Easing.back(1.2)) }),
+          withDelay(300, withTiming(0, { duration: 100 }))
         )
       );
 
       translateY.value = withDelay(
         delay,
-        withTiming(0, { duration: 400, easing: Easing.out(Easing.back(1.2)) })
+        withTiming(0, { duration: 150, easing: Easing.out(Easing.back(1.2)) })
       );
 
       scale.value = withDelay(
         delay,
         withSequence(
-          withTiming(1.05, { duration: 400, easing: Easing.out(Easing.back(1.2)) }),
-          withDelay(1000, withTiming(0.9, { duration: 300 }))
+          withTiming(1.05, { duration: 150, easing: Easing.out(Easing.back(1.2)) }),
+          withDelay(300, withTiming(0.9, { duration: 100 }))
         )
       );
 
-      // Call completion callback after animation
+      // Call completion callback after animation (total ~550ms)
       setTimeout(() => {
         onAnimationComplete?.();
-      }, delay + 1700);
+      }, delay + 550);
     } else {
       opacity.value = 0;
       translateY.value = 30;
@@ -224,16 +224,16 @@ export function PatternHitAnimations({
     // Notify parent of current pattern
     onCurrentPatternChange?.(0);
 
-    // Show score after a brief delay to see the highlight
+    // Show score after a brief delay to see the highlight (FAST)
     setTimeout(() => {
       setShowScore(true);
-    }, 1500);
+    }, 400);
   }, [patterns]);
 
   const handleScoreComplete = () => {
     setShowScore(false);
 
-    // Move to next pattern or complete
+    // Move to next pattern or complete (FAST)
     setTimeout(() => {
       if (currentPatternIndex + 1 < patterns.length) {
         const nextIndex = currentPatternIndex + 1;
@@ -243,13 +243,13 @@ export function PatternHitAnimations({
         // Show score for next pattern after delay
         setTimeout(() => {
           setShowScore(true);
-        }, 1500);
+        }, 400);
       } else {
         setIsComplete(true);
         onCurrentPatternChange?.(-1); // Signal no pattern should be highlighted
         onAllAnimationsComplete?.();
       }
-    }, 200);
+    }, 100);
   };
 
   if (patterns.length === 0 || isComplete) {

@@ -7,7 +7,7 @@ export interface GameFeedbackActions {
   playPatternHit: (patternType: string) => Promise<void>;
   playLevelUp: () => Promise<void>;
   playSpin: () => Promise<void>;
-  playSpinAnimation: () => Promise<void>;
+  playSpinAnimation: () => { stopSpinSound: () => void };
   playGameOver: () => Promise<void>;
 }
 
@@ -155,66 +155,73 @@ export function useGameFeedback(): GameFeedbackActions {
   }, []);
 
   // Play spin animation feedback (rhythmic during animation)
-  const playSpinAnimation = useCallback(async () => {
-    const hapticsEnabled = await getHapticsEnabled();
+  // Returns a function to stop the sound when animation ends
+  const playSpinAnimation = useCallback(() => {
+    let intervalHandle: ReturnType<typeof setInterval> | null = null;
+    let isStopped = false;
 
-    try {
-      // Play spin sound
-      if (spinSound.current) {
-        try {
-          await spinSound.current.setPositionAsync(0);
-          await spinSound.current.playAsync();
+    const startAsync = async () => {
+      const hapticsEnabled = await getHapticsEnabled();
 
-          // Stop the sound after 6 seconds (animation duration)
-          setTimeout(async () => {
-            try {
-              await spinSound.current?.stopAsync();
-            } catch (error) {
-              console.error('Failed to stop spin sound:', error);
+      try {
+        // Play spin sound
+        if (spinSound.current) {
+          try {
+            await spinSound.current.setPositionAsync(0);
+            await spinSound.current.setIsLoopingAsync(true); // Loop until stopped
+            await spinSound.current.playAsync();
+          } catch (error) {
+            console.error('Failed to play spin sound:', error);
+          }
+        }
+
+        // Play haptic feedback if enabled
+        if (!hapticsEnabled) return;
+
+        // Start with stronger initial feedback
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // Continue rhythmic haptic feedback during animation
+        intervalHandle = setInterval(async () => {
+          if (isStopped) {
+            if (intervalHandle) clearInterval(intervalHandle);
+            return;
+          }
+          try {
+            const stillEnabled = await getHapticsEnabled();
+            if (stillEnabled) {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-          }, 6000);
-        } catch (error) {
-          console.error('Failed to play spin sound:', error);
+          } catch (error) {
+            console.error('Failed to play continuous haptic feedback:', error);
+          }
+        }, 750);
+
+      } catch (error) {
+        console.error('Failed to play spin animation feedback:', error);
+      }
+    };
+
+    // Start the sound/haptics async
+    startAsync();
+
+    // Return stop function
+    return {
+      stopSpinSound: async () => {
+        isStopped = true;
+        if (intervalHandle) {
+          clearInterval(intervalHandle);
+        }
+        if (spinSound.current) {
+          try {
+            await spinSound.current.stopAsync();
+            await spinSound.current.setIsLoopingAsync(false);
+          } catch (error) {
+            console.error('Failed to stop spin sound:', error);
+          }
         }
       }
-
-      // Play haptic feedback if enabled
-      if (!hapticsEnabled) return;
-
-      // Start with stronger initial feedback
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      let pulseCount = 0;
-      const maxPulses = 8; // Approx 6 seconds with timing below
-
-      // Continue rhythmic haptic feedback during animation
-      const interval = setInterval(async () => {
-        try {
-          const stillEnabled = await getHapticsEnabled();
-          if (stillEnabled && pulseCount < maxPulses) {
-            // Alternate between light and medium for rhythm
-            const style = pulseCount % 2 === 0
-              ? Haptics.ImpactFeedbackStyle.Light
-              : Haptics.ImpactFeedbackStyle.Medium;
-            await Haptics.impactAsync(style);
-            pulseCount++;
-          } else {
-            clearInterval(interval);
-          }
-        } catch (error) {
-          console.error('Failed to play continuous haptic feedback:', error);
-          clearInterval(interval);
-        }
-      }, 750); // Every 750ms for a rhythmic feel
-
-      // Safety cleanup after 6 seconds
-      setTimeout(() => {
-        clearInterval(interval);
-      }, 6000);
-
-    } catch (error) {
-      console.error('Failed to play spin animation feedback:', error);
-    }
+    };
   }, []);
 
   return {

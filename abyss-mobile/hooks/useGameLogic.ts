@@ -64,8 +64,8 @@ export function useGameLogic(
       return;
     }
 
-    // Start spinning
-    playSpinAnimation();
+    // Start spinning - get stop function for sound
+    const { stopSpinSound } = playSpinAnimation();
     setState(prev => ({
       ...prev,
       isSpinning: true,
@@ -76,11 +76,10 @@ export function useGameLogic(
     }));
 
     try {
-      // 1. Minimum animation time (parallel with request)
-      const animationTimer = new Promise(resolve => setTimeout(resolve, 6000));
+      // Call Server API - Animation runs while we wait
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
+      console.log('Spinning against:', API_URL);
 
-      // 2. Call Server API
-      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
       const response = await fetch(`${API_URL}/api/spin`, {
         method: 'POST',
         headers: {
@@ -88,8 +87,6 @@ export function useGameLogic(
         },
         body: JSON.stringify({
           sessionId,
-          // Server fetches items from chain, so we don't strictly need to send them
-          // but if we implemented item logic strictly on server, we should rely on chain data.
         }),
       });
 
@@ -99,8 +96,12 @@ export function useGameLogic(
         throw new Error(data.error || 'Server error');
       }
 
-      // 3. Wait for animation to finish
-      await animationTimer;
+      // Stop the spin sound now that we have a response
+      stopSpinSound();
+
+      // Small delay after server response for animation to settle (optional, can remove)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
 
       // 4. Update State with Server Result
       setState(prev => {
@@ -147,14 +148,33 @@ export function useGameLogic(
         };
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Spin failed:', error);
-      // Revert state
-      setState(prev => ({
-        ...prev,
-        isSpinning: false,
-        transactionStatus: 'error',
-      }));
+      // Stop the sound on error too
+      stopSpinSound();
+
+      // Check if this is a "no spins" error - treat as game over
+      const errorMessage = error?.message || '';
+      const isNoSpinsError = errorMessage.toLowerCase().includes('no spins') ||
+        errorMessage.toLowerCase().includes('spins left');
+
+      if (isNoSpinsError) {
+        // Treat as game over
+        setState(prev => ({
+          ...prev,
+          isSpinning: false,
+          spinsLeft: 0,
+          gameOver: true,
+          transactionStatus: 'error',
+        }));
+      } else {
+        // Regular error - revert state
+        setState(prev => ({
+          ...prev,
+          isSpinning: false,
+          transactionStatus: 'error',
+        }));
+      }
     }
   }, [sessionId, state.spinsLeft, state.isSpinning, state.gameOver, state.score, state.level, onPatternsDetected]);
 
