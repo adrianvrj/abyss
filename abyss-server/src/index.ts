@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import * as dotenv from 'dotenv';
 import { spinHandler } from './routes/spin';
+import { initializeAdminAccount } from './utils/aegis';
 
 dotenv.config();
 
@@ -18,6 +19,14 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-app.listen(port, () => {
-    console.log(`Abyss Server running at http://localhost:${port}`);
-});
+// Initialize admin account then start server
+initializeAdminAccount()
+    .then(() => {
+        app.listen(port, () => {
+            console.log(`Abyss Server running at http://localhost:${port}`);
+        });
+    })
+    .catch((error) => {
+        console.error('Failed to initialize admin account:', error);
+        process.exit(1);
+    });
