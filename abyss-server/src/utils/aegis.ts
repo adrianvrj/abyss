@@ -590,28 +590,18 @@ const aegisConfig = {
 
 export const aegis = new AegisSDK(aegisConfig);
 
-// Flag to track if admin account is initialized
-let isAdminInitialized = false;
-
 export async function initializeAdminAccount(): Promise<void> {
-    if (isAdminInitialized) {
-        return; // Already initialized
-    }
-
     if (!process.env.ADMIN_PRIVATE_KEY) {
         throw new Error("ADMIN_PRIVATE_KEY is not set");
     }
 
     await aegis.connectAccount(process.env.ADMIN_PRIVATE_KEY, true);
-    isAdminInitialized = true;
     console.log('[Aegis] Admin account initialized');
 }
 
 // For backward compatibility - ensures admin is initialized
 export async function getAdminAccount() {
-    if (!isAdminInitialized) {
-        await initializeAdminAccount();
-    }
+    await initializeAdminAccount();
     return aegis;
 }
 
