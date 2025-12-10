@@ -45,8 +45,11 @@ export async function spinHandler(req: Request, res: Response) {
             return res.status(400).json({ error: 'Session is not active' });
         }
 
-        if (sessionData.spins_remaining <= 0) {
-            return res.status(400).json({ error: 'No spins remaining' });
+        const spinsRemaining = Number(sessionData.spins_remaining);
+        console.log('[Spin] Spins Remaining:', spinsRemaining);
+
+        if (spinsRemaining <= 0) {
+            return res.status(400).json({ error: 'No spins remaining', spinsRemaining: 0 });
         }
 
         const currentLevel = Number(sessionData.level);
@@ -126,27 +129,31 @@ export async function spinHandler(req: Request, res: Response) {
             const scoreBreakdown = calculateScore(grid, patterns, config);
             scoreToAdd = scoreBreakdown.totalScore;
 
-            if (scoreToAdd > 0) {
-                // Update Score
-                const tx = await aegis.execute(
+            // Update score (also decrements spins in contract)
+            const tx = await aegis.execute(
+                ABYSS_CONTRACT_ADDRESS,
+                'update_session_score',
+                [sessionId, scoreToAdd]
+            );
+            transactionHash = tx.transactionHash;
+
+            // Check if this was the last spin
+            const newSpinsRemaining = spinsRemaining - 1;
+            if (newSpinsRemaining <= 0) {
+                console.log(`[Session ${sessionId}] No spins remaining - ending session`);
+                gameOver = true;
+                // End the session
+                const endTx = await aegis.execute(
                     ABYSS_CONTRACT_ADDRESS,
-                    'update_session_score',
-                    [sessionId, scoreToAdd]
+                    'end_session',
+                    [sessionId]
                 );
-                transactionHash = tx.transactionHash;
-            } else {
-                // Even if score is 0, we might need to decrement spin count? 
-                // The contract `update_session_score` decrements spins. 
-                // If we don't call it, the user keeps their spin?
-                // Wait, if score is 0, we still need to consume a spin!
-                const tx = await aegis.execute(
-                    ABYSS_CONTRACT_ADDRESS,
-                    'update_session_score',
-                    [sessionId, 0]
-                );
-                transactionHash = tx.transactionHash;
+                console.log(`[Session ${sessionId}] Session ended: ${endTx.transactionHash}`);
             }
         }
+
+        // Calculate actual spins remaining
+        const finalSpinsRemaining = gameOver ? 0 : spinsRemaining - 1;
 
         // 5. Return Result
         res.json({
@@ -157,7 +164,7 @@ export async function spinHandler(req: Request, res: Response) {
             gameOver,
             bibliaUsed,
             transactionHash,
-            spinsRemaining: Number(sessionData.spins_remaining) - 1 // Estimate
+            spinsRemaining: finalSpinsRemaining
         });
 
     } catch (error: any) {
