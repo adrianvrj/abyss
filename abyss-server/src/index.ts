@@ -19,14 +19,6 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// Initialize admin account then start server
-initializeAdminAccount()
-    .then(() => {
-        app.listen(port, () => {
-            console.log(`Abyss Server running at http://localhost:${port}`);
-        });
-    })
-    .catch((error) => {
-        console.error('Failed to initialize admin account:', error);
-        process.exit(1);
-    });
+app.listen(port, () => {
+    console.log(`Abyss Server running at http://localhost:${port}`);
+});
