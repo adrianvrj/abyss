@@ -585,7 +585,7 @@ const aegisConfig = {
     appName: "Abyss Server",
     appId: process.env.AEGIS_APP_ID || '',
     enableLogging: true,
-    maxRetries: 10, // Increased for aggressive nonce error recovery
+    maxRetries: 20, // Increased for aggressive nonce error recovery
 };
 
 export const aegis = new AegisSDK(aegisConfig);
