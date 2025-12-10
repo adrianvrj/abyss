@@ -27,7 +27,21 @@ export async function spinHandler(req: Request, res: Response) {
             ABYSS_CONTRACT_ABI
         );
 
-        if (!sessionData || !sessionData.is_active) {
+        console.log(`[Spin] Fetching data for session ${sessionId} from ${ABYSS_CONTRACT_ADDRESS}`);
+        console.log('[Spin] Raw Session Data:', sessionData);
+
+        if (!sessionData) {
+            console.error('[Spin] Session data is null/undefined');
+            return res.status(400).json({ error: 'Session not found' });
+        }
+
+        // Handle Starknet struct return (might need specific field access depending on library version)
+        // is_active might be a BigInt or boolean
+        const isActive = Boolean(sessionData.is_active);
+        console.log('[Spin] Is Active:', isActive, sessionData.is_active);
+
+        if (!isActive) {
+
             return res.status(400).json({ error: 'Session is not active' });
         }
 
