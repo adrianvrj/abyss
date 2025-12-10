@@ -157,6 +157,9 @@ pub trait IAbyssGame<TContractState> {
     /// Get refresh cost for a session
     fn get_refresh_cost(self: @TContractState, session_id: u32) -> u32;
 
+    /// Check if a market slot has been purchased
+    fn is_market_slot_purchased(self: @TContractState, session_id: u32, market_slot: u32) -> bool;
+
     /// Claim prize from competitive pool (only for top 3 leaderboard)
     fn claim_prize(ref self: TContractState);
 
@@ -236,6 +239,11 @@ pub mod AbyssGame {
 
         // Market storage
         session_markets: Map<u32, SessionMarket>,
+
+        // Track which market slots have been purchased in current market
+        // (session_id, market_slot) -> bool (true if purchased)
+        market_slot_purchased: Map<(u32, u32), bool>,
+
         nonce: u64,
     }
 
@@ -596,6 +604,10 @@ pub mod AbyssGame {
             assert(session.is_active, 'Session is not active');
             assert(market_slot >= 1 && market_slot <= 6, 'Invalid market slot');
 
+            // Check if this slot was already purchased in current market
+            let slot_purchased = self.market_slot_purchased.entry((session_id, market_slot)).read();
+            assert(!slot_purchased, 'Item already purchased');
+
             // Check inventory limit (max 7 unique items)
             let unique_item_count = self.session_item_count.entry(session_id).read();
 
@@ -651,6 +663,9 @@ pub mod AbyssGame {
 
             self.sessions.entry(session_id).write(session);
 
+            // Mark this market slot as purchased
+            self.market_slot_purchased.entry((session_id, market_slot)).write(true);
+
             // Add item to array
             self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
             self.session_item_count.entry(session_id).write(unique_item_count + 1);
@@ -676,6 +691,14 @@ pub mod AbyssGame {
             session.score -= refresh_cost;
             session.total_score -= refresh_cost;
             self.sessions.entry(session_id).write(session);
+
+            // Clear purchased status for all slots (new market)
+            self.market_slot_purchased.entry((session_id, 1)).write(false);
+            self.market_slot_purchased.entry((session_id, 2)).write(false);
+            self.market_slot_purchased.entry((session_id, 3)).write(false);
+            self.market_slot_purchased.entry((session_id, 4)).write(false);
+            self.market_slot_purchased.entry((session_id, 5)).write(false);
+            self.market_slot_purchased.entry((session_id, 6)).write(false);
 
             // Generate new market items
             InternalImpl::generate_market_items(ref self, session_id, market.refresh_count + 1);
@@ -808,20 +831,19 @@ pub mod AbyssGame {
         }
 
         fn get_666_probability(self: @ContractState, level: u32) -> u32 {
-            // Probability progression:
-            // Level 1-5: 0% (0)
-            // Level 6-9: 1.2% (12)
-            // Level 10-13: 2.4% (24)
-            // Level 14-17: 4.8% (48)
-            // Level 18-21: 9.6% (96)
-            // Level 22+: 9.6% (96) - CAPPED
+            // Probability progression (every 3 levels):
+            // Level 1-3: 0% (0)
+            // Level 4-6: 2.4% (24)
+            // Level 7-9: 4.8% (48)
+            // Level 10-12: 9.6% (96)
+            // Level 13+: 9.6% (96) - CAPPED
 
-            if level <= 5 {
-                // First 5 levels: no risk
+            if level <= 3 {
+                // First 3 levels: no risk
                 0
             } else {
-                let base_probability: u32 = 12; // 1.2%
-                let tier = (level - 6) / 4; // 0-based tier starting from level 6, increases every 4 levels
+                let base_probability: u32 = 24; // 2.4%
+                let tier = (level - 4) / 3; // 0-based tier starting from level 4, increases every 3 levels
 
                 // Calculate 2^tier (doubling each tier)
                 let mut multiplier: u32 = 1;
@@ -848,6 +870,10 @@ pub mod AbyssGame {
 
         fn get_session_inventory_count(self: @ContractState, session_id: u32) -> u32 {
             self.session_item_count.entry(session_id).read()
+        }
+
+        fn is_market_slot_purchased(self: @ContractState, session_id: u32, market_slot: u32) -> bool {
+            self.market_slot_purchased.entry((session_id, market_slot)).read()
         }
 
         fn get_refresh_cost(self: @ContractState, session_id: u32) -> u32 {
@@ -1698,6 +1724,14 @@ pub mod AbyssGame {
             let item_4 = Self::generate_random_item_id(@self, session_id, current_nonce, 4);
             let item_5 = Self::generate_random_item_id(@self, session_id, current_nonce, 5);
             let item_6 = Self::generate_random_item_id(@self, session_id, current_nonce, 6);
+
+            // Clear purchased status for all slots (new market)
+            self.market_slot_purchased.entry((session_id, 1)).write(false);
+            self.market_slot_purchased.entry((session_id, 2)).write(false);
+            self.market_slot_purchased.entry((session_id, 3)).write(false);
+            self.market_slot_purchased.entry((session_id, 4)).write(false);
+            self.market_slot_purchased.entry((session_id, 5)).write(false);
+            self.market_slot_purchased.entry((session_id, 6)).write(false);
 
             // Save market state
             let market = SessionMarket {
