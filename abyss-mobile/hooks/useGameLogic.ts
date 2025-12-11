@@ -64,7 +64,10 @@ export function useGameLogic(
       return;
     }
 
-    // Start spinning - get stop function for sound
+    // Start spinning - track start time for minimum animation duration
+    const spinStartTime = Date.now();
+    const MIN_SPIN_DURATION_MS = 2000; // 2 seconds minimum
+
     const { stopSpinSound } = playSpinAnimation();
     setState(prev => ({
       ...prev,
@@ -89,7 +92,6 @@ export function useGameLogic(
           sessionId,
           currentLevel: state.level,
           currentScore: state.score,
-          ownedItems,
         }),
       });
 
@@ -99,11 +101,14 @@ export function useGameLogic(
         throw new Error(data.error || 'Server error');
       }
 
-      // Stop the spin sound now that we have a response
-      stopSpinSound();
+      // Ensure minimum 2 second spin animation
+      const elapsed = Date.now() - spinStartTime;
+      if (elapsed < MIN_SPIN_DURATION_MS) {
+        await new Promise(resolve => setTimeout(resolve, MIN_SPIN_DURATION_MS - elapsed));
+      }
 
-      // Small delay after server response for animation to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Stop the spin sound after minimum duration
+      stopSpinSound();
 
       // Calculate new state
       const newSpinsLeft = state.spinsLeft - 1;

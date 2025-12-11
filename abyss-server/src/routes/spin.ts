@@ -2,25 +2,37 @@ import { Request, Response } from 'express';
 import { generateSymbols } from '../game/generator';
 import { detectPatterns } from '../game/patterns';
 import { calculateScore } from '../game/score';
-import { calculate666Probability, hasBibliaProtection } from '../game/probability';
+import { calculate666Probability } from '../game/probability';
 import { DEFAULT_GAME_CONFIG } from '../game/config';
 import { getAdminAccount, ABYSS_CONTRACT_ADDRESS, ABYSS_CONTRACT_ABI } from '../utils/aegis';
+import {
+    calculateItemBonuses,
+    applySymbolBoosts,
+    applyScoreBonuses,
+    OwnedItem,
+} from '../game/items';
 
 /**
  * Spin handler - OFF-CHAIN game state version
  * 
+ * Applies ALL item effects:
+ * - ScoreMultiplier: Multiplies final score
+ * - PatternMultiplierBoost: Increases pattern multipliers
+ * - SymbolProbabilityBoost: Changes symbol probabilities
+ * - DirectScoreBonus: Adds flat bonus to score
+ * - SixSixSixProtection: Blocks 666 (Biblia)
+ * 
  * Flow:
  * 1. Validates session is active (blockchain read)
- * 2. Generates spin result (RNG, patterns, score)
- * 3. If game over (666 without bible), calls end_session_with_score
- * 4. Returns result to client
- * 
- * Client tracks score/level/spins locally.
- * When client's spins reach 0, client calls /api/end-session.
+ * 2. Calculates item bonuses
+ * 3. Generates spin result with modified probabilities
+ * 4. Applies score multipliers and bonuses
+ * 5. If game over (666 without biblia), calls end_session_with_score
+ * 6. Returns result to client
  */
 export async function spinHandler(req: Request, res: Response) {
     try {
-        const { sessionId, currentLevel = 1, currentScore = 0, ownedItems = [] } = req.body;
+        const { sessionId, currentLevel = 1, currentScore = 0 } = req.body;
 
         if (!sessionId) {
             return res.status(400).json({ error: 'Session ID is required' });
@@ -39,39 +51,81 @@ export async function spinHandler(req: Request, res: Response) {
         if (!sessionData) {
             return res.status(400).json({ error: 'Session not found' });
         }
-
         const isActive = Boolean(sessionData.is_active);
         if (!isActive) {
             return res.status(400).json({ error: 'Session is not active', gameOver: true });
         }
 
-        // 2. Generate spin result (all in-memory)
-        const config = DEFAULT_GAME_CONFIG;
+        // 2. Read session items from blockchain
+        const playerItems: any[] = await aegis.call(
+            ABYSS_CONTRACT_ADDRESS,
+            'get_session_items',
+            [sessionId],
+            ABYSS_CONTRACT_ABI
+        ) || [];
 
-        // Check for 666 based on current level (returns percentage 0-9.6)
+        // 3. Get full item info for each owned item
+        const ownedItems: OwnedItem[] = [];
+        for (const playerItem of playerItems) {
+            if (Number(playerItem.quantity) > 0) {
+                const itemInfo: any = await aegis.call(
+                    ABYSS_CONTRACT_ADDRESS,
+                    'get_item_info',
+                    [playerItem.item_id],
+                    ABYSS_CONTRACT_ABI
+                );
+                if (itemInfo) {
+                    ownedItems.push({
+                        item_id: Number(playerItem.item_id),
+                        quantity: Number(playerItem.quantity),
+                        effect_type: Number(itemInfo.effect_type),
+                        effect_value: Number(itemInfo.effect_value),
+                        effect_target: itemInfo.target_symbol ? String(itemInfo.target_symbol) : undefined,
+                    });
+                }
+            }
+        }
+
+        console.log(`[Session ${sessionId}] Items: ${ownedItems.length} types owned`);
+
+        // 4. Calculate item bonuses
+        const itemBonuses = calculateItemBonuses(ownedItems);
+
+        // 5. Apply symbol probability boosts to config
+        const modifiedConfig = applySymbolBoosts(DEFAULT_GAME_CONFIG, itemBonuses.symbolProbabilityBoosts);
+
+        // 4. Check for 666 based on current level (returns percentage 0-9.6)
         const probability666 = calculate666Probability(currentLevel);
         const is666 = Math.random() * 100 < probability666;
 
         let grid: string[][] = [];
         let patterns: any[] = [];
+        let baseScore = 0;
         let scoreToAdd = 0;
         let gameOver = false;
         let bibliaUsed = false;
         let transactionHash: string | undefined;
 
         if (is666) {
-            // Check Biblia
-            const hasBiblia = hasBibliaProtection(ownedItems);
-
-            if (hasBiblia) {
+            // Check 666 Protection (Biblia)
+            if (itemBonuses.has666Protection) {
                 // Saved by Biblia - generate normal grid
                 bibliaUsed = true;
-                const result = generateSymbols(config);
+                const result = generateSymbols(modifiedConfig);
                 grid = result.grid as string[][];
-                patterns = detectPatterns(result.grid, config);
-                const scoreBreakdown = calculateScore(result.grid, patterns, config);
-                scoreToAdd = scoreBreakdown.totalScore;
-                // Note: Client should decrement Biblia count locally
+                patterns = detectPatterns(result.grid, modifiedConfig);
+
+                // Apply pattern multiplier boost
+                patterns = patterns.map(p => ({
+                    ...p,
+                    multiplier: p.multiplier * (1 + itemBonuses.patternMultiplierBoost / 100)
+                }));
+
+                const scoreBreakdown = calculateScore(result.grid, patterns, modifiedConfig);
+                baseScore = scoreBreakdown.totalScore;
+
+                // Apply score multiplier and direct bonus
+                scoreToAdd = applyScoreBonuses(baseScore, itemBonuses.scoreMultiplier, itemBonuses.directScoreBonus);
             } else {
                 // Game Over - 666 triggered
                 console.log(`[Session ${sessionId}] 666 Triggered - GAME OVER`);
@@ -90,19 +144,28 @@ export async function spinHandler(req: Request, res: Response) {
                     console.log(`[Session ${sessionId}] Session ended: ${transactionHash}`);
                 } catch (endError: any) {
                     console.error(`[Session ${sessionId}] Failed to end session:`, endError);
-                    // Still return game over to client, just note the blockchain write failed
                 }
             }
         } else {
-            // Normal Spin
-            const result = generateSymbols(config);
+            // Normal Spin - apply all item effects
+            const result = generateSymbols(modifiedConfig);
             grid = result.grid as string[][];
-            patterns = detectPatterns(result.grid, config);
-            const scoreBreakdown = calculateScore(result.grid, patterns, config);
-            scoreToAdd = scoreBreakdown.totalScore;
+            patterns = detectPatterns(result.grid, modifiedConfig);
+
+            // Apply pattern multiplier boost
+            patterns = patterns.map(p => ({
+                ...p,
+                multiplier: p.multiplier * (1 + itemBonuses.patternMultiplierBoost / 100)
+            }));
+
+            const scoreBreakdown = calculateScore(result.grid, patterns, modifiedConfig);
+            baseScore = scoreBreakdown.totalScore;
+
+            // Apply score multiplier and direct bonus
+            scoreToAdd = applyScoreBonuses(baseScore, itemBonuses.scoreMultiplier, itemBonuses.directScoreBonus);
         }
 
-        // 3. Return result
+        // 5. Return result
         res.json({
             grid,
             patterns,
@@ -111,6 +174,12 @@ export async function spinHandler(req: Request, res: Response) {
             gameOver,
             bibliaUsed,
             transactionHash,
+            // Include applied bonuses for debugging/UI
+            appliedBonuses: {
+                scoreMultiplier: itemBonuses.scoreMultiplier,
+                patternBoost: itemBonuses.patternMultiplierBoost,
+                directBonus: itemBonuses.directScoreBonus,
+            },
         });
 
     } catch (error: any) {
