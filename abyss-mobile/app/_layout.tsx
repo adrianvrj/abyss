@@ -7,6 +7,7 @@ import { Asset } from 'expo-asset';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { AegisProvider } from '@cavos/aegis';
 import { aegisConfig } from '@/utils/aegisConfig';
+import { GameSessionProvider } from '../contexts/GameSessionContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,30 +54,32 @@ export default function RootLayout() {
 
   return (
     <AegisProvider config={aegisConfig}>
-      <ErrorBoundary>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: 'fade',
-            animationDuration: 200,
-            gestureEnabled: false,
-            contentStyle: {
-              backgroundColor: 'transparent',
-            },
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="terms-of-service" />
-          <Stack.Screen name="title" />
-          <Stack.Screen name="mode-selection" />
-          <Stack.Screen name="sessions" />
-          <Stack.Screen name="game" />
-          <Stack.Screen name="market" />
-          <Stack.Screen name="inventory" />
-          <Stack.Screen name="leaderboard" />
-          <Stack.Screen name="settings" />
-        </Stack>
-      </ErrorBoundary>
+      <GameSessionProvider>
+        <ErrorBoundary>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'fade',
+              animationDuration: 200,
+              gestureEnabled: false,
+              contentStyle: {
+                backgroundColor: 'transparent',
+              },
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="terms-of-service" />
+            <Stack.Screen name="title" />
+            <Stack.Screen name="mode-selection" />
+            <Stack.Screen name="sessions" />
+            <Stack.Screen name="game" />
+            <Stack.Screen name="market" />
+            <Stack.Screen name="inventory" />
+            <Stack.Screen name="leaderboard" />
+            <Stack.Screen name="settings" />
+          </Stack>
+        </ErrorBoundary>
+      </GameSessionProvider>
     </AegisProvider>
   );
 }

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Asset } from 'expo-asset';
 import { Theme } from '../constants/Theme';
+import { useGameSession } from '../contexts/GameSessionContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 import {
@@ -14,7 +15,6 @@ import {
   getItemInfo,
   buyItemFromMarket,
   refreshMarket,
-  getSessionData,
   getSessionInventoryCount,
   getSessionItems,
   isMarketSlotPurchased,
@@ -38,18 +38,26 @@ export default function MarketScreen() {
   const { sessionId } = useLocalSearchParams();
   const router = useRouter();
   const parsedSessionId = parseInt((sessionId as string) || '0', 10);
-  const {aegisAccount} = useAegis();
+  const { session, adjustScore } = useGameSession(); // Use global session context
+  const { aegisAccount } = useAegis();
   const [loading, setLoading] = useState(true);
   const [marketData, setMarketData] = useState<SessionMarketType | null>(null);
   const [marketItems, setMarketItems] = useState<ContractItem[]>([]);
   const [ownedItemIds, setOwnedItemIds] = useState<Set<number>>(new Set());
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(session?.score ?? 0); // Initialize with context score
   const [inventoryCount, setInventoryCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [purchasingSlot, setPurchasingSlot] = useState<number | null>(null);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [purchasedInCurrentMarket, setPurchasedInCurrentMarket] = useState<Set<number>>(new Set());
+
+  // Sync local balance with context when context score changes
+  useEffect(() => {
+    if (session) {
+      setBalance(session.score);
+    }
+  }, [session?.score]);
 
   useEffect(() => {
     // Preload images on mount
@@ -75,9 +83,7 @@ export default function MarketScreen() {
           setMarketItems(cached.marketItems);
           setPurchasedInCurrentMarket(new Set(cached.purchasedSlots));
 
-          // Still fetch balance and inventory (these change frequently)
-          const sessionData = await getSessionData(parsedSessionId);
-          setBalance(Number(sessionData.score));
+          // Balance is set from URL params, only fetch inventory
 
           const invCount = await getSessionInventoryCount(parsedSessionId);
           setInventoryCount(Number(invCount));
@@ -94,9 +100,7 @@ export default function MarketScreen() {
       setLoading(true);
       console.log('Loading market from blockchain');
 
-      // Fetch session data for balance
-      const sessionData = await getSessionData(parsedSessionId);
-      setBalance(Number(sessionData.score));
+      // Balance is set from URL params (client state)
 
       // Fetch market data
       const market = await getSessionMarket(parsedSessionId);
@@ -192,9 +196,9 @@ export default function MarketScreen() {
       // Wait for the contract to update
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Reload only balance and inventory (market items stay the same)
-      const sessionData = await getSessionData(parsedSessionId);
-      setBalance(Number(sessionData.score));
+      // Update balance locally and in global context
+      setBalance((prev: number) => prev - item.price);
+      adjustScore(-item.price); // Update global context so game screen knows
 
       const invCount = await getSessionInventoryCount(parsedSessionId);
       setInventoryCount(Number(invCount));
@@ -488,47 +492,47 @@ export default function MarketScreen() {
                     </Pressable>
 
                     {/* Navigation Arrows and Buy Button */}
-                  <View style={styles.navigationContainer}>
-                    <Pressable style={styles.arrowButton} onPress={handlePreviousItem}>
-                      <Ionicons name="chevron-back" size={48} color={Theme.colors.primary} />
-                    </Pressable>
+                    <View style={styles.navigationContainer}>
+                      <Pressable style={styles.arrowButton} onPress={handlePreviousItem}>
+                        <Ionicons name="chevron-back" size={48} color={Theme.colors.primary} />
+                      </Pressable>
 
-                    {/* Buy Button */}
-                    <Pressable
-                      style={[styles.buyButton, !canPurchase && styles.buyButtonDisabled]}
-                      onPress={() => canPurchase && handleBuyItem(currentItemIndex + 1, currentItem)}
-                      disabled={!canPurchase}
-                    >
-                      {isPurchasing ? (
-                        <ActivityIndicator size="small" color={Theme.colors.background} />
-                      ) : (
-                        <>
-                          <Image
-                            source={require('../assets/images/coin.png')}
-                            style={{
-                              width: 28,
-                              height: 28,
-                              opacity: isOwned || !canAfford ? 0.5 : 1
-                            }}
-                            resizeMode="contain"
-                          />
-                          <Text style={styles.buyButtonText}>
-                            {isOwned ? 'OWNED' : currentItem.price}
-                          </Text>
-                        </>
-                      )}
-                    </Pressable>
+                      {/* Buy Button */}
+                      <Pressable
+                        style={[styles.buyButton, !canPurchase && styles.buyButtonDisabled]}
+                        onPress={() => canPurchase && handleBuyItem(currentItemIndex + 1, currentItem)}
+                        disabled={!canPurchase}
+                      >
+                        {isPurchasing ? (
+                          <ActivityIndicator size="small" color={Theme.colors.background} />
+                        ) : (
+                          <>
+                            <Image
+                              source={require('../assets/images/coin.png')}
+                              style={{
+                                width: 28,
+                                height: 28,
+                                opacity: isOwned || !canAfford ? 0.5 : 1
+                              }}
+                              resizeMode="contain"
+                            />
+                            <Text style={styles.buyButtonText}>
+                              {isOwned ? 'OWNED' : currentItem.price}
+                            </Text>
+                          </>
+                        )}
+                      </Pressable>
 
-                    <Pressable style={styles.arrowButton} onPress={handleNextItem}>
-                      <Ionicons name="chevron-forward" size={48} color={Theme.colors.primary} />
-                    </Pressable>
-                  </View>
+                      <Pressable style={styles.arrowButton} onPress={handleNextItem}>
+                        <Ionicons name="chevron-forward" size={48} color={Theme.colors.primary} />
+                      </Pressable>
+                    </View>
 
                     {/* Position Indicator */}
                     <Text style={styles.positionIndicator}>
                       {currentItemIndex + 1}/{marketItems.length}
                     </Text>
-                </View>
+                  </View>
                 )}
               </View>
             )

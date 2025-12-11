@@ -21,11 +21,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAegis } from '@cavos/aegis';
 import { calculate666Probability } from '../utils/probability666';
 import { getLevelThreshold } from '../utils/levelThresholds';
+import { useGameSession } from '../contexts/GameSessionContext';
+import { loadGameState } from '../utils/gameStorage';
 
 export default function GameScreen() {
   const { sessionId, score } = useLocalSearchParams<{ sessionId: string; score: string }>();
   const router = useRouter();
   const { aegisAccount } = useAegis();
+  const { session, setSession, updateScore } = useGameSession(); // Global session context
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [sessionDataLoaded, setSessionDataLoaded] = useState(false);
   const [sessionData, setSessionData] = useState<any>(null);
@@ -65,11 +68,54 @@ export default function GameScreen() {
   const [showGameOver, setShowGameOver] = useState(false);
   const [currentPatternIndex, setCurrentPatternIndex] = useState(-1);
   const [showFlash, setShowFlash] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const winSound = useRef<Audio.Sound | null>(null);
 
   // Get responsive symbol size and positioning
   const symbolSize = getSymbolSize();
   const gridPosition = getSlotGridPosition();
+
+  // Initialize global session context when game starts
+  useEffect(() => {
+    if (parsedSessionId && !session) {
+      setSession({
+        sessionId: parsedSessionId,
+        score: initialScore,
+        level: 1,
+        spinsLeft: initialSpins,
+      });
+    }
+  }, [parsedSessionId, initialScore, initialSpins]);
+
+  // Restore saved game state from AsyncStorage if app was closed mid-session
+  useEffect(() => {
+    async function restoreSavedState() {
+      if (!parsedSessionId) return;
+      const saved = await loadGameState(parsedSessionId);
+      if (saved && !saved.isComplete && saved.spinsLeft > 0) {
+        console.log('[Restore] Found saved state:', saved);
+        actions.updateState(saved.score, saved.spinsLeft, saved.level);
+      }
+    }
+    restoreSavedState();
+  }, [parsedSessionId]);
+
+  // Sync game state score to global context after each spin
+  useEffect(() => {
+    if (session && state.score !== session.score) {
+      updateScore(state.score);
+    }
+  }, [state.score]);
+
+  // When returning from market/inventory, check if context score differs (purchase/sale happened)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (session && session.score !== state.score) {
+        // Market or inventory modified the score, update local state
+        actions.updateState(session.score, state.spinsLeft, state.level);
+      }
+    }, [session?.score])
+  );
 
   // Load win sound
   useEffect(() => {
@@ -133,12 +179,56 @@ export default function GameScreen() {
     router.push('/mode-selection');
   };
 
-  const handleMarket = () => {
-    router.push(`/market?sessionId=${parsedSessionId}`);
+  const handleMarket = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
+      const response = await fetch(`${API_URL}/api/sync-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: parsedSessionId,
+          score: state.score,
+          level: state.level,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to sync score');
+      }
+      router.push(`/market?sessionId=${parsedSessionId}`);
+    } catch (error) {
+      console.error('Sync error:', error);
+      router.push(`/market?sessionId=${parsedSessionId}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const handleInventory = () => {
-    router.push(`/inventory?sessionId=${parsedSessionId}`);
+  const handleInventory = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
+      const response = await fetch(`${API_URL}/api/sync-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: parsedSessionId,
+          score: state.score,
+          level: state.level,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to sync score');
+      }
+      router.push(`/inventory?sessionId=${parsedSessionId}`);
+    } catch (error) {
+      console.error('Sync error:', error);
+      router.push(`/inventory?sessionId=${parsedSessionId}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handlePatternAnimationsComplete = () => {
@@ -303,7 +393,7 @@ export default function GameScreen() {
             <Text style={styles.loadingText}>
               {!assetsLoaded ? 'Loading...' :
                 !sessionDataLoaded ? (parsedSessionId > 0 ? 'Loading session data...' : 'Preparing new game...') :
-                'Loading inventory...'}
+                  'Loading inventory...'}
             </Text>
           </View>
         </SafeAreaView>

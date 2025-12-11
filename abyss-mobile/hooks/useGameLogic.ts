@@ -4,6 +4,7 @@ import { GameConfig, DEFAULT_GAME_CONFIG } from '../constants/GameConfig';
 import { Pattern } from '../utils/patternDetector';
 import { getLevelThreshold } from '../utils/levelThresholds';
 import { useGameFeedback } from './useGameFeedback';
+import { persistGameState, clearGameState } from '../utils/gameStorage';
 // Note: Local game logic imports removed in favor of server-side logic
 
 export interface GameLogicState {
@@ -111,7 +112,7 @@ export function useGameLogic(
       stopSpinSound();
 
       // Calculate new state
-      const newSpinsLeft = state.spinsLeft - 1;
+      let newSpinsLeft = state.spinsLeft - 1;
       let newLevel = state.level;
       const newScore = state.score + data.score;
 
@@ -122,7 +123,9 @@ export function useGameLogic(
         }
       }
 
+      // If leveled up, reset spins to 5
       if (newLevel > state.level) {
+        newSpinsLeft = 5;
         playLevelUp();
       }
 
@@ -177,6 +180,23 @@ export function useGameLogic(
         level: newLevel,
         bibliaSaved: data.bibliaUsed,
       }));
+
+      // Persist state to AsyncStorage for recovery if app closes
+      if (isGameOver) {
+        // Clear saved state when game ends
+        await clearGameState(sessionId);
+      } else {
+        // Save current progress
+        await persistGameState({
+          sessionId,
+          score: newScore,
+          level: newLevel,
+          spinsLeft: newSpinsLeft,
+          isComplete: false,
+          is666: data.is666,
+          timestamp: Date.now(),
+        });
+      }
 
     } catch (error: any) {
       console.error('Spin failed:', error);

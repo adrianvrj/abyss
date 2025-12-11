@@ -80,6 +80,11 @@ pub trait IAbyssGame<TContractState> {
     /// Update session score and check for level progression
     fn update_session_score(ref self: TContractState, session_id: u32, score_increase: u32);
 
+    /// Set session score directly - Admin only (for off-chain sync before market)
+    fn admin_set_session_score(
+        ref self: TContractState, session_id: u32, new_score: u32, new_level: u32,
+    );
+
     /// Get session data
     fn get_session_data(self: @TContractState, session_id: u32) -> GameSession;
 
@@ -380,6 +385,26 @@ pub mod AbyssGame {
             // Save updated session
             self.sessions.entry(session_id).write(session);
             // Note: Leaderboard is only updated when session ends, not during gameplay
+        }
+
+        fn admin_set_session_score(
+            ref self: ContractState, session_id: u32, new_score: u32, new_level: u32,
+        ) {
+            // Only admin can set session scores directly
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin can set scores.');
+
+            // Get session data
+            let mut session = self.sessions.entry(session_id).read();
+            assert(session.is_active, 'Session is not active');
+
+            // Set score and level directly (for off-chain sync)
+            session.score = new_score;
+            session.total_score = new_score;
+            session.level = new_level;
+
+            // Save updated session
+            self.sessions.entry(session_id).write(session);
         }
 
         fn get_session_data(self: @ContractState, session_id: u32) -> GameSession {

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface PersistedGameState {
   sessionId: number;
   score: number;
+  level: number;
   spinsLeft: number;
   isComplete: boolean;
   is666: boolean;
@@ -46,6 +47,7 @@ export async function loadGameState(sessionId: number): Promise<PersistedGameSta
     if (
       typeof parsed.sessionId === 'number' &&
       typeof parsed.score === 'number' &&
+      typeof parsed.level === 'number' &&
       typeof parsed.spinsLeft === 'number'
     ) {
       return parsed;
