@@ -5,6 +5,7 @@ export interface PersistedGameState {
   score: number;
   level: number;
   spinsLeft: number;
+  bonusSpins: number; // Persist bonus spins
   isComplete: boolean;
   is666: boolean;
   timestamp: number;

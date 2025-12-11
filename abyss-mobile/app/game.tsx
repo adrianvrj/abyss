@@ -63,7 +63,8 @@ export default function GameScreen() {
     ownedItems,
     aegisAccount,
     // Pass context callbacks so useGameLogic can update context after spins
-    { adjustScore, updateLevel, updateSpins, resetSpinsForLevelUp }
+    { adjustScore, updateLevel, updateSpins, resetSpinsForLevelUp },
+    session?.bonusSpins || 0 // Current bonus spins for persistence
   );
   const [showPatternAnimations, setShowPatternAnimations] = useState(false);
   const [hitPatterns, setHitPatterns] = useState<Pattern[]>([]);
@@ -107,6 +108,16 @@ export default function GameScreen() {
           await setLastActiveSessionId(parsedSessionId);
 
           if (saved.spinsLeft > 0) {
+            // CRITICAL: Update context with restored values so useFocusEffect doesn't overwrite local state
+            // Initialize session with saved data if it's new or update if existing
+            setSession({
+              sessionId: parsedSessionId,
+              score: saved.score,
+              level: saved.level,
+              spinsLeft: saved.spinsLeft,
+              bonusSpins: saved.bonusSpins || 0, // Restore bonus spins
+            });
+
             actions.updateState(saved.score, saved.spinsLeft, saved.level);
           }
         } else {

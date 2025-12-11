@@ -46,7 +46,8 @@ export function useGameLogic(
   scoreMultiplier: number = 1.0,
   ownedItems: any[] = [],
   aegisAccount: any = null,
-  contextCallbacks?: ContextUpdateCallbacks // NEW: callbacks to update context
+  contextCallbacks?: ContextUpdateCallbacks, // NEW: callbacks to update context
+  currentBonusSpins: number = 0 // NEW: for persistence
 ): [GameLogicState, GameLogicActions] {
   const { playPatternHit, playLevelUp, playSpin, playSpinAnimation, playGameOver } = useGameFeedback();
 
@@ -221,6 +222,7 @@ export function useGameLogic(
           score: newScore,
           level: newLevel,
           spinsLeft: newSpinsLeft,
+          bonusSpins: currentBonusSpins, // Persist current bonus spins
           isComplete: false,
           is666: data.is666,
           timestamp: Date.now(),

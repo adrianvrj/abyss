@@ -154,7 +154,7 @@ export async function spinHandler(req: Request, res: Response) {
                 // Game Over - 666 triggered
                 console.log(`[Session ${sessionId}] 666 Triggered - GAME OVER`);
                 gameOver = true;
-                grid = [['6', '6', '6', '6', '6'], ['6', '6', '6', '6', '6'], ['6', '6', '6', '6', '6']];
+                grid = [['six', 'six', 'six', 'six', 'six'], ['six', 'six', 'six', 'six', 'six'], ['six', 'six', 'six', 'six', 'six']];
 
                 // End session on blockchain with current score
                 try {
