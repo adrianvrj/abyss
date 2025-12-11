@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { shortString } from 'starknet'; // Import starknet utils
 import { generateSymbols } from '../game/generator';
 import { detectPatterns } from '../game/patterns';
 import { calculateScore } from '../game/score';
@@ -12,6 +13,20 @@ import {
     applyScoreBonuses,
     OwnedItem,
 } from '../game/items';
+
+// Helper to decode felt symbol names
+function decodeSymbolName(felt: any): string | undefined {
+    if (!felt) return undefined;
+    try {
+        // Handle BigInt or number by converting to hex
+        const hex = '0x' + BigInt(felt).toString(16);
+        if (hex === '0x0') return undefined; // No target
+        return shortString.decodeShortString(hex);
+    } catch (e) {
+        console.warn('Failed to decode symbol name:', felt, e);
+        return undefined;
+    }
+}
 
 /**
  * Spin handler - OFF-CHAIN game state version
@@ -76,12 +91,17 @@ export async function spinHandler(req: Request, res: Response) {
                     ABYSS_CONTRACT_ABI
                 );
                 if (itemInfo) {
+                    const target = decodeSymbolName(itemInfo.target_symbol);
+                    if (target) {
+                        console.log(`[Session ${sessionId}] Item ${playerItem.item_id} target: ${itemInfo.target_symbol} -> "${target}"`);
+                    }
+
                     ownedItems.push({
                         item_id: Number(playerItem.item_id),
                         quantity: Number(playerItem.quantity),
                         effect_type: Number(itemInfo.effect_type),
                         effect_value: Number(itemInfo.effect_value),
-                        effect_target: itemInfo.target_symbol ? String(itemInfo.target_symbol) : undefined,
+                        effect_target: target,
                     });
                 }
             }
