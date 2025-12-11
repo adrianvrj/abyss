@@ -8,6 +8,7 @@ import { getAdminAccount, ABYSS_CONTRACT_ADDRESS, ABYSS_CONTRACT_ABI } from '../
 import {
     calculateItemBonuses,
     applySymbolBoosts,
+    applySymbolPointBoosts,
     applyScoreBonuses,
     OwnedItem,
 } from '../game/items';
@@ -19,7 +20,7 @@ import {
  * - ScoreMultiplier: Multiplies final score
  * - PatternMultiplierBoost: Increases pattern multipliers
  * - SymbolProbabilityBoost: Changes symbol probabilities
- * - DirectScoreBonus: Adds flat bonus to score
+ * - DirectScoreBonus: Adds flat bonus to score (OR boosts symbol base points if target specified)
  * - SixSixSixProtection: Blocks 666 (Biblia)
  * 
  * Flow:
@@ -91,8 +92,11 @@ export async function spinHandler(req: Request, res: Response) {
         // 4. Calculate item bonuses
         const itemBonuses = calculateItemBonuses(ownedItems);
 
-        // 5. Apply symbol probability boosts to config
-        const modifiedConfig = applySymbolBoosts(DEFAULT_GAME_CONFIG, itemBonuses.symbolProbabilityBoosts);
+        // 5. Apply boosts to config
+        // First apply probability boosts
+        let modifiedConfig = applySymbolBoosts(DEFAULT_GAME_CONFIG, itemBonuses.symbolProbabilityBoosts);
+        // Then apply point boosts (NEW: +18 points per lemon logic)
+        modifiedConfig = applySymbolPointBoosts(modifiedConfig, itemBonuses.symbolPointBoosts);
 
         // 4. Check for 666 based on current level (returns percentage 0-9.6)
         const probability666 = calculate666Probability(currentLevel);
@@ -144,6 +148,7 @@ export async function spinHandler(req: Request, res: Response) {
                     console.log(`[Session ${sessionId}] Session ended: ${transactionHash}`);
                 } catch (endError: any) {
                     console.error(`[Session ${sessionId}] Failed to end session:`, endError);
+                    // Don't throw - game still ended, just blockchain write failed
                 }
             }
         } else {
@@ -179,6 +184,7 @@ export async function spinHandler(req: Request, res: Response) {
                 scoreMultiplier: itemBonuses.scoreMultiplier,
                 patternBoost: itemBonuses.patternMultiplierBoost,
                 directBonus: itemBonuses.directScoreBonus,
+                pointBoosts: Object.fromEntries(itemBonuses.symbolPointBoosts),
             },
         });
 

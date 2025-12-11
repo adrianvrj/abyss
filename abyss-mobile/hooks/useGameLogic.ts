@@ -29,6 +29,14 @@ export interface GameLogicActions {
   onPatternsDetected?: (patterns: Pattern[]) => void;
 }
 
+// Callbacks to update GameSessionContext after game events
+export interface ContextUpdateCallbacks {
+  adjustScore: (delta: number) => void;
+  updateLevel: (newLevel: number) => void;
+  updateSpins: (newSpins: number) => void;
+  resetSpinsForLevelUp: () => void; // 5 + bonusSpins
+}
+
 export function useGameLogic(
   initialScore: number,
   initialSpins: number,
@@ -37,7 +45,8 @@ export function useGameLogic(
   onPatternsDetected?: (patterns: Pattern[]) => void,
   scoreMultiplier: number = 1.0,
   ownedItems: any[] = [],
-  aegisAccount: any = null
+  aegisAccount: any = null,
+  contextCallbacks?: ContextUpdateCallbacks // NEW: callbacks to update context
 ): [GameLogicState, GameLogicActions] {
   const { playPatternHit, playLevelUp, playSpin, playSpinAnimation, playGameOver } = useGameFeedback();
 
@@ -59,6 +68,8 @@ export function useGameLogic(
       bibliaSaved: false,
     };
   });
+
+
 
   const spin = useCallback(async () => {
     if (state.spinsLeft <= 0 || state.isSpinning || state.gameOver) {
@@ -115,6 +126,7 @@ export function useGameLogic(
       let newSpinsLeft = state.spinsLeft - 1;
       let newLevel = state.level;
       const newScore = state.score + data.score;
+      const earnedScore = data.score; // Delta to add
 
       // Client-side level calculation for animation trigger
       if (!data.is666 || data.bibliaUsed) {
@@ -123,10 +135,27 @@ export function useGameLogic(
         }
       }
 
-      // If leveled up, reset spins to 5
-      if (newLevel > state.level) {
-        newSpinsLeft = 5;
+      // If leveled up, reset spins to 5 + bonusSpins via context callback
+      const didLevelUp = newLevel > state.level;
+      if (didLevelUp) {
         playLevelUp();
+        // Use context callback to get 5 + bonusSpins
+        if (contextCallbacks) {
+          contextCallbacks.updateLevel(newLevel);
+          contextCallbacks.resetSpinsForLevelUp();
+        }
+        // We'll calculate newSpinsLeft after context update, but for local state use 5
+        newSpinsLeft = 5; // Minimum, actual value will come from context
+      } else {
+        // Regular spin - just decrement
+        if (contextCallbacks) {
+          contextCallbacks.updateSpins(newSpinsLeft);
+        }
+      }
+
+      // Update context with earned score
+      if (contextCallbacks && earnedScore > 0) {
+        contextCallbacks.adjustScore(earnedScore);
       }
 
       // Feedback
@@ -243,7 +272,8 @@ export function useGameLogic(
       ...prev,
       score: newScore,
       spinsLeft: newSpins,
-      gameOver: newSpins <= 0,
+      // If dead by 666, stay dead. If dead by spins, allow revival if spins added.
+      gameOver: (prev.gameOver && prev.is666) ? true : newSpins <= 0,
       level: newLevel || prev.level,
     }));
   }, []);

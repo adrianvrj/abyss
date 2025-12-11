@@ -38,7 +38,7 @@ export default function MarketScreen() {
   const { sessionId } = useLocalSearchParams();
   const router = useRouter();
   const parsedSessionId = parseInt((sessionId as string) || '0', 10);
-  const { session, adjustScore } = useGameSession(); // Use global session context
+  const { session, adjustScore, adjustSpins, adjustBonusSpins } = useGameSession();
   const { aegisAccount } = useAegis();
   const [loading, setLoading] = useState(true);
   const [marketData, setMarketData] = useState<SessionMarketType | null>(null);
@@ -198,7 +198,14 @@ export default function MarketScreen() {
 
       // Update balance locally and in global context
       setBalance((prev: number) => prev - item.price);
-      adjustScore(-item.price); // Update global context so game screen knows
+      adjustScore(-item.price);
+
+      // Update spins if item is a bonus spin
+      // Also track as bonusSpins so it persists on level ups (5 + bonusSpins)
+      if (item.effect_type === ItemEffectType.SpinBonus) {
+        adjustSpins(item.effect_value);
+        adjustBonusSpins(item.effect_value); // Track permanently
+      }
 
       const invCount = await getSessionInventoryCount(parsedSessionId);
       setInventoryCount(Number(invCount));
@@ -253,9 +260,14 @@ export default function MarketScreen() {
     }
 
     setRefreshing(true);
+    setRefreshing(true);
     try {
       // Execute refresh transaction
       await refreshMarket(parsedSessionId, aegisAccount);
+
+      // Update local and global balance
+      setBalance((prev: number) => prev - refreshCost);
+      adjustScore(-refreshCost);
 
       // Clear cache since market is refreshed
       await clearMarketCache(parsedSessionId);

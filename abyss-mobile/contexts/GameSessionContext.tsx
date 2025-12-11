@@ -5,6 +5,7 @@ interface GameSessionState {
     score: number;
     level: number;
     spinsLeft: number;
+    bonusSpins: number; // From items - added on every level reset
 }
 
 interface GameSessionContextType {
@@ -13,7 +14,10 @@ interface GameSessionContextType {
     updateScore: (newScore: number) => void;
     updateSpins: (newSpins: number) => void;
     updateLevel: (newLevel: number) => void;
-    adjustScore: (delta: number) => void; // For market purchases/sales
+    adjustScore: (delta: number) => void;
+    adjustSpins: (delta: number) => void;
+    adjustBonusSpins: (delta: number) => void; // For spin item purchase/sale
+    resetSpinsForLevelUp: () => void; // Sets spins to 5 + bonusSpins
     clearSession: () => void;
 }
 
@@ -23,7 +27,11 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
     const [session, setSessionState] = useState<GameSessionState | null>(null);
 
     const setSession = useCallback((newSession: GameSessionState) => {
-        setSessionState(newSession);
+        // Ensure bonusSpins has a default value
+        setSessionState({
+            ...newSession,
+            bonusSpins: newSession.bonusSpins ?? 0,
+        });
     }, []);
 
     const updateScore = useCallback((newScore: number) => {
@@ -42,6 +50,19 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
         setSessionState(prev => prev ? { ...prev, score: prev.score + delta } : null);
     }, []);
 
+    const adjustSpins = useCallback((delta: number) => {
+        setSessionState(prev => prev ? { ...prev, spinsLeft: prev.spinsLeft + delta } : null);
+    }, []);
+
+    const adjustBonusSpins = useCallback((delta: number) => {
+        setSessionState(prev => prev ? { ...prev, bonusSpins: prev.bonusSpins + delta } : null);
+    }, []);
+
+    const resetSpinsForLevelUp = useCallback(() => {
+        // On level up: spins = 5 base + bonusSpins from items
+        setSessionState(prev => prev ? { ...prev, spinsLeft: 5 + prev.bonusSpins } : null);
+    }, []);
+
     const clearSession = useCallback(() => {
         setSessionState(null);
     }, []);
@@ -55,6 +76,9 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
                 updateSpins,
                 updateLevel,
                 adjustScore,
+                adjustSpins,
+                adjustBonusSpins,
+                resetSpinsForLevelUp,
                 clearSession,
             }}
         >
@@ -70,3 +94,4 @@ export function useGameSession() {
     }
     return context;
 }
+

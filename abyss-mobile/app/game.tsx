@@ -22,13 +22,13 @@ import { useAegis } from '@cavos/aegis';
 import { calculate666Probability } from '../utils/probability666';
 import { getLevelThreshold } from '../utils/levelThresholds';
 import { useGameSession } from '../contexts/GameSessionContext';
-import { loadGameState } from '../utils/gameStorage';
+import { loadGameState, setLastActiveSessionId, clearLastActiveSessionId } from '../utils/gameStorage';
 
 export default function GameScreen() {
   const { sessionId, score } = useLocalSearchParams<{ sessionId: string; score: string }>();
   const router = useRouter();
   const { aegisAccount } = useAegis();
-  const { session, setSession, updateScore } = useGameSession(); // Global session context
+  const { session, setSession, updateScore, updateSpins, updateLevel, adjustScore, resetSpinsForLevelUp } = useGameSession();
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [sessionDataLoaded, setSessionDataLoaded] = useState(false);
   const [sessionData, setSessionData] = useState<any>(null);
@@ -61,7 +61,9 @@ export default function GameScreen() {
     },
     scoreMultiplier,
     ownedItems,
-    aegisAccount
+    aegisAccount,
+    // Pass context callbacks so useGameLogic can update context after spins
+    { adjustScore, updateLevel, updateSpins, resetSpinsForLevelUp }
   );
   const [showPatternAnimations, setShowPatternAnimations] = useState(false);
   const [hitPatterns, setHitPatterns] = useState<Pattern[]>([]);
@@ -69,6 +71,7 @@ export default function GameScreen() {
   const [currentPatternIndex, setCurrentPatternIndex] = useState(-1);
   const [showFlash, setShowFlash] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
   const winSound = useRef<Audio.Sound | null>(null);
 
   // Get responsive symbol size and positioning
@@ -83,6 +86,7 @@ export default function GameScreen() {
         score: initialScore,
         level: 1,
         spinsLeft: initialSpins,
+        bonusSpins: 0,
       });
     }
   }, [parsedSessionId, initialScore, initialSpins]);
@@ -90,32 +94,54 @@ export default function GameScreen() {
   // Restore saved game state from AsyncStorage if app was closed mid-session
   useEffect(() => {
     async function restoreSavedState() {
-      if (!parsedSessionId) return;
-      const saved = await loadGameState(parsedSessionId);
-      if (saved && !saved.isComplete && saved.spinsLeft > 0) {
-        console.log('[Restore] Found saved state:', saved);
-        actions.updateState(saved.score, saved.spinsLeft, saved.level);
+      if (!parsedSessionId) {
+        setIsRestored(true);
+        return;
       }
+
+      const saved = await loadGameState(parsedSessionId);
+
+      if (saved) {
+        if (!saved.isComplete) {
+          // It's an active saved session
+          await setLastActiveSessionId(parsedSessionId);
+
+          if (saved.spinsLeft > 0) {
+            actions.updateState(saved.score, saved.spinsLeft, saved.level);
+          }
+        } else {
+          // Session is complete, so it shouldn't be "active"
+          await clearLastActiveSessionId();
+        }
+      } else {
+        // No save found, assumably a new session just started
+        await setLastActiveSessionId(parsedSessionId);
+      }
+
+      setIsRestored(true);
     }
     restoreSavedState();
   }, [parsedSessionId]);
 
-  // Sync game state score to global context after each spin
-  useEffect(() => {
-    if (session && state.score !== session.score) {
-      updateScore(state.score);
-    }
-  }, [state.score]);
-
-  // When returning from market/inventory, check if context score differs (purchase/sale happened)
+  // When returning from market/inventory, sync local state with context (source of truth)
+  // Context is updated by market/inventory, so we pull those changes here
   useFocusEffect(
     React.useCallback(() => {
-      if (session && session.score !== state.score) {
-        // Market or inventory modified the score, update local state
-        actions.updateState(session.score, state.spinsLeft, state.level);
+      if (session && session.sessionId === parsedSessionId) {
+        // Pull latest score/spins/level from context
+        if (
+          session.score !== state.score ||
+          session.spinsLeft !== state.spinsLeft ||
+          session.level !== state.level
+        ) {
+          console.log(`[GameSync] Pulling from context: score=${session.score}, spins=${session.spinsLeft}, level=${session.level}`);
+          actions.updateState(session.score, session.spinsLeft, session.level);
+        }
       }
-    }, [session?.score])
+    }, [session?.sessionId, session?.score, session?.spinsLeft, session?.level, parsedSessionId])
   );
+
+  // Load win sound
 
   // Load win sound
   useEffect(() => {
@@ -363,7 +389,12 @@ export default function GameScreen() {
       const contractIsCompetitive = sessionData.is_competitive;
 
       // Update game state with contract data
-      actions.updateState(contractScore, contractSpins, contractLevel);
+      // CRITICAL FIX: Do NOT overwrite local state with contract data here.
+      // Contract data (especially spins) is often stale because we don't sync every spin to chain.
+      // Local state (AsyncStorage/Context) is the source of truth for active gameplay.
+
+      // Only update if we absolutely have no state? No, trust local state initialization.
+      // actions.updateState(contractScore, contractSpins, contractLevel);
     }
   }, [sessionDataLoaded, sessionData]);
 

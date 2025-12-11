@@ -1,17 +1,89 @@
-import { View, Text, Pressable, StyleSheet, Linking, Image, ImageBackground } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Linking, Image, ImageBackground, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Theme } from '../constants/Theme';
 import SettingsIcon from '../components/SettingsIcon';
 import { useAegis } from '@cavos/aegis';
+import { getLastActiveSessionId } from '../utils/gameStorage';
+import { newSession, getPlayerSessions } from '../utils/abyssContract';
 
 export default function ModeSelectionScreen() {
   const router = useRouter();
   const { aegisAccount } = useAegis();
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
-  const handleModeSelect = (mode: 'casual' | 'competitive') => {
-    router.push(`/sessions?mode=${mode}`);
+  useFocusEffect(
+    React.useCallback(() => {
+      checkActiveSession();
+    }, [])
+  );
+
+  const checkActiveSession = async () => {
+    setCheckingSession(true);
+    const id = await getLastActiveSessionId();
+    setActiveSessionId(id);
+    setCheckingSession(false);
+  };
+
+  const handleContinue = () => {
+    if (activeSessionId) {
+      router.push(`/game?sessionId=${activeSessionId}`);
+    }
+  };
+
+  const handleNewGame = async () => {
+    if (isCreating || !aegisAccount) return;
+
+    setIsCreating(true);
+    try {
+      // Get current sessions count to detect the new one
+      const address = aegisAccount.address as string;
+      const initialSessions = await getPlayerSessions(address, true);
+      const initialCount = initialSessions ? initialSessions.length : 0;
+      const lastOldId = initialSessions && initialSessions.length > 0
+        ? Number(initialSessions[initialSessions.length - 1])
+        : 0;
+
+      console.log(`[NewGame] Initial sessions: ${initialCount}, last ID: ${lastOldId}`);
+
+      // Create new session (always competitive/free now)
+      const txHash = await newSession(aegisAccount, true);
+      console.log(`[NewGame] Transaction hash: ${txHash}`);
+
+      // Poll for the new session - check for a NEW session ID, not just count
+      let retries = 10;
+      while (retries > 0) {
+        const sessions = await getPlayerSessions(address, true);
+        const currentCount = sessions ? sessions.length : 0;
+        const latestId = sessions && sessions.length > 0
+          ? Number(sessions[sessions.length - 1])
+          : 0;
+
+        console.log(`[NewGame] Poll ${11 - retries}: count=${currentCount}, latestId=${latestId}`);
+
+        // Check if we have a NEW session ID (not just count increase)
+        if (latestId > lastOldId) {
+          console.log(`[NewGame] Found new session: ${latestId}`);
+          router.push(`/game?sessionId=${latestId}`);
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        retries--;
+      }
+
+      console.error('[NewGame] Timeout waiting for new session to appear');
+      Alert.alert('Error', 'Failed to create new session. Please try again.');
+    } catch (error) {
+      console.error('Failed to create new game:', error);
+      Alert.alert('Error', 'Failed to create game. Check console for details.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleLeaderboard = () => {
@@ -23,7 +95,6 @@ export default function ModeSelectionScreen() {
   };
 
   const handleTelegram = async () => {
-    // Replace with your actual Telegram link
     const telegramUrl = 'https://t.me/+JB4RkO3eZrFhNjYx';
     try {
       const canOpen = await Linking.canOpenURL(telegramUrl);
@@ -43,59 +114,76 @@ export default function ModeSelectionScreen() {
     >
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-        {/* App Icon at Top */}
-        <View style={styles.topSection}>
-          <Image
-            source={require('../assets/images/icon copy.png')}
-            style={styles.appIcon}
-            resizeMode="contain"
-          />
-        </View>
-
-        {/* Menu Options in Center */}
-        <Animated.View entering={FadeIn.duration(400)} style={styles.menuOptions}>
-          <Pressable
-            style={styles.option}
-            onPress={() => handleModeSelect('casual')}
-          >
-            <Text style={styles.optionText}>&gt; free to play</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.option}
-            onPress={() => handleModeSelect('competitive')}
-          >
-            <Text style={styles.optionText}>&gt; degen</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.option}
-            onPress={handleLeaderboard}
-          >
-            <Text style={styles.optionText}>&gt; leaderboard</Text>
-          </Pressable>
-        </Animated.View>
-
-        {/* Bottom Icons */}
-        <View style={styles.bottomSection}>
-          <Pressable
-            style={styles.iconButton}
-            onPress={handleTelegram}
-          >
+          {/* App Icon at Top */}
+          <View style={styles.topSection}>
             <Image
-              source={require('../assets/images/tg_icon.png')}
-              style={styles.telegramIcon}
+              source={require('../assets/images/icon copy.png')}
+              style={styles.appIcon}
               resizeMode="contain"
             />
-          </Pressable>
+          </View>
 
-          <Pressable
-            style={styles.iconButton}
-            onPress={handleSettings}
-          >
-            <SettingsIcon size={32} color={Theme.colors.primary} />
-          </Pressable>
-        </View>
+          {/* Menu Options in Center */}
+          <Animated.View entering={FadeIn.duration(400)} style={styles.menuOptions}>
+
+            {/* Continue Button (if active session exists) */}
+            {activeSessionId !== null && (
+              <Pressable
+                style={styles.option}
+                onPress={handleContinue}
+                disabled={isCreating}
+              >
+                <Text style={styles.optionText}>&gt; continue game</Text>
+              </Pressable>
+            )}
+
+            {/* New Game / Play Button */}
+            <Pressable
+              style={styles.option}
+              onPress={handleNewGame}
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={styles.optionText}>&gt; creating...</Text>
+                  <ActivityIndicator size="small" color={Theme.colors.primary} />
+                </View>
+              ) : (
+                <Text style={styles.optionText}>
+                  {activeSessionId !== null ? '> new game' : '> play'}
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.option}
+              onPress={handleLeaderboard}
+              disabled={isCreating}
+            >
+              <Text style={styles.optionText}>&gt; leaderboard</Text>
+            </Pressable>
+          </Animated.View>
+
+          {/* Bottom Icons */}
+          <View style={styles.bottomSection}>
+            <Pressable
+              style={styles.iconButton}
+              onPress={handleTelegram}
+            >
+              <Image
+                source={require('../assets/images/tg_icon.png')}
+                style={styles.telegramIcon}
+                resizeMode="contain"
+              />
+            </Pressable>
+
+            <Pressable
+              style={styles.iconButton}
+              onPress={handleSettings}
+            >
+              <SettingsIcon size={32} color={Theme.colors.primary} />
+            </Pressable>
+          </View>
         </View>
       </SafeAreaView>
     </ImageBackground>

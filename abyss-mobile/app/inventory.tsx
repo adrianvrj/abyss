@@ -39,7 +39,7 @@ export default function InventoryScreen() {
   const { sessionId } = useLocalSearchParams();
   const router = useRouter();
   const parsedSessionId = parseInt((sessionId as string) || '0', 10);
-  const { session, adjustScore } = useGameSession(); // Use global session context
+  const { session, adjustScore, adjustSpins, adjustBonusSpins } = useGameSession();
   const { aegisAccount } = useAegis();
 
   const [loading, setLoading] = useState(true);
@@ -110,6 +110,13 @@ export default function InventoryScreen() {
       // Update balance locally and in global context
       setBalance((prev: number) => prev + itemToSell.sell_price);
       adjustScore(itemToSell.sell_price); // Update global context so game screen knows
+
+      // Remove spins if sold item was a bonus spin
+      // Also remove from bonusSpins tracking so it doesn't persist on level ups
+      if (itemToSell.effect_type === ItemEffectType.SpinBonus) {
+        adjustSpins(-itemToSell.effect_value);
+        adjustBonusSpins(-itemToSell.effect_value); // Remove from permanent tracking
+      }
 
       // Reload inventory (items list only, balance is tracked locally)
       const playerItems = await getSessionItems(parsedSessionId);

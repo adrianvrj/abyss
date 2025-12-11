@@ -285,28 +285,9 @@ pub mod AbyssGame {
             let caller = get_caller_address();
             assert(caller == player_address, 'Can only create own session');
 
-            // If competitive session, transfer 5 CHIP tokens (3 to contract, 2 to treasury)
-            if is_competitive {
-                let chip_token = IERC20Dispatcher { contract_address: self.chip_token.read() };
-                let three_chips: u256 = 3_000_000_000_000_000_000; // 3 CHIP
-                let two_chips: u256 = 2_000_000_000_000_000_000; // 2 CHIP
-                let treasury = self.treasury.read();
-                let contract_address = starknet::get_contract_address();
-
-                // Transfer 3 CHIP from player to contract (prize pool)
-                let transfer_pool_success = chip_token
-                    .transfer_from(caller, contract_address, three_chips);
-                assert(transfer_pool_success, 'Pool transfer failed');
-
-                // Transfer 2 CHIP from player to treasury
-                let transfer_treasury_success = chip_token
-                    .transfer_from(caller, treasury, two_chips);
-                assert(transfer_treasury_success, 'Treasury transfer failed');
-
-                // Update prize pool
-                let current_pool = self.prize_pool.read();
-                self.prize_pool.write(current_pool + three_chips);
-            }
+            // Free to play mode - No tokens required
+            // All sessions are now competitive by default (counting for leaderboard)
+            let actual_is_competitive = true;
 
             // Generate new session ID
             let session_id = self.total_sessions.read() + 1;
@@ -320,7 +301,7 @@ pub mod AbyssGame {
                 score: 0,
                 total_score: 0,
                 spins_remaining: 5,
-                is_competitive,
+                is_competitive: actual_is_competitive,
                 is_active: true,
                 created_at: 0 // TODO: Add timestamp support
             };
@@ -333,16 +314,10 @@ pub mod AbyssGame {
             self.player_sessions_count.entry(player_address).write(session_count + 1);
             self.player_session.entry((player_address, session_count)).write(session_id);
 
-            // Add session to global tracking by type
-            if is_competitive {
-                let competitive_count = self.total_competitive_sessions.read();
-                self.total_competitive_sessions.write(competitive_count + 1);
-                self.competitive_session.entry(competitive_count).write(session_id);
-            } else {
-                let casual_count = self.total_casual_sessions.read();
-                self.total_casual_sessions.write(casual_count + 1);
-                self.casual_session.entry(casual_count).write(session_id);
-            }
+            // Add session to global tracking (Always competitive)
+            let competitive_count = self.total_competitive_sessions.read();
+            self.total_competitive_sessions.write(competitive_count + 1);
+            self.competitive_session.entry(competitive_count).write(session_id);
 
             // Initialize market for the session
             InternalImpl::initialize_market(ref self, session_id);

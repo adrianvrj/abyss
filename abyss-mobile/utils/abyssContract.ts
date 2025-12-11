@@ -50,21 +50,11 @@ export async function newSession(account: AegisSDK, isCompetitive: boolean) {
     try {
         let calls = [
             {
-                contractAddress: CHIP_CONTRACT_ADDRESS,
-                entrypoint: "approve",
-                calldata: [
-                    ABYSS_CONTRACT_ADDRESS,
-                    5 * 10 ** 18,
-                    0n
-                ]
-
-            },
-            {
                 contractAddress: ABYSS_CONTRACT_ADDRESS,
                 entrypoint: 'create_session',
                 calldata: [
                     account.address,
-                    isCompetitive ? 1 : 0,
+                    1, // Always competitive (true)
                 ]
             },
         ]

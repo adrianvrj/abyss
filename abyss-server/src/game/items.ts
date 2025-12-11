@@ -27,12 +27,16 @@ export interface OwnedItem {
 /**
  * Calculated bonuses from items
  */
+/**
+ * Calculated bonuses from items
+ */
 export interface ItemBonuses {
     scoreMultiplier: number;       // Total multiplier (1.0 = no change)
     patternMultiplierBoost: number; // Percentage boost to pattern multipliers
     directScoreBonus: number;       // Flat score to add
     levelProgressionBonus: number;  // Percentage reduction in level threshold
     symbolProbabilityBoosts: Map<string, number>; // Symbol -> probability boost
+    symbolPointBoosts: Map<string, number>;       // Symbol -> base point boost (NEW)
     has666Protection: boolean;      // Has Biblia
 }
 
@@ -46,6 +50,7 @@ export function calculateItemBonuses(ownedItems: OwnedItem[]): ItemBonuses {
         directScoreBonus: 0,
         levelProgressionBonus: 0,
         symbolProbabilityBoosts: new Map(),
+        symbolPointBoosts: new Map(),
         has666Protection: false,
     };
 
@@ -74,8 +79,14 @@ export function calculateItemBonuses(ownedItems: OwnedItem[]): ItemBonuses {
                 break;
 
             case ItemEffectType.DirectScoreBonus:
-                // Flat bonus added to each spin
-                bonuses.directScoreBonus += effectValue;
+                if (item.effect_target) {
+                    // If target is specified, it boosts that symbol's BASE POINTS
+                    const current = bonuses.symbolPointBoosts.get(item.effect_target) || 0;
+                    bonuses.symbolPointBoosts.set(item.effect_target, current + effectValue);
+                } else {
+                    // Flat bonus added to each spin
+                    bonuses.directScoreBonus += effectValue;
+                }
                 break;
 
             case ItemEffectType.LevelProgressionBonus:
@@ -109,6 +120,34 @@ export function applySymbolBoosts(
             return {
                 ...symbol,
                 probability: symbol.probability + boost,
+            };
+        }
+        return symbol;
+    });
+
+    return {
+        ...baseConfig,
+        symbols: modifiedSymbols,
+    };
+}
+
+/**
+ * Apply symbol point boosts to config
+ */
+export function applySymbolPointBoosts(
+    baseConfig: GameConfig,
+    pointBoosts: Map<string, number>
+): GameConfig {
+    if (pointBoosts.size === 0) {
+        return baseConfig;
+    }
+
+    const modifiedSymbols = baseConfig.symbols.map(symbol => {
+        const boost = pointBoosts.get(symbol.type) || 0;
+        if (boost > 0) {
+            return {
+                ...symbol,
+                points: symbol.points + boost,
             };
         }
         return symbol;
