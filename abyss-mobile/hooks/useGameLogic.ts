@@ -87,6 +87,9 @@ export function useGameLogic(
         },
         body: JSON.stringify({
           sessionId,
+          currentLevel: state.level,
+          currentScore: state.score,
+          ownedItems,
         }),
       });
 
@@ -99,54 +102,76 @@ export function useGameLogic(
       // Stop the spin sound now that we have a response
       stopSpinSound();
 
-      // Small delay after server response for animation to settle (optional, can remove)
+      // Small delay after server response for animation to settle
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      // Calculate new state
+      const newSpinsLeft = state.spinsLeft - 1;
+      let newLevel = state.level;
+      const newScore = state.score + data.score;
 
-      // 4. Update State with Server Result
-      setState(prev => {
-        let newLevel = prev.level;
-        const newScore = prev.score + data.score;
-
-        // Client-side level calculation for animation trigger
-        // (Server tracks official level, but we predict it here for UI feedback)
-        // Only if not 666 (or if saved by Biblia)
-        if (!data.is666 || data.bibliaUsed) {
-          while (newScore >= getLevelThreshold(newLevel)) {
-            newLevel += 1;
-          }
+      // Client-side level calculation for animation trigger
+      if (!data.is666 || data.bibliaUsed) {
+        while (newScore >= getLevelThreshold(newLevel)) {
+          newLevel += 1;
         }
+      }
 
-        if (newLevel > prev.level) {
-          playLevelUp();
+      if (newLevel > state.level) {
+        playLevelUp();
+      }
+
+      // Feedback
+      if (data.is666 && !data.bibliaUsed) {
+        playGameOver();
+      } else {
+        data.patterns.forEach((p: Pattern) => playPatternHit(p.type));
+        if (onPatternsDetected && data.patterns.length > 0) {
+          onPatternsDetected(data.patterns);
         }
+      }
 
-        // Feedback
-        if (data.is666 && !data.bibliaUsed) {
-          playGameOver();
-        } else {
-          data.patterns.forEach((p: Pattern) => playPatternHit(p.type));
-          if (onPatternsDetected && data.patterns.length > 0) {
-            onPatternsDetected(data.patterns);
-          }
+      // Determine if game is over
+      const isGameOver = data.gameOver || newSpinsLeft <= 0;
+
+      // If game is over, call end-session API to write final score to blockchain
+      if (isGameOver) {
+        try {
+          console.log(`[EndSession] Ending session ${sessionId} with score=${newScore}, level=${newLevel}`);
+          const endResponse = await fetch(`${API_URL}/api/end-session`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sessionId,
+              finalScore: newScore,
+              finalLevel: newLevel,
+            }),
+          });
+          const endData = await endResponse.json();
+          console.log('[EndSession] Response:', endData);
+        } catch (endError) {
+          console.error('[EndSession] Failed to end session:', endError);
+          // Don't throw - game still ended, just blockchain write failed
         }
+      }
 
-        return {
-          ...prev,
-          grid: data.grid,
-          score: newScore, // Accumulate total score
-          spinsLeft: data.spinsRemaining, // Server tells us exact spins
-          isSpinning: false,
-          patterns: data.patterns,
-          is666: data.is666,
-          gameOver: data.gameOver,
-          lastSpinScore: data.score,
-          transactionStatus: 'success',
-          transactionHash: data.transactionHash,
-          level: newLevel,
-          bibliaSaved: data.bibliaUsed,
-        };
-      });
+      // Update state
+      setState(prev => ({
+        ...prev,
+        grid: data.grid,
+        score: newScore,
+        spinsLeft: newSpinsLeft,
+        isSpinning: false,
+        patterns: data.patterns,
+        is666: data.is666,
+        gameOver: isGameOver,
+        lastSpinScore: data.score,
+        transactionStatus: 'success',
+        level: newLevel,
+        bibliaSaved: data.bibliaUsed,
+      }));
 
     } catch (error: any) {
       console.error('Spin failed:', error);

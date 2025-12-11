@@ -294,6 +294,26 @@ export const ABYSS_CONTRACT_ABI = [
             },
             {
                 "type": "function",
+                "name": "end_session_with_score",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "final_score",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "final_level",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
                 "name": "end_own_session",
                 "inputs": [
                     {

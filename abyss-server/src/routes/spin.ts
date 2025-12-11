@@ -5,21 +5,30 @@ import { calculateScore } from '../game/score';
 import { calculate666Probability, hasBibliaProtection } from '../game/probability';
 import { DEFAULT_GAME_CONFIG } from '../game/config';
 import { getAdminAccount, ABYSS_CONTRACT_ADDRESS, ABYSS_CONTRACT_ABI } from '../utils/aegis';
-import { GenerateSymbolsResult } from '../game/types';
 
+/**
+ * Spin handler - OFF-CHAIN game state version
+ * 
+ * Flow:
+ * 1. Validates session is active (blockchain read)
+ * 2. Generates spin result (RNG, patterns, score)
+ * 3. If game over (666 without bible), calls end_session_with_score
+ * 4. Returns result to client
+ * 
+ * Client tracks score/level/spins locally.
+ * When client's spins reach 0, client calls /api/end-session.
+ */
 export async function spinHandler(req: Request, res: Response) {
     try {
-        const { sessionId } = req.body;
+        const { sessionId, currentLevel = 1, currentScore = 0, ownedItems = [] } = req.body;
 
         if (!sessionId) {
             return res.status(400).json({ error: 'Session ID is required' });
         }
 
-        // 1. Fetch Session Data & Items from Chain (Authorized State)
+        // 1. Validate session is active (blockchain READ - no nonce issues)
         const aegis = await getAdminAccount();
 
-        // In a production app, use Promise.all or a multicall to fetch these
-        // Fetch session data
         const sessionData: any = await aegis.call(
             ABYSS_CONTRACT_ADDRESS,
             'get_session_data',
@@ -27,135 +36,73 @@ export async function spinHandler(req: Request, res: Response) {
             ABYSS_CONTRACT_ABI
         );
 
-        console.log(`[Spin] Fetching data for session ${sessionId} from ${ABYSS_CONTRACT_ADDRESS}`);
-        console.log('[Spin] Raw Session Data:', sessionData);
-
         if (!sessionData) {
-            console.error('[Spin] Session data is null/undefined');
             return res.status(400).json({ error: 'Session not found' });
         }
 
-        // Handle Starknet struct return (might need specific field access depending on library version)
-        // is_active might be a BigInt or boolean
         const isActive = Boolean(sessionData.is_active);
-        console.log('[Spin] Is Active:', isActive, sessionData.is_active);
-
         if (!isActive) {
-
-            return res.status(400).json({ error: 'Session is not active' });
+            return res.status(400).json({ error: 'Session is not active', gameOver: true });
         }
 
-        const spinsRemaining = Number(sessionData.spins_remaining);
-        console.log('[Spin] Spins Remaining:', spinsRemaining);
+        // 2. Generate spin result (all in-memory)
+        const config = DEFAULT_GAME_CONFIG;
 
-        if (spinsRemaining <= 0) {
-            return res.status(400).json({ error: 'No spins remaining', spinsRemaining: 0 });
-        }
-
-        const currentLevel = Number(sessionData.level);
-
-        // Fetch owned items
-        const ownedItemsData: any[] = await aegis.call(
-            ABYSS_CONTRACT_ADDRESS,
-            'get_session_items',
-            [sessionId],
-            ABYSS_CONTRACT_ABI
-        );
-
-        // Parse items
-        const ownedItems = ownedItemsData.map((item: any) => ({
-            item_id: Number(item.item_id),
-            quantity: Number(item.quantity)
-        }));
-
-        // 2. Adjust Config based on Items (TODO: Implement item effect logic on server)
-        // For now, use default config, but pass probability666 based on level
+        // Check for 666 based on current level (returns percentage 0-9.6)
         const probability666 = calculate666Probability(currentLevel);
-        const config = { ...DEFAULT_GAME_CONFIG, probability666 };
+        const is666 = Math.random() * 100 < probability666;
 
-        // 3. Generate Result (RNG)
-        const result: GenerateSymbolsResult = generateSymbols(config);
-        const { grid, is666 } = result;
-
-        let transactionHash = '';
-        let scoreToAdd = 0;
+        let grid: string[][] = [];
         let patterns: any[] = [];
+        let scoreToAdd = 0;
         let gameOver = false;
         let bibliaUsed = false;
+        let transactionHash: string | undefined;
 
-        // 4. Calculate Score & Prepare Transactions
         if (is666) {
-            // Check for Biblia
-            if (hasBibliaProtection(ownedItems)) {
+            // Check Biblia
+            const hasBiblia = hasBibliaProtection(ownedItems);
+
+            if (hasBiblia) {
+                // Saved by Biblia - generate normal grid
                 bibliaUsed = true;
-                console.log(`[Session ${sessionId}] 666 Triggered but saved by Biblia`);
-
-                // Calculate score as normal
-                patterns = detectPatterns(grid, config);
-                const scoreBreakdown = calculateScore(grid, patterns, config);
+                const result = generateSymbols(config);
+                grid = result.grid as string[][];
+                patterns = detectPatterns(result.grid, config);
+                const scoreBreakdown = calculateScore(result.grid, patterns, config);
                 scoreToAdd = scoreBreakdown.totalScore;
-
-                // Execute Batch: Consume Item + Update Score
-                const calls = [
-                    {
-                        contractAddress: ABYSS_CONTRACT_ADDRESS,
-                        entrypoint: 'consume_item',
-                        calldata: [sessionId, 40, 1] // 40 is Biblia
-                    },
-                    {
-                        contractAddress: ABYSS_CONTRACT_ADDRESS,
-                        entrypoint: 'update_session_score',
-                        calldata: [sessionId, scoreToAdd]
-                    }
-                ];
-
-                const tx = await aegis.executeBatch(calls);
-                transactionHash = tx.transactionHash;
-
+                // Note: Client should decrement Biblia count locally
             } else {
+                // Game Over - 666 triggered
                 console.log(`[Session ${sessionId}] 666 Triggered - GAME OVER`);
                 gameOver = true;
-                // End Session
-                const tx = await aegis.execute(
-                    ABYSS_CONTRACT_ADDRESS,
-                    'end_session',
-                    [sessionId]
-                );
-                transactionHash = tx.transactionHash;
+                grid = [['6', '6', '6', '6', '6'], ['6', '6', '6', '6', '6'], ['6', '6', '6', '6', '6']];
+
+                // End session on blockchain with current score
+                try {
+                    console.log(`[Session ${sessionId}] Ending session with score=${currentScore}, level=${currentLevel}`);
+                    const tx = await aegis.execute(
+                        ABYSS_CONTRACT_ADDRESS,
+                        'end_session_with_score',
+                        [sessionId, currentScore, currentLevel]
+                    );
+                    transactionHash = tx.transactionHash;
+                    console.log(`[Session ${sessionId}] Session ended: ${transactionHash}`);
+                } catch (endError: any) {
+                    console.error(`[Session ${sessionId}] Failed to end session:`, endError);
+                    // Still return game over to client, just note the blockchain write failed
+                }
             }
         } else {
             // Normal Spin
-            patterns = detectPatterns(grid, config);
-            const scoreBreakdown = calculateScore(grid, patterns, config);
+            const result = generateSymbols(config);
+            grid = result.grid as string[][];
+            patterns = detectPatterns(result.grid, config);
+            const scoreBreakdown = calculateScore(result.grid, patterns, config);
             scoreToAdd = scoreBreakdown.totalScore;
-
-            // Update score (also decrements spins in contract)
-            const tx = await aegis.execute(
-                ABYSS_CONTRACT_ADDRESS,
-                'update_session_score',
-                [sessionId, scoreToAdd]
-            );
-            transactionHash = tx.transactionHash;
-
-            // Check if this was the last spin
-            const newSpinsRemaining = spinsRemaining - 1;
-            if (newSpinsRemaining <= 0) {
-                console.log(`[Session ${sessionId}] No spins remaining - ending session`);
-                gameOver = true;
-                // End the session
-                const endTx = await aegis.execute(
-                    ABYSS_CONTRACT_ADDRESS,
-                    'end_session',
-                    [sessionId]
-                );
-                console.log(`[Session ${sessionId}] Session ended: ${endTx.transactionHash}`);
-            }
         }
 
-        // Calculate actual spins remaining
-        const finalSpinsRemaining = gameOver ? 0 : spinsRemaining - 1;
-
-        // 5. Return Result
+        // 3. Return result
         res.json({
             grid,
             patterns,
@@ -164,7 +111,6 @@ export async function spinHandler(req: Request, res: Response) {
             gameOver,
             bibliaUsed,
             transactionHash,
-            spinsRemaining: finalSpinsRemaining
         });
 
     } catch (error: any) {

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import * as dotenv from 'dotenv';
 import { spinHandler } from './routes/spin';
+import { endSessionHandler } from './routes/end-session';
 import { initializeAdminAccount } from './utils/aegis';
 
 dotenv.config();
@@ -14,6 +15,7 @@ app.use(express.json());
 
 // Routes
 app.post('/api/spin', spinHandler);
+app.post('/api/end-session', endSessionHandler);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

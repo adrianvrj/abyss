@@ -6,12 +6,12 @@ edition = "2024_07"
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-starknet = "2.12.2"
+starknet = "2.14.0"
 openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v1.0.0" }
 
 [dev-dependencies]
-snforge_std = "0.48.1"
-assert_macros = "2.12.2"
+snforge_std = "0.54.0"
+assert_macros = "2.14.0"
 
 [[target.starknet-contract]]
 sierra = true
@@ -63,3 +63,5 @@ url = "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_8/dql5pMT8
 
 [sncast.mainnet]                                         # Define a profile name
 url = "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_8/dql5pMT88iueZWl7L0yzT56uVk0EBU4L" # Url of the RPC provider
+account = "my_account"
+block-explorer = "Voyager"
