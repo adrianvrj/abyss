@@ -5,6 +5,7 @@ import { Pattern } from '../utils/patternDetector';
 import { getLevelThreshold } from '../utils/levelThresholds';
 import { useGameFeedback } from './useGameFeedback';
 import { persistGameState, clearGameState } from '../utils/gameStorage';
+import { sellItem } from '../utils/abyssContract';
 // Note: Local game logic imports removed in favor of server-side logic
 
 export interface GameLogicState {
@@ -79,7 +80,8 @@ export function useGameLogic(
 
     // Start spinning - track start time for minimum animation duration
     const spinStartTime = Date.now();
-    const MIN_SPIN_DURATION_MS = 2000; // 2 seconds minimum
+    // Constants
+    const MIN_SPIN_DURATION_MS = 1200; // 1.2 seconds minimum (User requested speed up)
 
     const { stopSpinSound } = playSpinAnimation();
     setState(prev => ({
@@ -92,10 +94,11 @@ export function useGameLogic(
     }));
 
     try {
-      // Call Server API - Animation runs while we wait
       const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
       console.log('Spinning against:', API_URL);
 
+      // --- MOCK 666 TRIGGER FOR TESTING ---
+      // Comment out the fetch and uncomment this block to simulate 666
       const response = await fetch(`${API_URL}/api/spin`, {
         method: 'POST',
         headers: {
@@ -110,8 +113,10 @@ export function useGameLogic(
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Server error');
+      // --- END MOCK ---
+
+      if (data.error) {
+        throw new Error(data.error);
       }
 
       // Ensure minimum 2 second spin animation
@@ -120,7 +125,7 @@ export function useGameLogic(
         await new Promise(resolve => setTimeout(resolve, MIN_SPIN_DURATION_MS - elapsed));
       }
 
-      // Stop the spin sound after minimum duration
+      // Stop sound immediately before reveal
       stopSpinSound();
 
       // Calculate new state
@@ -159,10 +164,8 @@ export function useGameLogic(
         contextCallbacks.adjustScore(earnedScore);
       }
 
-      // Feedback
-      if (data.is666 && !data.bibliaUsed) {
-        playGameOver();
-      } else {
+      // Play pattern feedback if any (Game Over feedback is delayed to match visuals)
+      if (!data.is666 || data.bibliaUsed) {
         data.patterns.forEach((p: Pattern) => playPatternHit(p.type));
         if (onPatternsDetected && data.patterns.length > 0) {
           onPatternsDetected(data.patterns);
@@ -191,7 +194,6 @@ export function useGameLogic(
           console.log('[EndSession] Response:', endData);
         } catch (endError) {
           console.error('[EndSession] Failed to end session:', endError);
-          // Don't throw - game still ended, just blockchain write failed
         }
       }
 
@@ -201,7 +203,7 @@ export function useGameLogic(
         grid: data.grid,
         score: newScore,
         spinsLeft: newSpinsLeft,
-        isSpinning: false,
+        isSpinning: false, // Visuals stop here (triggers SlotGrid useEffect)
         patterns: data.patterns,
         is666: data.is666,
         gameOver: isGameOver,
@@ -210,6 +212,24 @@ export function useGameLogic(
         level: newLevel,
         bibliaSaved: data.bibliaUsed,
       }));
+
+      // CONSUME BIBLIA: If Biblia saved the player, sell it from inventory (async, fire-and-forget)
+      if (data.bibliaUsed && aegisAccount) {
+        // Find Biblia item in ownedItems (effect_type 6 = SixSixSixProtection)
+        const bibliaItem = ownedItems.find((item: any) => item.effect_type === 6);
+        if (bibliaItem) {
+          console.log(`[Biblia] Consuming Biblia (item_id=${bibliaItem.item_id})`);
+          sellItem(sessionId, bibliaItem.item_id, 1, aegisAccount)
+            .then((txHash) => console.log(`[Biblia] Consumed: ${txHash}`))
+            .catch((err) => console.error('[Biblia] Failed to consume:', err));
+        }
+      }
+
+      // Feedback: Play Game Over haptics slightly delayed to sync with reel slam
+      if (data.is666 && !data.bibliaUsed) {
+        // 50ms delay allows React to render the "stopped" grid state
+        setTimeout(() => playGameOver(), 50);
+      }
 
       // Persist state to AsyncStorage for recovery if app closes
       if (isGameOver) {

@@ -23,6 +23,7 @@ import { calculate666Probability } from '../utils/probability666';
 import { getLevelThreshold } from '../utils/levelThresholds';
 import { useGameSession } from '../contexts/GameSessionContext';
 import { loadGameState, setLastActiveSessionId, clearLastActiveSessionId } from '../utils/gameStorage';
+import * as Haptics from 'expo-haptics';
 
 export default function GameScreen() {
   const { sessionId, score } = useLocalSearchParams<{ sessionId: string; score: string }>();
@@ -198,22 +199,27 @@ export default function GameScreen() {
   }, []);
 
   const handleSpin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await actions.spin();
   };
 
   const handleGameOverNavigation = () => {
+    Haptics.selectionAsync();
     router.push('/mode-selection');
   };
 
   const handleExitGame = () => {
+    Haptics.selectionAsync();
     router.push('/mode-selection');
   };
 
   const handleSymbolsInfo = () => {
+    Haptics.selectionAsync();
     router.push(`/symbols-info?sessionId=${parsedSessionId}`);
   };
 
   const handleExit = () => {
+    Haptics.selectionAsync();
     router.push('/mode-selection');
   };
 
@@ -416,7 +422,7 @@ export default function GameScreen() {
       // Add a delay before showing game over screen
       const timer = setTimeout(() => {
         setShowGameOver(true);
-      }, 3000); // 3 seconds delay
+      }, 1000); // 1 second delay (Reduced from 3s)
       return () => clearTimeout(timer);
     } else {
       setShowGameOver(false);
@@ -618,7 +624,10 @@ export default function GameScreen() {
             {/* Market button in top right */}
             <Pressable
               style={styles.marketButton}
-              onPress={handleMarket}
+              onPress={() => {
+                Haptics.selectionAsync();
+                handleMarket();
+              }}
               onPressIn={(e) => e.stopPropagation()}
             >
               <Ionicons name="storefront" size={24} color={Theme.colors.primary} />
@@ -632,7 +641,10 @@ export default function GameScreen() {
             {/* Inventory button below market */}
             <Pressable
               style={styles.inventoryButton}
-              onPress={handleInventory}
+              onPress={() => {
+                Haptics.selectionAsync();
+                handleInventory();
+              }}
               onPressIn={(e) => e.stopPropagation()}
             >
               <Ionicons name="bag-handle" size={24} color={Theme.colors.primary} />

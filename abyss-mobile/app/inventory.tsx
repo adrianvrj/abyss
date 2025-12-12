@@ -104,9 +104,6 @@ export default function InventoryScreen() {
 
       await sellItem(parsedSessionId, itemToSell.item_id, 1, aegisAccount);
 
-      // Wait for the contract to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       // Update balance locally and in global context
       setBalance((prev: number) => prev + itemToSell.sell_price);
       adjustScore(itemToSell.sell_price); // Update global context so game screen knows

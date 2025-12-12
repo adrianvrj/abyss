@@ -193,9 +193,6 @@ export default function MarketScreen() {
       // Update cache with new purchased slot
       await updatePurchasedSlots(parsedSessionId, updatedPurchasedSlots);
 
-      // Wait for the contract to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       // Update balance locally and in global context
       setBalance((prev: number) => prev - item.price);
       adjustScore(-item.price);
@@ -274,9 +271,6 @@ export default function MarketScreen() {
 
       // Reset purchased items tracking since market is refreshed
       setPurchasedInCurrentMarket(new Set());
-
-      // Wait for the contract to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Force reload market data from blockchain
       await loadMarketData(true);

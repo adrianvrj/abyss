@@ -546,9 +546,6 @@ pub mod AbyssGame {
                 }
                 threshold
             } else {
-                // For levels beyond 10, use a pattern: base * level
-                let base_score = 3000;
-                base_score * level;
                 // Phase 5: Impossible (Levels 31+)
                 // Formula: previous × 1.42 + (level⁴ × 5)
                 let mut threshold: u32 = 3500000; // Level 30 final threshold
@@ -868,37 +865,14 @@ pub mod AbyssGame {
         }
 
         fn get_666_probability(self: @ContractState, level: u32) -> u32 {
-            // Probability progression (every 3 levels):
-            // Level 1-3: 0% (0)
-            // Level 4-6: 2.4% (24)
-            // Level 7-9: 4.8% (48)
-            // Level 10-12: 9.6% (96)
-            // Level 13+: 9.6% (96) - CAPPED
-
-            if level <= 3 {
-                // First 3 levels: no risk
+            // NO CAP - scales indefinitely for late-game difficulty
+            // L1-2: 0%, L3+: +1.5% (15) per level
+            // Returns probability * 10 (e.g., 15 = 1.5%, 150 = 15%)
+            if level <= 2 {
                 0
             } else {
-                let base_probability: u32 = 24; // 2.4%
-                let tier = (level - 4)
-                    / 3; // 0-based tier starting from level 4, increases every 3 levels
-
-                // Calculate 2^tier (doubling each tier)
-                let mut multiplier: u32 = 1;
-                let mut i: u32 = 0;
-                while i < tier {
-                    multiplier = multiplier * 2;
-                    i += 1;
-                }
-
-                let probability = base_probability * multiplier;
-
-                // Cap at 9.6% (96)
-                if probability > 96 {
-                    96
-                } else {
-                    probability
-                }
+                // +1.5% per level starting from level 3
+                (level - 2) * 15
             }
         }
 
@@ -1189,8 +1163,8 @@ pub mod AbyssGame {
                         item_id: 7,
                         name: 'Nerd Glasses',
                         description: '+15% seven probability',
-                        price: 45,
-                        sell_price: 33,
+                        price: 80,
+                        sell_price: 60,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 15,
                         target_symbol: 'seven',
@@ -1206,8 +1180,8 @@ pub mod AbyssGame {
                         item_id: 11,
                         name: 'Ghost Mask',
                         description: '+25% seven probability',
-                        price: 120,
-                        sell_price: 90,
+                        price: 180,
+                        sell_price: 135,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 25,
                         target_symbol: 'seven',
@@ -1430,8 +1404,8 @@ pub mod AbyssGame {
                         item_id: 5,
                         name: 'Bat Boomerang',
                         description: '+15% pattern multiplier',
-                        price: 40,
-                        sell_price: 30,
+                        price: 70,
+                        sell_price: 52,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 15,
                         target_symbol: '',
@@ -1447,8 +1421,8 @@ pub mod AbyssGame {
                         item_id: 6,
                         name: 'Holy Eye',
                         description: '+30% pattern multiplier',
-                        price: 90,
-                        sell_price: 67,
+                        price: 150,
+                        sell_price: 112,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 30,
                         target_symbol: '',
@@ -1464,8 +1438,8 @@ pub mod AbyssGame {
                         item_id: 15,
                         name: 'Amulet',
                         description: '+50% pattern multiplier',
-                        price: 150,
-                        sell_price: 112,
+                        price: 280,
+                        sell_price: 210,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 50,
                         target_symbol: '',
@@ -1481,8 +1455,8 @@ pub mod AbyssGame {
                         item_id: 21,
                         name: 'Bloody Wrench',
                         description: '+80% pattern multiplier',
-                        price: 280,
-                        sell_price: 210,
+                        price: 450,
+                        sell_price: 337,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 80,
                         target_symbol: '',
@@ -1502,8 +1476,8 @@ pub mod AbyssGame {
                         item_id: 9,
                         name: 'Devil Onion',
                         description: '+1 extra spin',
-                        price: 25,
-                        sell_price: 18,
+                        price: 150,
+                        sell_price: 112,
                         effect_type: 4, // SpinBonus
                         effect_value: 1,
                         target_symbol: '',
@@ -1519,8 +1493,8 @@ pub mod AbyssGame {
                         item_id: 10,
                         name: 'Red Button',
                         description: '+3 extra spins',
-                        price: 65,
-                        sell_price: 48,
+                        price: 420,
+                        sell_price: 315,
                         effect_type: 4, // SpinBonus
                         effect_value: 3,
                         target_symbol: '',
@@ -1536,8 +1510,8 @@ pub mod AbyssGame {
                         item_id: 18,
                         name: 'Pyramid',
                         description: '+5 extra spins',
-                        price: 110,
-                        sell_price: 82,
+                        price: 700,
+                        sell_price: 525,
                         effect_type: 4, // SpinBonus
                         effect_value: 5,
                         target_symbol: '',
@@ -1553,8 +1527,8 @@ pub mod AbyssGame {
                         item_id: 23,
                         name: 'Devil Seal',
                         description: '+10 extra spins',
-                        price: 200,
-                        sell_price: 150,
+                        price: 1400,
+                        sell_price: 1050,
                         effect_type: 4, // SpinBonus
                         effect_value: 10,
                         target_symbol: '',
@@ -1574,8 +1548,8 @@ pub mod AbyssGame {
                         item_id: 22,
                         name: 'Car Keys',
                         description: '+100% pattern multiplier',
-                        price: 400,
-                        sell_price: 300,
+                        price: 650,
+                        sell_price: 487,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 100,
                         target_symbol: '',
@@ -1591,8 +1565,8 @@ pub mod AbyssGame {
                         item_id: 24,
                         name: 'Holy Grail',
                         description: '+150% pattern multiplier',
-                        price: 800,
-                        sell_price: 600,
+                        price: 1400,
+                        sell_price: 1050,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 150,
                         target_symbol: '',
@@ -1769,8 +1743,8 @@ pub mod AbyssGame {
                         item_id: 34,
                         name: 'Devil Train',
                         description: '+35% seven probability',
-                        price: 280,
-                        sell_price: 210,
+                        price: 400,
+                        sell_price: 300,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 35,
                         target_symbol: 'seven',
@@ -1874,66 +1848,6 @@ pub mod AbyssGame {
                     },
                 );
 
-            // // Item 40: Coin Probability Boost (Very High tier)
-            // self.items.entry(40).write(Item {
-            //     item_id: 40,
-            //     name: 'Fortune Cookie',
-            //     description: '+35% coin probability',
-            //     price: 290,
-            //     sell_price: 217,
-            //     effect_type: 2, // SymbolProbabilityBoost
-            //     effect_value: 35,
-            //     target_symbol: 'coin',
-            // });
-
-            // //
-            // ═══════════════════════════════════════════════════════════════════
-            // // ADDITIONAL PATTERN ITEMS
-            // //
-            // ═══════════════════════════════════════════════════════════════════
-
-            // // Item 41: Pattern Boost (Ultra High tier)
-            // self.items.entry(41).write(Item {
-            //     item_id: 41,
-            //     name: 'Demon Horn',
-            //     description: '+200% pattern multiplier',
-            //     price: 1200,
-            //     sell_price: 900,
-            //     effect_type: 1, // PatternMultiplierBoost
-            //     effect_value: 200,
-            //     target_symbol: '',
-            // });
-
-            // //
-            // ═══════════════════════════════════════════════════════════════════
-            // // ADDITIONAL SPIN ITEMS
-            // //
-            // ═══════════════════════════════════════════════════════════════════
-
-            // // Item 42: Spin Bundle (Very Low tier)
-            // self.items.entry(42).write(Item {
-            //     item_id: 42,
-            //     name: 'Broken Watch',
-            //     description: '+2 extra spins',
-            //     price: 45,
-            //     sell_price: 33,
-            //     effect_type: 4, // SpinBonus
-            //     effect_value: 2,
-            //     target_symbol: '',
-            // });
-
-            // // Item 43: Mega Spin Bundle (Ultra High tier)
-            // self.items.entry(43).write(Item {
-            //     item_id: 43,
-            //     name: 'Time Machine',
-            //     description: '+15 extra spins',
-            //     price: 350,
-            //     sell_price: 262,
-            //     effect_type: 4, // SpinBonus
-            //     effect_value: 15,
-            //     target_symbol: '',
-            // });
-
             // ═══════════════════════════════════════════════════════════════════
             // SPECIAL PROTECTION ITEM
             // ═══════════════════════════════════════════════════════════════════
@@ -1947,8 +1861,8 @@ pub mod AbyssGame {
                         item_id: 40,
                         name: 'La Biblia',
                         description: 'Protects from 666 once',
-                        price: 500,
-                        sell_price: 375,
+                        price: 1100,
+                        sell_price: 825,
                         effect_type: 6, // Special: 666 Protection (new type)
                         effect_value: 1, // Single use
                         target_symbol: 'six',

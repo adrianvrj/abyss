@@ -1,18 +1,14 @@
 /**
  * Calculate 666 probability based on level
- * Matches contract logic: starts at 0%, then doubles every 3 levels, capped at 9.6%
+ * NO CAP - scales indefinitely for late-game difficulty
+ * L1-2: 0%, L3: 1.5%, then +1.5% per level
  */
 export function calculate666Probability(level: number): number {
-    if (level <= 3) {
+    if (level <= 2) {
         return 0;
     }
-
-    const baseProbability = 2.4;
-    const tier = Math.floor((level - 4) / 3);
-    const multiplier = Math.pow(2, tier);
-
-    const probability = baseProbability * multiplier;
-    return Math.min(probability, 9.6);
+    // +1.5% per level starting from level 3
+    return (level - 2) * 1.5;
 }
 
 /**
