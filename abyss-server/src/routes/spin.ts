@@ -135,7 +135,7 @@ export async function spinHandler(req: Request, res: Response) {
             if (itemBonuses.has666Protection) {
                 // Saved by Biblia - generate normal grid
                 bibliaUsed = true;
-                const result = generateSymbols(modifiedConfig);
+                const result = generateSymbols(modifiedConfig, false); // Force safe grid
                 grid = result.grid as string[][];
                 patterns = detectPatterns(result.grid, modifiedConfig);
 
@@ -154,28 +154,33 @@ export async function spinHandler(req: Request, res: Response) {
                 // Game Over - 666 triggered
                 console.log(`[Session ${sessionId}] 666 Triggered - GAME OVER`);
                 gameOver = true;
-                grid = [['six', 'six', 'six', 'six', 'six'], ['six', 'six', 'six', 'six', 'six'], ['six', 'six', 'six', 'six', 'six']];
 
-                // End session on blockchain with current score
-                try {
-                    console.log(`[Session ${sessionId}] Ending session with score=${currentScore}, level=${currentLevel}`);
-                    const tx = await aegis.execute(
-                        ABYSS_CONTRACT_ADDRESS,
-                        'end_session_with_score',
-                        [sessionId, currentScore, currentLevel]
-                    );
-                    transactionHash = tx.transactionHash;
-                    console.log(`[Session ${sessionId}] Session ended: ${transactionHash}`);
-                } catch (endError: any) {
-                    console.error(`[Session ${sessionId}] Failed to end session:`, endError);
-                    // Don't throw - game still ended, just blockchain write failed
-                }
+                // Use generator to create the correct 666 visual pattern (middle 3 cells only)
+                const result = generateSymbols(modifiedConfig, true);
+                grid = result.grid as string[][];
+
+                // End session on blockchain asynchronously (FIRE AND FORGET to update UI immediately)
+                // Note: On serverless environments (Vercel) this might be killed, but on Railway (Container) it persists.
+                console.log(`[Session ${sessionId}] Ending session with score=${currentScore}, level=${currentLevel} (ASYNC)`);
+                aegis.execute(
+                    ABYSS_CONTRACT_ADDRESS,
+                    'end_session_with_score',
+                    [sessionId, currentScore, currentLevel]
+                ).then((tx: any) => {
+                    console.log(`[Session ${sessionId}] Session ended successfully: ${tx.transactionHash}`);
+                }).catch((endError: any) => {
+                    console.error(`[Session ${sessionId}] Failed to end session (Async):`, endError);
+                });
+
+                // Return immediately - don't wait for blockchain
+                transactionHash = 'pending'; // Signal specific state?
             }
         } else {
             // Normal Spin - apply all item effects
-            const result = generateSymbols(modifiedConfig);
+            const result = generateSymbols(modifiedConfig, false); // Force safe grid
             grid = result.grid as string[][];
             patterns = detectPatterns(result.grid, modifiedConfig);
+
 
             // Apply pattern multiplier boost
             patterns = patterns.map(p => ({

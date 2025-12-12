@@ -66,10 +66,13 @@ function generate666Grid(symbolConfigs: SymbolConfig[]): SymbolType[][] {
 /**
  * Generate symbols for a spin
  */
-export function generateSymbols(config: GameConfig = DEFAULT_GAME_CONFIG): GenerateSymbolsResult {
-    const is666 = check666Trigger(config.probability666);
-
-    if (is666) {
+/**
+ * Generate symbols for a spin
+ * @param config Game configuration
+ * @param force666 If true, forces the 666 pattern (Game Over)
+ */
+export function generateSymbols(config: GameConfig = DEFAULT_GAME_CONFIG, force666: boolean = false): GenerateSymbolsResult {
+    if (force666) {
         const grid = generate666Grid(config.symbols);
         return {
             grid,
@@ -77,6 +80,7 @@ export function generateSymbols(config: GameConfig = DEFAULT_GAME_CONFIG): Gener
         };
     }
 
+    // Normal generation - exclude 'six' symbol completely
     const nonSixSymbols = config.symbols.filter(s => s.type !== 'six');
     const grid: SymbolType[][] = [];
     for (let row = 0; row < 3; row++) {

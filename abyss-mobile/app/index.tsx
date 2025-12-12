@@ -11,7 +11,7 @@ import { CURRENT_TOS } from '../constants/TermsOfServiceContent';
 export default function SplashScreen() {
   const router = useRouter();
 
-  const {aegisAccount} = useAegis();
+  const { aegisAccount } = useAegis();
 
   const deployAccount = useCallback(async () => {
     try {
@@ -56,6 +56,10 @@ export default function SplashScreen() {
     const init = async () => {
       // Initialize account
       await initializeAccount();
+
+      // Warm up the server (fire and forget)
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
+      fetch(`${API_URL}/health`).catch(err => console.log('Server warm-up ping failed (expected if offline/sleeping):', err.message));
 
       // Check ToS acceptance
       let hasAcceptedToS = false;

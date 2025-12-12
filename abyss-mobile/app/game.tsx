@@ -81,7 +81,8 @@ export default function GameScreen() {
 
   // Initialize global session context when game starts
   useEffect(() => {
-    if (parsedSessionId && !session) {
+    // initialize if no session OR if session ID mismatch (new game)
+    if (parsedSessionId && (!session || session.sessionId !== parsedSessionId)) {
       setSession({
         sessionId: parsedSessionId,
         score: initialScore,
@@ -90,7 +91,7 @@ export default function GameScreen() {
         bonusSpins: 0,
       });
     }
-  }, [parsedSessionId, initialScore, initialSpins]);
+  }, [parsedSessionId, initialScore, initialSpins, session?.sessionId]);
 
   // Restore saved game state from AsyncStorage if app was closed mid-session
   useEffect(() => {
