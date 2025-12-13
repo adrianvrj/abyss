@@ -28,34 +28,46 @@ export default function BibliaSaveAnimation({ onComplete }: BibliaSaveAnimationP
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: withSequence(
-        withTiming(0, { duration: 0 }), // Start invisible
-        withTiming(1, { duration: 500, easing: Easing.out(Easing.ease) }), // Fade in
-        withDelay(2000, withTiming(0, { duration: 500, easing: Easing.in(Easing.ease) })) // Hold then fade out
+        withTiming(1, { duration: 0 }),
+        withDelay(2500, withTiming(0, { duration: 500 })) // Fade out at end
       ),
       transform: [
         {
-          scale: withSequence(
-            withTiming(0.5, { duration: 0 }), // Start small
-            withTiming(1.2, { duration: 500, easing: Easing.out(Easing.back(1.5)) }), // Pop in
-            withTiming(1, { duration: 200, easing: Easing.inOut(Easing.ease) }), // Settle
-            withDelay(1800, withTiming(0.8, { duration: 500, easing: Easing.in(Easing.ease) })) // Shrink out
+          translateY: withSequence(
+            withTiming(SCREEN_HEIGHT, { duration: 0 }), // Start BELOW screen
+            withTiming(0, { duration: 800, easing: Easing.out(Easing.cubic) }), // Slide up to Center
+            withDelay(1200, withTiming(SCREEN_HEIGHT, { duration: 600, easing: Easing.in(Easing.cubic) })), // Slide back DOWN
           ),
         },
+        // No scale animation, just pure slide
       ],
+    };
+  });
+
+  // Screen Flash / Ambient Light
+  const flashStyle = useAnimatedStyle(() => {
+    return {
+      opacity: withSequence(
+        withTiming(0, { duration: 0 }),
+        withTiming(0.5, { duration: 800 }), // Ambient white light fills screen
+        withDelay(1200, withTiming(0, { duration: 600 }))
+      ),
     };
   });
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.imageContainer, animatedStyle]}>
-        <Image
-          source={require('../assets/images/item40.png')}
-          style={styles.bibliaImage}
-          resizeMode="contain"
-        />
-        {/* Glow effect */}
-        <View style={styles.glowOuter} />
-        <View style={styles.glowInner} />
+      {/* Full Screen Flash Background */}
+      <Animated.View style={[styles.flashOverlay, flashStyle]} />
+
+      <Animated.View style={[styles.contentContainer, animatedStyle]}>
+        <View style={styles.imageContainer}>
+          <Image
+            source={require('../assets/images/item40.png')}
+            style={styles.bibliaImage}
+            resizeMode="contain"
+          />
+        </View>
       </Animated.View>
     </View>
   );
@@ -64,7 +76,7 @@ export default function BibliaSaveAnimation({ onComplete }: BibliaSaveAnimationP
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 0,
+    top: 0, // Cover entire screen
     left: 0,
     right: 0,
     bottom: 0,
@@ -73,33 +85,24 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     pointerEvents: 'none',
   },
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF', // Pure white light
+    zIndex: 1,
+  },
+  contentContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
   imageContainer: {
-    width: SCREEN_WIDTH * 0.6,
-    height: SCREEN_WIDTH * 0.6,
+    width: SCREEN_WIDTH * 0.55, // Larger for better visibility
+    height: SCREEN_WIDTH * 0.55,
     justifyContent: 'center',
     alignItems: 'center',
   },
   bibliaImage: {
     width: '100%',
     height: '100%',
-    zIndex: 3,
-  },
-  glowOuter: {
-    position: 'absolute',
-    width: '120%',
-    height: '120%',
-    borderRadius: 9999,
-    backgroundColor: '#FFD700',
-    opacity: 0.3,
-    zIndex: 1,
-  },
-  glowInner: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: 9999,
-    backgroundColor: '#FFD700',
-    opacity: 0.5,
-    zIndex: 2,
   },
 });

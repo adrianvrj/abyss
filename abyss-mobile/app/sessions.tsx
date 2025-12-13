@@ -67,13 +67,6 @@ export default function SessionsScreen() {
         message: 'Session created successfully!',
         txHash: txHash
       });
-
-      // Wait 5 seconds before refreshing the sessions list
-      setTimeout(async () => {
-        await fetchSessions();
-        setTransactionStatus(null); // Clear success message
-      }, 1000);
-
     } catch (error) {
       console.error('Failed to create session:', error);
       setTransactionStatus({
@@ -157,74 +150,74 @@ export default function SessionsScreen() {
     >
       <SafeAreaView style={styles.container}>
         <Animated.View entering={FadeIn.duration(400)} style={styles.content}>
-        {/* Transaction Status */}
-        <TransactionStatusComponent 
-          transaction={transactionStatus} 
-          onDismiss={dismissTransactionStatus}
-        />
+          {/* Transaction Status */}
+          <TransactionStatusComponent
+            transaction={transactionStatus}
+            onDismiss={dismissTransactionStatus}
+          />
 
-        {/* Header with back button, chip balance, and new game */}
-        <View style={styles.headerContainer}>
-          <View style={styles.leftSection}>
-            <Pressable style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
-            </Pressable>
-            {mode === 'competitive' && (
-              <>
-                <View style={styles.balanceDisplay}>
-                  <Text style={styles.balanceLabel}>CHIPS:</Text>
-                  <Text style={styles.balanceValue}>{chipBalance}</Text>
-                </View>
-                <Pressable style={styles.buyChipsButton} onPress={handleBuyChips}>
-                  <Ionicons name="add-circle" size={16} color={Theme.colors.background} />
-                  <Text style={styles.buyChipsText}>Buy</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
-          <Pressable style={styles.newGameButton} onPress={handleNewGame}>
-            <Ionicons name="add-circle-outline" size={24} color={Theme.colors.primary} />
-          </Pressable>
-        </View>
-
-        {/* Cost info for competitive mode */}
-        {mode === 'competitive' && (
-          <View style={styles.costInfoContainer}>
-            <Ionicons name="information-circle-outline" size={16} color={Theme.colors.primary} />
-            <Text style={styles.costInfoText}>Session price: 5 CHIPS</Text>
-          </View>
-        )}
-
-        <ScrollView
-          style={styles.sessionsList}
-          contentContainerStyle={styles.sessionsContent}
-        >
-          {/* Existing Sessions */}
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading sessions...</Text>
-            </View>
-          ) : sessions.length > 0 ? (
-            sessions.map((sessionId) => (
-              <Pressable
-                key={sessionId}
-                style={styles.sessionItem}
-                onPress={() => handleSessionSelect(sessionId)}
-              >
-                <View style={styles.sessionItemContent}>
-                  <Ionicons name="save-outline" size={20} color={Theme.colors.primary} />
-                  <Text style={styles.sessionText}>
-                    &gt; session id: {sessionId}
-                  </Text>
-                </View>
+          {/* Header with back button, chip balance, and new game */}
+          <View style={styles.headerContainer}>
+            <View style={styles.leftSection}>
+              <Pressable style={styles.backButton} onPress={handleBack}>
+                <Ionicons name="arrow-back" size={24} color={Theme.colors.primary} />
               </Pressable>
-            ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No sessions found</Text>
+              {mode === 'competitive' && (
+                <>
+                  <View style={styles.balanceDisplay}>
+                    <Text style={styles.balanceLabel}>CHIPS:</Text>
+                    <Text style={styles.balanceValue}>{chipBalance}</Text>
+                  </View>
+                  <Pressable style={styles.buyChipsButton} onPress={handleBuyChips}>
+                    <Ionicons name="add-circle" size={16} color={Theme.colors.background} />
+                    <Text style={styles.buyChipsText}>Buy</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+            <Pressable style={styles.newGameButton} onPress={handleNewGame}>
+              <Ionicons name="add-circle-outline" size={24} color={Theme.colors.primary} />
+            </Pressable>
+          </View>
+
+          {/* Cost info for competitive mode */}
+          {mode === 'competitive' && (
+            <View style={styles.costInfoContainer}>
+              <Ionicons name="information-circle-outline" size={16} color={Theme.colors.primary} />
+              <Text style={styles.costInfoText}>Session price: 5 CHIPS</Text>
             </View>
           )}
-        </ScrollView>
+
+          <ScrollView
+            style={styles.sessionsList}
+            contentContainerStyle={styles.sessionsContent}
+          >
+            {/* Existing Sessions */}
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading sessions...</Text>
+              </View>
+            ) : sessions.length > 0 ? (
+              sessions.map((sessionId) => (
+                <Pressable
+                  key={sessionId}
+                  style={styles.sessionItem}
+                  onPress={() => handleSessionSelect(sessionId)}
+                >
+                  <View style={styles.sessionItemContent}>
+                    <Ionicons name="save-outline" size={20} color={Theme.colors.primary} />
+                    <Text style={styles.sessionText}>
+                      &gt; session id: {sessionId}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No sessions found</Text>
+              </View>
+            )}
+          </ScrollView>
         </Animated.View>
       </SafeAreaView>
     </ImageBackground>

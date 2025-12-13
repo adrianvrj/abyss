@@ -6,11 +6,11 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Asset } from 'expo-asset';
 import { Theme } from '../constants/Theme';
+import { useGameSession } from '../contexts/GameSessionContext';
 import {
   getSessionItems,
   getItemInfo,
   sellItem,
-  getSessionData,
   ContractItem,
   ItemEffectType,
 } from '../utils/abyssContract';
@@ -39,15 +39,23 @@ export default function InventoryScreen() {
   const { sessionId } = useLocalSearchParams();
   const router = useRouter();
   const parsedSessionId = parseInt((sessionId as string) || '0', 10);
+  const { session, adjustScore, adjustSpins, adjustBonusSpins } = useGameSession();
   const { aegisAccount } = useAegis();
 
   const [loading, setLoading] = useState(true);
   const [ownedItems, setOwnedItems] = useState<ContractItem[]>([]);
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(session?.score ?? 0); // Initialize with context score
   const [sellingItemId, setSellingItemId] = useState<number | null>(null);
   const [showSellModal, setShowSellModal] = useState(false);
   const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
+
+  // Sync local balance with context when context score changes
+  useEffect(() => {
+    if (session) {
+      setBalance(session.score);
+    }
+  }, [session?.score]);
 
   useEffect(() => {
     // Preload images on mount
@@ -59,9 +67,7 @@ export default function InventoryScreen() {
     try {
       setLoading(true);
 
-      // Fetch session data for balance
-      const sessionData = await getSessionData(parsedSessionId);
-      setBalance(Number(sessionData.score));
+      // Balance is set from URL params (client state)
 
       // Fetch owned items
       const playerItems = await getSessionItems(parsedSessionId);
@@ -98,11 +104,23 @@ export default function InventoryScreen() {
 
       await sellItem(parsedSessionId, itemToSell.item_id, 1, aegisAccount);
 
-      // Wait for the contract to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update balance locally and in global context
+      setBalance((prev: number) => prev + itemToSell.sell_price);
+      adjustScore(itemToSell.sell_price); // Update global context so game screen knows
 
-      // Reload inventory and balance from contract
-      await loadInventory();
+      // Remove spins if sold item was a bonus spin
+      // Also remove from bonusSpins tracking so it doesn't persist on level ups
+      if (itemToSell.effect_type === ItemEffectType.SpinBonus) {
+        adjustSpins(-itemToSell.effect_value);
+        adjustBonusSpins(-itemToSell.effect_value); // Remove from permanent tracking
+      }
+
+      // Reload inventory (items list only, balance is tracked locally)
+      const playerItems = await getSessionItems(parsedSessionId);
+      const items = await Promise.all(
+        playerItems.map(pi => getItemInfo(Number(pi.item_id)))
+      );
+      setOwnedItems(items);
     } catch (error) {
       console.error('Sell item error:', error);
       Alert.alert('Error', 'Failed to sell item. Please try again.');
@@ -179,9 +197,9 @@ export default function InventoryScreen() {
     router.back();
   };
 
-  // Create array with items + empty slots (total 6)
+  // Create array with items + empty slots (total 7)
   const inventorySlots = [...ownedItems];
-  while (inventorySlots.length < 6) {
+  while (inventorySlots.length < 7) {
     inventorySlots.push(null as any); // Add null for empty slots
   }
 
@@ -223,7 +241,7 @@ export default function InventoryScreen() {
               {/* Previous Arrow */}
               <Pressable
                 style={styles.arrowButton}
-                onPress={() => setCurrentItemIndex(prev => prev === 0 ? 5 : prev - 1)}
+                onPress={() => setCurrentItemIndex(prev => prev === 0 ? 6 : prev - 1)}
               >
                 <Ionicons name="chevron-back" size={arrowSize} color={Theme.colors.primary} />
               </Pressable>
@@ -271,7 +289,7 @@ export default function InventoryScreen() {
 
                       {/* Position Indicator */}
                       <Text style={styles.positionIndicator}>
-                        {currentItemIndex + 1}/6
+                        {currentItemIndex + 1}/7
                       </Text>
                     </>
                   ) : (
@@ -281,7 +299,7 @@ export default function InventoryScreen() {
 
                       {/* Position Indicator */}
                       <Text style={styles.positionIndicator}>
-                        {currentItemIndex + 1}/6
+                        {currentItemIndex + 1}/7
                       </Text>
                     </>
                   )}
@@ -291,7 +309,7 @@ export default function InventoryScreen() {
               {/* Next Arrow */}
               <Pressable
                 style={styles.arrowButton}
-                onPress={() => setCurrentItemIndex(prev => prev === 5 ? 0 : prev + 1)}
+                onPress={() => setCurrentItemIndex(prev => prev === 6 ? 0 : prev + 1)}
               >
                 <Ionicons name="chevron-forward" size={arrowSize} color={Theme.colors.primary} />
               </Pressable>

@@ -1,0 +1,28 @@
+import express from 'express';
+import cors from 'cors';
+import * as dotenv from 'dotenv';
+import { spinHandler } from './routes/spin';
+import { endSessionHandler } from './routes/end-session';
+import { syncScoreHandler } from './routes/sync-score';
+import { initializeAdminAccount } from './utils/aegis';
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.post('/api/spin', spinHandler);
+app.post('/api/end-session', endSessionHandler);
+app.post('/api/sync-score', syncScoreHandler);
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
+
+app.listen(port, () => {
+    console.log(`Abyss Server running at http://localhost:${port}`);
+});

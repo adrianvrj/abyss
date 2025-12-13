@@ -9,10 +9,13 @@ import { DEFAULT_GAME_CONFIG } from '../constants/GameConfig';
 import SlotGrid, { symbolSources } from '../components/SlotGrid';
 import { PatternHitAnimations } from '../components/PatternHitDisplay';
 import BibliaSaveAnimation from '../components/BibliaSaveAnimation';
+import LevelUpAnimation from '../components/LevelUpAnimation';
+import JackpotAnimation from '../components/JackpotAnimation';
 import { useGameLogic } from '../hooks/useGameLogic';
+import { useGameFeedback } from '../hooks/useGameFeedback';
 import { wp, hp } from '../utils/dimensions';
 import { getSlotGridPosition, getSymbolSize } from '../utils/slotMachinePositioning';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutUp, useAnimatedStyle, useSharedValue, withSpring, withSequence, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { getSessionData, getSessionItems, getItemInfo, ContractItem } from '../utils/abyssContract';
 import { Pattern } from '../utils/patternDetector';
@@ -21,11 +24,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAegis } from '@cavos/aegis';
 import { calculate666Probability } from '../utils/probability666';
 import { getLevelThreshold } from '../utils/levelThresholds';
+import { useGameSession } from '../contexts/GameSessionContext';
+import { loadGameState, setLastActiveSessionId, clearLastActiveSessionId } from '../utils/gameStorage';
+import * as Haptics from 'expo-haptics';
 
 export default function GameScreen() {
   const { sessionId, score } = useLocalSearchParams<{ sessionId: string; score: string }>();
   const router = useRouter();
   const { aegisAccount } = useAegis();
+  const { session, setSession, updateScore, updateSpins, updateLevel, adjustScore, resetSpinsForLevelUp } = useGameSession();
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [sessionDataLoaded, setSessionDataLoaded] = useState(false);
   const [sessionData, setSessionData] = useState<any>(null);
@@ -58,18 +65,110 @@ export default function GameScreen() {
     },
     scoreMultiplier,
     ownedItems,
-    aegisAccount
+    aegisAccount,
+    // Pass context callbacks so useGameLogic can update context after spins
+    { adjustScore, updateLevel, updateSpins, resetSpinsForLevelUp },
+    session?.bonusSpins || 0 // Current bonus spins for persistence
   );
   const [showPatternAnimations, setShowPatternAnimations] = useState(false);
   const [hitPatterns, setHitPatterns] = useState<Pattern[]>([]);
   const [showGameOver, setShowGameOver] = useState(false);
   const [currentPatternIndex, setCurrentPatternIndex] = useState(-1);
   const [showFlash, setShowFlash] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [newLevel, setNewLevel] = useState(1);
+  const [showJackpot, setShowJackpot] = useState(false);
+  const prevLevelRef = useRef(1);
   const winSound = useRef<Audio.Sound | null>(null);
+
+  // Game feedback sounds
+  const { playGameOverSound, stopGameOverSound, playJackpotSound } = useGameFeedback();
 
   // Get responsive symbol size and positioning
   const symbolSize = getSymbolSize();
   const gridPosition = getSlotGridPosition();
+
+  // Track if we've already initialized this session
+  const initializedSessionRef = useRef<number | null>(null);
+
+  // Initialize global session context when game starts
+  useEffect(() => {
+    // Only initialize once per session ID
+    if (parsedSessionId && initializedSessionRef.current !== parsedSessionId) {
+      initializedSessionRef.current = parsedSessionId;
+      setSession({
+        sessionId: parsedSessionId,
+        score: initialScore,
+        level: 1,
+        spinsLeft: initialSpins,
+        bonusSpins: 0,
+      });
+    }
+  }, [parsedSessionId, initialScore, initialSpins, setSession]);
+
+  // Restore saved game state from AsyncStorage if app was closed mid-session
+  useEffect(() => {
+    async function restoreSavedState() {
+      if (!parsedSessionId) {
+        setIsRestored(true);
+        return;
+      }
+
+      const saved = await loadGameState(parsedSessionId);
+
+      if (saved) {
+        if (!saved.isComplete) {
+          // It's an active saved session
+          await setLastActiveSessionId(parsedSessionId);
+
+          if (saved.spinsLeft > 0) {
+            // CRITICAL: Update context with restored values so useFocusEffect doesn't overwrite local state
+            // Initialize session with saved data if it's new or update if existing
+            setSession({
+              sessionId: parsedSessionId,
+              score: saved.score,
+              level: saved.level,
+              spinsLeft: saved.spinsLeft,
+              bonusSpins: saved.bonusSpins || 0, // Restore bonus spins
+            });
+
+            actions.updateState(saved.score, saved.spinsLeft, saved.level);
+          }
+        } else {
+          // Session is complete, so it shouldn't be "active"
+          await clearLastActiveSessionId();
+        }
+      } else {
+        // No save found, assumably a new session just started
+        await setLastActiveSessionId(parsedSessionId);
+      }
+
+      setIsRestored(true);
+    }
+    restoreSavedState();
+  }, [parsedSessionId]);
+
+  // When returning from market/inventory, sync local state with context (source of truth)
+  // Context is updated by market/inventory, so we pull those changes here
+  useFocusEffect(
+    React.useCallback(() => {
+      if (session && session.sessionId === parsedSessionId) {
+        // Pull latest score/spins/level from context
+        if (
+          session.score !== state.score ||
+          session.spinsLeft !== state.spinsLeft ||
+          session.level !== state.level
+        ) {
+          console.log(`[GameSync] Pulling from context: score=${session.score}, spins=${session.spinsLeft}, level=${session.level}`);
+          actions.updateState(session.score, session.spinsLeft, session.level);
+        }
+      }
+    }, [session?.sessionId, session?.score, session?.spinsLeft, session?.level, parsedSessionId])
+  );
+
+  // Load win sound
 
   // Load win sound
   useEffect(() => {
@@ -114,31 +213,80 @@ export default function GameScreen() {
   }, []);
 
   const handleSpin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await actions.spin();
   };
 
   const handleGameOverNavigation = () => {
+    Haptics.selectionAsync();
     router.push('/mode-selection');
   };
 
   const handleExitGame = () => {
+    Haptics.selectionAsync();
     router.push('/mode-selection');
   };
 
   const handleSymbolsInfo = () => {
+    Haptics.selectionAsync();
     router.push(`/symbols-info?sessionId=${parsedSessionId}`);
   };
 
   const handleExit = () => {
+    Haptics.selectionAsync();
     router.push('/mode-selection');
   };
 
-  const handleMarket = () => {
-    router.push(`/market?sessionId=${parsedSessionId}`);
+  const handleMarket = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
+      const response = await fetch(`${API_URL}/api/sync-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: parsedSessionId,
+          score: state.score,
+          level: state.level,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to sync score');
+      }
+      router.push(`/market?sessionId=${parsedSessionId}`);
+    } catch (error) {
+      console.error('Sync error:', error);
+      router.push(`/market?sessionId=${parsedSessionId}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const handleInventory = () => {
-    router.push(`/inventory?sessionId=${parsedSessionId}`);
+  const handleInventory = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
+      const response = await fetch(`${API_URL}/api/sync-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: parsedSessionId,
+          score: state.score,
+          level: state.level,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to sync score');
+      }
+      router.push(`/inventory?sessionId=${parsedSessionId}`);
+    } catch (error) {
+      console.error('Sync error:', error);
+      router.push(`/inventory?sessionId=${parsedSessionId}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handlePatternAnimationsComplete = () => {
@@ -273,22 +421,65 @@ export default function GameScreen() {
       const contractIsCompetitive = sessionData.is_competitive;
 
       // Update game state with contract data
-      actions.updateState(contractScore, contractSpins, contractLevel);
+      // CRITICAL FIX: Do NOT overwrite local state with contract data here.
+      // Contract data (especially spins) is often stale because we don't sync every spin to chain.
+      // Local state (AsyncStorage/Context) is the source of truth for active gameplay.
+
+      // Only update if we absolutely have no state? No, trust local state initialization.
+      // actions.updateState(contractScore, contractSpins, contractLevel);
     }
   }, [sessionDataLoaded, sessionData]);
 
   // Handle game over state with delay
   useEffect(() => {
-    if (state.gameOver && !state.isSpinning) {
+    // Wait for pattern animations to complete before showing game over
+    if (state.gameOver && !state.isSpinning && !showPatternAnimations) {
       // Add a delay before showing game over screen
       const timer = setTimeout(() => {
         setShowGameOver(true);
-      }, 3000); // 3 seconds delay
+      }, 1000); // 1 second delay after patterns complete
       return () => clearTimeout(timer);
     } else {
       setShowGameOver(false);
     }
-  }, [state.gameOver, state.isSpinning]);
+  }, [state.gameOver, state.isSpinning, showPatternAnimations]);
+
+  // Play game over sound when game over screen shows
+  useEffect(() => {
+    if (showGameOver) {
+      playGameOverSound();
+    }
+
+    // Stop sound when component unmounts or showGameOver becomes false
+    return () => {
+      stopGameOverSound();
+    };
+  }, [showGameOver, playGameOverSound, stopGameOverSound]);
+
+  // Detect level up
+  useEffect(() => {
+    if (state.level > prevLevelRef.current && prevLevelRef.current > 0) {
+      // Level increased!
+      setNewLevel(state.level);
+      setShowLevelUp(true);
+
+      // Hide after 1.5 seconds
+      const timer = setTimeout(() => {
+        setShowLevelUp(false);
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+    prevLevelRef.current = state.level;
+  }, [state.level]);
+
+  // Detect when jackpot pattern is being shown
+  useEffect(() => {
+    if (currentPatternIndex >= 0 && hitPatterns[currentPatternIndex]?.type === 'jackpot') {
+      setShowJackpot(true);
+      playJackpotSound();
+    }
+  }, [currentPatternIndex, hitPatterns, playJackpotSound]);
 
   if (!assetsLoaded || !sessionDataLoaded || !itemsLoaded) {
     return (
@@ -303,7 +494,7 @@ export default function GameScreen() {
             <Text style={styles.loadingText}>
               {!assetsLoaded ? 'Loading...' :
                 !sessionDataLoaded ? (parsedSessionId > 0 ? 'Loading session data...' : 'Preparing new game...') :
-                'Loading inventory...'}
+                  'Loading inventory...'}
             </Text>
           </View>
         </SafeAreaView>
@@ -392,7 +583,11 @@ export default function GameScreen() {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.spinsText}>Spins: {state.spinsLeft}</Text>
+            </View>
+
+            {/* Spins indicator - centered above grid */}
+            <View style={styles.spinsContainer}>
+              <Text style={styles.spinsText}>{state.spinsLeft}</Text>
             </View>
 
             {/* Level indicator */}
@@ -404,7 +599,7 @@ export default function GameScreen() {
             <View style={styles.probabilityContainer}>
               <Ionicons name="warning" size={16} color="#ff4444" />
               <Text style={styles.probabilityText}>
-                666 Risk: {calculate666Probability(state.level).toFixed(1)}%
+                666: {calculate666Probability(state.level).toFixed(1)}%
               </Text>
             </View>
 
@@ -457,6 +652,21 @@ export default function GameScreen() {
               />
             )}
 
+            {/* Level Up Animation */}
+            {showLevelUp && (
+              <LevelUpAnimation
+                level={newLevel}
+                onComplete={() => setShowLevelUp(false)}
+              />
+            )}
+
+            {/* Jackpot Animation */}
+            {showJackpot && (
+              <JackpotAnimation
+                onComplete={() => setShowJackpot(false)}
+              />
+            )}
+
             {/* Game ending indicator */}
             {state.gameOver && !state.isSpinning && !showGameOver && (
               <View style={styles.gameEndingIndicator}>
@@ -485,7 +695,10 @@ export default function GameScreen() {
             {/* Market button in top right */}
             <Pressable
               style={styles.marketButton}
-              onPress={handleMarket}
+              onPress={() => {
+                Haptics.selectionAsync();
+                handleMarket();
+              }}
               onPressIn={(e) => e.stopPropagation()}
             >
               <Ionicons name="storefront" size={24} color={Theme.colors.primary} />
@@ -499,7 +712,10 @@ export default function GameScreen() {
             {/* Inventory button below market */}
             <Pressable
               style={styles.inventoryButton}
-              onPress={handleInventory}
+              onPress={() => {
+                Haptics.selectionAsync();
+                handleInventory();
+              }}
               onPressIn={(e) => e.stopPropagation()}
             >
               <Ionicons name="bag-handle" size={24} color={Theme.colors.primary} />
@@ -549,25 +765,27 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    top: Theme.spacing.md,
+    top: Theme.spacing.sm,
     left: Theme.spacing.lg,
-    right: Theme.spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     zIndex: 10,
-    paddingTop: Theme.spacing.md,
   },
   scoreContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginLeft: Theme.spacing.sm,
-    marginVertical: Theme.spacing.xs,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   scoreText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 18,
+    fontSize: 22,
     color: Theme.colors.primary,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   symbolsInfoButton: {
     padding: Theme.spacing.sm,
@@ -598,25 +816,33 @@ const styles = StyleSheet.create({
   },
   marketButton: {
     position: 'absolute',
-    top: 80,
-    right: Theme.spacing.xl,
-    padding: Theme.spacing.sm,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    top: 75,
+    right: Theme.spacing.lg,
+    padding: Theme.spacing.md,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
     zIndex: 10,
+    minWidth: 50,
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inventoryButton: {
     position: 'absolute',
-    top: 150, // Below market button
-    right: Theme.spacing.xl,
-    padding: Theme.spacing.sm,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    top: 145,
+    right: Theme.spacing.lg,
+    padding: Theme.spacing.md,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
     zIndex: 10,
+    minWidth: 50,
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemBadge: {
     position: 'absolute',
@@ -652,53 +878,70 @@ const styles = StyleSheet.create({
   },
   levelContainer: {
     position: 'absolute',
-    top: 55,
+    top: 58,
     left: Theme.spacing.lg,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: 12,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   levelText: {
     color: Theme.colors.primary,
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: Theme.fonts.body,
     fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   probabilityContainer: {
     position: 'absolute',
-    top: 85,
+    top: 94,
     left: Theme.spacing.lg,
-    backgroundColor: 'rgba(255, 68, 68, 0.15)',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 68, 68, 0.3)',
+    borderColor: 'rgba(255, 68, 68, 0.5)',
   },
   probabilityText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 11,
-    color: '#ff4444',
+    fontSize: 13,
+    color: '#FF6B6B',
     fontWeight: 'bold',
+    textShadowColor: 'rgba(255, 68, 68, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   nextLevelContainer: {
     position: 'absolute',
-    top: 115,
+    top: 129,
     left: Theme.spacing.lg,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   nextLevelText: {
-    color: '#FF0000', // Red color
-    fontSize: 12,
+    color: '#FFD700',
+    fontSize: 13,
     fontFamily: Theme.fonts.body,
-    fontWeight: 'normal',
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  spinsContainer: {
+    position: 'absolute',
+    top: '12%',
+    left: 0,
+    right: '8%',
+    alignItems: 'center',
+    zIndex: 15,
   },
   transactionIndicator: {
     position: 'absolute',
@@ -718,8 +961,17 @@ const styles = StyleSheet.create({
   },
   spinsText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 18,
+    fontSize: 20,
     color: Theme.colors.primary,
+    fontWeight: 'bold',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    overflow: 'hidden',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   gridWrapper: {
     position: 'absolute',
@@ -732,16 +984,21 @@ const styles = StyleSheet.create({
   },
   hintWrapper: {
     position: 'absolute',
-    bottom: Theme.spacing.xl,
+    bottom: 40,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   hintText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 18,
+    fontSize: 16,
     color: Theme.colors.white,
-    opacity: 0.7,
+    opacity: 0.85,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   loadingContainer: {
     flex: 1,

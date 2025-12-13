@@ -50,21 +50,11 @@ export async function newSession(account: AegisSDK, isCompetitive: boolean) {
     try {
         let calls = [
             {
-                contractAddress: CHIP_CONTRACT_ADDRESS,
-                entrypoint: "approve",
-                calldata: [
-                    ABYSS_CONTRACT_ADDRESS,
-                    5 * 10 ** 18,
-                    0n
-                ]
-
-            },
-            {
                 contractAddress: ABYSS_CONTRACT_ADDRESS,
                 entrypoint: 'create_session',
                 calldata: [
                     account.address,
-                    isCompetitive ? 1 : 0,
+                    1, // Always competitive (true)
                 ]
             },
         ]
@@ -78,7 +68,11 @@ export async function newSession(account: AegisSDK, isCompetitive: boolean) {
 }
 
 export async function getSessionData(sessionId: number) {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // Admin PK removed. View functions should not need admin rights.
+    // If they do (e.g. for access control), they should be moved to server or made public.
+    // Assuming getSessionData is public view.
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true); 
+
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_session_data',
@@ -91,7 +85,7 @@ export async function getSessionData(sessionId: number) {
 }
 
 export async function getPlayerSessions(playerAddress: string, isCompetitive: boolean) {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     let data: any = [];
     if (isCompetitive) {
         const data = await aegis.call(
@@ -117,45 +111,21 @@ export async function getPlayerSessions(playerAddress: string, isCompetitive: bo
     }
 }
 
-export async function spin(sessionId: number, score: number) {
-    try {
-        await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+// Direct spin and endSession are now handled by the server
+// to ensure game integrity. Do not re-enable client-side signing for these.
 
-        const tx = await aegis.execute(
-            ABYSS_CONTRACT_ADDRESS,
-            'update_session_score',
-            [
-                sessionId,
-                score,
-            ],
-        );
-        await aegis.waitForTransaction(tx.transactionHash);
-        return tx.transactionHash;
-    } catch (error) {
-        console.error('Contract spin error:', error);
-        throw error;
-    }
+export async function spin(sessionId: number, score: number) {
+    console.warn("Client-side spin is deprecated. Use server API.");
+    return "";
 }
 
 export async function endSession(sessionId: number) {
-    try {
-        await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
-        const tx = await aegis.execute(
-            ABYSS_CONTRACT_ADDRESS,
-            'end_session',
-            [sessionId],
-        );
-        await aegis.waitForTransaction(tx.transactionHash);
-        return tx.transactionHash;
-    }
-    catch (error) {
-        console.error('Failed to end session:', error);
-        throw error;
-    }
+    console.warn("Client-side endSession is deprecated. Use server API.");
+    return "";
 }
 
 export async function getLeaderboard() {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_leaderboard',
@@ -166,7 +136,7 @@ export async function getLeaderboard() {
 }
 
 export async function getPrizePool() {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_prize_pool',
@@ -185,7 +155,7 @@ export async function getPrizePool() {
  * Returns 6 item IDs available in the market and refresh count
  */
 export async function getSessionMarket(sessionId: number): Promise<SessionMarket> {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_session_market',
@@ -200,7 +170,7 @@ export async function getSessionMarket(sessionId: number): Promise<SessionMarket
  * Returns array of PlayerItem with item_id and quantity
  */
 export async function getSessionItems(sessionId: number): Promise<PlayerItem[]> {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_session_items',
@@ -215,7 +185,7 @@ export async function getSessionItems(sessionId: number): Promise<PlayerItem[]> 
  * Returns item properties including name, description, price, effects
  */
 export async function getItemInfo(itemId: number): Promise<ContractItem> {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     const data: any = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_item_info',
@@ -344,7 +314,7 @@ export async function refreshMarket(sessionId: number, account: AegisSDK): Promi
  * @returns Number of unique items owned (0-6)
  */
 export async function getSessionInventoryCount(sessionId: number): Promise<number> {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_session_inventory_count',
@@ -355,13 +325,36 @@ export async function getSessionInventoryCount(sessionId: number): Promise<numbe
 }
 
 /**
+ * Check if a market slot has been purchased in the current market
+ * @param sessionId - The session ID
+ * @param marketSlot - The market slot (1-6)
+ * @returns true if the slot has been purchased, false otherwise
+ */
+export async function isMarketSlotPurchased(sessionId: number, marketSlot: number): Promise<boolean> {
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    const data = await aegis.call(
+        ABYSS_CONTRACT_ADDRESS,
+        'is_market_slot_purchased',
+        [sessionId, marketSlot],
+        ABYSS_CONTRACT_ABI
+    );
+
+    // Cairo/Starknet returns values as arrays
+    // Extract the first element and check if it's not "0x0"
+    const value = Array.isArray(data) ? data[0] : data;
+    const isTrue = value !== '0x0' && value !== 0 && value !== '0';
+
+    return isTrue;
+}
+
+/**
  * Get 666 probability based on level
  * Returns probability * 10 (e.g., 6 = 0.6%, 12 = 1.2%)
  * @param level - Current level
  * @returns Probability value (multiply by 0.1 to get percentage)
  */
 export async function get666Probability(level: number): Promise<number> {
-    await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
+    // await aegis.connectAccount(process.env.EXPO_PUBLIC_ADMIN_PK || '', true);
     const data = await aegis.call(
         ABYSS_CONTRACT_ADDRESS,
         'get_666_probability',

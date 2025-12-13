@@ -7,12 +7,18 @@ export interface GameFeedbackActions {
   playPatternHit: (patternType: string) => Promise<void>;
   playLevelUp: () => Promise<void>;
   playSpin: () => Promise<void>;
-  playSpinAnimation: () => Promise<void>;
+  playSpinAnimation: () => { stopSpinSound: () => void };
   playGameOver: () => Promise<void>;
+  playGameOverSound: () => Promise<void>;
+  stopGameOverSound: () => Promise<void>;
+  playJackpotSound: () => Promise<void>;
+  stopJackpotSound: () => Promise<void>;
 }
 
 export function useGameFeedback(): GameFeedbackActions {
   const spinSound = useRef<Audio.Sound | null>(null);
+  const gameOverSound = useRef<Audio.Sound | null>(null);
+  const jackpotSound = useRef<Audio.Sound | null>(null);
 
   // Initialize audio on mount
   useEffect(() => {
@@ -27,10 +33,22 @@ export function useGameFeedback(): GameFeedbackActions {
         });
 
         // Load spin sound
-        const { sound } = await Audio.Sound.createAsync(
+        const { sound: spin } = await Audio.Sound.createAsync(
           require('../assets/sounds/spin.mp3')
         );
-        spinSound.current = sound;
+        spinSound.current = spin;
+
+        // Load game over sound
+        const { sound: gameOver } = await Audio.Sound.createAsync(
+          require('../assets/sounds/game-over.mp3')
+        );
+        gameOverSound.current = gameOver;
+
+        // Load jackpot sound
+        const { sound: jackpot } = await Audio.Sound.createAsync(
+          require('../assets/sounds/jackpot.mp3')
+        );
+        jackpotSound.current = jackpot;
       } catch (error) {
         console.error('Failed to initialize audio:', error);
       }
@@ -42,6 +60,12 @@ export function useGameFeedback(): GameFeedbackActions {
     return () => {
       if (spinSound.current) {
         spinSound.current.unloadAsync();
+      }
+      if (gameOverSound.current) {
+        gameOverSound.current.unloadAsync();
+      }
+      if (jackpotSound.current) {
+        jackpotSound.current.unloadAsync();
       }
     };
   }, []);
@@ -155,65 +179,119 @@ export function useGameFeedback(): GameFeedbackActions {
   }, []);
 
   // Play spin animation feedback (rhythmic during animation)
-  const playSpinAnimation = useCallback(async () => {
-    const hapticsEnabled = await getHapticsEnabled();
+  // Returns a function to stop the sound when animation ends
+  const playSpinAnimation = useCallback(() => {
+    let intervalHandle: ReturnType<typeof setInterval> | null = null;
+    let isStopped = false;
 
-    try {
-      // Play spin sound
-      if (spinSound.current) {
-        try {
-          await spinSound.current.setPositionAsync(0);
-          await spinSound.current.playAsync();
+    const startAsync = async () => {
+      const hapticsEnabled = await getHapticsEnabled();
 
-          // Stop the sound after 6 seconds (animation duration)
-          setTimeout(async () => {
-            try {
-              await spinSound.current?.stopAsync();
-            } catch (error) {
-              console.error('Failed to stop spin sound:', error);
+      try {
+        // Play spin sound
+        if (spinSound.current) {
+          try {
+            await spinSound.current.setPositionAsync(0);
+            await spinSound.current.setIsLoopingAsync(true); // Loop until stopped
+            await spinSound.current.playAsync();
+          } catch (error) {
+            console.error('Failed to play spin sound:', error);
+          }
+        }
+
+        // Play haptic feedback if enabled
+        if (!hapticsEnabled) return;
+
+        // Start with stronger initial feedback
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // Continue rhythmic haptic feedback during animation
+        intervalHandle = setInterval(async () => {
+          if (isStopped) {
+            if (intervalHandle) clearInterval(intervalHandle);
+            return;
+          }
+          try {
+            const stillEnabled = await getHapticsEnabled();
+            if (stillEnabled) {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-          }, 6000);
-        } catch (error) {
-          console.error('Failed to play spin sound:', error);
+          } catch (error) {
+            console.error('Failed to play continuous haptic feedback:', error);
+          }
+        }, 750);
+
+      } catch (error) {
+        console.error('Failed to play spin animation feedback:', error);
+      }
+    };
+
+    // Start the sound/haptics async
+    startAsync();
+
+    // Return stop function
+    return {
+      stopSpinSound: async () => {
+        isStopped = true;
+        if (intervalHandle) {
+          clearInterval(intervalHandle);
+        }
+        if (spinSound.current) {
+          try {
+            await spinSound.current.stopAsync();
+            await spinSound.current.setIsLoopingAsync(false);
+          } catch (error) {
+            console.error('Failed to stop spin sound:', error);
+          }
         }
       }
+    };
+  }, []);
 
-      // Play haptic feedback if enabled
-      if (!hapticsEnabled) return;
+  // Play game over sound (plays once)
+  const playGameOverSound = useCallback(async () => {
+    if (gameOverSound.current) {
+      try {
+        await gameOverSound.current.setPositionAsync(0);
+        await gameOverSound.current.playAsync();
+      } catch (error) {
+        console.error('Failed to play game over sound:', error);
+      }
+    }
+  }, []);
 
-      // Start with stronger initial feedback
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  // Stop game over sound
+  const stopGameOverSound = useCallback(async () => {
+    if (gameOverSound.current) {
+      try {
+        await gameOverSound.current.stopAsync();
+        await gameOverSound.current.setIsLoopingAsync(false);
+      } catch (error) {
+        console.error('Failed to stop game over sound:', error);
+      }
+    }
+  }, []);
 
-      let pulseCount = 0;
-      const maxPulses = 8; // Approx 6 seconds with timing below
+  // Play jackpot sound (plays once or until stopped)
+  const playJackpotSound = useCallback(async () => {
+    if (jackpotSound.current) {
+      try {
+        await jackpotSound.current.setPositionAsync(0);
+        await jackpotSound.current.playAsync();
+      } catch (error) {
+        console.error('Failed to play jackpot sound:', error);
+      }
+    }
+  }, []);
 
-      // Continue rhythmic haptic feedback during animation
-      const interval = setInterval(async () => {
-        try {
-          const stillEnabled = await getHapticsEnabled();
-          if (stillEnabled && pulseCount < maxPulses) {
-            // Alternate between light and medium for rhythm
-            const style = pulseCount % 2 === 0
-              ? Haptics.ImpactFeedbackStyle.Light
-              : Haptics.ImpactFeedbackStyle.Medium;
-            await Haptics.impactAsync(style);
-            pulseCount++;
-          } else {
-            clearInterval(interval);
-          }
-        } catch (error) {
-          console.error('Failed to play continuous haptic feedback:', error);
-          clearInterval(interval);
-        }
-      }, 750); // Every 750ms for a rhythmic feel
-
-      // Safety cleanup after 6 seconds
-      setTimeout(() => {
-        clearInterval(interval);
-      }, 6000);
-
-    } catch (error) {
-      console.error('Failed to play spin animation feedback:', error);
+  // Stop jackpot sound
+  const stopJackpotSound = useCallback(async () => {
+    if (jackpotSound.current) {
+      try {
+        await jackpotSound.current.stopAsync();
+      } catch (error) {
+        console.error('Failed to stop jackpot sound:', error);
+      }
     }
   }, []);
 
@@ -223,5 +301,9 @@ export function useGameFeedback(): GameFeedbackActions {
     playSpin,
     playSpinAnimation,
     playGameOver,
+    playGameOverSound,
+    stopGameOverSound,
+    playJackpotSound,
+    stopJackpotSound,
   };
 }

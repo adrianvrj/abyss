@@ -1,14 +1,12 @@
 import { useState, useCallback } from 'react';
 import { SymbolType } from '../types';
 import { GameConfig, DEFAULT_GAME_CONFIG } from '../constants/GameConfig';
-import { generateSymbols } from '../utils/symbolGenerator';
-import { detectPatterns, Pattern } from '../utils/patternDetector';
-import { calculateScore } from '../utils/scoreCalculator';
-import { persistGameState } from '../utils/gameStorage';
-import { spin as contractSpin, getSessionData, endSession, consumeItem, ContractItem } from '../utils/abyssContract';
-import { useGameFeedback } from './useGameFeedback';
-import { calculate666Probability, hasBibliaProtection } from '../utils/probability666';
+import { Pattern } from '../utils/patternDetector';
 import { getLevelThreshold } from '../utils/levelThresholds';
+import { useGameFeedback } from './useGameFeedback';
+import { persistGameState, clearGameState } from '../utils/gameStorage';
+import { sellItem } from '../utils/abyssContract';
+// Note: Local game logic imports removed in favor of server-side logic
 
 export interface GameLogicState {
   grid: SymbolType[][];
@@ -22,7 +20,7 @@ export interface GameLogicState {
   transactionStatus: 'idle' | 'pending' | 'success' | 'error';
   transactionHash?: string;
   level: number;
-  bibliaSaved: boolean; // Flag to show Biblia animation
+  bibliaSaved: boolean;
 }
 
 export interface GameLogicActions {
@@ -32,6 +30,14 @@ export interface GameLogicActions {
   onPatternsDetected?: (patterns: Pattern[]) => void;
 }
 
+// Callbacks to update GameSessionContext after game events
+export interface ContextUpdateCallbacks {
+  adjustScore: (delta: number) => void;
+  updateLevel: (newLevel: number) => void;
+  updateSpins: (newSpins: number) => void;
+  resetSpinsForLevelUp: () => void; // 5 + bonusSpins
+}
+
 export function useGameLogic(
   initialScore: number,
   initialSpins: number,
@@ -39,13 +45,17 @@ export function useGameLogic(
   config: GameConfig = DEFAULT_GAME_CONFIG,
   onPatternsDetected?: (patterns: Pattern[]) => void,
   scoreMultiplier: number = 1.0,
-  ownedItems: ContractItem[] = [],
-  aegisAccount: any = null
+  ownedItems: any[] = [],
+  aegisAccount: any = null,
+  contextCallbacks?: ContextUpdateCallbacks, // NEW: callbacks to update context
+  currentBonusSpins: number = 0 // NEW: for persistence
 ): [GameLogicState, GameLogicActions] {
-  const { playPatternHit, playLevelUp, playSpin, playSpinAnimation, playGameOver } = useGameFeedback();
-  
+  const { playPatternHit, playLevelUp, playSpin, playSpinAnimation, playGameOver, playJackpotSound, stopJackpotSound } = useGameFeedback();
+
+  // Initialize state with empty grid (will be filled by server or default)
   const [state, setState] = useState<GameLogicState>(() => {
-    const { grid } = generateSymbols(config);
+    // Initial static grid
+    const grid: SymbolType[][] = Array(3).fill(Array(5).fill('diamond'));
     return {
       grid,
       score: initialScore,
@@ -61,222 +71,249 @@ export function useGameLogic(
     };
   });
 
+
+
   const spin = useCallback(async () => {
-    setState(prev => {
-      if (prev.spinsLeft <= 0 || prev.isSpinning || prev.gameOver) {
-        return prev;
+    if (state.spinsLeft <= 0 || state.isSpinning || state.gameOver) {
+      return;
+    }
+
+    // Start spinning - track start time for minimum animation duration
+    const spinStartTime = Date.now();
+    // Constants
+    const MIN_SPIN_DURATION_MS = 1200; // Spin animation duration
+    const SETTLE_DURATION_MS = 300; // Settle bounce after spin stops
+    const TOTAL_ANIMATION_MS = MIN_SPIN_DURATION_MS + SETTLE_DURATION_MS; // 1500ms total
+
+    // Stop any playing jackpot sound from previous spin
+    stopJackpotSound();
+
+    const { stopSpinSound } = playSpinAnimation();
+    setState(prev => ({
+      ...prev,
+      isSpinning: true,
+      transactionStatus: 'pending',
+      patterns: [], // Clear previous patterns
+      is666: false,
+      bibliaSaved: false,
+    }));
+
+    try {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://abyss-server-gilt.vercel.app';
+      console.log('Spinning against:', API_URL);
+
+      // --- MOCK 666 TRIGGER FOR TESTING ---
+      // Comment out the fetch and uncomment this block to simulate 666
+      const response = await fetch(`${API_URL}/api/spin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          currentLevel: state.level,
+          currentScore: state.score,
+        }),
+      });
+
+      const data = await response.json();
+
+      // --- END MOCK ---
+
+      if (data.error) {
+        throw new Error(data.error);
       }
 
-      // Calculate dynamic 666 probability based on level
-      const dynamic666Probability = calculate666Probability(prev.level);
-      const configWithDynamicProbability = {
-        ...config,
-        probability666: dynamic666Probability
-      };
+      // Ensure minimum spin animation duration
+      const elapsed = Date.now() - spinStartTime;
+      if (elapsed < MIN_SPIN_DURATION_MS) {
+        await new Promise(resolve => setTimeout(resolve, MIN_SPIN_DURATION_MS - elapsed));
+      }
 
-      // Generate symbols with dynamic probability
-      const { grid, is666 } = generateSymbols(configWithDynamicProbability);
-      let scoreToAdd = 0;
-      let patterns: Pattern[] = [];
-      let hasBiblia = hasBibliaProtection(ownedItems);
+      // Now set isSpinning to false - this starts the 300ms settle animation
+      // But keep sound playing for the settle duration
 
-      // Always play spin animation feedback (for both normal and 666)
-      playSpinAnimation();
+      // Calculate new state
+      let newSpinsLeft = state.spinsLeft - 1;
+      let newLevel = state.level;
+      const newScore = state.score + data.score;
+      const earnedScore = data.score; // Delta to add
 
-      if (is666) {
-        // Check if player has Biblia protection
-        if (hasBiblia && aegisAccount) {
-          // Biblia protects - consume it (remove from inventory without score)
-          consumeItem(sessionId, 40, 1, aegisAccount).then(() => {
-            // Biblia was consumed, continue playing
-          }).catch(error => {
-            console.error('Failed to consume Biblia:', error);
-          });
-
-          // Continue as normal spin (Biblia saved the player)
-          patterns = detectPatterns(grid, config);
-          const scoreBreakdown = calculateScore(grid, patterns, config);
-          scoreToAdd = Math.round(scoreBreakdown.totalScore * scoreMultiplier);
-
-          patterns.forEach(pattern => {
-            playPatternHit(pattern.type);
-          });
-
-          // Mark that Biblia saved the player (for animation)
-          // This will be set in the state update below
-        } else {
-          // No protection - 666 triggered, instant loss
-          scoreToAdd = 0; // This will reset the score
-          playGameOver();
-
-          // End session immediately for 666
-          if (sessionId > 0) {
-            endSession(sessionId).catch(error => {
-              console.error('Failed to end session on 666:', error);
-            });
-          }
+      // Client-side level calculation for animation trigger
+      if (!data.is666 || data.bibliaUsed) {
+        while (newScore >= getLevelThreshold(newLevel)) {
+          newLevel += 1;
         }
-      } else {
-        // Normal spin - calculate score
-        patterns = detectPatterns(grid, config);
-        const scoreBreakdown = calculateScore(grid, patterns, config);
-        // Apply score multiplier from items
-        scoreToAdd = Math.round(scoreBreakdown.totalScore * scoreMultiplier);
+      }
 
-        patterns.forEach(pattern => {
-          playPatternHit(pattern.type);
+      // If leveled up, reset spins to 5 + bonusSpins via context callback
+      const didLevelUp = newLevel > state.level;
+      if (didLevelUp) {
+        playLevelUp();
+        // Use context callback to get 5 + bonusSpins
+        if (contextCallbacks) {
+          contextCallbacks.updateLevel(newLevel);
+          contextCallbacks.resetSpinsForLevelUp();
+        }
+        // We'll calculate newSpinsLeft after context update, but for local state use 5
+        newSpinsLeft = 5; // Minimum, actual value will come from context
+      } else {
+        // Regular spin - just decrement
+        if (contextCallbacks) {
+          contextCallbacks.updateSpins(newSpinsLeft);
+        }
+      }
+
+      // Update context with earned score
+      if (contextCallbacks && earnedScore > 0) {
+        contextCallbacks.adjustScore(earnedScore);
+      }
+
+      // Play pattern feedback if any (Game Over feedback is delayed to match visuals)
+      if (!data.is666 || data.bibliaUsed) {
+        data.patterns.forEach((p: Pattern) => playPatternHit(p.type));
+        // Jackpot sound is handled in game.tsx when jackpot pattern is displayed
+      }
+
+      // Determine if game is over
+      const isGameOver = data.gameOver || newSpinsLeft <= 0;
+
+      // Server already ends session on 666 game over (in spin endpoint).
+      // Only call end-session when game over is from running out of spins.
+      const shouldCallEndSession = isGameOver && !data.is666;
+
+      if (shouldCallEndSession) {
+        try {
+          console.log(`[EndSession] Ending session ${sessionId} with score=${newScore}, level=${newLevel}`);
+          const endResponse = await fetch(`${API_URL}/api/end-session`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sessionId,
+              finalScore: newScore,
+              finalLevel: newLevel,
+            }),
+          });
+          const endData = await endResponse.json();
+          console.log('[EndSession] Response:', endData);
+        } catch (endError) {
+          console.error('[EndSession] Failed to end session:', endError);
+        }
+      }
+
+      // Update state
+      setState(prev => ({
+        ...prev,
+        grid: data.grid,
+        score: newScore,
+        spinsLeft: newSpinsLeft,
+        isSpinning: false, // Visuals stop here (triggers SlotGrid useEffect)
+        patterns: data.patterns,
+        is666: data.is666,
+        gameOver: isGameOver,
+        lastSpinScore: data.score,
+        transactionStatus: 'success',
+        level: newLevel,
+        bibliaSaved: data.bibliaUsed,
+      }));
+
+      // Wait for settle animation to complete (300ms bounce)
+      // This keeps the sound playing during the visual settle
+      await new Promise(resolve => setTimeout(resolve, SETTLE_DURATION_MS));
+
+      // NOW stop the sound - animation is completely done
+      stopSpinSound();
+
+      // Notify parent about patterns AFTER state is updated (isSpinning is now false)
+      if (onPatternsDetected && data.patterns.length > 0 && (!data.is666 || data.bibliaUsed)) {
+        onPatternsDetected(data.patterns);
+      }
+
+      // CONSUME BIBLIA: If Biblia saved the player, sell it from inventory (async, fire-and-forget)
+      if (data.bibliaUsed && aegisAccount) {
+        // Find Biblia item in ownedItems (effect_type 6 = SixSixSixProtection)
+        const bibliaItem = ownedItems.find((item: any) => item.effect_type === 6);
+        if (bibliaItem) {
+          console.log(`[Biblia] Consuming Biblia (item_id=${bibliaItem.item_id})`);
+          sellItem(sessionId, bibliaItem.item_id, 1, aegisAccount)
+            .then((txHash) => console.log(`[Biblia] Consumed: ${txHash}`))
+            .catch((err) => console.error('[Biblia] Failed to consume:', err));
+        }
+      }
+
+      // Feedback: Play Game Over haptics for any game over scenario
+      if (isGameOver) {
+        // 50ms delay allows React to render the "stopped" grid state
+        setTimeout(() => playGameOver(), 50);
+      }
+
+      // Persist state to AsyncStorage for recovery if app closes
+      if (isGameOver) {
+        // Clear saved state when game ends
+        await clearGameState(sessionId);
+      } else {
+        // Save current progress
+        await persistGameState({
+          sessionId,
+          score: newScore,
+          level: newLevel,
+          spinsLeft: newSpinsLeft,
+          bonusSpins: currentBonusSpins, // Persist current bonus spins
+          isComplete: false,
+          is666: data.is666,
+          timestamp: Date.now(),
         });
       }
 
-      // Store previous state for rollback
-      const previousState = {
-        score: prev.score,
-        spinsLeft: prev.spinsLeft,
-        level: prev.level,
-        gameOver: prev.gameOver
-      };
+    } catch (error: any) {
+      console.error('Spin failed:', error);
+      // Stop the sound on error too
+      stopSpinSound();
 
-      // Update state immediately but keep original score (only update spins)
-      const newSpinsLeft = prev.spinsLeft - 1;
-      const bibliaSavedPlayer = is666 && hasBiblia; // Biblia saved if 666 occurred and player had Biblia
-      const isGameOver = bibliaSavedPlayer ? false : (newSpinsLeft <= 0 || is666); // Game over if no spins OR 666 (unless Biblia saved)
+      // Check if this is a "no spins" error - treat as game over
+      const errorMessage = error?.message || '';
+      const isNoSpinsError = errorMessage.toLowerCase().includes('no spins') ||
+        errorMessage.toLowerCase().includes('spins left');
 
-      const updatedState = {
-        grid,
-        score: prev.score, // Keep original score until animation ends
-        spinsLeft: newSpinsLeft,
-        isSpinning: true,
-        patterns,
-        is666: bibliaSavedPlayer ? false : is666, // Don't mark as 666 if Biblia saved
-        gameOver: isGameOver,
-        lastSpinScore: scoreToAdd,
-        transactionStatus: 'pending' as const,
-        level: prev.level,
-        bibliaSaved: bibliaSavedPlayer, // Flag for Biblia animation
-      };
-
-      // Start transaction in parallel with animation
-      let transactionPromise: Promise<void> | null = null;
-      
-      if (sessionId > 0) {
-        transactionPromise = contractSpin(sessionId, scoreToAdd)
-          .then(async (txHash) => {
-            setState(prev => ({ 
-              ...prev, 
-              transactionStatus: 'success',
-              transactionHash: txHash
-            }));
-          })
-          .catch(error => {
-            console.error('Contract spin failed:', error);
-            
-            // Rollback to previous state on transaction failure
-            setState(prev => ({
-              ...prev,
-              score: previousState.score,
-              spinsLeft: previousState.spinsLeft,
-              level: previousState.level,
-              gameOver: previousState.gameOver,
-              transactionStatus: 'error',
-              isSpinning: false
-            }));
-          });
+      if (isNoSpinsError) {
+        // Treat as game over
+        setState(prev => ({
+          ...prev,
+          isSpinning: false,
+          spinsLeft: 0,
+          gameOver: true,
+          transactionStatus: 'error',
+        }));
+      } else {
+        // Regular error - revert state
+        setState(prev => ({
+          ...prev,
+          isSpinning: false,
+          transactionStatus: 'error',
+        }));
       }
-
-      // Start animation (runs in parallel with transaction)
-      setTimeout(async () => {
-        try {
-          // Update score only when animation ends
-          // If Biblia saved, don't reset score to 0
-          let newScore = (is666 && !bibliaSavedPlayer) ? 0 : previousState.score + scoreToAdd;
-
-          // Check for level progression (same logic as contract)
-          let newLevel = previousState.level;
-          let finalSpinsLeft = newSpinsLeft;
-
-          // Only check level progression if not 666 or if Biblia saved
-          if (!is666 || bibliaSavedPlayer) {
-            // Check if player leveled up
-            while (newScore >= getLevelThreshold(newLevel)) {
-              newLevel += 1;
-            }
-
-            // If leveled up, reset spins to 5
-            if (newLevel > previousState.level) {
-              finalSpinsLeft = 5;
-              playLevelUp();
-            }
-          }
-
-          const finalGameOver = bibliaSavedPlayer ? (finalSpinsLeft <= 0) : (finalSpinsLeft <= 0 || is666);
-
-          setState(prev => ({
-            ...prev,
-            score: newScore,
-            spinsLeft: finalSpinsLeft,
-            level: newLevel,
-            gameOver: finalGameOver,
-            is666: bibliaSavedPlayer ? false : is666, // Don't keep 666 flag if Biblia saved
-            isSpinning: false,
-            transactionStatus: 'idle',
-            bibliaSaved: false, // Reset flag after animation
-          }));
-
-          // End session if game is over (no spins left or 666)
-          if (finalGameOver && sessionId > 0 && !is666) { // Don't call again if already called on 666
-            endSession(sessionId).catch(error => {
-              console.error('Failed to end session on game over:', error);
-            });
-          }
-
-          // Persist final state
-          persistGameState({
-            sessionId,
-            score: newScore,
-            spinsLeft: finalSpinsLeft,
-            isComplete: finalGameOver,
-            is666: is666,
-            timestamp: Date.now(),
-          });
-
-          // Call pattern callback after animation ends (only for non-666 spins)
-          if (!is666 && onPatternsDetected && patterns.length > 0) {
-            onPatternsDetected(patterns);
-          }
-
-        } catch (error) {
-          console.error('Animation error:', error);
-          setState(prev => ({ ...prev, isSpinning: false }));
-        }
-      }, 6000); // Animation duration
-
-      return updatedState;
-    });
-  }, [config, sessionId]);
+    }
+  }, [sessionId, state.spinsLeft, state.isSpinning, state.gameOver, state.score, state.level, onPatternsDetected]);
 
   const reset = useCallback(() => {
-    const { grid } = generateSymbols(config);
-    setState({
-      grid,
-      score: initialScore,
-      spinsLeft: initialSpins,
+    // Reset logic
+    setState(prev => ({
+      ...prev,
       isSpinning: false,
-      patterns: [],
-      is666: false,
       gameOver: false,
-      lastSpinScore: 0,
-      transactionStatus: 'idle',
-      level: 1,
-      bibliaSaved: false,
-    });
-  }, [initialScore, initialSpins, config]);
+      is666: false,
+    }));
+  }, []);
 
   const updateState = useCallback((newScore: number, newSpins: number, newLevel?: number) => {
     setState(prev => ({
       ...prev,
       score: newScore,
       spinsLeft: newSpins,
-      gameOver: newSpins <= 0,
+      // If dead by 666, stay dead. If dead by spins, allow revival if spins added.
+      gameOver: (prev.gameOver && prev.is666) ? true : newSpins <= 0,
       level: newLevel || prev.level,
     }));
   }, []);

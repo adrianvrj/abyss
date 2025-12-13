@@ -11,7 +11,7 @@ pub struct GameSession {
     pub spins_remaining: u32,
     pub is_competitive: bool, // True if this session counts for leaderboard
     pub is_active: bool, // True if session is still ongoing
-    pub created_at: u64, // Timestamp when session was created
+    pub created_at: u64 // Timestamp when session was created
 }
 
 /// Leaderboard entry structure
@@ -47,7 +47,7 @@ pub struct Item {
     pub sell_price: u32,
     pub effect_type: ItemEffectType,
     pub effect_value: u32,
-    pub target_symbol: felt252, // For SymbolProbabilityBoost: 'seven', 'diamond', 'cherry', 'lemon', 'coin', 'six'
+    pub target_symbol: felt252 // For SymbolProbabilityBoost: 'seven', 'diamond', 'cherry', 'lemon', 'coin', 'six'
 }
 
 /// Player item inventory entry
@@ -73,10 +73,17 @@ pub struct SessionMarket {
 #[starknet::interface]
 pub trait IAbyssGame<TContractState> {
     /// Create a new game session
-    fn create_session(ref self: TContractState, player_address: ContractAddress, is_competitive: bool) -> u32;
+    fn create_session(
+        ref self: TContractState, player_address: ContractAddress, is_competitive: bool,
+    ) -> u32;
 
     /// Update session score and check for level progression
     fn update_session_score(ref self: TContractState, session_id: u32, score_increase: u32);
+
+    /// Set session score directly - Admin only (for off-chain sync before market)
+    fn admin_set_session_score(
+        ref self: TContractState, session_id: u32, new_score: u32, new_level: u32,
+    );
 
     /// Get session data
     fn get_session_data(self: @TContractState, session_id: u32) -> GameSession;
@@ -85,13 +92,22 @@ pub trait IAbyssGame<TContractState> {
     fn get_player_sessions(self: @TContractState, player_address: ContractAddress) -> Array<u32>;
 
     /// Get all competitive sessions for a player
-    fn get_player_competitive_sessions(self: @TContractState, player_address: ContractAddress) -> Array<u32>;
+    fn get_player_competitive_sessions(
+        self: @TContractState, player_address: ContractAddress,
+    ) -> Array<u32>;
 
     /// Get all non-competitive sessions for a player
-    fn get_player_casual_sessions(self: @TContractState, player_address: ContractAddress) -> Array<u32>;
+    fn get_player_casual_sessions(
+        self: @TContractState, player_address: ContractAddress,
+    ) -> Array<u32>;
 
     /// End a session (mark as inactive) - Admin only
     fn end_session(ref self: TContractState, session_id: u32);
+
+    /// End a session with final score - Admin only (for off-chain game state)
+    fn end_session_with_score(
+        ref self: TContractState, session_id: u32, final_score: u32, final_level: u32,
+    );
 
     /// End own session (mark as inactive) - Player can end their own session
     fn end_own_session(ref self: TContractState, session_id: u32);
@@ -157,6 +173,9 @@ pub trait IAbyssGame<TContractState> {
     /// Get refresh cost for a session
     fn get_refresh_cost(self: @TContractState, session_id: u32) -> u32;
 
+    /// Check if a market slot has been purchased
+    fn is_market_slot_purchased(self: @TContractState, session_id: u32, market_slot: u32) -> bool;
+
     /// Claim prize from competitive pool (only for top 3 leaderboard)
     fn claim_prize(ref self: TContractState);
 
@@ -171,15 +190,14 @@ pub trait IAbyssGame<TContractState> {
 /// Abyss Game contract implementation
 #[starknet::contract]
 pub mod AbyssGame {
-    use super::{GameSession, LeaderboardEntry, ContractAddress, Item, PlayerItem, SessionMarket};
-    use starknet::storage::{
-        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
-    };
-    use starknet::get_caller_address;
-    use starknet::get_block_timestamp;
     use core::array::ArrayTrait;
     use core::poseidon::poseidon_hash_span;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use starknet::{get_block_timestamp, get_caller_address};
+    use super::{ContractAddress, GameSession, Item, LeaderboardEntry, PlayerItem, SessionMarket};
 
     // ═══════════════════════════════════════════════════════════════════════════
     // STORAGE: All contract state variables
@@ -188,54 +206,43 @@ pub mod AbyssGame {
     struct Storage {
         // Admin address - only admin can update scores and reset players
         admin: ContractAddress,
-
         // Chip token address (ERC20)
         chip_token: ContractAddress,
-
         // Treasury address - receives 2 CHIP per competitive session
         treasury: ContractAddress,
-
         // Prize pool - accumulated 3 CHIP per competitive session
         prize_pool: u256,
-
         // Track if player has claimed their prize
         has_claimed: Map<ContractAddress, bool>,
-
         // Session data mapping: session_id -> GameSession
         sessions: Map<u32, GameSession>,
-
         // Player sessions count per player
         player_sessions_count: Map<ContractAddress, u32>,
-
         // Player sessions mapping: (player_address, index) -> session_id
         player_session: Map<(ContractAddress, u32), u32>,
-
         // Leaderboard entries stored as Map (more gas efficient)
         leaderboard: Map<u32, LeaderboardEntry>,
         leaderboard_count: u32,
-
         // Total number of sessions created
         total_sessions: u32,
-
         // Competitive sessions tracking
         total_competitive_sessions: u32,
         competitive_session: Map<u32, u32>, // index -> session_id
-
         // Casual sessions tracking
         total_casual_sessions: u32,
         casual_session: Map<u32, u32>, // index -> session_id
-
         // Item shop storage
         items: Map<u32, Item>,
         total_items: u32,
-
         // Session inventory
         session_inventory: Map<(u32, u32), u32>,
         session_item_ids: Map<(u32, u32), u32>,
         session_item_count: Map<u32, u32>,
-
         // Market storage
         session_markets: Map<u32, SessionMarket>,
+        // Track which market slots have been purchased in current market
+        // (session_id, market_slot) -> bool (true if purchased)
+        market_slot_purchased: Map<(u32, u32), bool>,
         nonce: u64,
     }
 
@@ -243,7 +250,12 @@ pub mod AbyssGame {
     // CONSTRUCTOR: Initialize contract with admin address
     // ═══════════════════════════════════════════════════════════════════════════
     #[constructor]
-    fn constructor(ref self: ContractState, admin_address: ContractAddress, chip_token_address: ContractAddress, treasury_address: ContractAddress) {
+    fn constructor(
+        ref self: ContractState,
+        admin_address: ContractAddress,
+        chip_token_address: ContractAddress,
+        treasury_address: ContractAddress,
+    ) {
         self.admin.write(admin_address);
         self.chip_token.write(chip_token_address);
         self.treasury.write(treasury_address);
@@ -266,31 +278,16 @@ pub mod AbyssGame {
         // ─────────────────────────────────────────────────────────────────────────
         // SESSION MANAGEMENT: Create and manage game sessions
         // ─────────────────────────────────────────────────────────────────────────
-        fn create_session(ref self: ContractState, player_address: ContractAddress, is_competitive: bool) -> u32 {
+        fn create_session(
+            ref self: ContractState, player_address: ContractAddress, is_competitive: bool,
+        ) -> u32 {
             // Anyone can create a session for themselves
             let caller = get_caller_address();
             assert(caller == player_address, 'Can only create own session');
 
-            // If competitive session, transfer 5 CHIP tokens (3 to contract, 2 to treasury)
-            if is_competitive {
-                let chip_token = IERC20Dispatcher { contract_address: self.chip_token.read() };
-                let three_chips: u256 = 3_000_000_000_000_000_000; // 3 CHIP
-                let two_chips: u256 = 2_000_000_000_000_000_000; // 2 CHIP
-                let treasury = self.treasury.read();
-                let contract_address = starknet::get_contract_address();
-
-                // Transfer 3 CHIP from player to contract (prize pool)
-                let transfer_pool_success = chip_token.transfer_from(caller, contract_address, three_chips);
-                assert(transfer_pool_success, 'Pool transfer failed');
-
-                // Transfer 2 CHIP from player to treasury
-                let transfer_treasury_success = chip_token.transfer_from(caller, treasury, two_chips);
-                assert(transfer_treasury_success, 'Treasury transfer failed');
-
-                // Update prize pool
-                let current_pool = self.prize_pool.read();
-                self.prize_pool.write(current_pool + three_chips);
-            }
+            // Free to play mode - No tokens required
+            // All sessions are now competitive by default (counting for leaderboard)
+            let actual_is_competitive = true;
 
             // Generate new session ID
             let session_id = self.total_sessions.read() + 1;
@@ -304,9 +301,9 @@ pub mod AbyssGame {
                 score: 0,
                 total_score: 0,
                 spins_remaining: 5,
-                is_competitive,
+                is_competitive: actual_is_competitive,
                 is_active: true,
-                created_at: 0, // TODO: Add timestamp support
+                created_at: 0 // TODO: Add timestamp support
             };
 
             // Save session
@@ -317,16 +314,10 @@ pub mod AbyssGame {
             self.player_sessions_count.entry(player_address).write(session_count + 1);
             self.player_session.entry((player_address, session_count)).write(session_id);
 
-            // Add session to global tracking by type
-            if is_competitive {
-                let competitive_count = self.total_competitive_sessions.read();
-                self.total_competitive_sessions.write(competitive_count + 1);
-                self.competitive_session.entry(competitive_count).write(session_id);
-            } else {
-                let casual_count = self.total_casual_sessions.read();
-                self.total_casual_sessions.write(casual_count + 1);
-                self.casual_session.entry(casual_count).write(session_id);
-            }
+            // Add session to global tracking (Always competitive)
+            let competitive_count = self.total_competitive_sessions.read();
+            self.total_competitive_sessions.write(competitive_count + 1);
+            self.competitive_session.entry(competitive_count).write(session_id);
 
             // Initialize market for the session
             InternalImpl::initialize_market(ref self, session_id);
@@ -342,41 +333,62 @@ pub mod AbyssGame {
             // Get session data
             let mut session = self.sessions.entry(session_id).read();
             assert(session.is_active, 'Session is not active');
-            
+
             // Check if session has spins remaining
             assert(session.spins_remaining > 0, 'No spins left');
-            
+
             // Use one spin
             session.spins_remaining -= 1;
-            
+
             // Update scores
             session.score += score_increase;
             session.total_score += score_increase;
-            
+
             // Check for level progression
             let mut new_level = session.level;
             while session.score >= Self::get_level_threshold(@self, new_level) {
                 new_level += 1;
             }
-            
+
             // Update level if progressed
             if new_level > session.level {
                 session.level = new_level;
                 // Give 5 spins for new level
                 session.spins_remaining = 5;
             }
-            
+
             // Save updated session
             self.sessions.entry(session_id).write(session);
-            
             // Note: Leaderboard is only updated when session ends, not during gameplay
+        }
+
+        fn admin_set_session_score(
+            ref self: ContractState, session_id: u32, new_score: u32, new_level: u32,
+        ) {
+            // Only admin can set session scores directly
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin can set scores.');
+
+            // Get session data
+            let mut session = self.sessions.entry(session_id).read();
+            assert(session.is_active, 'Session is not active');
+
+            // Set score and level directly (for off-chain sync)
+            session.score = new_score;
+            session.total_score = new_score;
+            session.level = new_level;
+
+            // Save updated session
+            self.sessions.entry(session_id).write(session);
         }
 
         fn get_session_data(self: @ContractState, session_id: u32) -> GameSession {
             self.sessions.entry(session_id).read()
         }
 
-        fn get_player_sessions(self: @ContractState, player_address: ContractAddress) -> Array<u32> {
+        fn get_player_sessions(
+            self: @ContractState, player_address: ContractAddress,
+        ) -> Array<u32> {
             let mut sessions_array = ArrayTrait::new();
             let sessions_count = self.player_sessions_count.entry(player_address).read();
             let mut i = 0;
@@ -384,11 +396,13 @@ pub mod AbyssGame {
                 let session_id = self.player_session.entry((player_address, i)).read();
                 sessions_array.append(session_id);
                 i += 1;
-            };
+            }
             sessions_array
         }
 
-        fn get_player_competitive_sessions(self: @ContractState, player_address: ContractAddress) -> Array<u32> {
+        fn get_player_competitive_sessions(
+            self: @ContractState, player_address: ContractAddress,
+        ) -> Array<u32> {
             let mut competitive_sessions = ArrayTrait::new();
             let sessions_count = self.player_sessions_count.entry(player_address).read();
             let mut i = 0;
@@ -397,13 +411,15 @@ pub mod AbyssGame {
                 let session_data = self.sessions.entry(session_id).read();
                 if session_data.is_competitive && session_data.is_active {
                     competitive_sessions.append(session_id);
-                };
+                }
                 i += 1;
-            };
+            }
             competitive_sessions
         }
 
-        fn get_player_casual_sessions(self: @ContractState, player_address: ContractAddress) -> Array<u32> {
+        fn get_player_casual_sessions(
+            self: @ContractState, player_address: ContractAddress,
+        ) -> Array<u32> {
             let mut casual_sessions = ArrayTrait::new();
             let sessions_count = self.player_sessions_count.entry(player_address).read();
             let mut i = 0;
@@ -412,9 +428,9 @@ pub mod AbyssGame {
                 let session_data = self.sessions.entry(session_id).read();
                 if !session_data.is_competitive && session_data.is_active {
                     casual_sessions.append(session_id);
-                };
+                }
                 i += 1;
-            };
+            }
             casual_sessions
         }
 
@@ -424,17 +440,17 @@ pub mod AbyssGame {
         fn end_own_session(ref self: ContractState, session_id: u32) {
             // Get caller address
             let caller = get_caller_address();
-            
+
             // Get session data
             let mut session = self.sessions.entry(session_id).read();
-            
+
             // Verify caller is the session owner
             assert(caller == session.player_address, 'Only owner can end');
-            
+
             // Mark session as inactive
             session.is_active = false;
             self.sessions.entry(session_id).write(session);
-            
+
             // Update leaderboard only when competitive session ends
             if session.is_competitive {
                 InternalImpl::update_leaderboard_if_better(ref self, session);
@@ -445,11 +461,36 @@ pub mod AbyssGame {
             // Only admin can end sessions
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'Only admin can end');
-            
+
             let mut session = self.sessions.entry(session_id).read();
             session.is_active = false;
             self.sessions.entry(session_id).write(session);
-            
+
+            // Update leaderboard only when competitive session ends
+            if session.is_competitive {
+                InternalImpl::update_leaderboard_if_better(ref self, session);
+            }
+        }
+
+        fn end_session_with_score(
+            ref self: ContractState, session_id: u32, final_score: u32, final_level: u32,
+        ) {
+            // Only admin can end sessions with score
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin can end');
+
+            let mut session = self.sessions.entry(session_id).read();
+            assert(session.is_active, 'Session already ended');
+
+            // Update session with final values
+            session.score = final_score;
+            session.total_score = final_score;
+            session.level = final_level;
+            session.spins_remaining = 0;
+            session.is_active = false;
+
+            self.sessions.entry(session_id).write(session);
+
             // Update leaderboard only when competitive session ends
             if session.is_competitive {
                 InternalImpl::update_leaderboard_if_better(ref self, session);
@@ -480,7 +521,7 @@ pub mod AbyssGame {
                 while i <= level {
                     threshold = (threshold * 14) / 10 + (i * 100);
                     i += 1;
-                };
+                }
                 threshold
             } else if level <= 20 {
                 // Phase 3: Advanced (Levels 13-20)
@@ -491,23 +532,20 @@ pub mod AbyssGame {
                     let level_squared = i * i;
                     threshold = (threshold * 135) / 100 + (level_squared * 50);
                     i += 1;
-                };
+                }
                 threshold
             } else if level <= 30 {
                 // Phase 4: Elite (Levels 21-30)
                 // Formula: previous × 1.38 + (level³ × 20)
                 let mut threshold: u32 = 142000; // Level 20 final threshold
-                    let mut i: u32 = 21;
+                let mut i: u32 = 21;
                 while i <= level {
                     let level_cubed = i * i * i;
                     threshold = (threshold * 138) / 100 + (level_cubed * 20);
                     i += 1;
-                };
+                }
                 threshold
             } else {
-                // For levels beyond 10, use a pattern: base * level
-                let base_score = 3000;
-                base_score * level;
                 // Phase 5: Impossible (Levels 31+)
                 // Formula: previous × 1.42 + (level⁴ × 5)
                 let mut threshold: u32 = 3500000; // Level 30 final threshold
@@ -517,7 +555,7 @@ pub mod AbyssGame {
                     let level_fourth = level_squared * level_squared;
                     threshold = (threshold * 142) / 100 + (level_fourth * 5);
                     i += 1;
-                };
+                }
                 threshold
             }
         }
@@ -525,15 +563,19 @@ pub mod AbyssGame {
         fn get_leaderboard(self: @ContractState) -> Array<LeaderboardEntry> {
             let mut leaderboard_array = ArrayTrait::new();
             let leaderboard_len = self.leaderboard_count.read();
-            let max_entries = if leaderboard_len > 10 { 10 } else { leaderboard_len };
-            
+            let max_entries = if leaderboard_len > 10 {
+                10
+            } else {
+                leaderboard_len
+            };
+
             let mut i = 0;
             while i < max_entries {
                 let entry = self.leaderboard.entry(i).read();
                 leaderboard_array.append(entry);
                 i += 1;
-            };
-            
+            }
+
             leaderboard_array
         }
 
@@ -555,9 +597,9 @@ pub mod AbyssGame {
                 let session_data = self.sessions.entry(session_id).read();
                 if session_data.is_active {
                     competitive_sessions.append(session_id);
-                };
+                }
                 i += 1;
-            };
+            }
             competitive_sessions
         }
 
@@ -570,9 +612,9 @@ pub mod AbyssGame {
                 let session_data = self.sessions.entry(session_id).read();
                 if session_data.is_active {
                     casual_sessions.append(session_id);
-                };
+                }
                 i += 1;
-            };
+            }
             casual_sessions
         }
 
@@ -595,6 +637,10 @@ pub mod AbyssGame {
             assert(caller == session.player_address, 'Only owner can buy items');
             assert(session.is_active, 'Session is not active');
             assert(market_slot >= 1 && market_slot <= 6, 'Invalid market slot');
+
+            // Check if this slot was already purchased in current market
+            let slot_purchased = self.market_slot_purchased.entry((session_id, market_slot)).read();
+            assert(!slot_purchased, 'Item already purchased');
 
             // Check inventory limit (max 7 unique items)
             let unique_item_count = self.session_item_count.entry(session_id).read();
@@ -630,7 +676,7 @@ pub mod AbyssGame {
                     break;
                 }
                 i += 1;
-            };
+            }
             assert(!item_already_owned, 'Item already owned');
 
             // Check inventory limit (max 7 unique items)
@@ -650,6 +696,9 @@ pub mod AbyssGame {
             }
 
             self.sessions.entry(session_id).write(session);
+
+            // Mark this market slot as purchased
+            self.market_slot_purchased.entry((session_id, market_slot)).write(true);
 
             // Add item to array
             self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
@@ -677,6 +726,14 @@ pub mod AbyssGame {
             session.total_score -= refresh_cost;
             self.sessions.entry(session_id).write(session);
 
+            // Clear purchased status for all slots (new market)
+            self.market_slot_purchased.entry((session_id, 1)).write(false);
+            self.market_slot_purchased.entry((session_id, 2)).write(false);
+            self.market_slot_purchased.entry((session_id, 3)).write(false);
+            self.market_slot_purchased.entry((session_id, 4)).write(false);
+            self.market_slot_purchased.entry((session_id, 5)).write(false);
+            self.market_slot_purchased.entry((session_id, 6)).write(false);
+
             // Generate new market items
             InternalImpl::generate_market_items(ref self, session_id, market.refresh_count + 1);
         }
@@ -703,7 +760,7 @@ pub mod AbyssGame {
                     break;
                 }
                 i += 1;
-            };
+            }
 
             // Assert item exists
             assert(item_index.is_some(), 'Item not owned');
@@ -728,7 +785,7 @@ pub mod AbyssGame {
                 let next_item_id = self.session_item_ids.entry((session_id, j + 1)).read();
                 self.session_item_ids.entry((session_id, j)).write(next_item_id);
                 j += 1;
-            };
+            }
 
             // Clear the last slot
             self.session_item_ids.entry((session_id, item_count - 1)).write(0);
@@ -755,7 +812,7 @@ pub mod AbyssGame {
                     break;
                 }
                 i += 1;
-            };
+            }
 
             // Assert item exists
             assert(item_index.is_some(), 'Item not owned');
@@ -773,7 +830,7 @@ pub mod AbyssGame {
                 let next_item_id = self.session_item_ids.entry((session_id, j + 1)).read();
                 self.session_item_ids.entry((session_id, j)).write(next_item_id);
                 j += 1;
-            };
+            }
 
             // Clear the last slot
             self.session_item_ids.entry((session_id, item_count - 1)).write(0);
@@ -794,7 +851,7 @@ pub mod AbyssGame {
                     items_array.append(PlayerItem { item_id, quantity: 1 });
                 }
                 i += 1;
-            };
+            }
 
             items_array
         }
@@ -808,37 +865,14 @@ pub mod AbyssGame {
         }
 
         fn get_666_probability(self: @ContractState, level: u32) -> u32 {
-            // Probability progression:
-            // Level 1-5: 0% (0)
-            // Level 6-9: 1.2% (12)
-            // Level 10-13: 2.4% (24)
-            // Level 14-17: 4.8% (48)
-            // Level 18-21: 9.6% (96)
-            // Level 22+: 9.6% (96) - CAPPED
-
-            if level <= 5 {
-                // First 5 levels: no risk
+            // NO CAP - scales indefinitely for late-game difficulty
+            // L1-2: 0%, L3+: +1.5% (15) per level
+            // Returns probability * 10 (e.g., 15 = 1.5%, 150 = 15%)
+            if level <= 2 {
                 0
             } else {
-                let base_probability: u32 = 12; // 1.2%
-                let tier = (level - 6) / 4; // 0-based tier starting from level 6, increases every 4 levels
-
-                // Calculate 2^tier (doubling each tier)
-                let mut multiplier: u32 = 1;
-                let mut i: u32 = 0;
-                while i < tier {
-                    multiplier = multiplier * 2;
-                    i += 1;
-                };
-
-                let probability = base_probability * multiplier;
-
-                // Cap at 9.6% (96)
-                if probability > 96 {
-                    96
-                } else {
-                    probability
-                }
+                // +1.5% per level starting from level 3
+                (level - 2) * 15
             }
         }
 
@@ -850,12 +884,19 @@ pub mod AbyssGame {
             self.session_item_count.entry(session_id).read()
         }
 
+        fn is_market_slot_purchased(
+            self: @ContractState, session_id: u32, market_slot: u32,
+        ) -> bool {
+            self.market_slot_purchased.entry((session_id, market_slot)).read()
+        }
+
         fn get_refresh_cost(self: @ContractState, session_id: u32) -> u32 {
             let market = self.session_markets.entry(session_id).read();
             let count = market.refresh_count;
 
             // Progressive cost formula
-            // 0: 2, 1: 5, 2: 16, 3: 24, 4: 48, 5: 62, 6: 86, 7: 112, 8: 190, 9: 280, 10: 345, 11: 526, 12: 891, 13: 1200
+            // 0: 2, 1: 5, 2: 16, 3: 24, 4: 48, 5: 62, 6: 86, 7: 112, 8: 190, 9: 280, 10: 345, 11:
+            // 526, 12: 891, 13: 1200
             if count == 0 {
                 2
             } else if count == 1 {
@@ -893,7 +934,7 @@ pub mod AbyssGame {
                 while i < extra_refreshes {
                     cost = cost + (cost / 2); // Increase by 50%
                     i += 1;
-                };
+                }
                 cost
             }
         }
@@ -921,9 +962,9 @@ pub mod AbyssGame {
                     position = i;
                     found = true;
                     break;
-                };
+                }
                 i += 1;
-            };
+            }
 
             assert(found, 'Not in top 3');
 
@@ -968,13 +1009,17 @@ pub mod AbyssGame {
         fn update_leaderboard_if_better(ref self: ContractState, session: GameSession) {
             let new_score = session.total_score;
             let new_level = session.level;
-            
+
             // Check if this session already has a better score in the leaderboard
-            let current_best_score = Self::get_session_best_score_from_leaderboard(@self, session.session_id);
-            
+            let current_best_score = Self::get_session_best_score_from_leaderboard(
+                @self, session.session_id,
+            );
+
             // Only update if this is a new best score
             if new_score > current_best_score {
-                Self::update_leaderboard(ref self, session.player_address, session.session_id, new_score, new_level);
+                Self::update_leaderboard(
+                    ref self, session.player_address, session.session_id, new_score, new_level,
+                );
             }
         }
 
@@ -986,14 +1031,20 @@ pub mod AbyssGame {
                 let entry = self.leaderboard.entry(i).read();
                 if entry.session_id == session_id {
                     return entry.total_score;
-                };
+                }
                 i += 1;
-            };
+            }
             0 // Session not in leaderboard
         }
 
         /// Update the leaderboard with a new session entry
-        fn update_leaderboard(ref self: ContractState, player_address: ContractAddress, session_id: u32, new_score: u32, new_level: u32) {
+        fn update_leaderboard(
+            ref self: ContractState,
+            player_address: ContractAddress,
+            session_id: u32,
+            new_score: u32,
+            new_level: u32,
+        ) {
             let current_count = self.leaderboard_count.read();
 
             // First, check if player already has an entry in the leaderboard
@@ -1006,9 +1057,9 @@ pub mod AbyssGame {
                     player_existing_position = Option::Some(i);
                     player_existing_score = entry.total_score;
                     break;
-                };
+                }
                 i += 1;
-            };
+            }
 
             // If player exists with a better or equal score, don't update
             match player_existing_position {
@@ -1024,15 +1075,14 @@ pub mod AbyssGame {
                             let next_entry = self.leaderboard.entry(j + 1).read();
                             self.leaderboard.entry(j).write(next_entry);
                             j += 1;
-                        };
+                        }
                         // Decrease count since we removed an entry
                         self.leaderboard_count.write(current_count - 1);
                     }
                 },
-                Option::None => {
-                    // Player doesn't exist, continue with normal insert
-                }
-            };
+                Option::None => { // Player doesn't exist, continue with normal insert
+                },
+            }
 
             // Now insert the new score in the correct position
             let updated_count = self.leaderboard_count.read();
@@ -1043,18 +1093,19 @@ pub mod AbyssGame {
             let mut i = 0;
             while i < updated_count {
                 let entry = self.leaderboard.entry(i).read();
-                if new_score > entry.total_score || (new_score == entry.total_score && new_level > entry.level) {
+                if new_score > entry.total_score
+                    || (new_score == entry.total_score && new_level > entry.level) {
                     insert_position = i;
                     should_insert = true;
                     break;
-                };
+                }
                 i += 1;
-            };
+            }
 
             // If leaderboard is full (10 entries) and new score doesn't qualify, don't insert
             if updated_count >= 10 && insert_position >= 10 {
                 should_insert = false;
-            };
+            }
 
             if should_insert {
                 // Shift entries down if inserting in middle
@@ -1063,16 +1114,13 @@ pub mod AbyssGame {
                     if j < 10 { // Only shift if within bounds
                         let entry_to_move = self.leaderboard.entry(j - 1).read();
                         self.leaderboard.entry(j).write(entry_to_move);
-                    };
+                    }
                     j -= 1;
-                };
+                }
 
                 // Insert new entry
                 let new_entry = LeaderboardEntry {
-                    player_address,
-                    session_id,
-                    level: new_level,
-                    total_score: new_score,
+                    player_address, session_id, level: new_level, total_score: new_score,
                 };
                 self.leaderboard.entry(insert_position).write(new_entry);
 
@@ -1090,592 +1138,736 @@ pub mod AbyssGame {
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 1: Seven Score Boost (Low tier)
-            self.items.entry(1).write(Item {
-                item_id: 1,
-                name: 'Chilly Pepper',
-                description: '+5 points to seven',
-                price: 15,
-                sell_price: 11,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 5,
-                target_symbol: 'seven',
-            });
+            self
+                .items
+                .entry(1)
+                .write(
+                    Item {
+                        item_id: 1,
+                        name: 'Chilly Pepper',
+                        description: '+5 points to seven',
+                        price: 15,
+                        sell_price: 11,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 5,
+                        target_symbol: 'seven',
+                    },
+                );
 
             // Item 7: Seven Probability Boost (Mid tier)
-            self.items.entry(7).write(Item {
-                item_id: 7,
-                name: 'Nerd Glasses',
-                description: '+15% seven probability',
-                price: 45,
-                sell_price: 33,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 15,
-                target_symbol: 'seven',
-            });
+            self
+                .items
+                .entry(7)
+                .write(
+                    Item {
+                        item_id: 7,
+                        name: 'Nerd Glasses',
+                        description: '+15% seven probability',
+                        price: 80,
+                        sell_price: 60,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 15,
+                        target_symbol: 'seven',
+                    },
+                );
 
             // Item 11: Seven Probability Boost (High tier)
-            self.items.entry(11).write(Item {
-                item_id: 11,
-                name: 'Ghost Mask',
-                description: '+25% seven probability',
-                price: 120,
-                sell_price: 90,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 25,
-                target_symbol: 'seven',
-            });
+            self
+                .items
+                .entry(11)
+                .write(
+                    Item {
+                        item_id: 11,
+                        name: 'Ghost Mask',
+                        description: '+25% seven probability',
+                        price: 180,
+                        sell_price: 135,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 25,
+                        target_symbol: 'seven',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // DIAMOND RUN ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 2: Diamond Score Boost (Low tier)
-            self.items.entry(2).write(Item {
-                item_id: 2,
-                name: 'Milk',
-                description: '+3 points to diamond',
-                price: 20,
-                sell_price: 15,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 3,
-                target_symbol: 'diamond',
-            });
+            self
+                .items
+                .entry(2)
+                .write(
+                    Item {
+                        item_id: 2,
+                        name: 'Milk',
+                        description: '+3 points to diamond',
+                        price: 20,
+                        sell_price: 15,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 3,
+                        target_symbol: 'diamond',
+                    },
+                );
 
             // Item 8: Diamond Probability Boost (Mid tier)
-            self.items.entry(8).write(Item {
-                item_id: 8,
-                name: 'Ace of Spades',
-                description: '+12% diamond probability',
-                price: 50,
-                sell_price: 37,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 12,
-                target_symbol: 'diamond',
-            });
+            self
+                .items
+                .entry(8)
+                .write(
+                    Item {
+                        item_id: 8,
+                        name: 'Ace of Spades',
+                        description: '+12% diamond probability',
+                        price: 50,
+                        sell_price: 37,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 12,
+                        target_symbol: 'diamond',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // CHERRY RUN ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 3: Cherry Score Boost (Low tier)
-            self.items.entry(3).write(Item {
-                item_id: 3,
-                name: 'Magic Dice',
-                description: '+8 points to cherry',
-                price: 30,
-                sell_price: 22,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 8,
-                target_symbol: 'cherry',
-            });
+            self
+                .items
+                .entry(3)
+                .write(
+                    Item {
+                        item_id: 3,
+                        name: 'Magic Dice',
+                        description: '+8 points to cherry',
+                        price: 30,
+                        sell_price: 22,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 8,
+                        target_symbol: 'cherry',
+                    },
+                );
 
             // Item 12: Cherry Probability Boost (Low tier)
-            self.items.entry(12).write(Item {
-                item_id: 12,
-                name: 'Skull',
-                description: '+10% cherry probability',
-                price: 40,
-                sell_price: 30,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 10,
-                target_symbol: 'cherry',
-            });
+            self
+                .items
+                .entry(12)
+                .write(
+                    Item {
+                        item_id: 12,
+                        name: 'Skull',
+                        description: '+10% cherry probability',
+                        price: 40,
+                        sell_price: 30,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 10,
+                        target_symbol: 'cherry',
+                    },
+                );
 
             // Item 13: Cherry Score Boost (Mid tier)
-            self.items.entry(13).write(Item {
-                item_id: 13,
-                name: 'Pig Bank',
-                description: '+12 points to cherry',
-                price: 85,
-                sell_price: 63,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 12,
-                target_symbol: 'cherry',
-            });
+            self
+                .items
+                .entry(13)
+                .write(
+                    Item {
+                        item_id: 13,
+                        name: 'Pig Bank',
+                        description: '+12 points to cherry',
+                        price: 85,
+                        sell_price: 63,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 12,
+                        target_symbol: 'cherry',
+                    },
+                );
 
             // Item 16: Cherry Probability Boost (Mid tier)
-            self.items.entry(16).write(Item {
-                item_id: 16,
-                name: 'Weird Hand',
-                description: '+18% cherry probability',
-                price: 95,
-                sell_price: 71,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 18,
-                target_symbol: 'cherry',
-            });
+            self
+                .items
+                .entry(16)
+                .write(
+                    Item {
+                        item_id: 16,
+                        name: 'Weird Hand',
+                        description: '+18% cherry probability',
+                        price: 95,
+                        sell_price: 71,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 18,
+                        target_symbol: 'cherry',
+                    },
+                );
 
             // Item 20: Cherry Score Boost (High tier)
-            self.items.entry(20).write(Item {
-                item_id: 20,
-                name: 'Smelly Boots',
-                description: '+20 points to cherry',
-                price: 200,
-                sell_price: 150,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 20,
-                target_symbol: 'cherry',
-            });
+            self
+                .items
+                .entry(20)
+                .write(
+                    Item {
+                        item_id: 20,
+                        name: 'Smelly Boots',
+                        description: '+20 points to cherry',
+                        price: 200,
+                        sell_price: 150,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 20,
+                        target_symbol: 'cherry',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // LEMON RUN ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 4: Lemon Score Boost (Mid tier)
-            self.items.entry(4).write(Item {
-                item_id: 4,
-                name: 'Old Cassette',
-                description: '+6 points to lemon',
-                price: 35,
-                sell_price: 26,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 6,
-                target_symbol: 'lemon',
-            });
+            self
+                .items
+                .entry(4)
+                .write(
+                    Item {
+                        item_id: 4,
+                        name: 'Old Cassette',
+                        description: '+6 points to lemon',
+                        price: 35,
+                        sell_price: 26,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 6,
+                        target_symbol: 'lemon',
+                    },
+                );
 
             // Item 14: Lemon Score Boost (Low tier)
-            self.items.entry(14).write(Item {
-                item_id: 14,
-                name: 'Old Wig',
-                description: '+4 points to lemon',
-                price: 25,
-                sell_price: 18,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 4,
-                target_symbol: 'lemon',
-            });
+            self
+                .items
+                .entry(14)
+                .write(
+                    Item {
+                        item_id: 14,
+                        name: 'Old Wig',
+                        description: '+4 points to lemon',
+                        price: 25,
+                        sell_price: 18,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 4,
+                        target_symbol: 'lemon',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // COIN RUN ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 17: Coin Probability Boost (Mid tier)
-            self.items.entry(17).write(Item {
-                item_id: 17,
-                name: 'Golden Globe',
-                description: '+14% coin probability',
-                price: 55,
-                sell_price: 41,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 14,
-                target_symbol: 'coin',
-            });
+            self
+                .items
+                .entry(17)
+                .write(
+                    Item {
+                        item_id: 17,
+                        name: 'Golden Globe',
+                        description: '+14% coin probability',
+                        price: 55,
+                        sell_price: 41,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 14,
+                        target_symbol: 'coin',
+                    },
+                );
 
             // Item 19: Coin Score Boost (Mid tier)
-            self.items.entry(19).write(Item {
-                item_id: 19,
-                name: 'Old Phone',
-                description: '+10 points to coin',
-                price: 75,
-                sell_price: 56,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 10,
-                target_symbol: 'coin',
-            });
+            self
+                .items
+                .entry(19)
+                .write(
+                    Item {
+                        item_id: 19,
+                        name: 'Old Phone',
+                        description: '+10 points to coin',
+                        price: 75,
+                        sell_price: 56,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 10,
+                        target_symbol: 'coin',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // PATTERN MULTIPLIER ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 5: Pattern Boost (Low tier)
-            self.items.entry(5).write(Item {
-                item_id: 5,
-                name: 'Bat Boomerang',
-                description: '+15% pattern multiplier',
-                price: 40,
-                sell_price: 30,
-                effect_type: 1, // PatternMultiplierBoost
-                effect_value: 15,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(5)
+                .write(
+                    Item {
+                        item_id: 5,
+                        name: 'Bat Boomerang',
+                        description: '+15% pattern multiplier',
+                        price: 70,
+                        sell_price: 52,
+                        effect_type: 1, // PatternMultiplierBoost
+                        effect_value: 15,
+                        target_symbol: '',
+                    },
+                );
 
             // Item 6: Pattern Boost (Mid tier)
-            self.items.entry(6).write(Item {
-                item_id: 6,
-                name: 'Holy Eye',
-                description: '+30% pattern multiplier',
-                price: 90,
-                sell_price: 67,
-                effect_type: 1, // PatternMultiplierBoost
-                effect_value: 30,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(6)
+                .write(
+                    Item {
+                        item_id: 6,
+                        name: 'Holy Eye',
+                        description: '+30% pattern multiplier',
+                        price: 150,
+                        sell_price: 112,
+                        effect_type: 1, // PatternMultiplierBoost
+                        effect_value: 30,
+                        target_symbol: '',
+                    },
+                );
 
             // Item 15: Pattern Boost (High tier)
-            self.items.entry(15).write(Item {
-                item_id: 15,
-                name: 'Amulet',
-                description: '+50% pattern multiplier',
-                price: 150,
-                sell_price: 112,
-                effect_type: 1, // PatternMultiplierBoost
-                effect_value: 50,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(15)
+                .write(
+                    Item {
+                        item_id: 15,
+                        name: 'Amulet',
+                        description: '+50% pattern multiplier',
+                        price: 280,
+                        sell_price: 210,
+                        effect_type: 1, // PatternMultiplierBoost
+                        effect_value: 50,
+                        target_symbol: '',
+                    },
+                );
 
             // Item 21: Pattern Boost (Very High tier)
-            self.items.entry(21).write(Item {
-                item_id: 21,
-                name: 'Bloody Wrench',
-                description: '+80% pattern multiplier',
-                price: 280,
-                sell_price: 210,
-                effect_type: 1, // PatternMultiplierBoost
-                effect_value: 80,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(21)
+                .write(
+                    Item {
+                        item_id: 21,
+                        name: 'Bloody Wrench',
+                        description: '+80% pattern multiplier',
+                        price: 450,
+                        sell_price: 337,
+                        effect_type: 1, // PatternMultiplierBoost
+                        effect_value: 80,
+                        target_symbol: '',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // SPIN ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 9: Extra Spin (Low tier)
-            self.items.entry(9).write(Item {
-                item_id: 9,
-                name: 'Devil Onion',
-                description: '+1 extra spin',
-                price: 25,
-                sell_price: 18,
-                effect_type: 4, // SpinBonus
-                effect_value: 1,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(9)
+                .write(
+                    Item {
+                        item_id: 9,
+                        name: 'Devil Onion',
+                        description: '+1 extra spin',
+                        price: 150,
+                        sell_price: 112,
+                        effect_type: 4, // SpinBonus
+                        effect_value: 1,
+                        target_symbol: '',
+                    },
+                );
 
             // Item 10: Spin Bundle (Mid tier)
-            self.items.entry(10).write(Item {
-                item_id: 10,
-                name: 'Red Button',
-                description: '+3 extra spins',
-                price: 65,
-                sell_price: 48,
-                effect_type: 4, // SpinBonus
-                effect_value: 3,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(10)
+                .write(
+                    Item {
+                        item_id: 10,
+                        name: 'Red Button',
+                        description: '+3 extra spins',
+                        price: 420,
+                        sell_price: 315,
+                        effect_type: 4, // SpinBonus
+                        effect_value: 3,
+                        target_symbol: '',
+                    },
+                );
 
             // Item 18: Mega Spin Bundle (High tier)
-            self.items.entry(18).write(Item {
-                item_id: 18,
-                name: 'Pyramid',
-                description: '+5 extra spins',
-                price: 110,
-                sell_price: 82,
-                effect_type: 4, // SpinBonus
-                effect_value: 5,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(18)
+                .write(
+                    Item {
+                        item_id: 18,
+                        name: 'Pyramid',
+                        description: '+5 extra spins',
+                        price: 700,
+                        sell_price: 525,
+                        effect_type: 4, // SpinBonus
+                        effect_value: 5,
+                        target_symbol: '',
+                    },
+                );
 
             // Item 23: Super Spin Bundle (Very High tier)
-            self.items.entry(23).write(Item {
-                item_id: 23,
-                name: 'Devil Seal',
-                description: '+10 extra spins',
-                price: 200,
-                sell_price: 150,
-                effect_type: 4, // SpinBonus
-                effect_value: 10,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(23)
+                .write(
+                    Item {
+                        item_id: 23,
+                        name: 'Devil Seal',
+                        description: '+10 extra spins',
+                        price: 1400,
+                        sell_price: 1050,
+                        effect_type: 4, // SpinBonus
+                        effect_value: 10,
+                        target_symbol: '',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // SPECIAL ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 22: Removed (was score multiplier)
-            self.items.entry(22).write(Item {
-                item_id: 22,
-                name: 'Car Keys',
-                description: '+100% pattern multiplier',
-                price: 400,
-                sell_price: 300,
-                effect_type: 1, // PatternMultiplierBoost
-                effect_value: 100,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(22)
+                .write(
+                    Item {
+                        item_id: 22,
+                        name: 'Car Keys',
+                        description: '+100% pattern multiplier',
+                        price: 650,
+                        sell_price: 487,
+                        effect_type: 1, // PatternMultiplierBoost
+                        effect_value: 100,
+                        target_symbol: '',
+                    },
+                );
 
             // Item 24: Legendary Item
-            self.items.entry(24).write(Item {
-                item_id: 24,
-                name: 'Holy Grail',
-                description: '+150% pattern multiplier',
-                price: 800,
-                sell_price: 600,
-                effect_type: 1, // PatternMultiplierBoost
-                effect_value: 150,
-                target_symbol: '',
-            });
+            self
+                .items
+                .entry(24)
+                .write(
+                    Item {
+                        item_id: 24,
+                        name: 'Holy Grail',
+                        description: '+150% pattern multiplier',
+                        price: 1400,
+                        sell_price: 1050,
+                        effect_type: 1, // PatternMultiplierBoost
+                        effect_value: 150,
+                        target_symbol: '',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // NEW ITEMS FOR COMPLETE RUNS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 25: Seven Score Boost (High tier)
-            self.items.entry(25).write(Item {
-                item_id: 25,
-                name: 'Hockey Mask',
-                description: '+15 points to seven',
-                price: 180,
-                sell_price: 135,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 15,
-                target_symbol: 'seven',
-            });
+            self
+                .items
+                .entry(25)
+                .write(
+                    Item {
+                        item_id: 25,
+                        name: 'Hockey Mask',
+                        description: '+15 points to seven',
+                        price: 180,
+                        sell_price: 135,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 15,
+                        target_symbol: 'seven',
+                    },
+                );
 
             // Item 26: Diamond Score Boost (High tier)
-            self.items.entry(26).write(Item {
-                item_id: 26,
-                name: 'Rune',
-                description: '+12 points to diamond',
-                price: 160,
-                sell_price: 120,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 12,
-                target_symbol: 'diamond',
-            });
+            self
+                .items
+                .entry(26)
+                .write(
+                    Item {
+                        item_id: 26,
+                        name: 'Rune',
+                        description: '+12 points to diamond',
+                        price: 160,
+                        sell_price: 120,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 12,
+                        target_symbol: 'diamond',
+                    },
+                );
 
             // Item 27: Diamond Probability Boost (High tier)
-            self.items.entry(27).write(Item {
-                item_id: 27,
-                name: 'Bloody knife',
-                description: '+22% diamond probability',
-                price: 130,
-                sell_price: 97,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 22,
-                target_symbol: 'diamond',
-            });
+            self
+                .items
+                .entry(27)
+                .write(
+                    Item {
+                        item_id: 27,
+                        name: 'Bloody knife',
+                        description: '+22% diamond probability',
+                        price: 130,
+                        sell_price: 97,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 22,
+                        target_symbol: 'diamond',
+                    },
+                );
 
             // Item 28: Cherry Probability Boost (High tier)
-            self.items.entry(28).write(Item {
-                item_id: 28,
-                name: 'Devil Head',
-                description: '+28% cherry probability',
-                price: 220,
-                sell_price: 165,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 28,
-                target_symbol: 'cherry',
-            });
+            self
+                .items
+                .entry(28)
+                .write(
+                    Item {
+                        item_id: 28,
+                        name: 'Devil Head',
+                        description: '+28% cherry probability',
+                        price: 220,
+                        sell_price: 165,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 28,
+                        target_symbol: 'cherry',
+                    },
+                );
 
             // Item 29: Lemon Probability Boost (Mid tier)
-            self.items.entry(29).write(Item {
-                item_id: 29,
-                name: 'Cigarettes',
-                description: '+16% lemon probability',
-                price: 70,
-                sell_price: 52,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 16,
-                target_symbol: 'lemon',
-            });
+            self
+                .items
+                .entry(29)
+                .write(
+                    Item {
+                        item_id: 29,
+                        name: 'Cigarettes',
+                        description: '+16% lemon probability',
+                        price: 70,
+                        sell_price: 52,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 16,
+                        target_symbol: 'lemon',
+                    },
+                );
 
             // Item 30: Lemon Score Boost (High tier)
-            self.items.entry(30).write(Item {
-                item_id: 30,
-                name: 'Soul Contract',
-                description: '+18 points to lemon',
-                price: 170,
-                sell_price: 127,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 18,
-                target_symbol: 'lemon',
-            });
+            self
+                .items
+                .entry(30)
+                .write(
+                    Item {
+                        item_id: 30,
+                        name: 'Soul Contract',
+                        description: '+18 points to lemon',
+                        price: 170,
+                        sell_price: 127,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 18,
+                        target_symbol: 'lemon',
+                    },
+                );
 
             // Item 31: Coin Probability Boost (High tier)
-            self.items.entry(31).write(Item {
-                item_id: 31,
-                name: 'Beer Can',
-                description: '+25% coin probability',
-                price: 140,
-                sell_price: 105,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 25,
-                target_symbol: 'coin',
-            });
+            self
+                .items
+                .entry(31)
+                .write(
+                    Item {
+                        item_id: 31,
+                        name: 'Beer Can',
+                        description: '+25% coin probability',
+                        price: 140,
+                        sell_price: 105,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 25,
+                        target_symbol: 'coin',
+                    },
+                );
 
             // Item 32: Coin Score Boost (High tier)
-            self.items.entry(32).write(Item {
-                item_id: 32,
-                name: 'Memory Card',
-                description: '+22 points to coin',
-                price: 250,
-                sell_price: 187,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 22,
-                target_symbol: 'coin',
-            });
+            self
+                .items
+                .entry(32)
+                .write(
+                    Item {
+                        item_id: 32,
+                        name: 'Memory Card',
+                        description: '+22 points to coin',
+                        price: 250,
+                        sell_price: 187,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 22,
+                        target_symbol: 'coin',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // ADDITIONAL SEVEN ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 33: Seven Score Boost (Very High tier)
-            self.items.entry(33).write(Item {
-                item_id: 33,
-                name: 'Ticket',
-                description: '+25 points to seven',
-                price: 350,
-                sell_price: 262,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 25,
-                target_symbol: 'seven',
-            });
+            self
+                .items
+                .entry(33)
+                .write(
+                    Item {
+                        item_id: 33,
+                        name: 'Ticket',
+                        description: '+25 points to seven',
+                        price: 350,
+                        sell_price: 262,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 25,
+                        target_symbol: 'seven',
+                    },
+                );
 
             // Item 34: Seven Probability Boost (Very High tier)
-            self.items.entry(34).write(Item {
-                item_id: 34,
-                name: 'Devil Train',
-                description: '+35% seven probability',
-                price: 280,
-                sell_price: 210,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 35,
-                target_symbol: 'seven',
-            });
+            self
+                .items
+                .entry(34)
+                .write(
+                    Item {
+                        item_id: 34,
+                        name: 'Devil Train',
+                        description: '+35% seven probability',
+                        price: 400,
+                        sell_price: 300,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 35,
+                        target_symbol: 'seven',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // ADDITIONAL DIAMOND ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 35: Diamond Score Boost (Very High tier)
-            self.items.entry(35).write(Item {
-                item_id: 35,
-                name: 'Fake Dollar',
-                description: '+18 points to diamond',
-                price: 300,
-                sell_price: 225,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 18,
-                target_symbol: 'diamond',
-            });
+            self
+                .items
+                .entry(35)
+                .write(
+                    Item {
+                        item_id: 35,
+                        name: 'Fake Dollar',
+                        description: '+18 points to diamond',
+                        price: 300,
+                        sell_price: 225,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 18,
+                        target_symbol: 'diamond',
+                    },
+                );
 
             // Item 36: Diamond Probability Boost (Very High tier)
-            self.items.entry(36).write(Item {
-                item_id: 36,
-                name: 'Bull Skull',
-                description: '+30% diamond probability',
-                price: 260,
-                sell_price: 195,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 30,
-                target_symbol: 'diamond',
-            });
+            self
+                .items
+                .entry(36)
+                .write(
+                    Item {
+                        item_id: 36,
+                        name: 'Bull Skull',
+                        description: '+30% diamond probability',
+                        price: 260,
+                        sell_price: 195,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 30,
+                        target_symbol: 'diamond',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // ADDITIONAL LEMON ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 37: Lemon Probability Boost (High tier)
-            self.items.entry(37).write(Item {
-                item_id: 37,
-                name: 'Fake Coin',
-                description: '+24% lemon probability',
-                price: 120,
-                sell_price: 90,
-                effect_type: 2, // SymbolProbabilityBoost
-                effect_value: 24,
-                target_symbol: 'lemon',
-            });
+            self
+                .items
+                .entry(37)
+                .write(
+                    Item {
+                        item_id: 37,
+                        name: 'Fake Coin',
+                        description: '+24% lemon probability',
+                        price: 120,
+                        sell_price: 90,
+                        effect_type: 2, // SymbolProbabilityBoost
+                        effect_value: 24,
+                        target_symbol: 'lemon',
+                    },
+                );
 
             // Item 38: Lemon Score Boost (Very High tier)
-            self.items.entry(38).write(Item {
-                item_id: 38,
-                name: 'Pocket Watch',
-                description: '+28 points to lemon',
-                price: 320,
-                sell_price: 240,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 28,
-                target_symbol: 'lemon',
-            });
+            self
+                .items
+                .entry(38)
+                .write(
+                    Item {
+                        item_id: 38,
+                        name: 'Pocket Watch',
+                        description: '+28 points to lemon',
+                        price: 320,
+                        sell_price: 240,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 28,
+                        target_symbol: 'lemon',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // ADDITIONAL COIN ITEMS
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 39: Coin Score Boost (Low tier)
-            self.items.entry(39).write(Item {
-                item_id: 39,
-                name: 'Knight Helmet',
-                description: '+5 points to coin',
-                price: 28,
-                sell_price: 21,
-                effect_type: 3, // DirectScoreBonus
-                effect_value: 5,
-                target_symbol: 'coin',
-            });
-
-            // // Item 40: Coin Probability Boost (Very High tier)
-            // self.items.entry(40).write(Item {
-            //     item_id: 40,
-            //     name: 'Fortune Cookie',
-            //     description: '+35% coin probability',
-            //     price: 290,
-            //     sell_price: 217,
-            //     effect_type: 2, // SymbolProbabilityBoost
-            //     effect_value: 35,
-            //     target_symbol: 'coin',
-            // });
-
-            // // ═══════════════════════════════════════════════════════════════════
-            // // ADDITIONAL PATTERN ITEMS
-            // // ═══════════════════════════════════════════════════════════════════
-
-            // // Item 41: Pattern Boost (Ultra High tier)
-            // self.items.entry(41).write(Item {
-            //     item_id: 41,
-            //     name: 'Demon Horn',
-            //     description: '+200% pattern multiplier',
-            //     price: 1200,
-            //     sell_price: 900,
-            //     effect_type: 1, // PatternMultiplierBoost
-            //     effect_value: 200,
-            //     target_symbol: '',
-            // });
-
-            // // ═══════════════════════════════════════════════════════════════════
-            // // ADDITIONAL SPIN ITEMS
-            // // ═══════════════════════════════════════════════════════════════════
-
-            // // Item 42: Spin Bundle (Very Low tier)
-            // self.items.entry(42).write(Item {
-            //     item_id: 42,
-            //     name: 'Broken Watch',
-            //     description: '+2 extra spins',
-            //     price: 45,
-            //     sell_price: 33,
-            //     effect_type: 4, // SpinBonus
-            //     effect_value: 2,
-            //     target_symbol: '',
-            // });
-
-            // // Item 43: Mega Spin Bundle (Ultra High tier)
-            // self.items.entry(43).write(Item {
-            //     item_id: 43,
-            //     name: 'Time Machine',
-            //     description: '+15 extra spins',
-            //     price: 350,
-            //     sell_price: 262,
-            //     effect_type: 4, // SpinBonus
-            //     effect_value: 15,
-            //     target_symbol: '',
-            // });
+            self
+                .items
+                .entry(39)
+                .write(
+                    Item {
+                        item_id: 39,
+                        name: 'Knight Helmet',
+                        description: '+5 points to coin',
+                        price: 28,
+                        sell_price: 21,
+                        effect_type: 3, // DirectScoreBonus
+                        effect_value: 5,
+                        target_symbol: 'coin',
+                    },
+                );
 
             // ═══════════════════════════════════════════════════════════════════
             // SPECIAL PROTECTION ITEM
             // ═══════════════════════════════════════════════════════════════════
 
             // Item 44: Biblia - 666 Protection (Consumable)
-            self.items.entry(40).write(Item {
-                item_id: 40,
-                name: 'La Biblia',
-                description: 'Protects from 666 once',
-                price: 500,
-                sell_price: 375,
-                effect_type: 6, // Special: 666 Protection (new type)
-                effect_value: 1, // Single use
-                target_symbol: 'six',
-            });
+            self
+                .items
+                .entry(40)
+                .write(
+                    Item {
+                        item_id: 40,
+                        name: 'La Biblia',
+                        description: 'Protects from 666 once',
+                        price: 1100,
+                        sell_price: 825,
+                        effect_type: 6, // Special: 666 Protection (new type)
+                        effect_value: 1, // Single use
+                        target_symbol: 'six',
+                    },
+                );
 
             self.total_items.write(40);
         }
@@ -1699,6 +1891,14 @@ pub mod AbyssGame {
             let item_5 = Self::generate_random_item_id(@self, session_id, current_nonce, 5);
             let item_6 = Self::generate_random_item_id(@self, session_id, current_nonce, 6);
 
+            // Clear purchased status for all slots (new market)
+            self.market_slot_purchased.entry((session_id, 1)).write(false);
+            self.market_slot_purchased.entry((session_id, 2)).write(false);
+            self.market_slot_purchased.entry((session_id, 3)).write(false);
+            self.market_slot_purchased.entry((session_id, 4)).write(false);
+            self.market_slot_purchased.entry((session_id, 5)).write(false);
+            self.market_slot_purchased.entry((session_id, 6)).write(false);
+
             // Save market state
             let market = SessionMarket {
                 refresh_count,
@@ -1714,7 +1914,9 @@ pub mod AbyssGame {
         }
 
         /// Generate a random item ID (1-24)
-        fn generate_random_item_id(self: @ContractState, session_id: u32, nonce: u64, slot: u32) -> u32 {
+        fn generate_random_item_id(
+            self: @ContractState, session_id: u32, nonce: u64, slot: u32,
+        ) -> u32 {
             let timestamp = get_block_timestamp();
             let total_items = self.total_items.read();
 
