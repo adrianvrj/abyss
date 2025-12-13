@@ -9,10 +9,16 @@ export interface GameFeedbackActions {
   playSpin: () => Promise<void>;
   playSpinAnimation: () => { stopSpinSound: () => void };
   playGameOver: () => Promise<void>;
+  playGameOverSound: () => Promise<void>;
+  stopGameOverSound: () => Promise<void>;
+  playJackpotSound: () => Promise<void>;
+  stopJackpotSound: () => Promise<void>;
 }
 
 export function useGameFeedback(): GameFeedbackActions {
   const spinSound = useRef<Audio.Sound | null>(null);
+  const gameOverSound = useRef<Audio.Sound | null>(null);
+  const jackpotSound = useRef<Audio.Sound | null>(null);
 
   // Initialize audio on mount
   useEffect(() => {
@@ -27,10 +33,22 @@ export function useGameFeedback(): GameFeedbackActions {
         });
 
         // Load spin sound
-        const { sound } = await Audio.Sound.createAsync(
+        const { sound: spin } = await Audio.Sound.createAsync(
           require('../assets/sounds/spin.mp3')
         );
-        spinSound.current = sound;
+        spinSound.current = spin;
+
+        // Load game over sound
+        const { sound: gameOver } = await Audio.Sound.createAsync(
+          require('../assets/sounds/game-over.mp3')
+        );
+        gameOverSound.current = gameOver;
+
+        // Load jackpot sound
+        const { sound: jackpot } = await Audio.Sound.createAsync(
+          require('../assets/sounds/jackpot.mp3')
+        );
+        jackpotSound.current = jackpot;
       } catch (error) {
         console.error('Failed to initialize audio:', error);
       }
@@ -42,6 +60,12 @@ export function useGameFeedback(): GameFeedbackActions {
     return () => {
       if (spinSound.current) {
         spinSound.current.unloadAsync();
+      }
+      if (gameOverSound.current) {
+        gameOverSound.current.unloadAsync();
+      }
+      if (jackpotSound.current) {
+        jackpotSound.current.unloadAsync();
       }
     };
   }, []);
@@ -224,11 +248,62 @@ export function useGameFeedback(): GameFeedbackActions {
     };
   }, []);
 
+  // Play game over sound (plays once)
+  const playGameOverSound = useCallback(async () => {
+    if (gameOverSound.current) {
+      try {
+        await gameOverSound.current.setPositionAsync(0);
+        await gameOverSound.current.playAsync();
+      } catch (error) {
+        console.error('Failed to play game over sound:', error);
+      }
+    }
+  }, []);
+
+  // Stop game over sound
+  const stopGameOverSound = useCallback(async () => {
+    if (gameOverSound.current) {
+      try {
+        await gameOverSound.current.stopAsync();
+        await gameOverSound.current.setIsLoopingAsync(false);
+      } catch (error) {
+        console.error('Failed to stop game over sound:', error);
+      }
+    }
+  }, []);
+
+  // Play jackpot sound (plays once or until stopped)
+  const playJackpotSound = useCallback(async () => {
+    if (jackpotSound.current) {
+      try {
+        await jackpotSound.current.setPositionAsync(0);
+        await jackpotSound.current.playAsync();
+      } catch (error) {
+        console.error('Failed to play jackpot sound:', error);
+      }
+    }
+  }, []);
+
+  // Stop jackpot sound
+  const stopJackpotSound = useCallback(async () => {
+    if (jackpotSound.current) {
+      try {
+        await jackpotSound.current.stopAsync();
+      } catch (error) {
+        console.error('Failed to stop jackpot sound:', error);
+      }
+    }
+  }, []);
+
   return {
     playPatternHit,
     playLevelUp,
     playSpin,
     playSpinAnimation,
     playGameOver,
+    playGameOverSound,
+    stopGameOverSound,
+    playJackpotSound,
+    stopJackpotSound,
   };
 }

@@ -11,7 +11,8 @@ export type PatternType =
     | 'horizontal-4'
     | 'horizontal-5'
     | 'vertical-3'
-    | 'diagonal-3';
+    | 'diagonal-3'
+    | 'jackpot';
 
 export interface PatternMultiplier {
     type: PatternType;
@@ -22,6 +23,7 @@ export interface GameConfig {
     symbols: SymbolConfig[];
     patternMultipliers: PatternMultiplier[];
     probability666: number; // 0-100
+    probabilityJackpot: number; // 0-100, forced jackpot chance
 }
 
 export interface Pattern {

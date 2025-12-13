@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   imageContainer: {
-    width: SCREEN_WIDTH * 0.4, // Slightly larger for visibility
-    height: SCREEN_WIDTH * 0.4,
+    width: SCREEN_WIDTH * 0.55, // Larger for better visibility
+    height: SCREEN_WIDTH * 0.55,
     justifyContent: 'center',
     alignItems: 'center',
   },

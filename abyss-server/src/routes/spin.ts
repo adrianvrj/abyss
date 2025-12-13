@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { shortString } from 'starknet'; // Import starknet utils
-import { generateSymbols } from '../game/generator';
+import { generateSymbols, checkJackpotTrigger } from '../game/generator';
 import { detectPatterns } from '../game/patterns';
 import { calculateScore } from '../game/score';
 import { calculate666Probability } from '../game/probability';
@@ -130,26 +130,39 @@ export async function spinHandler(req: Request, res: Response) {
         let bibliaUsed = false;
         let transactionHash: string | undefined;
 
-        if (is666) {
+        // 5. Check for forced jackpot first (0.8% chance)
+        const isJackpot = checkJackpotTrigger(DEFAULT_GAME_CONFIG.probabilityJackpot);
+
+        if (isJackpot) {
+            // Force jackpot - all 15 cells same symbol
+            console.log(`[Session ${sessionId}] JACKPOT Triggered!`);
+            const result = generateSymbols(modifiedConfig, false, true); // forceJackpot = true
+            grid = result.grid as string[][];
+            patterns = detectPatterns(result.grid, modifiedConfig);
+
+            // Apply pattern multiplier boost
+            patterns = patterns.map(p => ({
+                ...p,
+                multiplier: p.multiplier * (1 + itemBonuses.patternMultiplierBoost / 100)
+            }));
+
+            const scoreBreakdown = calculateScore(result.grid, patterns, modifiedConfig);
+            baseScore = scoreBreakdown.totalScore;
+
+            // Apply score multiplier and direct bonus
+            scoreToAdd = applyScoreBonuses(baseScore, itemBonuses.scoreMultiplier, itemBonuses.directScoreBonus);
+        } else if (is666) {
             // Check 666 Protection (Biblia)
             if (itemBonuses.has666Protection) {
-                // Saved by Biblia - generate normal grid
+                // Saved by Biblia - still show 666 grid but don't end game
                 bibliaUsed = true;
-                const result = generateSymbols(modifiedConfig, false); // Force safe grid
+                const result = generateSymbols(modifiedConfig, true); // Show 666 grid
                 grid = result.grid as string[][];
-                patterns = detectPatterns(result.grid, modifiedConfig);
 
-                // Apply pattern multiplier boost
-                patterns = patterns.map(p => ({
-                    ...p,
-                    multiplier: p.multiplier * (1 + itemBonuses.patternMultiplierBoost / 100)
-                }));
-
-                const scoreBreakdown = calculateScore(result.grid, patterns, modifiedConfig);
-                baseScore = scoreBreakdown.totalScore;
-
-                // Apply score multiplier and direct bonus
-                scoreToAdd = applyScoreBonuses(baseScore, itemBonuses.scoreMultiplier, itemBonuses.directScoreBonus);
+                // No patterns count for 666 (player is just saved, no score)
+                patterns = [];
+                baseScore = 0;
+                scoreToAdd = 0;
             } else {
                 // Game Over - 666 triggered
                 console.log(`[Session ${sessionId}] 666 Triggered - GAME OVER`);

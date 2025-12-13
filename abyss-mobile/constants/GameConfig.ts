@@ -11,7 +11,8 @@ export type PatternType =
   | 'horizontal-4'
   | 'horizontal-5'
   | 'vertical-3'
-  | 'diagonal-3';
+  | 'diagonal-3'
+  | 'jackpot';
 
 export interface PatternMultiplier {
   type: PatternType;
@@ -44,6 +45,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     { type: 'horizontal-5', multiplier: 6 },    // was 10
     { type: 'vertical-3', multiplier: 2 },      // was 3
     { type: 'diagonal-3', multiplier: 2.5 },    // was 4
+    { type: 'jackpot', multiplier: 10 },        // All 15 cells same symbol - bonus on top of other patterns
   ],
   probability666: 1.5,
   animationDurations: {

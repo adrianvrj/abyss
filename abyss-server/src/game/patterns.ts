@@ -106,12 +106,52 @@ function getMultiplierForPattern(type: PatternType, config: GameConfig): number 
     return multiplierConfig?.multiplier || 1;
 }
 
+/**
+ * Detect jackpot pattern - all 15 cells have the same symbol
+ */
+export function detectJackpot(grid: SymbolType[][]): Pattern | null {
+    const firstSymbol = grid[0][0];
+
+    // Check if all 15 cells match the first symbol
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 5; col++) {
+            if (grid[row][col] !== firstSymbol) {
+                return null;
+            }
+        }
+    }
+
+    // All cells match - JACKPOT!
+    const positions: [number, number][] = [];
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 5; col++) {
+            positions.push([row, col]);
+        }
+    }
+
+    return {
+        type: 'jackpot',
+        positions,
+        symbol: firstSymbol,
+        multiplier: 0, // Set later
+    };
+}
+
 export function detectPatterns(grid: SymbolType[][], config: GameConfig): Pattern[] {
     try {
         const patterns: Pattern[] = [];
+
+        // Detect all normal patterns first
         patterns.push(...detectHorizontalPatterns(grid));
         patterns.push(...detectVerticalPatterns(grid));
         patterns.push(...detectDiagonalPatterns(grid));
+
+        // Check for jackpot - adds bonus on top of other patterns
+        const jackpot = detectJackpot(grid);
+        if (jackpot) {
+            patterns.push(jackpot);
+        }
+
         return patterns.map(pattern => ({
             ...pattern,
             multiplier: getMultiplierForPattern(pattern.type, config),

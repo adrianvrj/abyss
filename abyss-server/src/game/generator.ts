@@ -18,6 +18,13 @@ export function check666Trigger(probability: number): boolean {
 }
 
 /**
+ * Check if jackpot should trigger based on probability
+ */
+export function checkJackpotTrigger(probability: number): boolean {
+    return secureRandom() * 100 < probability;
+}
+
+/**
  * Generate a single symbol using weighted random selection
  */
 export function generateWeightedSymbol(symbolConfigs: SymbolConfig[]): SymbolType {
@@ -64,19 +71,48 @@ function generate666Grid(symbolConfigs: SymbolConfig[]): SymbolType[][] {
 }
 
 /**
- * Generate symbols for a spin
+ * Generate jackpot grid - all 15 cells with the same random symbol (excluding six)
  */
+function generateJackpotGrid(symbolConfigs: SymbolConfig[]): SymbolType[][] {
+    const nonSixSymbols = symbolConfigs.filter(s => s.type !== 'six');
+    // Pick a random symbol for the jackpot
+    const jackpotSymbol = generateWeightedSymbol(nonSixSymbols);
+
+    const grid: SymbolType[][] = [];
+    for (let row = 0; row < 3; row++) {
+        grid[row] = [];
+        for (let col = 0; col < 5; col++) {
+            grid[row][col] = jackpotSymbol;
+        }
+    }
+
+    return grid;
+}
+
 /**
  * Generate symbols for a spin
  * @param config Game configuration
  * @param force666 If true, forces the 666 pattern (Game Over)
+ * @param forceJackpot If true, forces the jackpot pattern
  */
-export function generateSymbols(config: GameConfig = DEFAULT_GAME_CONFIG, force666: boolean = false): GenerateSymbolsResult {
+export function generateSymbols(
+    config: GameConfig = DEFAULT_GAME_CONFIG,
+    force666: boolean = false,
+    forceJackpot: boolean = false
+): GenerateSymbolsResult {
     if (force666) {
         const grid = generate666Grid(config.symbols);
         return {
             grid,
             is666: true,
+        };
+    }
+
+    if (forceJackpot) {
+        const grid = generateJackpotGrid(config.symbols);
+        return {
+            grid,
+            is666: false,
         };
     }
 

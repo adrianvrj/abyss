@@ -9,10 +9,13 @@ import { DEFAULT_GAME_CONFIG } from '../constants/GameConfig';
 import SlotGrid, { symbolSources } from '../components/SlotGrid';
 import { PatternHitAnimations } from '../components/PatternHitDisplay';
 import BibliaSaveAnimation from '../components/BibliaSaveAnimation';
+import LevelUpAnimation from '../components/LevelUpAnimation';
+import JackpotAnimation from '../components/JackpotAnimation';
 import { useGameLogic } from '../hooks/useGameLogic';
+import { useGameFeedback } from '../hooks/useGameFeedback';
 import { wp, hp } from '../utils/dimensions';
 import { getSlotGridPosition, getSymbolSize } from '../utils/slotMachinePositioning';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutUp, useAnimatedStyle, useSharedValue, withSpring, withSequence, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { getSessionData, getSessionItems, getItemInfo, ContractItem } from '../utils/abyssContract';
 import { Pattern } from '../utils/patternDetector';
@@ -74,16 +77,27 @@ export default function GameScreen() {
   const [showFlash, setShowFlash] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRestored, setIsRestored] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [newLevel, setNewLevel] = useState(1);
+  const [showJackpot, setShowJackpot] = useState(false);
+  const prevLevelRef = useRef(1);
   const winSound = useRef<Audio.Sound | null>(null);
+
+  // Game feedback sounds
+  const { playGameOverSound, stopGameOverSound, playJackpotSound } = useGameFeedback();
 
   // Get responsive symbol size and positioning
   const symbolSize = getSymbolSize();
   const gridPosition = getSlotGridPosition();
 
+  // Track if we've already initialized this session
+  const initializedSessionRef = useRef<number | null>(null);
+
   // Initialize global session context when game starts
   useEffect(() => {
-    // initialize if no session OR if session ID mismatch (new game)
-    if (parsedSessionId && (!session || session.sessionId !== parsedSessionId)) {
+    // Only initialize once per session ID
+    if (parsedSessionId && initializedSessionRef.current !== parsedSessionId) {
+      initializedSessionRef.current = parsedSessionId;
       setSession({
         sessionId: parsedSessionId,
         score: initialScore,
@@ -92,7 +106,7 @@ export default function GameScreen() {
         bonusSpins: 0,
       });
     }
-  }, [parsedSessionId, initialScore, initialSpins, session?.sessionId]);
+  }, [parsedSessionId, initialScore, initialSpins, setSession]);
 
   // Restore saved game state from AsyncStorage if app was closed mid-session
   useEffect(() => {
@@ -418,16 +432,54 @@ export default function GameScreen() {
 
   // Handle game over state with delay
   useEffect(() => {
-    if (state.gameOver && !state.isSpinning) {
+    // Wait for pattern animations to complete before showing game over
+    if (state.gameOver && !state.isSpinning && !showPatternAnimations) {
       // Add a delay before showing game over screen
       const timer = setTimeout(() => {
         setShowGameOver(true);
-      }, 1000); // 1 second delay (Reduced from 3s)
+      }, 1000); // 1 second delay after patterns complete
       return () => clearTimeout(timer);
     } else {
       setShowGameOver(false);
     }
-  }, [state.gameOver, state.isSpinning]);
+  }, [state.gameOver, state.isSpinning, showPatternAnimations]);
+
+  // Play game over sound when game over screen shows
+  useEffect(() => {
+    if (showGameOver) {
+      playGameOverSound();
+    }
+
+    // Stop sound when component unmounts or showGameOver becomes false
+    return () => {
+      stopGameOverSound();
+    };
+  }, [showGameOver, playGameOverSound, stopGameOverSound]);
+
+  // Detect level up
+  useEffect(() => {
+    if (state.level > prevLevelRef.current && prevLevelRef.current > 0) {
+      // Level increased!
+      setNewLevel(state.level);
+      setShowLevelUp(true);
+
+      // Hide after 1.5 seconds
+      const timer = setTimeout(() => {
+        setShowLevelUp(false);
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+    prevLevelRef.current = state.level;
+  }, [state.level]);
+
+  // Detect when jackpot pattern is being shown
+  useEffect(() => {
+    if (currentPatternIndex >= 0 && hitPatterns[currentPatternIndex]?.type === 'jackpot') {
+      setShowJackpot(true);
+      playJackpotSound();
+    }
+  }, [currentPatternIndex, hitPatterns, playJackpotSound]);
 
   if (!assetsLoaded || !sessionDataLoaded || !itemsLoaded) {
     return (
@@ -531,7 +583,11 @@ export default function GameScreen() {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.spinsText}>Spins: {state.spinsLeft}</Text>
+            </View>
+
+            {/* Spins indicator - centered above grid */}
+            <View style={styles.spinsContainer}>
+              <Text style={styles.spinsText}>{state.spinsLeft}</Text>
             </View>
 
             {/* Level indicator */}
@@ -543,7 +599,7 @@ export default function GameScreen() {
             <View style={styles.probabilityContainer}>
               <Ionicons name="warning" size={16} color="#ff4444" />
               <Text style={styles.probabilityText}>
-                666 Risk: {calculate666Probability(state.level).toFixed(1)}%
+                666: {calculate666Probability(state.level).toFixed(1)}%
               </Text>
             </View>
 
@@ -593,6 +649,21 @@ export default function GameScreen() {
                 onComplete={() => {
                   // Animation complete, nothing to do (flag already reset in useGameLogic)
                 }}
+              />
+            )}
+
+            {/* Level Up Animation */}
+            {showLevelUp && (
+              <LevelUpAnimation
+                level={newLevel}
+                onComplete={() => setShowLevelUp(false)}
+              />
+            )}
+
+            {/* Jackpot Animation */}
+            {showJackpot && (
+              <JackpotAnimation
+                onComplete={() => setShowJackpot(false)}
               />
             )}
 
@@ -694,25 +765,27 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    top: Theme.spacing.md,
+    top: Theme.spacing.sm,
     left: Theme.spacing.lg,
-    right: Theme.spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     zIndex: 10,
-    paddingTop: Theme.spacing.md,
   },
   scoreContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginLeft: Theme.spacing.sm,
-    marginVertical: Theme.spacing.xs,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   scoreText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 18,
+    fontSize: 22,
     color: Theme.colors.primary,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   symbolsInfoButton: {
     padding: Theme.spacing.sm,
@@ -743,25 +816,33 @@ const styles = StyleSheet.create({
   },
   marketButton: {
     position: 'absolute',
-    top: 80,
-    right: Theme.spacing.xl,
-    padding: Theme.spacing.sm,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    top: 75,
+    right: Theme.spacing.lg,
+    padding: Theme.spacing.md,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
     zIndex: 10,
+    minWidth: 50,
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inventoryButton: {
     position: 'absolute',
-    top: 150, // Below market button
-    right: Theme.spacing.xl,
-    padding: Theme.spacing.sm,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    top: 145,
+    right: Theme.spacing.lg,
+    padding: Theme.spacing.md,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
     zIndex: 10,
+    minWidth: 50,
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemBadge: {
     position: 'absolute',
@@ -797,53 +878,70 @@ const styles = StyleSheet.create({
   },
   levelContainer: {
     position: 'absolute',
-    top: 55,
+    top: 58,
     left: Theme.spacing.lg,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: 12,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   levelText: {
     color: Theme.colors.primary,
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: Theme.fonts.body,
     fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   probabilityContainer: {
     position: 'absolute',
-    top: 85,
+    top: 94,
     left: Theme.spacing.lg,
-    backgroundColor: 'rgba(255, 68, 68, 0.15)',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 68, 68, 0.3)',
+    borderColor: 'rgba(255, 68, 68, 0.5)',
   },
   probabilityText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 11,
-    color: '#ff4444',
+    fontSize: 13,
+    color: '#FF6B6B',
     fontWeight: 'bold',
+    textShadowColor: 'rgba(255, 68, 68, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   nextLevelContainer: {
     position: 'absolute',
-    top: 115,
+    top: 129,
     left: Theme.spacing.lg,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   nextLevelText: {
-    color: '#FF0000', // Red color
-    fontSize: 12,
+    color: '#FFD700',
+    fontSize: 13,
     fontFamily: Theme.fonts.body,
-    fontWeight: 'normal',
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  spinsContainer: {
+    position: 'absolute',
+    top: '12%',
+    left: 0,
+    right: '8%',
+    alignItems: 'center',
+    zIndex: 15,
   },
   transactionIndicator: {
     position: 'absolute',
@@ -863,8 +961,17 @@ const styles = StyleSheet.create({
   },
   spinsText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 18,
+    fontSize: 20,
     color: Theme.colors.primary,
+    fontWeight: 'bold',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    overflow: 'hidden',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   gridWrapper: {
     position: 'absolute',
@@ -877,16 +984,21 @@ const styles = StyleSheet.create({
   },
   hintWrapper: {
     position: 'absolute',
-    bottom: Theme.spacing.xl,
+    bottom: 40,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   hintText: {
     fontFamily: Theme.fonts.body,
-    fontSize: 18,
+    fontSize: 16,
     color: Theme.colors.white,
-    opacity: 0.7,
+    opacity: 0.85,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   loadingContainer: {
     flex: 1,
