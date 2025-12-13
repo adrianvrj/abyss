@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { ShoppingBag, Skull, Zap } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -70,6 +71,63 @@ export default function Home() {
             >
               Join X
             </a>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-20 px-4 bg-black/50 backdrop-blur-sm border-y border-white/10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="font-[family-name:var(--font-ramagothic)] text-white text-5xl md:text-7xl mb-16 text-center uppercase tracking-wide text-shadow-glow">
+              Game Features
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Feature 1 */}
+              <div className="border-2 border-white/20 p-8 bg-black/40 hover:border-primary/80 transition-all duration-300 group">
+                <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-6 group-hover:bg-primary/40 transition-colors">
+                  <ShoppingBag className="text-primary w-6 h-6" />
+                </div>
+                <h3 className="font-[family-name:var(--font-press-start)] text-primary text-sm md:text-base mb-4 uppercase leading-relaxed">
+                  Strategic Item Shop
+                </h3>
+                <p className="font-[family-name:var(--font-press-start)] text-white/70 text-xs leading-relaxed">
+                  Visit the market to buy items like &quot;Symbol Probability Boost&quot; or &quot;Score Multiplier&quot;. Craft your own strategy to top the leaderboards.
+                </p>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="border-2 border-white/20 p-8 bg-black/40 hover:border-red-500/80 transition-all duration-300 group">
+                <div className="h-12 w-12 rounded-full bg-red-900/20 flex items-center justify-center mb-6 group-hover:bg-red-900/40 transition-colors">
+                  <Skull className="text-red-500 w-6 h-6" />
+                </div>
+                <h3 className="font-[family-name:var(--font-press-start)] text-red-500 text-sm md:text-base mb-4 uppercase leading-relaxed">
+                  High Stakes Logic
+                </h3>
+                <p className="font-[family-name:var(--font-press-start)] text-white/70 text-xs leading-relaxed">
+                  Spin the reels to win, but beware the <span className="text-red-500">666</span> pattern. If it appears, it claims your entire score. High risk, high reward.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="border-2 border-white/20 p-8 bg-black/40 hover:border-blue-400/80 transition-all duration-300 group">
+                <div className="h-12 w-12 rounded-full bg-blue-900/20 flex items-center justify-center mb-6 group-hover:bg-blue-900/40 transition-colors">
+                  <Zap className="text-blue-400 w-6 h-6" />
+                </div>
+                <h3 className="font-[family-name:var(--font-press-start)] text-blue-400 text-sm md:text-base mb-4 uppercase leading-relaxed">
+                  Winning Patterns
+                </h3>
+                <p className="font-[family-name:var(--font-press-start)] text-white/70 text-xs leading-relaxed">
+                   Match symbols in horizontal rows, vertical columns, or diagonals. Combine patterns for massive multipliers and epic wins.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-16 text-center max-w-3xl mx-auto border border-white/10 p-6 bg-white/5 rounded-sm">
+              <p className="font-[family-name:var(--font-press-start)] text-white/50 text-[10px] leading-relaxed uppercase">
+                <span className="text-primary">Note:</span> Abyss is strictly for entertainment purposes. No real money or monetary value is involved. 
+                By playing, you agree to our Terms of Service.
+              </p>
+            </div>
           </div>
         </section>
 

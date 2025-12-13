@@ -12,6 +12,7 @@
     "@cavos/aegis": "^0.1.16",
     "@starknet-io/get-starknet-core": "^4.0.8",
     "@stripe/stripe-js": "^8.2.0",
+    "lucide-react": "^0.561.0",
     "next": "^16.0.8",
     "react": "19.2.0",
     "react-dom": "19.2.0",
