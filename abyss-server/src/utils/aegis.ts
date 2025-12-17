@@ -177,6 +177,20 @@ export const ABYSS_CONTRACT_ABI = [
         ]
     },
     {
+        "type": "struct",
+        "name": "core::integer::u256",
+        "members": [
+            {
+                "name": "low",
+                "type": "core::integer::u128"
+            },
+            {
+                "name": "high",
+                "type": "core::integer::u128"
+            }
+        ]
+    },
+    {
         "type": "interface",
         "name": "abyss_game::contracts::abyss_game::IAbyssGame",
         "items": [
@@ -187,10 +201,6 @@ export const ABYSS_CONTRACT_ABI = [
                     {
                         "name": "player_address",
                         "type": "core::starknet::contract_address::ContractAddress"
-                    },
-                    {
-                        "name": "is_competitive",
-                        "type": "core::bool"
                     }
                 ],
                 "outputs": [
@@ -210,6 +220,26 @@ export const ABYSS_CONTRACT_ABI = [
                     },
                     {
                         "name": "score_increase",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "admin_set_session_score",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "new_score",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "new_level",
                         "type": "core::integer::u32"
                     }
                 ],
@@ -251,22 +281,6 @@ export const ABYSS_CONTRACT_ABI = [
             {
                 "type": "function",
                 "name": "get_player_competitive_sessions",
-                "inputs": [
-                    {
-                        "name": "player_address",
-                        "type": "core::starknet::contract_address::ContractAddress"
-                    }
-                ],
-                "outputs": [
-                    {
-                        "type": "core::array::Array::<core::integer::u32>"
-                    }
-                ],
-                "state_mutability": "view"
-            },
-            {
-                "type": "function",
-                "name": "get_player_casual_sessions",
                 "inputs": [
                     {
                         "name": "player_address",
@@ -386,29 +400,7 @@ export const ABYSS_CONTRACT_ABI = [
             },
             {
                 "type": "function",
-                "name": "get_all_casual_sessions",
-                "inputs": [],
-                "outputs": [
-                    {
-                        "type": "core::array::Array::<core::integer::u32>"
-                    }
-                ],
-                "state_mutability": "view"
-            },
-            {
-                "type": "function",
                 "name": "get_total_competitive_sessions",
-                "inputs": [],
-                "outputs": [
-                    {
-                        "type": "core::integer::u32"
-                    }
-                ],
-                "state_mutability": "view"
-            },
-            {
-                "type": "function",
-                "name": "get_total_casual_sessions",
                 "inputs": [],
                 "outputs": [
                     {
@@ -436,6 +428,26 @@ export const ABYSS_CONTRACT_ABI = [
             {
                 "type": "function",
                 "name": "sell_item",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "item_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "quantity",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "consume_item",
                 "inputs": [
                     {
                         "name": "session_id",
@@ -526,6 +538,22 @@ export const ABYSS_CONTRACT_ABI = [
             },
             {
                 "type": "function",
+                "name": "get_666_probability",
+                "inputs": [
+                    {
+                        "name": "level",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
                 "name": "get_session_item_quantity",
                 "inputs": [
                     {
@@ -575,6 +603,55 @@ export const ABYSS_CONTRACT_ABI = [
                     }
                 ],
                 "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "is_market_slot_purchased",
+                "inputs": [
+                    {
+                        "name": "session_id",
+                        "type": "core::integer::u32"
+                    },
+                    {
+                        "name": "market_slot",
+                        "type": "core::integer::u32"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::bool"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "claim_prize",
+                "inputs": [],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "get_prize_pool",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::integer::u256"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_treasury",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "state_mutability": "view"
             }
         ]
     },
@@ -588,6 +665,10 @@ export const ABYSS_CONTRACT_ABI = [
             },
             {
                 "name": "chip_token_address",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "treasury_address",
                 "type": "core::starknet::contract_address::ContractAddress"
             }
         ]

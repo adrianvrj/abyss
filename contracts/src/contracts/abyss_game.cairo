@@ -1,6 +1,5 @@
 use starknet::ContractAddress;
 
-/// Game session data structure
 #[derive(Drop, Serde, starknet::Store, Copy)]
 pub struct GameSession {
     pub session_id: u32,
@@ -9,12 +8,11 @@ pub struct GameSession {
     pub score: u32,
     pub total_score: u32,
     pub spins_remaining: u32,
-    pub is_competitive: bool, // True if this session counts for leaderboard
-    pub is_active: bool, // True if session is still ongoing
-    pub created_at: u64 // Timestamp when session was created
+    pub is_competitive: bool,
+    pub is_active: bool,
+    pub created_at: u64,
 }
 
-/// Leaderboard entry structure
 #[derive(Drop, Serde, starknet::Store)]
 pub struct LeaderboardEntry {
     pub player_address: ContractAddress,
@@ -23,8 +21,6 @@ pub struct LeaderboardEntry {
     pub total_score: u32,
 }
 
-/// Item effect type - defines what the item modifies
-/// Using u8 instead of enum for easier serialization
 pub type ItemEffectType = u8;
 
 pub mod ItemEffectTypeValues {
@@ -37,7 +33,6 @@ pub mod ItemEffectTypeValues {
     pub const SixSixSixProtection: u8 = 6;
 }
 
-/// Item definition
 #[derive(Drop, Copy, Serde, starknet::Store)]
 pub struct Item {
     pub item_id: u32,
@@ -47,17 +42,15 @@ pub struct Item {
     pub sell_price: u32,
     pub effect_type: ItemEffectType,
     pub effect_value: u32,
-    pub target_symbol: felt252 // For SymbolProbabilityBoost: 'seven', 'diamond', 'cherry', 'lemon', 'coin', 'six'
+    pub target_symbol: felt252,
 }
 
-/// Player item inventory entry
 #[derive(Drop, Copy, Serde, starknet::Store)]
 pub struct PlayerItem {
     pub item_id: u32,
     pub quantity: u32,
 }
 
-/// Market state for a session
 #[derive(Drop, Copy, Serde, starknet::Store)]
 pub struct SessionMarket {
     pub refresh_count: u32,
@@ -69,125 +62,47 @@ pub struct SessionMarket {
     pub item_slot_6: u32,
 }
 
-/// Interface for the Abyss Game contract
 #[starknet::interface]
 pub trait IAbyssGame<TContractState> {
-    /// Create a new game session
-    fn create_session(
-        ref self: TContractState, player_address: ContractAddress, is_competitive: bool,
-    ) -> u32;
-
-    /// Update session score and check for level progression
+    fn create_session(ref self: TContractState, player_address: ContractAddress) -> u32;
     fn update_session_score(ref self: TContractState, session_id: u32, score_increase: u32);
-
-    /// Set session score directly - Admin only (for off-chain sync before market)
     fn admin_set_session_score(
         ref self: TContractState, session_id: u32, new_score: u32, new_level: u32,
     );
-
-    /// Get session data
     fn get_session_data(self: @TContractState, session_id: u32) -> GameSession;
-
-    /// Get all active sessions for a player
     fn get_player_sessions(self: @TContractState, player_address: ContractAddress) -> Array<u32>;
-
-    /// Get all competitive sessions for a player
     fn get_player_competitive_sessions(
         self: @TContractState, player_address: ContractAddress,
     ) -> Array<u32>;
-
-    /// Get all non-competitive sessions for a player
-    fn get_player_casual_sessions(
-        self: @TContractState, player_address: ContractAddress,
-    ) -> Array<u32>;
-
-    /// End a session (mark as inactive) - Admin only
     fn end_session(ref self: TContractState, session_id: u32);
-
-    /// End a session with final score - Admin only (for off-chain game state)
     fn end_session_with_score(
         ref self: TContractState, session_id: u32, final_score: u32, final_level: u32,
     );
-
-    /// End own session (mark as inactive) - Player can end their own session
     fn end_own_session(ref self: TContractState, session_id: u32);
-
-    /// Get current level score threshold
     fn get_level_threshold(self: @TContractState, level: u32) -> u32;
-
-    /// Get top 10 competitive sessions leaderboard
     fn get_leaderboard(self: @TContractState) -> Array<LeaderboardEntry>;
-
-    /// Get admin address
     fn get_admin(self: @TContractState) -> ContractAddress;
-
-    /// Get total number of sessions
     fn get_total_sessions(self: @TContractState) -> u32;
-
-    /// Get all competitive sessions across all players
     fn get_all_competitive_sessions(self: @TContractState) -> Array<u32>;
-
-    /// Get all casual sessions across all players
-    fn get_all_casual_sessions(self: @TContractState) -> Array<u32>;
-
-    /// Get total number of competitive sessions
     fn get_total_competitive_sessions(self: @TContractState) -> u32;
-
-    /// Get total number of casual sessions
-    fn get_total_casual_sessions(self: @TContractState) -> u32;
-
-    // Item shop functions
-    /// Buy an item from the market for a session using score
     fn buy_item_from_market(ref self: TContractState, session_id: u32, market_slot: u32);
-
-    /// Sell an item from a session for score
     fn sell_item(ref self: TContractState, session_id: u32, item_id: u32, quantity: u32);
-
-    /// Consume an item (remove from inventory without getting score back)
     fn consume_item(ref self: TContractState, session_id: u32, item_id: u32, quantity: u32);
-
-    /// Refresh the market items for a session
     fn refresh_market(ref self: TContractState, session_id: u32);
-
-    /// Get the current market state for a session
     fn get_session_market(self: @TContractState, session_id: u32) -> SessionMarket;
-
-    /// Get all items owned by a session
     fn get_session_items(self: @TContractState, session_id: u32) -> Array<PlayerItem>;
-
-    /// Get information about a specific item
     fn get_item_info(self: @TContractState, item_id: u32) -> Item;
-
-    /// Get total number of available items in the shop
     fn get_total_items(self: @TContractState) -> u32;
-
-    /// Get 666 probability based on level (returns percentage * 10 for precision)
     fn get_666_probability(self: @TContractState, level: u32) -> u32;
-
-    /// Get quantity of a specific item in session inventory
     fn get_session_item_quantity(self: @TContractState, session_id: u32, item_id: u32) -> u32;
-
-    /// Get total inventory count for a session
     fn get_session_inventory_count(self: @TContractState, session_id: u32) -> u32;
-
-    /// Get refresh cost for a session
     fn get_refresh_cost(self: @TContractState, session_id: u32) -> u32;
-
-    /// Check if a market slot has been purchased
     fn is_market_slot_purchased(self: @TContractState, session_id: u32, market_slot: u32) -> bool;
-
-    /// Claim prize from competitive pool (only for top 3 leaderboard)
     fn claim_prize(ref self: TContractState);
-
-    /// Get current prize pool balance
     fn get_prize_pool(self: @TContractState) -> u256;
-
-    /// Get treasury address
     fn get_treasury(self: @TContractState) -> ContractAddress;
 }
 
-
-/// Abyss Game contract implementation
 #[starknet::contract]
 pub mod AbyssGame {
     use core::array::ArrayTrait;
@@ -204,51 +119,29 @@ pub mod AbyssGame {
     // ═══════════════════════════════════════════════════════════════════════════
     #[storage]
     struct Storage {
-        // Admin address - only admin can update scores and reset players
         admin: ContractAddress,
-        // Chip token address (ERC20)
         chip_token: ContractAddress,
-        // Treasury address - receives 2 CHIP per competitive session
         treasury: ContractAddress,
-        // Prize pool - accumulated 3 CHIP per competitive session
         prize_pool: u256,
-        // Track if player has claimed their prize
         has_claimed: Map<ContractAddress, bool>,
-        // Session data mapping: session_id -> GameSession
         sessions: Map<u32, GameSession>,
-        // Player sessions count per player
         player_sessions_count: Map<ContractAddress, u32>,
-        // Player sessions mapping: (player_address, index) -> session_id
         player_session: Map<(ContractAddress, u32), u32>,
-        // Leaderboard entries stored as Map (more gas efficient)
         leaderboard: Map<u32, LeaderboardEntry>,
         leaderboard_count: u32,
-        // Total number of sessions created
         total_sessions: u32,
-        // Competitive sessions tracking
         total_competitive_sessions: u32,
-        competitive_session: Map<u32, u32>, // index -> session_id
-        // Casual sessions tracking
-        total_casual_sessions: u32,
-        casual_session: Map<u32, u32>, // index -> session_id
-        // Item shop storage
+        competitive_session: Map<u32, u32>,
         items: Map<u32, Item>,
         total_items: u32,
-        // Session inventory
         session_inventory: Map<(u32, u32), u32>,
         session_item_ids: Map<(u32, u32), u32>,
         session_item_count: Map<u32, u32>,
-        // Market storage
         session_markets: Map<u32, SessionMarket>,
-        // Track which market slots have been purchased in current market
-        // (session_id, market_slot) -> bool (true if purchased)
         market_slot_purchased: Map<(u32, u32), bool>,
         nonce: u64,
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // CONSTRUCTOR: Initialize contract with admin address
-    // ═══════════════════════════════════════════════════════════════════════════
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -262,38 +155,20 @@ pub mod AbyssGame {
         self.prize_pool.write(0);
         self.total_sessions.write(0);
         self.total_competitive_sessions.write(0);
-        self.total_casual_sessions.write(0);
         self.leaderboard_count.write(0);
         self.nonce.write(0);
-
-        // Initialize items
         InternalImpl::initialize_items(ref self);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC INTERFACE IMPLEMENTATION
-    // ═══════════════════════════════════════════════════════════════════════════
     #[abi(embed_v0)]
     impl AbyssGameImpl of super::IAbyssGame<ContractState> {
-        // ─────────────────────────────────────────────────────────────────────────
-        // SESSION MANAGEMENT: Create and manage game sessions
-        // ─────────────────────────────────────────────────────────────────────────
-        fn create_session(
-            ref self: ContractState, player_address: ContractAddress, is_competitive: bool,
-        ) -> u32 {
-            // Anyone can create a session for themselves
+        fn create_session(ref self: ContractState, player_address: ContractAddress) -> u32 {
             let caller = get_caller_address();
             assert(caller == player_address, 'Can only create own session');
-
-            // Free to play mode - No tokens required
-            // All sessions are now competitive by default (counting for leaderboard)
-            let actual_is_competitive = true;
-
-            // Generate new session ID
             let session_id = self.total_sessions.read() + 1;
             self.total_sessions.write(session_id);
-
-            // Create new session
             let new_session = GameSession {
                 session_id,
                 player_address,
@@ -301,84 +176,52 @@ pub mod AbyssGame {
                 score: 0,
                 total_score: 0,
                 spins_remaining: 5,
-                is_competitive: actual_is_competitive,
+                is_competitive: true,
                 is_active: true,
-                created_at: 0 // TODO: Add timestamp support
+                created_at: 0,
             };
-
-            // Save session
             self.sessions.entry(session_id).write(new_session);
-
-            // Add session to player's session list
             let session_count = self.player_sessions_count.entry(player_address).read();
             self.player_sessions_count.entry(player_address).write(session_count + 1);
             self.player_session.entry((player_address, session_count)).write(session_id);
-
-            // Add session to global tracking (Always competitive)
             let competitive_count = self.total_competitive_sessions.read();
             self.total_competitive_sessions.write(competitive_count + 1);
             self.competitive_session.entry(competitive_count).write(session_id);
-
-            // Initialize market for the session
             InternalImpl::initialize_market(ref self, session_id);
-
             session_id
         }
 
         fn update_session_score(ref self: ContractState, session_id: u32, score_increase: u32) {
-            // Only admin can update session scores
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'Only admin can update scores.');
-
-            // Get session data
             let mut session = self.sessions.entry(session_id).read();
             assert(session.is_active, 'Session is not active');
-
-            // Check if session has spins remaining
             assert(session.spins_remaining > 0, 'No spins left');
-
-            // Use one spin
             session.spins_remaining -= 1;
-
-            // Update scores
             session.score += score_increase;
             session.total_score += score_increase;
-
-            // Check for level progression
             let mut new_level = session.level;
             while session.score >= Self::get_level_threshold(@self, new_level) {
                 new_level += 1;
             }
-
-            // Update level if progressed
             if new_level > session.level {
                 session.level = new_level;
-                // Give 5 spins for new level
                 session.spins_remaining = 5;
             }
 
-            // Save updated session
             self.sessions.entry(session_id).write(session);
-            // Note: Leaderboard is only updated when session ends, not during gameplay
         }
 
         fn admin_set_session_score(
             ref self: ContractState, session_id: u32, new_score: u32, new_level: u32,
         ) {
-            // Only admin can set session scores directly
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'Only admin can set scores.');
-
-            // Get session data
             let mut session = self.sessions.entry(session_id).read();
             assert(session.is_active, 'Session is not active');
-
-            // Set score and level directly (for off-chain sync)
             session.score = new_score;
             session.total_score = new_score;
             session.level = new_level;
-
-            // Save updated session
             self.sessions.entry(session_id).write(session);
         }
 
@@ -417,56 +260,23 @@ pub mod AbyssGame {
             competitive_sessions
         }
 
-        fn get_player_casual_sessions(
-            self: @ContractState, player_address: ContractAddress,
-        ) -> Array<u32> {
-            let mut casual_sessions = ArrayTrait::new();
-            let sessions_count = self.player_sessions_count.entry(player_address).read();
-            let mut i = 0;
-            while i < sessions_count {
-                let session_id = self.player_session.entry((player_address, i)).read();
-                let session_data = self.sessions.entry(session_id).read();
-                if !session_data.is_competitive && session_data.is_active {
-                    casual_sessions.append(session_id);
-                }
-                i += 1;
-            }
-            casual_sessions
-        }
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // SESSION END FUNCTIONS: Allow players/admins to end sessions
-        // ─────────────────────────────────────────────────────────────────────────
         fn end_own_session(ref self: ContractState, session_id: u32) {
-            // Get caller address
             let caller = get_caller_address();
-
-            // Get session data
             let mut session = self.sessions.entry(session_id).read();
-
-            // Verify caller is the session owner
             assert(caller == session.player_address, 'Only owner can end');
-
-            // Mark session as inactive
             session.is_active = false;
             self.sessions.entry(session_id).write(session);
-
-            // Update leaderboard only when competitive session ends
             if session.is_competitive {
                 InternalImpl::update_leaderboard_if_better(ref self, session);
             }
         }
 
         fn end_session(ref self: ContractState, session_id: u32) {
-            // Only admin can end sessions
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'Only admin can end');
-
             let mut session = self.sessions.entry(session_id).read();
             session.is_active = false;
             self.sessions.entry(session_id).write(session);
-
-            // Update leaderboard only when competitive session ends
             if session.is_competitive {
                 InternalImpl::update_leaderboard_if_better(ref self, session);
             }
@@ -496,10 +306,6 @@ pub mod AbyssGame {
                 InternalImpl::update_leaderboard_if_better(ref self, session);
             }
         }
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // GAME LOGIC: Level thresholds and game mechanics
-        // ─────────────────────────────────────────────────────────────────────────
         fn get_level_threshold(self: @ContractState, level: u32) -> u32 {
             if level == 1 {
                 33
@@ -603,27 +409,8 @@ pub mod AbyssGame {
             competitive_sessions
         }
 
-        fn get_all_casual_sessions(self: @ContractState) -> Array<u32> {
-            let mut casual_sessions = ArrayTrait::new();
-            let total_casual = self.total_casual_sessions.read();
-            let mut i = 0;
-            while i < total_casual {
-                let session_id = self.casual_session.entry(i).read();
-                let session_data = self.sessions.entry(session_id).read();
-                if session_data.is_active {
-                    casual_sessions.append(session_id);
-                }
-                i += 1;
-            }
-            casual_sessions
-        }
-
         fn get_total_competitive_sessions(self: @ContractState) -> u32 {
             self.total_competitive_sessions.read()
-        }
-
-        fn get_total_casual_sessions(self: @ContractState) -> u32 {
-            self.total_casual_sessions.read()
         }
 
         // ─────────────────────────────────────────────────────────────────────────
