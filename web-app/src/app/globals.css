@@ -1,0 +1,146 @@
+@font-face {
+  font-family: 'Ramagothic';
+  src: url('/fonts/ramagothicbold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'PressStart2P';
+  src: url('/fonts/PressStart2P.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  /* Abyss Theme Colors */
+  --color-background: #000000;
+  --color-primary: #FF841C;
+  --color-white: #FFFFFF;
+  --color-primary-dim: rgba(255, 132, 28, 0.3);
+  --color-primary-glow: rgba(255, 132, 28, 0.6);
+
+  /* Fonts */
+  --font-title: 'Ramagothic', 'Press Start 2P', sans-serif;
+  --font-body: 'PressStart2P', 'Courier New', monospace;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--color-background);
+  color: var(--color-white);
+  font-family: var(--font-body);
+}
+
+body {
+  min-height: 100vh;
+  background-image: url('/images/bg-desktop.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* Mobile background */
+@media (max-width: 768px) {
+  body {
+    background-image: url('/images/bg-mobile.png');
+  }
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Pixel art style - keep images sharp */
+img {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Abyss orange glow animation */
+@keyframes orange-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px var(--color-primary-dim),
+      0 0 20px var(--color-primary-dim);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--color-primary-glow),
+      0 0 40px var(--color-primary-glow);
+  }
+}
+
+/* Spin animation */
+@keyframes spin-symbol {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Jackpot celebration */
+@keyframes jackpot-flash {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 666 shake effect */
+@keyframes shake-666 {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-10px);
+  }
+
+  75% {
+    transform: translateX(10px);
+  }
+}

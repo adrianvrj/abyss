@@ -11,6 +11,11 @@ pub struct GameSession {
     pub is_competitive: bool,
     pub is_active: bool,
     pub created_at: u64,
+    pub chips_claimed: bool,
+    pub equipped_relic: u256,
+    pub relic_last_used_spin: u32,
+    pub relic_pending_effect: u8,
+    pub total_spins: u32,
 }
 
 #[derive(Drop, Serde, starknet::Store)]
@@ -31,6 +36,17 @@ pub mod ItemEffectTypeValues {
     pub const SpinBonus: u8 = 4;
     pub const LevelProgressionBonus: u8 = 5;
     pub const SixSixSixProtection: u8 = 6;
+}
+
+pub type RelicEffectType = u8;
+
+pub mod RelicEffectTypeValues {
+    pub const NoEffect: u8 = 255;
+    pub const RandomJackpot: u8 = 0;
+    pub const Trigger666: u8 = 1;
+    pub const DoubleNextSpin: u8 = 2;
+    pub const ResetSpins: u8 = 3;
+    pub const FreeMarketRefresh: u8 = 4;
 }
 
 #[derive(Drop, Copy, Serde, starknet::Store)]
@@ -62,37 +78,54 @@ pub struct SessionMarket {
     pub item_slot_6: u32,
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SPIN RESULT AND VRF TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Symbol types for the slot machine grid
+pub mod SymbolType {
+    pub const SEVEN: u8 = 1;
+    pub const DIAMOND: u8 = 2;
+    pub const CHERRY: u8 = 3;
+    pub const COIN: u8 = 4;
+    pub const LEMON: u8 = 5;
+    pub const SIX: u8 = 6;
+}
+
+#[derive(Drop, Copy, Serde, starknet::Store)]
+pub struct SpinResult {
+    pub session_id: u32,
+    pub grid: [u8; 15],
+    pub score: u32,
+    pub patterns_count: u8,
+    pub is_666: bool,
+    pub is_jackpot: bool,
+    pub is_pending: bool,
+    pub biblia_used: bool,
+}
+
 #[starknet::interface]
 pub trait IAbyssGame<TContractState> {
-    fn create_session(ref self: TContractState, player_address: ContractAddress) -> u32;
-    fn update_session_score(ref self: TContractState, session_id: u32, score_increase: u32);
-    fn admin_set_session_score(
-        ref self: TContractState, session_id: u32, new_score: u32, new_level: u32,
-    );
+    fn create_session(
+        ref self: TContractState, player_address: ContractAddress, payment_token: ContractAddress,
+    ) -> u32;
     fn get_session_data(self: @TContractState, session_id: u32) -> GameSession;
     fn get_player_sessions(self: @TContractState, player_address: ContractAddress) -> Array<u32>;
     fn get_player_competitive_sessions(
         self: @TContractState, player_address: ContractAddress,
     ) -> Array<u32>;
-    fn end_session(ref self: TContractState, session_id: u32);
-    fn end_session_with_score(
-        ref self: TContractState, session_id: u32, final_score: u32, final_level: u32,
-    );
     fn end_own_session(ref self: TContractState, session_id: u32);
+
     fn get_level_threshold(self: @TContractState, level: u32) -> u32;
     fn get_leaderboard(self: @TContractState) -> Array<LeaderboardEntry>;
     fn get_admin(self: @TContractState) -> ContractAddress;
     fn get_total_sessions(self: @TContractState) -> u32;
-    fn get_all_competitive_sessions(self: @TContractState) -> Array<u32>;
-    fn get_total_competitive_sessions(self: @TContractState) -> u32;
     fn buy_item_from_market(ref self: TContractState, session_id: u32, market_slot: u32);
     fn sell_item(ref self: TContractState, session_id: u32, item_id: u32, quantity: u32);
-    fn consume_item(ref self: TContractState, session_id: u32, item_id: u32, quantity: u32);
     fn refresh_market(ref self: TContractState, session_id: u32);
     fn get_session_market(self: @TContractState, session_id: u32) -> SessionMarket;
     fn get_session_items(self: @TContractState, session_id: u32) -> Array<PlayerItem>;
     fn get_item_info(self: @TContractState, item_id: u32) -> Item;
-    fn get_total_items(self: @TContractState) -> u32;
     fn get_666_probability(self: @TContractState, level: u32) -> u32;
     fn get_session_item_quantity(self: @TContractState, session_id: u32, item_id: u32) -> u32;
     fn get_session_inventory_count(self: @TContractState, session_id: u32) -> u32;
@@ -101,24 +134,120 @@ pub trait IAbyssGame<TContractState> {
     fn claim_prize(ref self: TContractState);
     fn get_prize_pool(self: @TContractState) -> u256;
     fn get_treasury(self: @TContractState) -> ContractAddress;
+    // VRF Spin functions
+    fn request_spin(ref self: TContractState, session_id: u32);
+    fn get_last_spin_result(self: @TContractState, session_id: u32) -> SpinResult;
+    fn claim_chips(ref self: TContractState, session_id: u32);
+    fn get_chips_to_claim(self: @TContractState, session_id: u32) -> u256;
+    fn get_available_beast_sessions(self: @TContractState, player: ContractAddress) -> u32;
+    fn set_chip_token_address(ref self: TContractState, address: ContractAddress);
+    fn set_beast_nft_address(ref self: TContractState, address: ContractAddress);
+    fn set_chip_emission_rate(ref self: TContractState, rate: u32);
+    fn set_chip_boost_multiplier(ref self: TContractState, multiplier: u32);
+    fn set_token_pair_id(ref self: TContractState, token: ContractAddress, pair_id: felt252);
+    fn set_pragma_oracle(ref self: TContractState, oracle: ContractAddress);
+    fn get_usd_cost_in_token(self: @TContractState, token: ContractAddress) -> u256;
+    // Relic system
+    fn equip_relic(ref self: TContractState, session_id: u32, relic_token_id: u256);
+    fn activate_relic(ref self: TContractState, session_id: u32);
+    fn set_relic_nft_address(ref self: TContractState, address: ContractAddress);
+    // Prize distribution (admin)
+    fn add_prize_token(ref self: TContractState, token: ContractAddress);
+    fn distribute_prizes(ref self: TContractState);
+    fn get_prize_token_balances(self: @TContractState) -> Array<(ContractAddress, u256)>;
 }
+
 
 #[starknet::contract]
 pub mod AbyssGame {
     use core::array::ArrayTrait;
+    use core::num::traits::Zero;
     use core::poseidon::poseidon_hash_span;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use openzeppelin::token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::interface::IUpgradeable;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{get_block_timestamp, get_caller_address};
-    use super::{ContractAddress, GameSession, Item, LeaderboardEntry, PlayerItem, SessionMarket};
+    use starknet::{ClassHash, get_block_timestamp, get_caller_address};
+    use crate::modules::cartridge_vrf::{
+        IVrfProviderDispatcher, IVrfProviderDispatcherTrait, Source,
+    };
+    use super::{
+        ContractAddress, GameSession, Item, LeaderboardEntry, PlayerItem, RelicEffectTypeValues,
+        SessionMarket,
+    };
+
+    // Upgradeable component
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    // IChip interface for minting CHIP tokens
+    #[starknet::interface]
+    trait IChip<TContractState> {
+        fn mint(ref self: TContractState, recipient: ContractAddress, amount: u256);
+    }
+
+    // Pragma Oracle interface for price feeds
+    #[derive(Drop, Serde)]
+    pub enum DataType {
+        SpotEntry: felt252,
+        FutureEntry: (felt252, u64),
+        GenericEntry: felt252,
+    }
+
+    #[derive(Drop, Serde)]
+    pub struct PragmaPricesResponse {
+        pub price: u128,
+        pub decimals: u32,
+        pub last_updated_timestamp: u64,
+        pub num_sources_aggregated: u32,
+        pub expiration_timestamp: Option<u64>,
+    }
+
+    #[starknet::interface]
+    trait IPragmaABI<TContractState> {
+        fn get_data_median(self: @TContractState, data_type: DataType) -> PragmaPricesResponse;
+    }
+
+    // Relic NFT interface
+    #[derive(Drop, Serde, Copy)]
+    pub struct RelicMetadata {
+        pub relic_id: u32,
+        pub name: felt252,
+        pub description: felt252,
+        pub effect_type: u8,
+        pub cooldown_spins: u32,
+        pub rarity: u8,
+        pub image_uri: felt252,
+        pub strength: u8,
+        pub dexterity: u8,
+        pub intelligence: u8,
+        pub vitality: u8,
+        pub wisdom: u8,
+        pub charisma: u8,
+        pub luck: u8,
+    }
+
+    #[starknet::interface]
+    trait IRelic<TContractState> {
+        fn get_relic_metadata(self: @TContractState, token_id: u256) -> RelicMetadata;
+    }
+
+    #[starknet::interface]
+    trait IRelicERC721<TContractState> {
+        fn owner_of(self: @TContractState, token_id: u256) -> ContractAddress;
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // STORAGE: All contract state variables
     // ═══════════════════════════════════════════════════════════════════════════
     #[storage]
     struct Storage {
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         admin: ContractAddress,
         chip_token: ContractAddress,
         treasury: ContractAddress,
@@ -140,6 +269,37 @@ pub mod AbyssGame {
         session_markets: Map<u32, SessionMarket>,
         market_slot_purchased: Map<(u32, u32), bool>,
         nonce: u64,
+        vrf_provider_address: ContractAddress,
+        last_spin_results: Map<u32, super::SpinResult>,
+        beast_nft_address: ContractAddress,
+        beast_sessions_used: Map<ContractAddress, u32>,
+        chip_emission_rate: u32,
+        chip_boost_multiplier: u32,
+        pragma_oracle: ContractAddress,
+        token_pair_ids: Map<ContractAddress, felt252>,
+        relic_nft_address: ContractAddress,
+        // Prize distribution tokens
+        prize_tokens: Map<u32, ContractAddress>,
+        prize_tokens_count: u32,
+        prizes_distributed: bool,
+    }
+
+    // Event for upgrades
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
+    }
+
+    // Implement IUpgradeable - only admin can upgrade
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin can upgrade');
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
     #[constructor]
@@ -148,25 +308,57 @@ pub mod AbyssGame {
         admin_address: ContractAddress,
         chip_token_address: ContractAddress,
         treasury_address: ContractAddress,
+        vrf_provider_address: ContractAddress,
+        pragma_oracle_address: ContractAddress,
     ) {
         self.admin.write(admin_address);
         self.chip_token.write(chip_token_address);
         self.treasury.write(treasury_address);
+        self.vrf_provider_address.write(vrf_provider_address);
+        self.pragma_oracle.write(pragma_oracle_address);
         self.prize_pool.write(0);
         self.total_sessions.write(0);
         self.total_competitive_sessions.write(0);
         self.leaderboard_count.write(0);
         self.nonce.write(0);
+        // Monetization defaults
+        self.chip_emission_rate.write(1); // 1 CHIP per 20 score = 5 per 100
+        self.chip_boost_multiplier.write(1); // 1x multiplier initially
         InternalImpl::initialize_items(ref self);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC INTERFACE IMPLEMENTATION
+    // ═══════════════════════════════════════════════════════════════════════════
     #[abi(embed_v0)]
     impl AbyssGameImpl of super::IAbyssGame<ContractState> {
-        fn create_session(ref self: ContractState, player_address: ContractAddress) -> u32 {
+        fn create_session(
+            ref self: ContractState,
+            player_address: ContractAddress,
+            payment_token: ContractAddress,
+        ) -> u32 {
             let caller = get_caller_address();
             assert(caller == player_address, 'Can only create own session');
+
+            // Check for free Beast sessions
+            let free_sessions = Self::get_available_beast_sessions(@self, player_address);
+
+            if free_sessions > 0 {
+                // Use free Beast session
+                let used = self.beast_sessions_used.entry(player_address).read();
+                self.beast_sessions_used.entry(player_address).write(used + 1);
+            } else {
+                // PAYMENT REQUIRED - Calculate $1 USD in payment_token
+                let payment_amount = InternalImpl::get_usd_cost_in_token(@self, payment_token);
+
+                // Transfer payment from player to contract
+                let contract_addr = starknet::get_contract_address();
+                IERC20Dispatcher { contract_address: payment_token }
+                    .transfer_from(caller, contract_addr, payment_amount);
+
+                // Distribute revenue: 50% prize, 30% treasury, 20% team (admin)
+                InternalImpl::distribute_revenue(ref self, payment_token, payment_amount);
+            }
             let session_id = self.total_sessions.read() + 1;
             self.total_sessions.write(session_id);
             let new_session = GameSession {
@@ -179,6 +371,12 @@ pub mod AbyssGame {
                 is_competitive: true,
                 is_active: true,
                 created_at: 0,
+                chips_claimed: false,
+                // Relic fields
+                equipped_relic: 0, // No relic equipped
+                relic_last_used_spin: 0,
+                relic_pending_effect: RelicEffectTypeValues::NoEffect,
+                total_spins: 0 // No spins performed yet
             };
             self.sessions.entry(session_id).write(new_session);
             let session_count = self.player_sessions_count.entry(player_address).read();
@@ -191,39 +389,6 @@ pub mod AbyssGame {
             session_id
         }
 
-        fn update_session_score(ref self: ContractState, session_id: u32, score_increase: u32) {
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'Only admin can update scores.');
-            let mut session = self.sessions.entry(session_id).read();
-            assert(session.is_active, 'Session is not active');
-            assert(session.spins_remaining > 0, 'No spins left');
-            session.spins_remaining -= 1;
-            session.score += score_increase;
-            session.total_score += score_increase;
-            let mut new_level = session.level;
-            while session.score >= Self::get_level_threshold(@self, new_level) {
-                new_level += 1;
-            }
-            if new_level > session.level {
-                session.level = new_level;
-                session.spins_remaining = 5;
-            }
-
-            self.sessions.entry(session_id).write(session);
-        }
-
-        fn admin_set_session_score(
-            ref self: ContractState, session_id: u32, new_score: u32, new_level: u32,
-        ) {
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'Only admin can set scores.');
-            let mut session = self.sessions.entry(session_id).read();
-            assert(session.is_active, 'Session is not active');
-            session.score = new_score;
-            session.total_score = new_score;
-            session.level = new_level;
-            self.sessions.entry(session_id).write(session);
-        }
 
         fn get_session_data(self: @ContractState, session_id: u32) -> GameSession {
             self.sessions.entry(session_id).read()
@@ -271,100 +436,41 @@ pub mod AbyssGame {
             }
         }
 
-        fn end_session(ref self: ContractState, session_id: u32) {
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'Only admin can end');
-            let mut session = self.sessions.entry(session_id).read();
-            session.is_active = false;
-            self.sessions.entry(session_id).write(session);
-            if session.is_competitive {
-                InternalImpl::update_leaderboard_if_better(ref self, session);
-            }
-        }
 
-        fn end_session_with_score(
-            ref self: ContractState, session_id: u32, final_score: u32, final_level: u32,
-        ) {
-            // Only admin can end sessions with score
-            let caller = get_caller_address();
-            assert(caller == self.admin.read(), 'Only admin can end');
-
-            let mut session = self.sessions.entry(session_id).read();
-            assert(session.is_active, 'Session already ended');
-
-            // Update session with final values
-            session.score = final_score;
-            session.total_score = final_score;
-            session.level = final_level;
-            session.spins_remaining = 0;
-            session.is_active = false;
-
-            self.sessions.entry(session_id).write(session);
-
-            // Update leaderboard only when competitive session ends
-            if session.is_competitive {
-                InternalImpl::update_leaderboard_if_better(ref self, session);
-            }
-        }
         fn get_level_threshold(self: @ContractState, level: u32) -> u32 {
-            if level == 1 {
+            if level == 0 {
+                0
+            } else if level == 1 {
                 33
             } else if level == 2 {
-                100
+                66
             } else if level == 3 {
-                250
+                100
             } else if level == 4 {
-                500
+                150
             } else if level == 5 {
-                850
+                250
             } else if level == 6 {
-                1300
-            } else if level <= 12 {
-                // Phase 2: Intermediate (Levels 7-12)
-                // Formula: previous × 1.4 + (level × 100)
-                let mut threshold: u32 = 1300;
-                let mut i: u32 = 7;
-                while i <= level {
-                    threshold = (threshold * 14) / 10 + (i * 100);
-                    i += 1;
-                }
-                threshold
-            } else if level <= 20 {
-                // Phase 3: Advanced (Levels 13-20)
-                // Formula: previous × 1.35 + (level² × 50)
-                let mut threshold: u32 = 12500; // Level 12 final threshold
-                let mut i: u32 = 13;
-                while i <= level {
-                    let level_squared = i * i;
-                    threshold = (threshold * 135) / 100 + (level_squared * 50);
-                    i += 1;
-                }
-                threshold
-            } else if level <= 30 {
-                // Phase 4: Elite (Levels 21-30)
-                // Formula: previous × 1.38 + (level³ × 20)
-                let mut threshold: u32 = 142000; // Level 20 final threshold
-                let mut i: u32 = 21;
-                while i <= level {
-                    let level_cubed = i * i * i;
-                    threshold = (threshold * 138) / 100 + (level_cubed * 20);
-                    i += 1;
-                }
-                threshold
+                400
+            } else if level == 7 {
+                800
+            } else if level == 8 {
+                1200
+            } else if level == 9 {
+                2400
+            } else if level == 10 {
+                4800
             } else {
-                // Phase 5: Impossible (Levels 31+)
-                // Formula: previous × 1.42 + (level⁴ × 5)
-                let mut threshold: u32 = 3500000; // Level 30 final threshold
-                let mut i: u32 = 31;
-                while i <= level {
-                    let level_squared = i * i;
-                    let level_fourth = level_squared * level_squared;
-                    threshold = (threshold * 142) / 100 + (level_fourth * 5);
+                let mut result: u32 = 4800;
+                let mut i: u32 = 10;
+                while i < level {
+                    result = result * 2;
                     i += 1;
                 }
-                threshold
+                result
             }
         }
+
 
         fn get_leaderboard(self: @ContractState) -> Array<LeaderboardEntry> {
             let mut leaderboard_array = ArrayTrait::new();
@@ -394,45 +500,18 @@ pub mod AbyssGame {
             self.total_sessions.read()
         }
 
-        fn get_all_competitive_sessions(self: @ContractState) -> Array<u32> {
-            let mut competitive_sessions = ArrayTrait::new();
-            let total_competitive = self.total_competitive_sessions.read();
-            let mut i = 0;
-            while i < total_competitive {
-                let session_id = self.competitive_session.entry(i).read();
-                let session_data = self.sessions.entry(session_id).read();
-                if session_data.is_active {
-                    competitive_sessions.append(session_id);
-                }
-                i += 1;
-            }
-            competitive_sessions
-        }
-
-        fn get_total_competitive_sessions(self: @ContractState) -> u32 {
-            self.total_competitive_sessions.read()
-        }
-
         // ─────────────────────────────────────────────────────────────────────────
         // ITEM SHOP: Buy and sell items with market system
         // ─────────────────────────────────────────────────────────────────────────
         fn buy_item_from_market(ref self: ContractState, session_id: u32, market_slot: u32) {
             let caller = get_caller_address();
             let mut session = self.sessions.entry(session_id).read();
-
-            // Verify caller is session owner
             assert(caller == session.player_address, 'Only owner can buy items');
             assert(session.is_active, 'Session is not active');
             assert(market_slot >= 1 && market_slot <= 6, 'Invalid market slot');
-
-            // Check if this slot was already purchased in current market
             let slot_purchased = self.market_slot_purchased.entry((session_id, market_slot)).read();
             assert(!slot_purchased, 'Item already purchased');
-
-            // Check inventory limit (max 7 unique items)
             let unique_item_count = self.session_item_count.entry(session_id).read();
-
-            // Get item from market slot
             let market = self.session_markets.entry(session_id).read();
             let item_id = if market_slot == 1 {
                 market.item_slot_1
@@ -447,14 +526,9 @@ pub mod AbyssGame {
             } else {
                 market.item_slot_6
             };
-
             assert(item_id > 0, 'Market slot is empty');
-
-            // Get item info
             let item = self.items.entry(item_id).read();
             assert(item.item_id == item_id, 'Item does not exist');
-
-            // Check if item already owned (only 1 of each item allowed)
             let mut item_already_owned = false;
             let mut i = 0;
             while i < unique_item_count {
@@ -465,29 +539,16 @@ pub mod AbyssGame {
                 i += 1;
             }
             assert(!item_already_owned, 'Item already owned');
-
-            // Check inventory limit (max 7 unique items)
             assert(unique_item_count < 7, 'Inventory full');
-
-            // Calculate total cost
             let total_cost = item.price;
             assert(session.score >= total_cost, 'Insufficient score');
-
-            // Deduct score from both score and total_score
             session.score -= total_cost;
             session.total_score -= total_cost;
-
-            // Apply SpinBonus effect immediately if applicable (SpinBonus = 4)
             if item.effect_type == 4 {
                 session.spins_remaining += item.effect_value;
             }
-
             self.sessions.entry(session_id).write(session);
-
-            // Mark this market slot as purchased
             self.market_slot_purchased.entry((session_id, market_slot)).write(true);
-
-            // Add item to array
             self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
             self.session_item_count.entry(session_id).write(unique_item_count + 1);
         }
@@ -495,33 +556,30 @@ pub mod AbyssGame {
         fn refresh_market(ref self: ContractState, session_id: u32) {
             let caller = get_caller_address();
             let mut session = self.sessions.entry(session_id).read();
-
-            // Verify caller is session owner
             assert(caller == session.player_address, 'Only owner can refresh');
             assert(session.is_active, 'Session is not active');
-
-            // Read market to get refresh count
             let market = self.session_markets.entry(session_id).read();
 
-            // Calculate refresh cost using the progressive formula
-            let refresh_cost = self.get_refresh_cost(session_id);
+            // Check for FreeMarketRefresh Relic effect (effect_type = 4)
+            let is_free = session.relic_pending_effect == RelicEffectTypeValues::FreeMarketRefresh;
 
-            assert(session.score >= refresh_cost, 'Insufficient score');
+            if is_free {
+                // Free refresh - clear the pending effect
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+            } else {
+                let refresh_cost = self.get_refresh_cost(session_id);
+                assert(session.score >= refresh_cost, 'Insufficient score');
+                session.score -= refresh_cost;
+                session.total_score -= refresh_cost;
+            }
 
-            // Deduct score from both score and total_score
-            session.score -= refresh_cost;
-            session.total_score -= refresh_cost;
             self.sessions.entry(session_id).write(session);
-
-            // Clear purchased status for all slots (new market)
             self.market_slot_purchased.entry((session_id, 1)).write(false);
             self.market_slot_purchased.entry((session_id, 2)).write(false);
             self.market_slot_purchased.entry((session_id, 3)).write(false);
             self.market_slot_purchased.entry((session_id, 4)).write(false);
             self.market_slot_purchased.entry((session_id, 5)).write(false);
             self.market_slot_purchased.entry((session_id, 6)).write(false);
-
-            // Generate new market items
             InternalImpl::generate_market_items(ref self, session_id, market.refresh_count + 1);
         }
 
@@ -532,12 +590,8 @@ pub mod AbyssGame {
         fn sell_item(ref self: ContractState, session_id: u32, item_id: u32, quantity: u32) {
             let caller = get_caller_address();
             let mut session = self.sessions.entry(session_id).read();
-
-            // Verify caller is session owner
             assert(caller == session.player_address, 'Only owner can sell items');
             assert(session.is_active, 'Session is not active');
-
-            // Find item in array
             let item_count = self.session_item_count.entry(session_id).read();
             let mut item_index: Option<u32> = Option::None;
             let mut i = 0;
@@ -548,81 +602,21 @@ pub mod AbyssGame {
                 }
                 i += 1;
             }
-
-            // Assert item exists
             assert(item_index.is_some(), 'Item not owned');
             let found_index = item_index.unwrap();
-
-            // Get item info
             let item = self.items.entry(item_id).read();
             assert(item.item_id == item_id, 'Item does not exist');
-
-            // Calculate sell value (always quantity 1 since we only have 1 of each item)
             let total_value = item.sell_price;
-
-            // Add score to both score and total_score
             session.score += total_value;
             session.total_score += total_value;
-
             self.sessions.entry(session_id).write(session);
-
-            // Remove item from array by shifting all items after it
             let mut j = found_index;
             while j < item_count - 1 {
                 let next_item_id = self.session_item_ids.entry((session_id, j + 1)).read();
                 self.session_item_ids.entry((session_id, j)).write(next_item_id);
                 j += 1;
             }
-
-            // Clear the last slot
             self.session_item_ids.entry((session_id, item_count - 1)).write(0);
-
-            // Decrement item count
-            self.session_item_count.entry(session_id).write(item_count - 1);
-        }
-
-        fn consume_item(ref self: ContractState, session_id: u32, item_id: u32, quantity: u32) {
-            let caller = get_caller_address();
-            let session = self.sessions.entry(session_id).read();
-
-            // Verify caller is session owner
-            assert(caller == session.player_address, 'Only owner can consume items');
-            assert(session.is_active, 'Session is not active');
-
-            // Find item in array
-            let item_count = self.session_item_count.entry(session_id).read();
-            let mut item_index: Option<u32> = Option::None;
-            let mut i = 0;
-            while i < item_count {
-                if self.session_item_ids.entry((session_id, i)).read() == item_id {
-                    item_index = Option::Some(i);
-                    break;
-                }
-                i += 1;
-            }
-
-            // Assert item exists
-            assert(item_index.is_some(), 'Item not owned');
-            let found_index = item_index.unwrap();
-
-            // Get item info (to verify it exists)
-            let item = self.items.entry(item_id).read();
-            assert(item.item_id == item_id, 'Item does not exist');
-
-            // No score added - item is simply consumed
-
-            // Remove item from array by shifting all items after it
-            let mut j = found_index;
-            while j < item_count - 1 {
-                let next_item_id = self.session_item_ids.entry((session_id, j + 1)).read();
-                self.session_item_ids.entry((session_id, j)).write(next_item_id);
-                j += 1;
-            }
-
-            // Clear the last slot
-            self.session_item_ids.entry((session_id, item_count - 1)).write(0);
-
-            // Decrement item count
             self.session_item_count.entry(session_id).write(item_count - 1);
         }
 
@@ -634,7 +628,6 @@ pub mod AbyssGame {
             while i < item_count {
                 let item_id = self.session_item_ids.entry((session_id, i)).read();
                 if item_id > 0 {
-                    // All items have quantity 1 (we only allow 1 of each item)
                     items_array.append(PlayerItem { item_id, quantity: 1 });
                 }
                 i += 1;
@@ -647,14 +640,7 @@ pub mod AbyssGame {
             self.items.entry(item_id).read()
         }
 
-        fn get_total_items(self: @ContractState) -> u32 {
-            self.total_items.read()
-        }
-
         fn get_666_probability(self: @ContractState, level: u32) -> u32 {
-            // NO CAP - scales indefinitely for late-game difficulty
-            // L1-2: 0%, L3+: +1.5% (15) per level
-            // Returns probability * 10 (e.g., 15 = 1.5%, 150 = 15%)
             if level <= 2 {
                 0
             } else {
@@ -788,10 +774,958 @@ pub mod AbyssGame {
         fn get_treasury(self: @ContractState) -> ContractAddress {
             self.treasury.read()
         }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // VRF SPIN FUNCTIONS (Cartridge VRF - Synchronous)
+        // ═══════════════════════════════════════════════════════════════════════════
+        fn request_spin(ref self: ContractState, session_id: u32) {
+            let caller = get_caller_address();
+            let mut session = self.sessions.entry(session_id).read();
+            assert(caller == session.player_address, 'Only owner can spin');
+            assert(session.is_active, 'Session is not active');
+            assert(session.spins_remaining > 0, 'No spins left');
+
+            // Increment total spins for Relic cooldown tracking
+            session.total_spins += 1;
+            session.spins_remaining -= 1;
+
+            // Check for ResetSpins Relic effect (effect_type = 3)
+            if session.relic_pending_effect == RelicEffectTypeValues::ResetSpins {
+                let spin_bonus = InternalImpl::get_inventory_spin_bonus(@self, session_id);
+                session.spins_remaining = 5 + spin_bonus;
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+            }
+
+            let vrf_address = self.vrf_provider_address.read();
+            let vrf = IVrfProviderDispatcher { contract_address: vrf_address };
+            let random_word = vrf.consume_random(Source::Nonce(caller));
+
+            // Check for Relic effects that modify grid generation
+            let force_jackpot = session
+                .relic_pending_effect == RelicEffectTypeValues::RandomJackpot;
+            let force_666 = session.relic_pending_effect == RelicEffectTypeValues::Trigger666;
+
+            let (mut grid, mut is_666, mut is_jackpot) = if force_jackpot {
+                // Force a random symbol jackpot (all 15 cells same)
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+                InternalImpl::generate_jackpot_grid(@self, random_word)
+            } else if force_666 {
+                // Force 666 pattern
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+                InternalImpl::generate_666_grid(@self, random_word)
+            } else {
+                InternalImpl::generate_grid_from_random(
+                    @self, random_word, session.level, session_id,
+                )
+            };
+
+            let mut biblia_used = false;
+            if is_666 {
+                let has_biblia = InternalImpl::has_item_in_inventory(@self, session_id, 40);
+                if has_biblia {
+                    InternalImpl::remove_item_from_inventory(ref self, session_id, 40);
+                    is_666 = false;
+                    biblia_used = true;
+                } else {
+                    grid = InternalImpl::set_grid_value(grid, 6, super::SymbolType::SIX);
+                    grid = InternalImpl::set_grid_value(grid, 7, super::SymbolType::SIX);
+                    grid = InternalImpl::set_grid_value(grid, 8, super::SymbolType::SIX);
+                }
+            }
+            let (mut score, patterns_count) = InternalImpl::calculate_spin_result(
+                @self, grid, session_id,
+            );
+
+            // Check for DoubleNextSpin Relic effect (effect_type = 2)
+            if session.relic_pending_effect == RelicEffectTypeValues::DoubleNextSpin {
+                score = score * 2;
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+            }
+
+            let new_score = session.score + score;
+            let new_total_score = session.total_score + score;
+            session.score = new_score;
+            session.total_score = new_total_score;
+            let mut new_level = session.level;
+            while new_score >= Self::get_level_threshold(@self, new_level) {
+                new_level += 1;
+            }
+
+            if new_level > session.level {
+                session.level = new_level;
+                let spin_bonus = InternalImpl::get_inventory_spin_bonus(@self, session_id);
+                session.spins_remaining = 5 + spin_bonus;
+            }
+            if is_666 {
+                session.is_active = false;
+                session.spins_remaining = 0;
+            }
+            if session.is_active && session.spins_remaining == 0 {
+                session.is_active = false;
+            }
+
+            // Auto-mint CHIP when session ends
+            if !session.is_active && !session.chips_claimed {
+                let base_chips = session.total_score / 20;
+                let emission_rate = self.chip_emission_rate.read();
+                let multiplier = self.chip_boost_multiplier.read();
+                let chip_amount: u256 = (base_chips * emission_rate * multiplier).into()
+                    * 1_000_000_000_000_000_000;
+
+                if chip_amount > 0 {
+                    let chip_token = self.chip_token.read();
+                    IChipDispatcher { contract_address: chip_token }
+                        .mint(session.player_address, chip_amount);
+                }
+                session.chips_claimed = true;
+            }
+
+            self.sessions.entry(session_id).write(session);
+            let spin_result = super::SpinResult {
+                session_id,
+                grid,
+                score,
+                patterns_count,
+                is_666,
+                is_jackpot,
+                is_pending: false,
+                biblia_used,
+            };
+            self.last_spin_results.entry(session_id).write(spin_result);
+            if !session.is_active && session.is_competitive {
+                InternalImpl::update_leaderboard_if_better(ref self, session);
+            }
+        }
+        fn get_last_spin_result(self: @ContractState, session_id: u32) -> super::SpinResult {
+            self.last_spin_results.entry(session_id).read()
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // CHIP MONETIZATION FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        fn claim_chips(ref self: ContractState, session_id: u32) {
+            let caller = get_caller_address();
+            let mut session = self.sessions.entry(session_id).read();
+
+            // Verify ownership and state
+            assert(session.player_address == caller, 'Not session owner');
+            assert(!session.is_active, 'Session still active');
+            assert(!session.chips_claimed, 'Already claimed');
+
+            // Calculate CHIP amount: floor(score / 20) * emission_rate * multiplier
+            let base_chips = session.total_score / 20;
+            let emission_rate = self.chip_emission_rate.read();
+            let multiplier = self.chip_boost_multiplier.read();
+            let chip_amount: u256 = (base_chips * emission_rate * multiplier).into()
+                * 1_000_000_000_000_000_000;
+
+            // Mint CHIP to player (18 decimals)
+            if chip_amount > 0 {
+                let chip_token = self.chip_token.read();
+                IChipDispatcher { contract_address: chip_token }.mint(caller, chip_amount);
+            }
+
+            // Mark as claimed
+            session.chips_claimed = true;
+            self.sessions.entry(session_id).write(session);
+        }
+
+        fn get_chips_to_claim(self: @ContractState, session_id: u32) -> u256 {
+            let session = self.sessions.entry(session_id).read();
+
+            if session.is_active || session.chips_claimed {
+                return 0;
+            }
+
+            let base_chips = session.total_score / 20;
+            let emission_rate = self.chip_emission_rate.read();
+            let multiplier = self.chip_boost_multiplier.read();
+            (base_chips * emission_rate * multiplier).into() * 1_000_000_000_000_000_000
+        }
+
+        fn get_available_beast_sessions(self: @ContractState, player: ContractAddress) -> u32 {
+            let beast_nft = self.beast_nft_address.read();
+
+            // If no Beast NFT configured, return 0
+            if beast_nft.is_zero() {
+                return 0;
+            }
+
+            // Get Beast balance (2 free sessions per Beast)
+            let beast_balance: u256 = IERC721Dispatcher { contract_address: beast_nft }
+                .balance_of(player);
+            let total_free: u32 = (beast_balance * 2).try_into().unwrap_or(0);
+            let used = self.beast_sessions_used.entry(player).read();
+
+            if total_free > used {
+                return total_free - used;
+            }
+            0
+        }
+
+        fn set_beast_nft_address(ref self: ContractState, address: ContractAddress) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.beast_nft_address.write(address);
+        }
+
+        fn set_chip_emission_rate(ref self: ContractState, rate: u32) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.chip_emission_rate.write(rate);
+        }
+
+        fn set_chip_boost_multiplier(ref self: ContractState, multiplier: u32) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.chip_boost_multiplier.write(multiplier);
+        }
+
+        fn set_chip_token_address(ref self: ContractState, address: ContractAddress) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.chip_token.write(address);
+        }
+
+        fn set_token_pair_id(ref self: ContractState, token: ContractAddress, pair_id: felt252) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.token_pair_ids.entry(token).write(pair_id);
+        }
+
+        fn set_pragma_oracle(ref self: ContractState, oracle: ContractAddress) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.pragma_oracle.write(oracle);
+        }
+
+        fn get_usd_cost_in_token(self: @ContractState, token: ContractAddress) -> u256 {
+            InternalImpl::get_usd_cost_in_token(self, token)
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // RELIC SYSTEM
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        fn equip_relic(ref self: ContractState, session_id: u32, relic_token_id: u256) {
+            let mut session = self.sessions.entry(session_id).read();
+            let caller = get_caller_address();
+
+            assert(session.player_address == caller, 'Not your session');
+            assert(session.is_active, 'Session not active');
+
+            // Verify NFT ownership
+            let relic_nft = self.relic_nft_address.read();
+            assert(!relic_nft.is_zero(), 'Relic NFT not set');
+
+            let nft_owner = IRelicERC721Dispatcher { contract_address: relic_nft }
+                .owner_of(relic_token_id);
+            assert(nft_owner == caller, 'Not relic owner');
+
+            // A relic can only be equipped ONCE per session
+            assert(session.equipped_relic == 0, 'Relic already equipped');
+
+            session.equipped_relic = relic_token_id;
+            // Set to 0 - activate_relic handles first use case (relic_last_used_spin == 0)
+            session.relic_last_used_spin = 0;
+            self.sessions.entry(session_id).write(session);
+        }
+
+        fn activate_relic(ref self: ContractState, session_id: u32) {
+            let mut session = self.sessions.entry(session_id).read();
+            let caller = get_caller_address();
+
+            assert(session.player_address == caller, 'Not your session');
+            assert(session.is_active, 'Session not active');
+            assert(session.equipped_relic != 0, 'No relic equipped');
+
+            // Fetch relic metadata from NFT contract
+            let relic_nft = self.relic_nft_address.read();
+            let metadata = IRelicDispatcher { contract_address: relic_nft }
+                .get_relic_metadata(session.equipped_relic);
+
+            // Check cooldown (skip if relic was never used before - relic_last_used_spin == 0 means
+            // first use)
+            if session.relic_last_used_spin > 0 {
+                let spins_since_last_use = session.total_spins - session.relic_last_used_spin;
+                assert(spins_since_last_use >= metadata.cooldown_spins, 'Relic on cooldown');
+            }
+
+            // Queue the effect for next action
+            session.relic_pending_effect = metadata.effect_type;
+            session.relic_last_used_spin = session.total_spins;
+
+            self.sessions.entry(session_id).write(session);
+        }
+
+        fn set_relic_nft_address(ref self: ContractState, address: ContractAddress) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.relic_nft_address.write(address);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // PRIZE DISTRIBUTION: Admin functions for multi-token prize distribution
+        // ─────────────────────────────────────────────────────────────────────────
+
+        fn add_prize_token(ref self: ContractState, token: ContractAddress) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+
+            // Check if token already exists
+            let count = self.prize_tokens_count.read();
+            let mut i: u32 = 0;
+            while i < count {
+                let existing = self.prize_tokens.entry(i).read();
+                assert(existing != token, 'Token already added');
+                i += 1;
+            }
+
+            // Add new token
+            self.prize_tokens.entry(count).write(token);
+            self.prize_tokens_count.write(count + 1);
+        }
+
+        fn distribute_prizes(ref self: ContractState) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            assert(!self.prizes_distributed.read(), 'Prizes already distributed');
+
+            let leaderboard_count = self.leaderboard_count.read();
+            assert(leaderboard_count >= 5, 'Need at least 5 players');
+
+            // Get top 5 players
+            let player1 = self.leaderboard.entry(0).read().player_address;
+            let player2 = self.leaderboard.entry(1).read().player_address;
+            let player3 = self.leaderboard.entry(2).read().player_address;
+            let player4 = self.leaderboard.entry(3).read().player_address;
+            let player5 = self.leaderboard.entry(4).read().player_address;
+
+            // Distribution percentages: 40%, 25%, 18%, 10%, 7%
+            let token_count = self.prize_tokens_count.read();
+            let contract_address = starknet::get_contract_address();
+
+            let mut t: u32 = 0;
+            while t < token_count {
+                let token_addr = self.prize_tokens.entry(t).read();
+                let token = IERC20Dispatcher { contract_address: token_addr };
+                let balance = token.balance_of(contract_address);
+
+                if balance > 0 {
+                    // Calculate amounts for each position
+                    let amount1 = (balance * 40) / 100; // 1st: 40%
+                    let amount2 = (balance * 25) / 100; // 2nd: 25%
+                    let amount3 = (balance * 18) / 100; // 3rd: 18%
+                    let amount4 = (balance * 10) / 100; // 4th: 10%
+                    let amount5 = (balance * 7) / 100; // 5th: 7%
+
+                    // Transfer to each player
+                    if amount1 > 0 {
+                        token.transfer(player1, amount1);
+                    }
+                    if amount2 > 0 {
+                        token.transfer(player2, amount2);
+                    }
+                    if amount3 > 0 {
+                        token.transfer(player3, amount3);
+                    }
+                    if amount4 > 0 {
+                        token.transfer(player4, amount4);
+                    }
+                    if amount5 > 0 {
+                        token.transfer(player5, amount5);
+                    }
+                }
+                t += 1;
+            }
+
+            // Mark as distributed
+            self.prizes_distributed.write(true);
+
+            // Reset CHIP prize pool tracker
+            self.prize_pool.write(0);
+        }
+
+        fn get_prize_token_balances(self: @ContractState) -> Array<(ContractAddress, u256)> {
+            let mut balances: Array<(ContractAddress, u256)> = ArrayTrait::new();
+            let token_count = self.prize_tokens_count.read();
+            let contract_address = starknet::get_contract_address();
+
+            let mut i: u32 = 0;
+            while i < token_count {
+                let token_addr = self.prize_tokens.entry(i).read();
+                let token = IERC20Dispatcher { contract_address: token_addr };
+                let balance = token.balance_of(contract_address);
+                balances.append((token_addr, balance));
+                i += 1;
+            }
+
+            balances
+        }
     }
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
+        // ═══════════════════════════════════════════════════════════════════════════
+        // VRF GRID GENERATION AND PATTERN DETECTION
+        // ═══════════════════════════════════════════════════════════════════════════
+        fn generate_grid_from_random(
+            self: @ContractState, random_word: felt252, level: u32, session_id: u32,
+        ) -> ([u8; 15], bool, bool) {
+            let mut grid: [u8; 15] = [0_u8; 15];
+            let mut is_jackpot = true;
+            let mut first_symbol: u8 = 0;
+            let (p7, pd, pc, p_coin, pl) = Self::get_inventory_probability_bonuses(
+                self, session_id,
+            );
+            let prob_seven = 10 + p7;
+            let prob_diamond = 15 + pd;
+            let prob_cherry = 20 + pc;
+            let prob_coin = 25 + p_coin;
+            let prob_lemon = 30 + pl;
+            let total_prob = prob_seven + prob_diamond + prob_cherry + prob_coin + prob_lemon;
+            let thresh_seven = prob_seven;
+            let thresh_diamond = thresh_seven + prob_diamond;
+            let thresh_cherry = thresh_diamond + prob_cherry;
+            let thresh_coin = thresh_cherry + prob_coin;
+            let mut i: u32 = 0;
+            while i < 15 {
+                let position_seed = poseidon_hash_span(array![random_word, i.into()].span());
+                let seed_value: u256 = position_seed.into();
+                let symbol_roll: u32 = (seed_value % total_prob.into()).try_into().unwrap();
+                let symbol: u8 = if symbol_roll < thresh_seven {
+                    super::SymbolType::SEVEN
+                } else if symbol_roll < thresh_diamond {
+                    super::SymbolType::DIAMOND
+                } else if symbol_roll < thresh_cherry {
+                    super::SymbolType::CHERRY
+                } else if symbol_roll < thresh_coin {
+                    super::SymbolType::COIN
+                } else {
+                    super::SymbolType::LEMON
+                };
+
+                grid = Self::set_grid_value(grid, i, symbol);
+
+                // Track if all symbols are the same (jackpot)
+                if i == 0 {
+                    first_symbol = symbol;
+                } else if symbol != first_symbol {
+                    is_jackpot = false;
+                }
+
+                i += 1;
+            }
+
+            // Check for 666 based on level probability
+            let probability_666 = Self::get_666_probability_internal(self, level);
+            let roll_666_seed = poseidon_hash_span(array![random_word, 999.into()].span());
+            let roll_666: u256 = roll_666_seed.into();
+            let is_666 = (roll_666 % 1000) < probability_666.into();
+
+            (grid, is_666, is_jackpot)
+        }
+
+        /// Generate a jackpot grid (all 15 cells same symbol)
+        fn generate_jackpot_grid(
+            self: @ContractState, random_word: felt252,
+        ) -> ([u8; 15], bool, bool) {
+            // Pick a random symbol (1-8, not SIX which is 9)
+            let symbol_roll: u256 = random_word.into();
+            let symbol = ((symbol_roll % 8) + 1).try_into().unwrap(); // 1-8
+
+            let grid: [u8; 15] = [
+                symbol, symbol, symbol, symbol, symbol, symbol, symbol, symbol, symbol, symbol,
+                symbol, symbol, symbol, symbol, symbol,
+            ];
+
+            (grid, false, true) // No 666, is jackpot
+        }
+
+        /// Generate a 666 grid (normal grid but forced 666 pattern)
+        fn generate_666_grid(self: @ContractState, random_word: felt252) -> ([u8; 15], bool, bool) {
+            let mut grid: [u8; 15] = [0_u8; 15];
+
+            // Fill with random symbols
+            let mut i: u32 = 0;
+            while i < 15 {
+                let symbol_seed = poseidon_hash_span(array![random_word, i.into()].span());
+                let symbol_roll: u256 = symbol_seed.into();
+                let symbol = ((symbol_roll % 8) + 1).try_into().unwrap();
+                grid = Self::set_grid_value(grid, i, symbol);
+                i += 1;
+            }
+
+            // Force 666 in middle row (indices 6, 7, 8)
+            grid = Self::set_grid_value(grid, 6, super::SymbolType::SIX);
+            grid = Self::set_grid_value(grid, 7, super::SymbolType::SIX);
+            grid = Self::set_grid_value(grid, 8, super::SymbolType::SIX);
+
+            (grid, true, false) // is 666, not jackpot
+        }
+
+        /// Helper to set value in fixed-size grid array
+        fn set_grid_value(mut grid: [u8; 15], index: u32, value: u8) -> [u8; 15] {
+            // Cairo doesn't allow direct array mutation, so we reconstruct
+            // This is a pattern matching approach for the fixed array
+            let values: Array<u8> = array![
+                if index == 0 {
+                    value
+                } else {
+                    *grid.span().at(0)
+                },
+                if index == 1 {
+                    value
+                } else {
+                    *grid.span().at(1)
+                },
+                if index == 2 {
+                    value
+                } else {
+                    *grid.span().at(2)
+                },
+                if index == 3 {
+                    value
+                } else {
+                    *grid.span().at(3)
+                },
+                if index == 4 {
+                    value
+                } else {
+                    *grid.span().at(4)
+                },
+                if index == 5 {
+                    value
+                } else {
+                    *grid.span().at(5)
+                },
+                if index == 6 {
+                    value
+                } else {
+                    *grid.span().at(6)
+                },
+                if index == 7 {
+                    value
+                } else {
+                    *grid.span().at(7)
+                },
+                if index == 8 {
+                    value
+                } else {
+                    *grid.span().at(8)
+                },
+                if index == 9 {
+                    value
+                } else {
+                    *grid.span().at(9)
+                },
+                if index == 10 {
+                    value
+                } else {
+                    *grid.span().at(10)
+                },
+                if index == 11 {
+                    value
+                } else {
+                    *grid.span().at(11)
+                },
+                if index == 12 {
+                    value
+                } else {
+                    *grid.span().at(12)
+                },
+                if index == 13 {
+                    value
+                } else {
+                    *grid.span().at(13)
+                },
+                if index == 14 {
+                    value
+                } else {
+                    *grid.span().at(14)
+                },
+            ];
+            [
+                *values.at(0), *values.at(1), *values.at(2), *values.at(3), *values.at(4),
+                *values.at(5), *values.at(6), *values.at(7), *values.at(8), *values.at(9),
+                *values.at(10), *values.at(11), *values.at(12), *values.at(13), *values.at(14),
+            ]
+        }
+
+        /// Calculate spin result: detect patterns and compute score
+        /// Grid layout (5x3, row-major):
+        ///   [0]  [1]  [2]  [3]  [4]   <- Row 0
+        ///   [5]  [6]  [7]  [8]  [9]   <- Row 1
+        ///   [10] [11] [12] [13] [14]  <- Row 2
+        fn calculate_spin_result(
+            self: @ContractState, grid: [u8; 15], session_id: u32,
+        ) -> (u32, u8) {
+            let mut total_score: u32 = 0;
+            let mut patterns_count: u8 = 0;
+            let g = grid.span();
+
+            // === HORIZONTAL PATTERNS (per row) ===
+            // Row 0: indices 0-4
+            let (score, pats) = Self::check_horizontal_line(self, g, 0, session_id);
+            total_score += score;
+            patterns_count += pats;
+
+            // Row 1: indices 5-9
+            let (score, pats) = Self::check_horizontal_line(self, g, 5, session_id);
+            total_score += score;
+            patterns_count += pats;
+
+            // Row 2: indices 10-14
+            let (score, pats) = Self::check_horizontal_line(self, g, 10, session_id);
+            total_score += score;
+            patterns_count += pats;
+
+            // === VERTICAL PATTERNS (3 in a column) ===
+            // Server parity: vertical-3 = 2x, so points * 3 * 2 = points * 6
+            // Column 0: 0, 5, 10
+            if *g.at(0) == *g.at(5) && *g.at(5) == *g.at(10) {
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(0)) * 6;
+                patterns_count += 1;
+            }
+            // Column 1: 1, 6, 11
+            if *g.at(1) == *g.at(6) && *g.at(6) == *g.at(11) {
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(1)) * 6;
+                patterns_count += 1;
+            }
+            // Column 2: 2, 7, 12
+            if *g.at(2) == *g.at(7) && *g.at(7) == *g.at(12) {
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 6;
+                patterns_count += 1;
+            }
+            // Column 3: 3, 8, 13
+            if *g.at(3) == *g.at(8) && *g.at(8) == *g.at(13) {
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(3)) * 6;
+                patterns_count += 1;
+            }
+            // Column 4: 4, 9, 14
+            if *g.at(4) == *g.at(9) && *g.at(9) == *g.at(14) {
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(4)) * 6;
+                patterns_count += 1;
+            }
+
+            // === DIAGONAL PATTERNS (3 in a row) ===
+            // Server parity: diagonal-3 = 2.5x, so (points * 3 * 5) / 2 = (points * 15) / 2
+            // Get diagonal bonus from inventory
+            let (_, _, _, diag_bonus, _) = Self::get_inventory_pattern_bonuses(self, session_id);
+
+            // Top-left to bottom-right diagonals
+            // 0, 6, 12
+            if *g.at(0) == *g.at(6) && *g.at(6) == *g.at(12) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(0)) * 15) / 2;
+                total_score += base * (100 + diag_bonus) / 100;
+                patterns_count += 1;
+            }
+            // 1, 7, 13
+            if *g.at(1) == *g.at(7) && *g.at(7) == *g.at(13) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(1)) * 15) / 2;
+                total_score += base * (100 + diag_bonus) / 100;
+                patterns_count += 1;
+            }
+            // 2, 8, 14
+            if *g.at(2) == *g.at(8) && *g.at(8) == *g.at(14) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 15) / 2;
+                total_score += base * (100 + diag_bonus) / 100;
+                patterns_count += 1;
+            }
+
+            // Top-right to bottom-left diagonals
+            // 2, 6, 10
+            if *g.at(2) == *g.at(6) && *g.at(6) == *g.at(10) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 15) / 2;
+                total_score += base * (100 + diag_bonus) / 100;
+                patterns_count += 1;
+            }
+            // 3, 7, 11
+            if *g.at(3) == *g.at(7) && *g.at(7) == *g.at(11) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(3)) * 15) / 2;
+                total_score += base * (100 + diag_bonus) / 100;
+                patterns_count += 1;
+            }
+            // 4, 8, 12
+            if *g.at(4) == *g.at(8) && *g.at(8) == *g.at(12) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(4)) * 15) / 2;
+                total_score += base * (100 + diag_bonus) / 100;
+                patterns_count += 1;
+            }
+
+            (total_score, patterns_count)
+        }
+
+        /// Check horizontal line for 3, 4, or 5 matches
+        /// Server parity: 3=1.5x, 4=3x, 5=6x (using count * points * multiplier)
+        /// Now applies PatternMultiplier bonuses from inventory
+        fn check_horizontal_line(
+            self: @ContractState, g: Span<u8>, start: u32, session_id: u32,
+        ) -> (u32, u8) {
+            let mut score: u32 = 0;
+            let mut patterns: u8 = 0;
+
+            // Get pattern bonuses from inventory (h3, h4, h5, diagonal, jackpot)
+            let (h3_bonus, h4_bonus, h5_bonus, _, _) = Self::get_inventory_pattern_bonuses(
+                self, session_id,
+            );
+
+            // Check for 5 in a row: points * 5 * 6 = points * 30
+            if *g.at(start) == *g.at(start + 1)
+                && *g.at(start + 1) == *g.at(start + 2)
+                && *g.at(start + 2) == *g.at(start + 3)
+                && *g.at(start + 3) == *g.at(start + 4) {
+                let base = Self::get_symbol_score_with_bonus(self, session_id, *g.at(start)) * 30;
+                score += base * (100 + h5_bonus) / 100;
+                patterns += 1;
+            } // Check for 4 in a row: points * 4 * 3 = points * 12
+            else if *g.at(start) == *g.at(start + 1)
+                && *g.at(start + 1) == *g.at(start + 2)
+                && *g.at(start + 2) == *g.at(start + 3) {
+                let base = Self::get_symbol_score_with_bonus(self, session_id, *g.at(start)) * 12;
+                score += base * (100 + h4_bonus) / 100;
+                patterns += 1;
+            } else if *g.at(start + 1) == *g.at(start + 2)
+                && *g.at(start + 2) == *g.at(start + 3)
+                && *g.at(start + 3) == *g.at(start + 4) {
+                let base = Self::get_symbol_score_with_bonus(self, session_id, *g.at(start + 1))
+                    * 12;
+                score += base * (100 + h4_bonus) / 100;
+                patterns += 1;
+            } // Check for 3 in a row: (points * 3 * 3) / 2 = (points * 9) / 2
+            else if *g.at(start) == *g.at(start + 1) && *g.at(start + 1) == *g.at(start + 2) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(start)) * 9)
+                    / 2;
+                score += base * (100 + h3_bonus) / 100;
+                patterns += 1;
+            } else if *g.at(start + 1) == *g.at(start + 2) && *g.at(start + 2) == *g.at(start + 3) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(start + 1))
+                    * 9)
+                    / 2;
+                score += base * (100 + h3_bonus) / 100;
+                patterns += 1;
+            } else if *g.at(start + 2) == *g.at(start + 3) && *g.at(start + 3) == *g.at(start + 4) {
+                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(start + 2))
+                    * 9)
+                    / 2;
+                score += base * (100 + h3_bonus) / 100;
+                patterns += 1;
+            }
+
+            (score, patterns)
+        }
+
+
+        /// Get base score for a symbol (Server parity: 7, 5, 4, 3, 2)
+        fn get_symbol_score(symbol: u8) -> u32 {
+            if symbol == super::SymbolType::SEVEN {
+                7
+            } else if symbol == super::SymbolType::DIAMOND {
+                5
+            } else if symbol == super::SymbolType::CHERRY {
+                4
+            } else if symbol == super::SymbolType::COIN {
+                3
+            } else {
+                2 // Lemon
+            }
+        }
+
+        /// Get symbol score with DirectScoreBonus from inventory applied
+        fn get_symbol_score_with_bonus(self: @ContractState, session_id: u32, symbol: u8) -> u32 {
+            let base_score = Self::get_symbol_score(symbol);
+
+            // Get bonuses from inventory
+            let (b7, bd, bc, b_coin, bl) = Self::get_inventory_score_bonuses(self, session_id);
+
+            let bonus = if symbol == super::SymbolType::SEVEN {
+                b7
+            } else if symbol == super::SymbolType::DIAMOND {
+                bd
+            } else if symbol == super::SymbolType::CHERRY {
+                bc
+            } else if symbol == super::SymbolType::COIN {
+                b_coin
+            } else {
+                bl // Lemon
+            };
+
+            base_score + bonus
+        }
+
+
+        /// Get 666 probability for a given level (per 1000)
+        fn get_666_probability_internal(self: @ContractState, level: u32) -> u32 {
+            // Server parity: (level - 2) * 1.5% = (level - 2) * 15 per mille
+            if level <= 2 {
+                0
+            } else {
+                (level - 2) * 15
+            }
+        }
+
+        /// Get all DirectScoreBonus values from inventory items
+        fn get_inventory_score_bonuses(
+            self: @ContractState, session_id: u32,
+        ) -> (u32, u32, u32, u32, u32) {
+            let mut b7: u32 = 0;
+            let mut bd: u32 = 0;
+            let mut bc: u32 = 0;
+            let mut b_coin: u32 = 0;
+            let mut bl: u32 = 0;
+
+            let count = self.session_item_count.entry(session_id).read();
+            let mut i: u32 = 0;
+            while i < count {
+                let item_id = self.session_item_ids.entry((session_id, i)).read();
+                let item = self.items.entry(item_id).read();
+
+                if item.effect_type == 3 { // DirectScoreBonus
+                    if item.target_symbol == 'seven' {
+                        b7 += item.effect_value;
+                    } else if item.target_symbol == 'diamond' {
+                        bd += item.effect_value;
+                    } else if item.target_symbol == 'cherry' {
+                        bc += item.effect_value;
+                    } else if item.target_symbol == 'coin' {
+                        b_coin += item.effect_value;
+                    } else if item.target_symbol == 'lemon' {
+                        bl += item.effect_value;
+                    }
+                }
+                i += 1;
+            }
+            (b7, bd, bc, b_coin, bl)
+        }
+
+        fn get_inventory_probability_bonuses(
+            self: @ContractState, session_id: u32,
+        ) -> (u32, u32, u32, u32, u32) {
+            let mut p7: u32 = 0;
+            let mut pd: u32 = 0;
+            let mut pc: u32 = 0;
+            let mut p_coin: u32 = 0;
+            let mut pl: u32 = 0;
+
+            let count = self.session_item_count.entry(session_id).read();
+            let mut i: u32 = 0;
+            while i < count {
+                let item_id = self.session_item_ids.entry((session_id, i)).read();
+                let item = self.items.entry(item_id).read();
+
+                if item.effect_type == 2 { // SymbolProbabilityBoost
+                    if item.target_symbol == 'seven' {
+                        p7 += item.effect_value;
+                    } else if item.target_symbol == 'diamond' {
+                        pd += item.effect_value;
+                    } else if item.target_symbol == 'cherry' {
+                        pc += item.effect_value;
+                    } else if item.target_symbol == 'coin' {
+                        p_coin += item.effect_value;
+                    } else if item.target_symbol == 'lemon' {
+                        pl += item.effect_value;
+                    }
+                }
+                i += 1;
+            }
+            (p7, pd, pc, p_coin, pl)
+        }
+
+        fn get_inventory_pattern_bonuses(
+            self: @ContractState, session_id: u32,
+        ) -> (u32, u32, u32, u32, u32) {
+            let mut h3: u32 = 0; // horizontal-3
+            let mut h4: u32 = 0; // horizontal-4
+            let mut h5: u32 = 0; // horizontal-5
+            let mut diag: u32 = 0; // diagonal
+            let mut jp: u32 = 0; // jackpot
+
+            let count = self.session_item_count.entry(session_id).read();
+            let mut i: u32 = 0;
+            while i < count {
+                let item_id = self.session_item_ids.entry((session_id, i)).read();
+                let item = self.items.entry(item_id).read();
+
+                if item.effect_type == 1 { // PatternMultiplier
+                    if item.target_symbol == 'horizontal-3' {
+                        h3 += item.effect_value;
+                    } else if item.target_symbol == 'horizontal-4' {
+                        h4 += item.effect_value;
+                    } else if item.target_symbol == 'horizontal-5' {
+                        h5 += item.effect_value;
+                    } else if item.target_symbol == 'diagonal' {
+                        diag += item.effect_value;
+                    } else if item.target_symbol == 'jackpot' {
+                        jp += item.effect_value;
+                    }
+                }
+                i += 1;
+            }
+            (h3, h4, h5, diag, jp)
+        }
+
+        fn has_item_in_inventory(self: @ContractState, session_id: u32, item_id: u32) -> bool {
+            let item_count = self.session_item_count.entry(session_id).read();
+            let mut i: u32 = 0;
+            while i < item_count {
+                if self.session_item_ids.entry((session_id, i)).read() == item_id {
+                    return true;
+                }
+                i += 1;
+            }
+            false
+        }
+
+        /// Remove an item from session inventory (for Biblia consumption)
+        fn remove_item_from_inventory(ref self: ContractState, session_id: u32, item_id: u32) {
+            let item_count = self.session_item_count.entry(session_id).read();
+            let mut found_index: Option<u32> = Option::None;
+            let mut i: u32 = 0;
+            while i < item_count {
+                if self.session_item_ids.entry((session_id, i)).read() == item_id {
+                    found_index = Option::Some(i);
+                    break;
+                }
+                i += 1;
+            }
+
+            if let Option::Some(idx) = found_index {
+                {
+                    // Shift all items after the found index
+                    let mut j = idx;
+                    while j < item_count - 1 {
+                        let next_item_id = self.session_item_ids.entry((session_id, j + 1)).read();
+                        self.session_item_ids.entry((session_id, j)).write(next_item_id);
+                        j += 1;
+                    }
+                    // Clear last slot and decrement count
+                    self.session_item_ids.entry((session_id, item_count - 1)).write(0);
+                    self.session_item_count.entry(session_id).write(item_count - 1);
+                }
+            }
+        }
+
+        /// Calculate spin bonus from inventory items (effect_type == 4)
+        fn get_inventory_spin_bonus(self: @ContractState, session_id: u32) -> u32 {
+            let item_count = self.session_item_count.entry(session_id).read();
+            let mut total_bonus: u32 = 0;
+            let mut i: u32 = 0;
+            while i < item_count {
+                let item_id = self.session_item_ids.entry((session_id, i)).read();
+                if item_id > 0 {
+                    let item = self.items.entry(item_id).read();
+                    // SpinBonus effect type = 4
+                    if item.effect_type == 4 {
+                        total_bonus += item.effect_value;
+                    }
+                }
+                i += 1;
+            }
+            total_bonus
+        }
+
+
         /// Update the leaderboard only if this is a new best score for the session
         fn update_leaderboard_if_better(ref self: ContractState, session: GameSession) {
             let new_score = session.total_score;
@@ -848,9 +1782,8 @@ pub mod AbyssGame {
                 i += 1;
             }
 
-            // If player exists with a better or equal score, don't update
-            match player_existing_position {
-                Option::Some(pos) => {
+            if let Option::Some(pos) = player_existing_position {
+                {
                     if player_existing_score >= new_score {
                         // Player already has a better score, do nothing
                         return;
@@ -866,11 +1799,8 @@ pub mod AbyssGame {
                         // Decrease count since we removed an entry
                         self.leaderboard_count.write(current_count - 1);
                     }
-                },
-                Option::None => { // Player doesn't exist, continue with normal insert
-                },
+                }
             }
-
             // Now insert the new score in the correct position
             let updated_count = self.leaderboard_count.read();
             let mut insert_position = updated_count; // Default to append
@@ -1728,6 +2658,54 @@ pub mod AbyssGame {
             let item_id: u32 = random_u256.try_into().unwrap();
 
             item_id
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // PAYMENT SYSTEM FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        fn get_usd_cost_in_token(self: @ContractState, token: ContractAddress) -> u256 {
+            let one_usd: u256 = 1_000_000_000_000_000_000; // 1 USD in 18 decimals
+
+            // Get pair ID for this token
+            let pair_id = self.token_pair_ids.entry(token).read();
+            assert(pair_id != 0, 'Token not supported');
+            let oracle = self.pragma_oracle.read();
+            let data_type = DataType::SpotEntry(pair_id);
+            let response = IPragmaABIDispatcher { contract_address: oracle }
+                .get_data_median(data_type);
+            let token_price: u256 = response.price.into();
+            let price_decimals: u256 = response.decimals.into();
+            let _token_decimals: u256 = 18;
+            let numerator = one_usd * Self::pow(10, price_decimals.try_into().unwrap());
+            let amount = numerator / token_price;
+            amount
+        }
+
+        fn distribute_revenue(ref self: ContractState, token: ContractAddress, total_amount: u256) {
+            let prize_amount = (total_amount * 50) / 100;
+            let treasury_amount = (total_amount * 30) / 100;
+            let team_amount = (total_amount * 20) / 100;
+            let treasury = self.treasury.read();
+            let team = self.admin.read();
+            let token_dispatcher = IERC20Dispatcher { contract_address: token };
+            token_dispatcher.transfer(treasury, treasury_amount);
+            token_dispatcher.transfer(team, team_amount);
+            let current_prize_pool = self.prize_pool.read();
+            self.prize_pool.write(current_prize_pool + prize_amount);
+        }
+
+        fn pow(base: u256, exp: u32) -> u256 {
+            if exp == 0 {
+                return 1;
+            }
+            let mut result: u256 = base;
+            let mut i: u32 = 1;
+            while i < exp {
+                result = result * base;
+                i += 1;
+            }
+            result
         }
     }
 }
