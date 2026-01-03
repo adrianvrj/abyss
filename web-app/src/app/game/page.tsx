@@ -1,0 +1,1265 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useController } from "@/hooks/useController";
+import { useGameContract } from "@/hooks/useGameContract";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
+import SlotGrid from "@/components/SlotGrid";
+import { useRouter } from "next/navigation";
+import { FaShop, FaBoxOpen, FaCircleQuestion, FaHouse } from "react-icons/fa6";
+import { GiCrystalGrowth } from "react-icons/gi";
+
+
+import Image from "next/image";
+import MarketModal from "@/components/modals/MarketModal";
+import InventoryModal from "@/components/modals/InventoryModal";
+import InfoModal from "@/components/modals/InfoModal";
+import RelicModal from "@/components/modals/RelicModal";
+import { Pattern, detectPatterns, ScoreBonuses } from "@/utils/patternDetector";
+import PatternOverlay from "@/components/PatternOverlay";
+import BibliaSaveAnimation from "@/components/BibliaSaveAnimation";
+import RelicActivationAnimation from "@/components/RelicActivationAnimation";
+import { motion, AnimatePresence } from "framer-motion";
+import { getSessionItems, getItemInfo, ItemEffectType } from "@/utils/abyssContract";
+
+
+function GameContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const sessionId = searchParams.get("sessionId");
+
+    const { account, address, username } = useController();
+    const {
+        isReady: isConnected,
+        requestSpin,
+        getLastSpinResult,
+        getSessionData,
+        getLevelThreshold,
+        get666Probability,
+        equipRelic,
+        activateRelic,
+    } = useGameContract(account);
+
+    // Game State
+    const [level, setLevel] = useState(1);
+    const [score, setScore] = useState(0);
+    const [threshold, setThreshold] = useState(100); // Next Level Threshold
+    const [risk, setRisk] = useState(0); // 666 Risk %
+    const [spinsRemaining, setSpinsRemaining] = useState(5);
+    const [patterns, setPatterns] = useState<Pattern[]>([]);
+
+
+    const [grid, setGrid] = useState<number[]>([]);
+    const [isSpinning, setIsSpinning] = useState(false);
+    const [hasSpunOnce, setHasSpunOnce] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [showLevelUp, setShowLevelUp] = useState(false);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const previousLevelRef = useRef<number>(1);
+
+
+    // Modals
+    const [activeModal, setActiveModal] = useState<'market' | 'inventory' | 'info' | null>(null);
+
+    // Game Over State
+    const [showGameOver, setShowGameOver] = useState(false);
+    const [gameOverReason, setGameOverReason] = useState<'666' | 'no_spins' | null>(null);
+    const [finalScore, setFinalScore] = useState(0);
+
+    // Biblia Save Animation
+    const [showBibliaAnimation, setShowBibliaAnimation] = useState(false);
+
+    // Relic State
+    const [equippedRelic, setEquippedRelic] = useState<{ tokenId: bigint; relicId: number; name: string; cooldown: number } | null>(null);
+    const [showRelicModal, setShowRelicModal] = useState(false);
+    const [ownedRelics, setOwnedRelics] = useState<{ tokenId: bigint; relicId: number; name: string; cooldown: number }[]>([]);
+    const [isActivatingRelic, setIsActivatingRelic] = useState(false);
+    const [isEquippingRelic, setIsEquippingRelic] = useState(false);
+    const [relicCooldownRemaining, setRelicCooldownRemaining] = useState(0);
+    const [relicIndex, setRelicIndex] = useState(0);
+    const [scoreMultiplier, setScoreMultiplier] = useState(1); // For double points relic
+    const scoreMultiplierRef = useRef(1);
+    const [showRelicActivation, setShowRelicActivation] = useState(false);
+
+    // Score bonuses from inventory
+    const [scoreBonuses, setScoreBonuses] = useState<ScoreBonuses>({ seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 });
+    const scoreBonusesRef = useRef(scoreBonuses);
+
+    useEffect(() => {
+        scoreBonusesRef.current = scoreBonuses;
+    }, [scoreBonuses]);
+
+    useEffect(() => {
+        scoreMultiplierRef.current = scoreMultiplier;
+    }, [scoreMultiplier]);
+
+    const loadScoreBonuses = async () => {
+        if (!sessionId) return;
+        try {
+            const items = await getSessionItems(Number(sessionId));
+            const bonuses: ScoreBonuses = { seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 };
+
+            for (const item of items) {
+                const info = await getItemInfo(item.item_id);
+                if (info.effect_type === ItemEffectType.DirectScoreBonus) {
+                    const symbol = info.target_symbol.toLowerCase() as keyof ScoreBonuses;
+                    if (symbol in bonuses) {
+                        bonuses[symbol] += info.effect_value;
+                    }
+                }
+            }
+            setScoreBonuses(bonuses);
+        } catch (err) {
+            console.error("Failed to load score bonuses:", err);
+        }
+    };
+
+    // Relic name mapping for display
+    const RELIC_NAMES: Record<number, string> = {
+        1: 'Mortis',
+        2: 'Phantom',
+        3: 'Lucky the Dealer',
+        4: 'Scorcher',
+        5: 'Inferno',
+    };
+
+    const loadOwnedRelics = async () => {
+        if (!account) return;
+        try {
+            const { RpcProvider } = await import('starknet');
+            const { CONTRACTS } = await import('@/lib/constants');
+            const provider = new RpcProvider({ nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia" });
+
+            const result = await provider.callContract({
+                contractAddress: CONTRACTS.RELIC_NFT,
+                entrypoint: "get_player_relics",
+                calldata: [account.address],
+            });
+
+            const length = Number(result[0]);
+            const relics: { tokenId: bigint; relicId: number; name: string; cooldown: number }[] = [];
+
+            for (let i = 0; i < length; i++) {
+                const low = BigInt(result[1 + i * 2]);
+                const high = BigInt(result[1 + i * 2 + 1]);
+                const tokenId = low + (high << BigInt(128));
+
+                const metaResult = await provider.callContract({
+                    contractAddress: CONTRACTS.RELIC_NFT,
+                    entrypoint: "get_relic_metadata",
+                    calldata: [low.toString(), high.toString()]
+                });
+                const relicId = Number(metaResult[0]);
+                // cooldown_spins is at index 4 in the struct
+                const cooldown = Number(metaResult[4]);
+                if (relicId > 0) {
+                    relics.push({
+                        tokenId,
+                        relicId,
+                        name: RELIC_NAMES[relicId] || `Relic #${relicId}`,
+                        cooldown
+                    });
+                }
+            }
+            setOwnedRelics(relics);
+        } catch (err) {
+            console.error("Failed to load owned relics:", err);
+        }
+    };
+
+    useEffect(() => {
+        const initializeGame = async () => {
+            if (sessionId && isConnected) {
+                setIsInitialLoading(true);
+                try {
+                    await Promise.all([
+                        loadSessionData(),
+                        loadScoreBonuses(),
+                        loadOwnedRelics()
+                    ]);
+                } finally {
+                    setIsInitialLoading(false);
+                }
+            }
+        };
+        initializeGame();
+    }, [sessionId, isConnected]);
+
+    const loadSessionData = async () => {
+        if (!sessionId) return null;
+        try {
+            const data = await getSessionData(Number(sessionId));
+            if (data) {
+                // Check for level up
+                if (data.level > previousLevelRef.current && previousLevelRef.current > 0) {
+                    setShowLevelUp(true);
+                    setTimeout(() => setShowLevelUp(false), 1600);
+                }
+                previousLevelRef.current = data.level;
+
+                setScore(data.score);
+                setLevel(data.level);
+                setSpinsRemaining(data.spinsRemaining);
+
+                // Fetch Synced Rules from Contract
+                const th = await getLevelThreshold(data.level);
+                setThreshold(th);
+
+                const prob = await get666Probability(data.level);
+                setRisk(prob / 10); // Contract returns *10 (e.g. 15 = 1.5%)
+
+                // Check for double points relic effect (effect_type 3 = DoubleNextSpin)
+                console.log('relicPendingEffect from contract:', data.relicPendingEffect);
+                if (data.relicPendingEffect === 3) {
+                    console.log('Setting scoreMultiplier to 2 (Double Points active)');
+                    setScoreMultiplier(2);
+                    scoreMultiplierRef.current = 2;
+                } else {
+                    setScoreMultiplier(1);
+                    scoreMultiplierRef.current = 1;
+                }
+
+                // Sync equipped relic and cooldown from contract
+                if (data.equippedRelic > BigInt(0)) {
+                    // Fetch relic metadata directly from contract (don't rely on ownedRelics state)
+                    try {
+                        const { RpcProvider } = await import('starknet');
+                        const { CONTRACTS } = await import('@/lib/constants');
+                        const provider = new RpcProvider({ nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia" });
+
+                        // Split u256 into low/high for contract call
+                        // tokenId from session is already combined, need to split it back
+                        const tokenId = data.equippedRelic;
+                        // For u256: low is first 128 bits, high is upper 128 bits
+                        const mask128 = (BigInt(1) << BigInt(128)) - BigInt(1);
+                        const low = tokenId & mask128;
+                        const high = tokenId >> BigInt(128);
+
+                        console.log("Fetching relic metadata for tokenId:", tokenId.toString(), "low:", low.toString(), "high:", high.toString());
+
+                        const metaResult = await provider.callContract({
+                            contractAddress: CONTRACTS.RELIC_NFT,
+                            entrypoint: "get_relic_metadata",
+                            calldata: [low.toString(), high.toString()]
+                        });
+
+                        console.log("Relic metadata result:", metaResult);
+
+                        const relicId = Number(metaResult[0]);
+                        const cooldown = Number(metaResult[4]);
+
+                        const RELIC_NAMES_MAP: Record<number, string> = {
+                            1: 'Mortis', 2: 'Phantom', 3: 'Lucky the Dealer', 4: 'Scorcher', 5: 'Inferno',
+                        };
+
+                        const relicData = {
+                            tokenId: data.equippedRelic,
+                            relicId,
+                            name: RELIC_NAMES_MAP[relicId] || `Relic #${relicId}`,
+                            cooldown
+                        };
+
+                        setEquippedRelic(relicData);
+
+                        // Calculate remaining cooldown from contract data
+                        // If relic_last_used_spin is 0, relic was never activated yet (ready to use)
+                        if (data.relicLastUsedSpin === 0) {
+                            setRelicCooldownRemaining(0);
+                        } else {
+                            const spinsSinceLastUse = data.totalSpins - data.relicLastUsedSpin;
+                            const cooldownRemaining = Math.max(0, cooldown - spinsSinceLastUse);
+                            setRelicCooldownRemaining(cooldownRemaining);
+                        }
+                    } catch (relicErr) {
+                        console.error("Failed to fetch equipped relic metadata:", relicErr);
+                    }
+                } else {
+                    setEquippedRelic(null);
+                    setRelicCooldownRemaining(0);
+                }
+
+                return data; // Return for game over check
+            }
+            return null;
+        } catch (err) {
+            console.error("Failed to load session:", err);
+            return null;
+        }
+    };
+
+    const playSound = (soundName: 'spin' | 'win' | 'jackpot' | 'game-over', durationMs?: number) => {
+        const audio = new Audio(`/sounds/${soundName}${soundName === 'win' ? '.wav' : '.mp3'}`);
+        audio.volume = 0.5;
+        audio.play().catch(e => console.error("Audio play failed", e));
+
+        if (durationMs) {
+            setTimeout(() => {
+                audio.pause();
+                audio.currentTime = 0;
+            }, durationMs);
+        }
+    };
+
+    const handleSpin = useCallback(async () => {
+        if (!sessionId || isSpinning || spinsRemaining <= 0) return;
+
+        setIsSpinning(true);
+        setError(null);
+        setPatterns([]); // Clear previous patterns
+        playSound('spin');
+
+        try {
+            await requestSpin(Number(sessionId));
+
+            // Cartridge VRF is synchronous - result should be ready immediately
+            let attempts = 0;
+            const pollResult = async () => {
+                const result = await getLastSpinResult(Number(sessionId));
+                console.log("Spin result:", result); // Debug
+                if (result && !result.isPending && result.grid.length === 15) {
+                    console.log("Grid received:", result.grid); // Debug
+
+                    // Update state
+                    setGrid(result.grid);
+                    setHasSpunOnce(true);
+
+                    // Decrement relic cooldown (happens every spin)
+                    setRelicCooldownRemaining(prev => Math.max(0, prev - 1));
+
+                    // Stop spinning animation first
+                    setIsSpinning(false);
+
+                    // Wait for reels to settle (approx 800ms) before showing patterns/sounds
+                    setTimeout(() => {
+                        // Show Biblia animation if it saved from 666
+                        if (result.bibliaUsed) {
+                            setShowBibliaAnimation(true);
+                            loadScoreBonuses(); // Biblia was consumed, refresh inventory
+                        }
+
+                        // Detect Patterns with inventory bonuses applied
+                        const detectedPatterns = detectPatterns(result.grid, undefined, scoreBonusesRef.current);
+                        // Apply score multiplier from relic (e.g., double points)
+                        const currentMultiplier = scoreMultiplierRef.current;
+                        console.log('Applying score multiplier:', currentMultiplier);
+                        const multipliedPatterns = detectedPatterns.map(p => ({
+                            ...p,
+                            score: p.score * currentMultiplier
+                        }));
+                        setPatterns(multipliedPatterns);
+                        // Reset multiplier after applying (contract resets it too)
+                        setScoreMultiplier(1);
+                        scoreMultiplierRef.current = 1;
+
+                        // Play sounds based on result
+                        if (result.is666) {
+                            playSound('game-over');
+                            // Show Game Over after a brief delay
+                            setTimeout(() => {
+                                setFinalScore(result.score);
+                                setGameOverReason('666');
+                                setShowGameOver(true);
+                            }, 1500);
+                        } else if (result.isJackpot) {
+                            playSound('jackpot');
+                        }
+                    }, 400);
+
+                    // Sync full session data (Score, Threshold, Risk, Level)
+                    const sessionData = await loadSessionData();
+
+                    // Check if no spins remaining (and not 666 which is handled above)
+                    if (!result.is666 && sessionData && sessionData.spinsRemaining <= 0) {
+                        setTimeout(() => {
+                            setFinalScore(sessionData.score);
+                            setGameOverReason('no_spins');
+                            setShowGameOver(true);
+                        }, 1000);
+                    }
+                } else if (attempts < 10) {
+                    attempts++;
+                    setTimeout(pollResult, 1000);
+                } else {
+                    setError("Spin timeout");
+                    setIsSpinning(false);
+                }
+            };
+            // Start polling immediately since VRF is synchronous
+            setTimeout(pollResult, 200);
+        } catch (err) {
+            console.error("Spin failed:", err);
+            setError("Spin failed");
+            setIsSpinning(false);
+        }
+    }, [sessionId, isSpinning, spinsRemaining, requestSpin, getLastSpinResult, loadSessionData]);
+
+    if (!sessionId) {
+        return (
+            <div className="game-loading">
+                <p className="loading-text">No session ID</p>
+            </div>
+        );
+    }
+    return (
+        <div className="game-container">
+            {/* Level Up Animation */}
+            <AnimatePresence>
+                {showLevelUp && (
+                    <motion.div
+                        initial={{ y: "100vh" }}
+                        animate={{
+                            y: ["100vh", "0vh", "0vh", "100vh"],
+                        }}
+                        transition={{
+                            duration: 1.5,
+                            times: [0, 0.3, 0.7, 1],
+                            ease: "easeInOut"
+                        }}
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 9999,
+                            pointerEvents: "none",
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontFamily: "'PressStart2P', monospace",
+                                fontSize: "48px",
+                                color: "#FFD700",
+                            }}
+                        >
+                            LEVEL UP
+                        </span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Initial Loading State */}
+            {isInitialLoading && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.95)',
+                    zIndex: 9999,
+                    fontFamily: "'PressStart2P', monospace",
+                    fontSize: '16px',
+                    color: '#FF841C',
+                }}>
+                    Loading...
+                </div>
+            )}
+
+            {/* Activating Relic Overlay */}
+            {isActivatingRelic && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.85)',
+                    zIndex: 9998,
+                    fontFamily: "'PressStart2P', monospace",
+                    fontSize: '14px',
+                    color: '#FF841C',
+                    gap: '16px',
+                }}>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        border: '3px solid #FF841C',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                    }} />
+                    <span>Activating Relic...</span>
+                </div>
+            )}
+
+            {/* Stats Bar - Full Width Top */}
+            <div className="stats-bar">
+                <div className="stat-item">
+                    <span className="stat-label">LVL</span>
+                    <span className="stat-value">{level}</span>
+                </div>
+                <div className="stat-item">
+                    <span className="stat-label">NEXT</span>
+                    <span className="stat-value">{threshold}</span>
+                </div>
+                <div className="stat-item highlight-yellow">
+                    <span className="stat-label">SPINS</span>
+                    <span className="stat-value">{spinsRemaining}</span>
+                </div>
+                <div className="stat-item highlight-red">
+                    <span className="stat-label">666 RISK</span>
+                    <span className="stat-value">{risk.toFixed(1)}%</span>
+                </div>
+            </div>
+
+            {/* Main Game Wrapper - Centers the machine and maintains aspect ratio dependencies */}
+            <div className="game-content-wrapper">
+                <div className="machine-wrapper" onClick={handleSpin}>
+                    {/* Slot Machine Image - Acts as the anchor for size */}
+                    <img
+                        src="/images/slot_machine.png"
+                        alt="Slot Machine"
+                        className="slot-machine-image"
+                    />
+
+                    {/* Score Display - Relative to wrapper */}
+                    <div className="score-display">
+                        <span className="score-value">{score}</span>
+                    </div>
+
+                    {/* Grid Overlay - Relative to wrapper */}
+                    <div className="grid-area">
+                        <SlotGrid
+                            grid={grid}
+                            isSpinning={isSpinning}
+                        />
+                        <PatternOverlay
+                            patterns={patterns}
+                            onPatternShow={() => playSound('win', 300)}
+                        />
+                    </div>
+                </div>
+
+                {/* Desktop Side Buttons */}
+                <div className="side-buttons">
+                    {/* Equipped Relic Display - shows above buttons when equipped */}
+                    {equippedRelic && (
+                        <button
+                            className="side-button equipped-relic"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (relicCooldownRemaining > 0) {
+                                    alert(`Relic on cooldown: ${relicCooldownRemaining} spins remaining`);
+                                    return;
+                                }
+                                if (!isActivatingRelic && sessionId) {
+                                    setIsActivatingRelic(true);
+                                    activateRelic(Number(sessionId))
+                                        .then(async () => {
+                                            // Show activation animation
+                                            setShowRelicActivation(true);
+                                            // Set cooldown after activation
+                                            setRelicCooldownRemaining(equippedRelic.cooldown);
+                                            await loadSessionData();
+                                        })
+                                        .catch((err) => console.error(`Failed to activate: ${err.message}`))
+                                        .finally(() => setIsActivatingRelic(false));
+                                }
+                            }}
+                            title={relicCooldownRemaining > 0 ? `Cooldown: ${relicCooldownRemaining} spins` : `Activate ${equippedRelic.name}`}
+                            disabled={relicCooldownRemaining > 0}
+                            style={{
+                                position: 'relative',
+                                padding: 0,
+                                overflow: 'hidden',
+                                opacity: relicCooldownRemaining > 0 ? 0.5 : 1,
+                                cursor: relicCooldownRemaining > 0 ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            <Image
+                                src={`/images/relics/${equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
+                                alt={equippedRelic.name}
+                                width={40}
+                                height={40}
+                                style={{
+                                    objectFit: 'cover',
+                                    borderRadius: '8px',
+                                    filter: relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none'
+                                }}
+                            />
+                            {relicCooldownRemaining > 0 && (
+                                <div style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    background: 'rgba(0,0,0,0.6)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '14px',
+                                    fontFamily: "'PressStart2P', monospace",
+                                    color: '#FF841C'
+                                }}>{relicCooldownRemaining}</div>
+                            )}
+                            {isActivatingRelic && (
+                                <div style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    background: 'rgba(0,0,0,0.8)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    fontFamily: "'PressStart2P', monospace",
+                                    color: '#fff'
+                                }}>...</div>
+                            )}
+                        </button>
+                    )}
+                    <button
+                        className="side-button"
+                        onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
+                        title="Relics"
+                    ><GiCrystalGrowth size={24} color="#FF841C" /></button>
+                    <button
+                        className="side-button"
+                        onClick={(e) => { e.stopPropagation(); setActiveModal('market'); }}
+                        title="Market"
+                    ><FaShop size={24} color="#FF841C" /></button>
+                    <button
+                        className="side-button"
+                        onClick={(e) => { e.stopPropagation(); setActiveModal('inventory'); }}
+                        title="Inventory"
+                    ><FaBoxOpen size={24} color="#FF841C" /></button>
+                    <button
+                        className="side-button"
+                        onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }}
+                        title="Info"
+                    ><FaCircleQuestion size={24} color="#FF841C" /></button>
+                    <button
+                        className="side-button"
+                        onClick={(e) => { e.stopPropagation(); router.push("/"); }}
+                        title="Home"
+                    ><FaHouse size={24} color="#FF841C" /></button>
+                </div>
+            </div>
+
+            {/* Mobile Bottom Navigation Bar */}
+            <div className="mobile-nav">
+                {/* Equipped Relic for activation on mobile */}
+                {equippedRelic && (
+                    <button
+                        className="nav-item"
+                        onClick={() => {
+                            if (relicCooldownRemaining > 0) {
+                                alert(`Cooldown: ${relicCooldownRemaining} spins remaining`);
+                                return;
+                            }
+                            if (!isActivatingRelic && sessionId) {
+                                setIsActivatingRelic(true);
+                                activateRelic(Number(sessionId))
+                                    .then(() => {
+                                        setRelicCooldownRemaining(equippedRelic.cooldown);
+                                        loadSessionData();
+                                    })
+                                    .catch((err) => console.error(`Failed to activate: ${err.message}`))
+                                    .finally(() => setIsActivatingRelic(false));
+                            }
+                        }}
+                        disabled={relicCooldownRemaining > 0}
+                        style={{
+                            opacity: relicCooldownRemaining > 0 ? 0.5 : 1,
+                            position: 'relative'
+                        }}
+                    >
+                        <div style={{ position: 'relative', width: 24, height: 24 }}>
+                            <Image
+                                src={`/images/relics/${equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
+                                alt={equippedRelic.name}
+                                fill
+                                style={{
+                                    objectFit: 'cover',
+                                    borderRadius: '4px',
+                                    filter: relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none'
+                                }}
+                            />
+                            {relicCooldownRemaining > 0 && (
+                                <div style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'rgba(0,0,0,0.5)',
+                                    color: '#FF841C',
+                                    fontSize: '10px',
+                                    fontFamily: "'PressStart2P', monospace",
+                                }}>{relicCooldownRemaining}</div>
+                            )}
+                            {isActivatingRelic && (
+                                <div style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'rgba(0,0,0,0.8)',
+                                    color: '#fff',
+                                    fontSize: '10px',
+                                    fontFamily: "'PressStart2P', monospace",
+                                }}>...</div>
+                            )}
+                        </div>
+                        <span>Use</span>
+                    </button>
+                )}
+                <button
+                    className="nav-item"
+                    onClick={() => setShowRelicModal(true)}
+                >
+                    <GiCrystalGrowth size={24} color="#fff" />
+                    <span>Relic</span>
+                </button>
+                <button
+                    className="nav-item"
+                    onClick={() => setActiveModal('market')}
+                >
+                    <FaShop size={24} color="#fff" />
+                    <span>Market</span>
+                </button>
+                <button
+                    className="nav-item"
+                    onClick={() => setActiveModal('inventory')}
+                >
+                    <FaBoxOpen size={24} color="#fff" />
+                    <span>Inv</span>
+                </button>
+                {/* Spin button removed as per user request */}
+                <button
+                    className="nav-item"
+                    onClick={() => setActiveModal('info')}
+                >
+                    <FaCircleQuestion size={24} color="#fff" />
+                    <span>Info</span>
+                </button>
+                <button
+                    className="nav-item"
+                    onClick={() => router.push("/")}
+                >
+                    <FaHouse size={24} color="#fff" />
+                    <span>Exit</span>
+                </button>
+            </div>
+
+            {isSpinning && <div className="spinning-indicator">N</div>}
+            {error && <p className="error-text">{error}</p>}
+
+
+
+            {/* Modals */}
+            {activeModal === 'market' && sessionId && (
+                <MarketModal
+                    sessionId={Number(sessionId)}
+                    controller={account}
+                    currentScore={score}
+                    onClose={() => {
+                        setActiveModal(null);
+                        loadSessionData();
+                        loadScoreBonuses();
+                    }}
+                    onUpdateScore={setScore}
+                />
+            )}
+            {activeModal === 'inventory' && sessionId && (
+                <InventoryModal
+                    sessionId={Number(sessionId)}
+                    controller={account}
+                    currentScore={score}
+                    onClose={() => {
+                        setActiveModal(null);
+                        loadSessionData();
+                        loadScoreBonuses();
+                    }}
+                    onUpdateScore={setScore}
+                />
+            )}
+            {activeModal === 'info' && sessionId && (
+                <InfoModal sessionId={Number(sessionId)} onClose={() => setActiveModal(null)} />
+            )}
+
+            {/* Relic Selection Modal */}
+            {showRelicModal && (
+                <RelicModal
+                    ownedRelics={ownedRelics}
+                    equippedRelic={equippedRelic}
+                    relicIndex={relicIndex}
+                    isEquippingRelic={isEquippingRelic}
+                    onClose={() => setShowRelicModal(false)}
+                    onSetRelicIndex={setRelicIndex}
+                    onEquipRelic={async (relic) => {
+                        if (!sessionId) return;
+                        setIsEquippingRelic(true);
+                        try {
+                            await equipRelic(Number(sessionId), relic.tokenId);
+                            setEquippedRelic(relic);
+                            setRelicCooldownRemaining(0);
+                            setShowRelicModal(false);
+                            loadSessionData();
+                        } catch (err) {
+                            console.error(err);
+                        } finally {
+                            setIsEquippingRelic(false);
+                        }
+                    }}
+                />
+            )}
+
+            {/* Biblia Save Animation */}
+            <AnimatePresence>
+                {showBibliaAnimation && (
+                    <BibliaSaveAnimation onComplete={() => setShowBibliaAnimation(false)} />
+                )}
+            </AnimatePresence>
+
+            {/* Relic Activation Animation */}
+            {showRelicActivation && equippedRelic && (
+                <RelicActivationAnimation
+                    relicName={equippedRelic.name}
+                    onComplete={() => setShowRelicActivation(false)}
+                />
+            )}
+
+            {/* Game Over Modal */}
+            <AnimatePresence>
+                {showGameOver && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: "rgba(0, 0, 0, 0.5)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 99999,
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            style={{
+                                background: "#000",
+                                border: "3px solid #FF841C",
+                                borderRadius: "12px",
+                                padding: "60px 120px",
+                                textAlign: "center",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: "40px",
+                            }}
+                        >
+                            <h1 style={{
+                                fontFamily: "'PressStart2P', monospace",
+                                fontSize: "28px",
+                                color: "#FF4848",
+                                margin: 0,
+                            }}>
+                                GAME OVER
+                            </h1>
+
+                            <p style={{
+                                fontFamily: "'PressStart2P', monospace",
+                                fontSize: "12px",
+                                color: "#FF4848",
+                                margin: 0,
+                            }}>
+                                {gameOverReason === '666' ? '666 triggered' : 'no more spins left'}
+                            </p>
+
+                            <p style={{
+                                fontFamily: "'PressStart2P', monospace",
+                                fontSize: "16px",
+                                color: "#FFD700",
+                                margin: 0,
+                            }}>
+                                +{Math.floor(finalScore / 20)} $CHIPS
+                            </p>
+
+                            <button
+                                onClick={() => router.push("/")}
+                                style={{
+                                    background: "transparent",
+                                    border: "none",
+                                    fontFamily: "'PressStart2P', monospace",
+                                    fontSize: "14px",
+                                    color: "#fff",
+                                    cursor: "pointer",
+                                    marginTop: "16px",
+                                }}
+                            >
+                                &gt; back to menu
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <style jsx>{`
+                .game-container {
+                    width: 100vw;
+                    height: 100vh;
+                    overflow: hidden;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: flex-end; /* Align content to bottom like request */
+                }
+
+                .stats-bar {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    display: flex;
+                    justify-content: center;
+                    gap: 2vw;
+                    padding: 12px 24px;
+                    background: rgba(0, 0, 0, 0.85);
+                    z-index: 1000;
+                }
+
+                .stat-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 6px 16px;
+                    min-width: 80px;
+                }
+
+                .stat-label {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 8px;
+                    color: rgba(255, 255, 255, 0.5);
+                    margin-bottom: 4px;
+                    letter-spacing: 1px;
+                }
+
+                .stat-value {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    color: #fff;
+                }
+
+                .stat-item.highlight-yellow .stat-value {
+                    color: #FFEA00;
+                }
+
+                .stat-item.highlight-red .stat-value {
+                    color: #ff4444;
+                }
+
+                /* Wrapper to center everything and keep side buttons close */
+                .game-content-wrapper {
+                    position: relative;
+                    height: 85vh; /* Desktop height constraint */
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: flex-end;
+                    padding-bottom: 2vh;
+                }
+
+                .machine-wrapper {
+                    position: relative;
+                    height: 100%;
+                    width: auto;
+                    aspect-ratio: 928/1232; 
+                }
+
+                .slot-machine-image {
+                    height: 100%;
+                    width: auto;
+                    display: block;
+                    /* Adjust scale if needed to zoom in/out slightly */
+                    transform: scale(1.08) translateY(1.8%); 
+                }
+
+                .score-display {
+                    position: absolute;
+                    top: 8%;
+                    left: 44%;
+                    transform: translateX(-50%);
+                    width: 30%;
+                    display: flex;
+                    justify-content: center;
+                    z-index: 15;
+                }
+
+                .score-value {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 4vh; /* Scale with height since machine scales with height */
+                    color: #FF841C;
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+                }
+
+                .grid-area {
+                    position: absolute;
+                    top: 44.5%;
+                    left: 44.1%;
+                    transform: translateX(-50%) translateY(-50%);
+                    width: 47%;
+                    height: 30%;
+                    z-index: 10;
+                    cursor: pointer;
+                }
+
+                /* Desktop Side Buttons */
+                .side-buttons {
+                    position: absolute;
+                    right: 20px;
+                    top: 60%;
+                    transform: translateY(-50%);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    z-index: 100;
+                }
+
+                .side-button {
+                    width: 50px;
+                    height: 50px;
+                    border: 3px solid #FF841C;
+                    border-radius: 8px;
+                    background: rgba(0,0,0,0.5);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .side-button:hover {
+                    background: rgba(255, 132, 28, 0.2);
+                    border-color: #fff;
+                }
+
+                /* Mobile Bottom Nav - Hidden by default */
+                .mobile-nav {
+                    display: none;
+                }
+
+                .spinning-indicator {
+                    position: absolute;
+                    bottom: 2vmin;
+                    left: 2vmin;
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 2vmin;
+                    color: #fff;
+                    z-index: 100;
+                }
+
+                .error-text {
+                    position: absolute;
+                    bottom: 10%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 2vmin;
+                    color: #ff4444;
+                    z-index: 100;
+                }
+
+                .game-loading {
+                    width: 100vw;
+                    height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background-size: cover;
+                }
+                
+                /* Media Query for Mobile layout adjustments if needed */
+                /* MEDIA QUERY FOR MOBILE / PORTRAIT */
+                /* MEDIA QUERY FOR MOBILE / PORTRAIT */
+                /* MEDIA QUERY FOR MOBILE / PORTRAIT */
+                @media (max-aspect-ratio: 1/1) {
+                    .game-content-wrapper {
+                        height: auto; /* Height auto for width-based scaling */
+                        width: 95vw;
+                        margin-top: auto; /* Push to bottom */
+                        margin-bottom: 60px; /* Space for nav bar only, no extra gap */
+                        padding-bottom: 0;
+                        align-items: flex-end; /* Ensure it sits at bottom */
+                    }
+
+                    .machine-wrapper {
+                        width: 100%;
+                        height: auto;
+                        aspect-ratio: auto;
+                        top: 0;
+                    }
+
+                    .slot-machine-image {
+                        width: 100%;
+                        height: auto;
+                        transform: none;
+                    }
+
+                    .score-value {
+                        font-size: 5vw;
+                    }
+
+                    .stats-bar {
+                        top: 0;
+                        padding: 8px 12px;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                    }
+                    
+                    .stat-item {
+                        padding: 4px 10px;
+                        min-width: 60px;
+                    }
+                    
+                    .stat-label {
+                        font-size: 6px;
+                    }
+                    
+                    .stat-value {
+                        font-size: 10px;
+                    }
+                    
+                    .side-buttons {
+                        display: none;
+                    }
+
+                    /* Show Mobile Nav */
+                    .mobile-nav {
+                        position: absolute;
+                        bottom: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 60px;
+                        background: #000;
+                        display: flex;
+                        justify-content: space-around;
+                        align-items: center;
+                        z-index: 200;
+                        border-top: 2px solid #333;
+                    }
+
+                    .nav-item {
+                        background: transparent;
+                        border: none;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        color: #fff;
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 10px;
+                        gap: 4px;
+                        cursor: pointer;
+                    }
+                }
+
+                /* Game Over Modal */
+                .game-over-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.9);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                }
+
+                .game-over-modal {
+                    background: linear-gradient(180deg, #1a0000 0%, #000 100%);
+                    border: 3px solid #FF841C;
+                    border-radius: 16px;
+                    padding: 40px 60px;
+                    text-align: center;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 24px;
+                }
+
+                .game-over-title {
+                    font-family: 'Ramagothic', sans-serif;
+                    font-size: 64px;
+                    color: #FF0000;
+                    margin: 0;
+                    text-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+                    letter-spacing: 4px;
+                }
+
+                .game-over-reason {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    color: #FF841C;
+                    margin: 0;
+                }
+
+                .game-over-score {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .game-over-score span:first-child {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 12px;
+                    color: #888;
+                }
+
+                .game-over-score .score-value {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 32px;
+                    color: #FFD700;
+                }
+
+                .game-over-button {
+                    background: #FF841C;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 16px 32px;
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    color: #000;
+                    cursor: pointer;
+                    transition: transform 0.2s, background 0.2s;
+                }
+
+                .game-over-button:hover {
+                    transform: scale(1.05);
+                    background: #FFa040;
+                }
+            `}</style>
+        </div>
+    );
+}
+
+export default function GamePage() {
+    return (
+        <Suspense fallback={
+            <div style={{
+                width: "100vw",
+                height: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }}>
+                <p style={{ fontFamily: "'PressStart2P', monospace", color: "#fff" }}>Loading...</p>
+            </div>
+        }>
+            <GameContent />
+        </Suspense>
+    );
+}
