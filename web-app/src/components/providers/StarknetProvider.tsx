@@ -57,6 +57,13 @@ const policies = {
                 { name: "Approve", entrypoint: "approve" },
             ],
         },
+        [CONTRACTS.STRK_TOKEN]: {
+            name: "STRK Token",
+            description: "Starknet native token for payments",
+            methods: [
+                { name: "Approve", entrypoint: "approve" },
+            ],
+        },
     },
 };
 
