@@ -20,9 +20,10 @@ export const metadata: Metadata = {
     default: "Abyss - On-Chain Slot Machine Game",
     template: "%s | Abyss"
   },
-  description: "Play the first fully on-chain slot machine game on Starknet. Spin to win, compete for prizes, and collect powerful NFT relics. Provably fair with Cartridge VRF.",
+  description: "Play a fully on-chain roguelike slot machine game on Starknet. Spin to win, compete for prizes, and collect powerful NFT relics. Provably fair with Cartridge VRF.",
   keywords: [
     "Abyss",
+    "roguelike",
     "slot machine",
     "blockchain game",
     "Starknet",
@@ -47,8 +48,8 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://play.abyssgame.fun",
     siteName: "Abyss",
-    title: "Abyss - On-Chain Slot Machine Game on Starknet",
-    description: "Play the first fully on-chain slot machine game. Spin to win, compete for real prizes, and collect powerful NFT relics. Provably fair with Cartridge VRF.",
+    title: "Abyss - On-Chain Roguelike Slot Machine on Starknet",
+    description: "Play a fully on-chain roguelike slot machine game. Spin to win, compete for real prizes, and collect powerful NFT relics. Provably fair with Cartridge VRF.",
     images: [
       {
         url: "/og-image.png",
@@ -62,8 +63,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@abyssdotfun",
     creator: "@abyssdotfun",
-    title: "Abyss - On-Chain Slot Machine Game",
-    description: "Play the first fully on-chain slot machine game on Starknet. Spin to win, compete for prizes!",
+    title: "Abyss - On-Chain Roguelike Slot Machine",
+    description: "Play a fully on-chain roguelike slot machine game on Starknet. Spin to win, compete for prizes!",
     images: ["/og-image.png"]
   },
   robots: {
