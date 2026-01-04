@@ -434,6 +434,7 @@ export default function SessionsPage() {
                                 }}
                             >
                                 <option value={CONTRACTS.ETH_TOKEN}>ETH</option>
+                                <option value={CONTRACTS.STRK_TOKEN}>STRK</option>
                             </select>
                         </div>
 
