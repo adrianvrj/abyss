@@ -46,6 +46,7 @@ function GameContent() {
     const [threshold, setThreshold] = useState(100); // Next Level Threshold
     const [risk, setRisk] = useState(0); // 666 Risk %
     const [spinsRemaining, setSpinsRemaining] = useState(5);
+    const [isSessionActive, setIsSessionActive] = useState(true); // Track if session is still active
     const [patterns, setPatterns] = useState<Pattern[]>([]);
 
 
@@ -56,6 +57,7 @@ function GameContent() {
     const [showLevelUp, setShowLevelUp] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const previousLevelRef = useRef<number>(1);
+    const lastKnownTotalSpinsRef = useRef<number>(0); // Track total spins to detect fresh data
 
 
     // Modals
@@ -199,7 +201,18 @@ function GameContent() {
 
                 setScore(data.score);
                 setLevel(data.level);
-                setSpinsRemaining(data.spinsRemaining);
+
+                // Update spins if data is fresh (totalSpins >= our last known value)
+                // This handles: initial load (0), normal spins, level ups, etc.
+                if (data.totalSpins >= lastKnownTotalSpinsRef.current) {
+                    console.log('Updating from contract - spins:', data.spinsRemaining, 'totalSpins:', data.totalSpins);
+                    setSpinsRemaining(data.spinsRemaining);
+                    lastKnownTotalSpinsRef.current = data.totalSpins;
+                } else {
+                    console.log('Stale data - skipping. Contract:', data.totalSpins, 'Expected:', lastKnownTotalSpinsRef.current);
+                }
+
+                setIsSessionActive(data.isActive); // Track session active status
 
                 // Fetch Synced Rules from Contract
                 const th = await getLevelThreshold(data.level);
@@ -287,9 +300,10 @@ function GameContent() {
         }
     };
 
-    const playSound = (soundName: 'spin' | 'win' | 'jackpot' | 'game-over', durationMs?: number) => {
+    const playSound = (soundName: 'spin' | 'win' | 'jackpot' | 'game-over', durationMs?: number): HTMLAudioElement | null => {
         const audio = new Audio(`/sounds/${soundName}${soundName === 'win' ? '.wav' : '.mp3'}`);
         audio.volume = 0.5;
+        audio.loop = soundName === 'spin'; // Loop spin sound until stopped
         audio.play().catch(e => console.error("Audio play failed", e));
 
         if (durationMs) {
@@ -298,100 +312,194 @@ function GameContent() {
                 audio.currentTime = 0;
             }, durationMs);
         }
+
+        return audio;
     };
 
+    // Ref to hold current spin sound so we can stop it
+    const spinSoundRef = useRef<HTMLAudioElement | null>(null);
+
     const handleSpin = useCallback(async () => {
-        if (!sessionId || isSpinning || spinsRemaining <= 0) return;
+        // Block spin if: no session, already spinning, no spins, game over shown, or session inactive
+        if (!sessionId || isSpinning || spinsRemaining <= 0 || showGameOver || !isSessionActive) {
+            console.log('Spin blocked:', { sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive });
+            return;
+        }
 
         setIsSpinning(true);
         setError(null);
         setPatterns([]); // Clear previous patterns
-        playSound('spin');
+
+        // Start spin sound and keep reference to stop later
+        spinSoundRef.current = playSound('spin');
 
         try {
+            // Capture current totalSpins BEFORE spinning
+            const preSpinTotalSpins = lastKnownTotalSpinsRef.current;
+            console.log("Pre-spin totalSpins:", preSpinTotalSpins);
+
             await requestSpin(Number(sessionId));
 
-            // Cartridge VRF is synchronous - result should be ready immediately
+            // Poll for BOTH: valid spin result AND fresh session data
             let attempts = 0;
-            const pollResult = async () => {
+            const pollForFreshData = async () => {
+                console.log("Polling attempt:", attempts + 1);
+
+                // Get spin result
                 const result = await getLastSpinResult(Number(sessionId));
-                console.log("Spin result:", result); // Debug
-                if (result && !result.isPending && result.grid.length === 15) {
-                    console.log("Grid received:", result.grid); // Debug
 
-                    // Update state
-                    setGrid(result.grid);
-                    setHasSpunOnce(true);
+                // Validate spin result has valid grid
+                const isValidResult = result &&
+                    !result.isPending &&
+                    result.grid &&
+                    result.grid.length === 15 &&
+                    result.grid.some((val: number) => val > 0 && val <= 6);
 
-                    // Decrement relic cooldown (happens every spin)
-                    setRelicCooldownRemaining(prev => Math.max(0, prev - 1));
+                // Get session data and check if it's fresh (totalSpins increased)
+                const sessionData = await getSessionData(Number(sessionId));
+                const isFreshSessionData = sessionData && sessionData.totalSpins > preSpinTotalSpins;
 
-                    // Stop spinning animation first
+                console.log("Polling:", {
+                    validResult: isValidResult,
+                    freshSessionData: isFreshSessionData,
+                    contractTotalSpins: sessionData?.totalSpins,
+                    expectedTotalSpins: preSpinTotalSpins + 1
+                });
+
+                // Wait until we have BOTH valid result AND fresh session data
+                if (!isValidResult || !isFreshSessionData) {
+                    if (attempts < 20) {
+                        attempts++;
+                        setTimeout(pollForFreshData, 300);
+                        return;
+                    }
+                    console.error("Spin timeout - could not get fresh data");
+                    setError("Spin timeout");
                     setIsSpinning(false);
+                    if (spinSoundRef.current) {
+                        spinSoundRef.current.pause();
+                        spinSoundRef.current.currentTime = 0;
+                        spinSoundRef.current = null;
+                    }
+                    return;
+                }
 
-                    // Wait for reels to settle (approx 800ms) before showing patterns/sounds
-                    setTimeout(() => {
-                        // Show Biblia animation if it saved from 666
-                        if (result.bibliaUsed) {
-                            setShowBibliaAnimation(true);
-                            loadScoreBonuses(); // Biblia was consumed, refresh inventory
-                        }
+                // ====== WE HAVE FRESH DATA - UPDATE EVERYTHING ======
+                console.log("Fresh data received!", {
+                    grid: result.grid,
+                    spinsRemaining: sessionData.spinsRemaining,
+                    score: sessionData.score,
+                    level: sessionData.level,
+                    totalSpins: sessionData.totalSpins,
+                    isActive: sessionData.isActive
+                });
 
-                        // Detect Patterns with inventory bonuses applied
-                        const detectedPatterns = detectPatterns(result.grid, undefined, scoreBonusesRef.current);
-                        // Apply score multiplier from relic (e.g., double points)
-                        const currentMultiplier = scoreMultiplierRef.current;
-                        console.log('Applying score multiplier:', currentMultiplier);
-                        const multipliedPatterns = detectedPatterns.map(p => ({
-                            ...p,
-                            score: p.score * currentMultiplier
-                        }));
-                        setPatterns(multipliedPatterns);
-                        // Reset multiplier after applying (contract resets it too)
-                        setScoreMultiplier(1);
-                        scoreMultiplierRef.current = 1;
+                // Update our tracking ref
+                lastKnownTotalSpinsRef.current = sessionData.totalSpins;
 
-                        // Play sounds based on result
-                        if (result.is666) {
-                            playSound('game-over');
-                            // Show Game Over after a brief delay
-                            setTimeout(() => {
-                                setFinalScore(result.score);
-                                setGameOverReason('666');
-                                setShowGameOver(true);
-                            }, 1500);
-                        } else if (result.isJackpot) {
-                            playSound('jackpot');
-                        }
-                    }, 400);
+                // Stop spin sound
+                if (spinSoundRef.current) {
+                    spinSoundRef.current.pause();
+                    spinSoundRef.current.currentTime = 0;
+                    spinSoundRef.current = null;
+                }
 
-                    // Sync full session data (Score, Threshold, Risk, Level)
-                    const sessionData = await loadSessionData();
+                // Update grid from spin result
+                setGrid(result.grid);
+                setHasSpunOnce(true);
 
-                    // Check if no spins remaining (and not 666 which is handled above)
-                    if (!result.is666 && sessionData && sessionData.spinsRemaining <= 0) {
+                // Update ALL session state from fresh contract data
+                setScore(sessionData.score);
+                setLevel(sessionData.level);
+                setSpinsRemaining(sessionData.spinsRemaining);
+                setIsSessionActive(sessionData.isActive);
+
+                // Check for level up
+                if (sessionData.level > previousLevelRef.current && previousLevelRef.current > 0) {
+                    setShowLevelUp(true);
+                    setTimeout(() => setShowLevelUp(false), 1600);
+                }
+                previousLevelRef.current = sessionData.level;
+
+                // Decrement relic cooldown
+                setRelicCooldownRemaining(prev => Math.max(0, prev - 1));
+
+                // Stop spinning animation
+                setIsSpinning(false);
+
+                // Update threshold and risk for new level
+                const th = await getLevelThreshold(sessionData.level);
+                setThreshold(th);
+                const prob = await get666Probability(sessionData.level);
+                setRisk(prob / 10);
+
+                // Check relic effects
+                if (sessionData.relicPendingEffect === 3) {
+                    setScoreMultiplier(2);
+                    scoreMultiplierRef.current = 2;
+                } else {
+                    setScoreMultiplier(1);
+                    scoreMultiplierRef.current = 1;
+                }
+
+                // Wait for reels to settle before showing patterns/sounds
+                setTimeout(() => {
+                    if (result.bibliaUsed) {
+                        setShowBibliaAnimation(true);
+                        loadScoreBonuses();
+                    }
+
+                    // Detect patterns
+                    const detectedPatterns = detectPatterns(result.grid, undefined, scoreBonusesRef.current);
+                    const currentMultiplier = scoreMultiplierRef.current;
+                    console.log('Applying score multiplier:', currentMultiplier);
+                    const multipliedPatterns = detectedPatterns.map(p => ({
+                        ...p,
+                        score: p.score * currentMultiplier
+                    }));
+                    setPatterns(multipliedPatterns);
+                    setScoreMultiplier(1);
+                    scoreMultiplierRef.current = 1;
+
+                    // Play sounds
+                    if (result.is666) {
+                        playSound('game-over');
+                        setTimeout(() => {
+                            setFinalScore(sessionData.score);
+                            setGameOverReason('666');
+                            setShowGameOver(true);
+                        }, 1500);
+                    } else if (result.isJackpot) {
+                        playSound('jackpot');
+                    }
+
+                    // Check for game over (no spins)
+                    if (!result.is666 && sessionData.spinsRemaining <= 0) {
                         setTimeout(() => {
                             setFinalScore(sessionData.score);
                             setGameOverReason('no_spins');
                             setShowGameOver(true);
                         }, 1000);
                     }
-                } else if (attempts < 10) {
-                    attempts++;
-                    setTimeout(pollResult, 1000);
-                } else {
-                    setError("Spin timeout");
-                    setIsSpinning(false);
-                }
+                }, 50); // Reduced from 400ms for faster pattern display
             };
-            // Start polling immediately since VRF is synchronous
-            setTimeout(pollResult, 200);
+
+            // Start polling immediately
+            setTimeout(pollForFreshData, 200);
         } catch (err) {
             console.error("Spin failed:", err);
             setError("Spin failed");
             setIsSpinning(false);
+            // Stop spin sound on error
+            if (spinSoundRef.current) {
+                spinSoundRef.current.pause();
+                spinSoundRef.current.currentTime = 0;
+                spinSoundRef.current = null;
+            }
+            // Revert optimistic spin decrement and resync with contract
+            await loadSessionData();
         }
-    }, [sessionId, isSpinning, spinsRemaining, requestSpin, getLastSpinResult, loadSessionData]);
+    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, getLastSpinResult, loadSessionData]);
 
     if (!sessionId) {
         return (
@@ -509,7 +617,11 @@ function GameContent() {
 
             {/* Main Game Wrapper - Centers the machine and maintains aspect ratio dependencies */}
             <div className="game-content-wrapper">
-                <div className="machine-wrapper" onClick={handleSpin}>
+                <div
+                    className="machine-wrapper"
+                    onClick={handleSpin}
+                    style={{ pointerEvents: isSpinning ? 'none' : 'auto' }}
+                >
                     {/* Slot Machine Image - Acts as the anchor for size */}
                     <img
                         src="/images/slot_machine.png"
@@ -614,26 +726,31 @@ function GameContent() {
                         className="side-button"
                         onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
                         title="Relics"
+                        disabled={isSpinning}
                     ><GiCrystalGrowth size={24} color="#FF841C" /></button>
                     <button
                         className="side-button"
                         onClick={(e) => { e.stopPropagation(); setActiveModal('market'); }}
                         title="Market"
+                        disabled={isSpinning}
                     ><FaShop size={24} color="#FF841C" /></button>
                     <button
                         className="side-button"
                         onClick={(e) => { e.stopPropagation(); setActiveModal('inventory'); }}
                         title="Inventory"
+                        disabled={isSpinning}
                     ><FaBoxOpen size={24} color="#FF841C" /></button>
                     <button
                         className="side-button"
                         onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }}
                         title="Info"
+                        disabled={isSpinning}
                     ><FaCircleQuestion size={24} color="#FF841C" /></button>
                     <button
                         className="side-button"
                         onClick={(e) => { e.stopPropagation(); router.push("/"); }}
                         title="Home"
+                        disabled={isSpinning}
                     ><FaHouse size={24} color="#FF841C" /></button>
                 </div>
             </div>
@@ -710,6 +827,7 @@ function GameContent() {
                 <button
                     className="nav-item"
                     onClick={() => setShowRelicModal(true)}
+                    disabled={isSpinning}
                 >
                     <GiCrystalGrowth size={24} color="#fff" />
                     <span>Relic</span>
@@ -717,6 +835,7 @@ function GameContent() {
                 <button
                     className="nav-item"
                     onClick={() => setActiveModal('market')}
+                    disabled={isSpinning}
                 >
                     <FaShop size={24} color="#fff" />
                     <span>Market</span>
@@ -724,6 +843,7 @@ function GameContent() {
                 <button
                     className="nav-item"
                     onClick={() => setActiveModal('inventory')}
+                    disabled={isSpinning}
                 >
                     <FaBoxOpen size={24} color="#fff" />
                     <span>Inv</span>
@@ -732,6 +852,7 @@ function GameContent() {
                 <button
                     className="nav-item"
                     onClick={() => setActiveModal('info')}
+                    disabled={isSpinning}
                 >
                     <FaCircleQuestion size={24} color="#fff" />
                     <span>Info</span>
@@ -739,6 +860,7 @@ function GameContent() {
                 <button
                     className="nav-item"
                     onClick={() => router.push("/")}
+                    disabled={isSpinning}
                 >
                     <FaHouse size={24} color="#fff" />
                     <span>Exit</span>

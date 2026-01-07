@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { CallData, RpcProvider } from "starknet";
+import { CallData, RpcProvider, TransactionExecutionStatus, TransactionFinalityStatus } from "starknet";
 import { CONTRACTS, RPC_ENDPOINTS } from "@/lib/constants";
 
 export interface SessionData {
@@ -34,7 +34,20 @@ export interface SpinResult {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useGameContract(account: any | null) {
     // Provider for read-only calls - SEPOLIA for testing
-    const provider = useMemo(() => new RpcProvider({ nodeUrl: RPC_ENDPOINTS.SEPOLIA }), []);
+    // Use 'pending' block identifier to read pre-confirmed state (starknet.js v9 maps this to pre_confirmed)
+    const provider = useMemo(() => new RpcProvider({
+        nodeUrl: RPC_ENDPOINTS.SEPOLIA
+    }), []);
+
+    // Helper for pre-confirmations (~0.5s vs 2-5s for full L2)
+    const waitForPreConfirmation = useCallback(async (txHash: string) => {
+        return provider.waitForTransaction(txHash, {
+            successStates: [
+                TransactionExecutionStatus.SUCCEEDED
+            ],
+            retryInterval: 250, // Check every 250ms for faster feedback
+        });
+    }, [provider]);
 
     const createSession = useCallback(async (paymentToken: string = CONTRACTS.ETH_TOKEN): Promise<number | null> => {
         if (!account) return null;
@@ -98,7 +111,7 @@ export function useGameContract(account: any | null) {
                     calldata: [sessionId.toString()],
                 },
             ]);
-            await provider.waitForTransaction(tx.transaction_hash);
+            await waitForPreConfirmation(tx.transaction_hash);
         } catch (err) {
             console.error("Request spin error:", err);
             throw err;
@@ -176,6 +189,14 @@ export function useGameContract(account: any | null) {
                     grid.push(Number(result[gridStart + i]));
                 }
 
+                // Validate grid is not all zeros (default/uninitialized state)
+                // This happens when reading before state propagates after pre-confirmation
+                const hasValidGrid = grid.some((val: number) => val > 0 && val <= 6);
+                if (!hasValidGrid) {
+                    console.log("Grid is uninitialized (all zeros), will retry...");
+                    return null; // Return null to trigger retry in polling
+                }
+
                 const scoreIndex = gridStart + 15;
                 const patternsIndex = gridStart + 16;
                 const is666Index = gridStart + 17;
@@ -211,7 +232,7 @@ export function useGameContract(account: any | null) {
                 entrypoint: "end_own_session",
                 calldata: calldata,
             });
-            await provider.waitForTransaction(tx.transaction_hash);
+            await waitForPreConfirmation(tx.transaction_hash);
         } catch (err) {
             console.error("End session error:", err);
             throw err;
@@ -288,7 +309,7 @@ export function useGameContract(account: any | null) {
                 entrypoint: "equip_relic",
                 calldata: [sessionId.toString(), low.toString(), high.toString()],
             }]);
-            await provider.waitForTransaction(tx.transaction_hash);
+            await waitForPreConfirmation(tx.transaction_hash);
         } catch (err) {
             console.error("Equip relic error:", err);
             throw err;
@@ -304,7 +325,7 @@ export function useGameContract(account: any | null) {
                 entrypoint: "unequip_relic",
                 calldata: [sessionId.toString()],
             }]);
-            await provider.waitForTransaction(tx.transaction_hash);
+            await waitForPreConfirmation(tx.transaction_hash);
         } catch (err) {
             console.error("Unequip relic error:", err);
             throw err;
@@ -320,7 +341,7 @@ export function useGameContract(account: any | null) {
                 entrypoint: "activate_relic",
                 calldata: [sessionId.toString()],
             }]);
-            await provider.waitForTransaction(tx.transaction_hash);
+            await waitForPreConfirmation(tx.transaction_hash);
         } catch (err) {
             console.error("Activate relic error:", err);
             throw err;

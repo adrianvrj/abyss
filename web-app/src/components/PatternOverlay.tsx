@@ -41,7 +41,7 @@ export default function PatternOverlay({ patterns, onPatternShow }: PatternOverl
         // 2. Show score VERY quickly after highlight
         const timerScore = setTimeout(() => {
             setPhase('score');
-        }, 200); // 0.2s pause
+        }, 100); // 0.1s pause (was 0.2s)
 
         // 3. Move to next pattern fast
         const timerNext = setTimeout(() => {
@@ -51,7 +51,7 @@ export default function PatternOverlay({ patterns, onPatternShow }: PatternOverl
             } else {
                 setCurrentIndex(-1); // Finished
             }
-        }, 1200); // 1.2s total duration per pattern
+        }, 600); // 0.6s total duration per pattern (was 1.2s)
 
         return () => {
             clearTimeout(flashTimer);
