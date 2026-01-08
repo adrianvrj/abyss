@@ -176,7 +176,18 @@ export default function InlineMarketPanel({
 
             <div className="item-display">
                 {wasPurchased ? (
-                    <div className="sold-overlay">SOLD</div>
+                    <div className="sold-state">
+                        <div className="item-image sold">
+                            <Image
+                                src={getItemImage(currentItem?.item_id || 1)}
+                                alt={currentItem?.name || "Item"}
+                                width={180}
+                                height={180}
+                                style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
+                            />
+                        </div>
+                        <div className="sold-badge">SOLD</div>
+                    </div>
                 ) : (
                     <>
                         <div className="item-image">
@@ -282,10 +293,21 @@ const styles = `
         padding: 5px 10px;
         border-radius: 4px;
     }
-    .sold-overlay {
+    .sold-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+    }
+    .sold-badge {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         font-family: 'PressStart2P', monospace;
-        font-size: 16px;
-        color: #555;
+        font-size: 20px;
+        color: #FF841C;
+        text-shadow: 0 0 10px rgba(255, 132, 28, 0.5);
     }
     .carousel-nav {
         display: flex;
@@ -294,12 +316,17 @@ const styles = `
         gap: 10px;
     }
     .carousel-nav button {
-        background: none;
-        border: none;
+        background: transparent;
+        border: 2px solid #FF841C;
+        border-radius: 4px;
         color: #FF841C;
         font-size: 16px;
         cursor: pointer;
-        padding: 5px;
+        padding: 6px 10px;
+        transition: all 0.2s;
+    }
+    .carousel-nav button:hover {
+        background: #FF841C22;
     }
     .carousel-nav span {
         font-family: 'PressStart2P', monospace;
@@ -328,7 +355,7 @@ const styles = `
     }
     .refresh-btn {
         width: 100%;
-        padding: 8px;
+        padding: 10px 14px;
         background: transparent;
         border: 1px solid #FF841C;
         border-radius: 6px;

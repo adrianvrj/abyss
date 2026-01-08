@@ -54,6 +54,7 @@ export default function InlineInventoryPanel({
                         key={index}
                         className={`inv-slot ${item ? 'has-item' : 'empty'}`}
                         onClick={() => item && onItemClick(item)}
+                        title={item ? `${item.name} - Click to sell` : 'Empty slot'}
                     >
                         {item ? (
                             <Image
@@ -63,7 +64,9 @@ export default function InlineInventoryPanel({
                                 height={40}
                                 style={{ objectFit: 'contain' }}
                             />
-                        ) : null}
+                        ) : (
+                            <span className="empty-slot-icon">+</span>
+                        )}
                     </div>
                 ))}
             </div>
@@ -99,10 +102,14 @@ export default function InlineInventoryPanel({
                 }
                 .inv-slot.has-item:hover {
                     background: #FF841C33;
-                    transform: scale(1.05);
                 }
                 .inv-slot.empty {
                     opacity: 0.3;
+                }
+                .empty-slot-icon {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    color: #FF841C44;
                 }
             `}</style>
         </div>

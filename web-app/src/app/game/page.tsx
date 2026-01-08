@@ -24,6 +24,10 @@ import { getSessionItems, getItemInfo, ItemEffectType, ContractItem, sellItem } 
 import InlineMarketPanel from "@/components/InlineMarketPanel";
 import InlineInventoryPanel from "@/components/InlineInventoryPanel";
 import SellConfirmModal from "@/components/SellConfirmModal";
+import GameHUD from "@/components/GameHUD";
+import GameOverModal from "@/components/GameOverModal";
+import LevelUpAnimation from "@/components/LevelUpAnimation";
+import GameStatsPanel from "@/components/GameStatsPanel";
 
 // Helper to compare arrays (for detecting grid changes)
 function arraysEqual(a: number[], b: number[]): boolean {
@@ -452,43 +456,7 @@ function GameContent() {
     return (
         <div className="game-container">
             {/* Level Up Animation */}
-            <AnimatePresence>
-                {showLevelUp && (
-                    <motion.div
-                        initial={{ y: "100vh" }}
-                        animate={{
-                            y: ["100vh", "0vh", "0vh", "100vh"],
-                        }}
-                        transition={{
-                            duration: 1.5,
-                            times: [0, 0.3, 0.7, 1],
-                            ease: "easeInOut"
-                        }}
-                        style={{
-                            position: "fixed",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            zIndex: 9999,
-                            pointerEvents: "none",
-                        }}
-                    >
-                        <span
-                            style={{
-                                fontFamily: "'PressStart2P', monospace",
-                                fontSize: "48px",
-                                color: "#FFD700",
-                            }}
-                        >
-                            LEVEL UP
-                        </span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <LevelUpAnimation isVisible={showLevelUp} />
 
             {/* Initial Loading State */}
             {isInitialLoading && (
@@ -536,25 +504,14 @@ function GameContent() {
                 </div>
             )}
 
+
             {/* Stats Bar - Full Width Top */}
-            <div className="stats-bar">
-                <div className="stat-item">
-                    <span className="stat-label">LVL</span>
-                    <span className="stat-value">{level}</span>
-                </div>
-                <div className="stat-item">
-                    <span className="stat-label">NEXT</span>
-                    <span className="stat-value">{threshold}</span>
-                </div>
-                <div className="stat-item highlight-yellow">
-                    <span className="stat-label">SPINS</span>
-                    <span className="stat-value">{spinsRemaining}</span>
-                </div>
-                <div className="stat-item highlight-red">
-                    <span className="stat-label">666 RISK</span>
-                    <span className="stat-value">{risk.toFixed(1)}%</span>
-                </div>
-            </div>
+            <GameHUD
+                level={level}
+                threshold={threshold}
+                spinsRemaining={spinsRemaining}
+                risk={risk}
+            />
 
             {/* Desktop Layout: Left Panel + Game */}
             <div className="desktop-layout">
@@ -594,6 +551,7 @@ function GameContent() {
                         {/* Score Display - Relative to wrapper */}
                         <div className="score-display">
                             <span className="score-value">{score}</span>
+                            <span className="score-label">PTS</span>
                         </div>
 
                         {/* Grid Overlay - Relative to wrapper */}
@@ -606,114 +564,111 @@ function GameContent() {
                                 patterns={patterns}
                                 onPatternShow={() => playSound('win', 300)}
                             />
+                            {/* Tap to Spin indicator */}
+                            {!isSpinning && spinsRemaining > 0 && (
+                                <div className="tap-to-spin">
+                                    TAP TO SPIN
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Desktop Side Buttons */}
-                    <div className="side-buttons">
-                        {/* Equipped Relic Display - shows above buttons when equipped */}
-                        {equippedRelic && (
-                            <button
-                                className="side-button equipped-relic"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (relicCooldownRemaining > 0) {
-                                        alert(`Relic on cooldown: ${relicCooldownRemaining} spins remaining`);
-                                        return;
-                                    }
-                                    if (!isActivatingRelic && sessionId) {
-                                        setIsActivatingRelic(true);
-                                        activateRelic(Number(sessionId))
-                                            .then(async () => {
-                                                // Show activation animation
-                                                setShowRelicActivation(true);
-                                                // Set cooldown after activation
-                                                setRelicCooldownRemaining(equippedRelic.cooldown);
-                                                await loadSessionData();
-                                            })
-                                            .catch((err) => console.error(`Failed to activate: ${err.message}`))
-                                            .finally(() => setIsActivatingRelic(false));
-                                    }
-                                }}
-                                title={relicCooldownRemaining > 0 ? `Cooldown: ${relicCooldownRemaining} spins` : `Activate ${equippedRelic.name}`}
-                                disabled={relicCooldownRemaining > 0}
-                                style={{
-                                    position: 'relative',
-                                    padding: 0,
-                                    overflow: 'hidden',
-                                    opacity: relicCooldownRemaining > 0 ? 0.5 : 1,
-                                    cursor: relicCooldownRemaining > 0 ? 'not-allowed' : 'pointer'
-                                }}
-                            >
-                                <Image
-                                    src={`/images/relics/${equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
-                                    alt={equippedRelic.name}
-                                    width={40}
-                                    height={40}
-                                    style={{
-                                        objectFit: 'cover',
-                                        borderRadius: '8px',
-                                        filter: relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none'
+                    {/* Right Sidebar - Game Stats + Buttons (hidden on mobile) */}
+                    <div className="right-sidebar">
+                        <GameStatsPanel
+                            level={level}
+                            score={score}
+                            threshold={threshold}
+                        />
+
+                        {/* Action Buttons - Below stats panel */}
+                        <div className="sidebar-buttons">
+                            {/* Equipped Relic Display */}
+                            {equippedRelic && (
+                                <button
+                                    className="sidebar-btn equipped-relic"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (relicCooldownRemaining > 0) {
+                                            alert(`Relic on cooldown: ${relicCooldownRemaining} spins remaining`);
+                                            return;
+                                        }
+                                        if (!isActivatingRelic && sessionId) {
+                                            setIsActivatingRelic(true);
+                                            activateRelic(Number(sessionId))
+                                                .then(async () => {
+                                                    setShowRelicActivation(true);
+                                                    setRelicCooldownRemaining(equippedRelic.cooldown);
+                                                    await loadSessionData();
+                                                    // Update grid with jackpot result from relics like Mortis
+                                                    const spinResult = await getLastSpinResult(Number(sessionId));
+                                                    if (spinResult && spinResult.grid.length === 15) {
+                                                        setGrid(spinResult.grid);
+                                                    }
+                                                })
+                                                .catch((err) => console.error(`Failed to activate: ${err.message}`))
+                                                .finally(() => setIsActivatingRelic(false));
+                                        }
                                     }}
-                                />
-                                {relicCooldownRemaining > 0 && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        background: 'rgba(0,0,0,0.6)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '14px',
-                                        fontFamily: "'PressStart2P', monospace",
-                                        color: '#FF841C'
-                                    }}>{relicCooldownRemaining}</div>
-                                )}
-                                {isActivatingRelic && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        background: 'rgba(0,0,0,0.8)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '12px',
-                                        fontFamily: "'PressStart2P', monospace",
-                                        color: '#fff'
-                                    }}>...</div>
-                                )}
-                            </button>
-                        )}
-                        <button
-                            className="side-button"
-                            onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
-                            title="Relics"
-                            disabled={isSpinning}
-                        ><GiCrystalGrowth size={24} color="#FF841C" /></button>
-                        <button
-                            className="side-button"
-                            onClick={(e) => { e.stopPropagation(); setActiveModal('market'); }}
-                            title="Market"
-                            disabled={isSpinning}
-                        ><FaShop size={24} color="#FF841C" /></button>
-                        <button
-                            className="side-button"
-                            onClick={(e) => { e.stopPropagation(); setActiveModal('inventory'); }}
-                            title="Inventory"
-                            disabled={isSpinning}
-                        ><FaBoxOpen size={24} color="#FF841C" /></button>
-                        <button
-                            className="side-button"
-                            onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }}
-                            title="Info"
-                            disabled={isSpinning}
-                        ><FaCircleQuestion size={24} color="#FF841C" /></button>
-                        <button
-                            className="side-button"
-                            onClick={(e) => { e.stopPropagation(); router.push("/"); }}
-                            title="Home"
-                            disabled={isSpinning}
-                        ><FaHouse size={24} color="#FF841C" /></button>
+                                    title={relicCooldownRemaining > 0 ? `Cooldown: ${relicCooldownRemaining} spins` : `Activate ${equippedRelic.name}`}
+                                    aria-label="Activate Relic"
+                                    disabled={relicCooldownRemaining > 0}
+                                    style={{
+                                        position: 'relative',
+                                        padding: 0,
+                                        overflow: 'hidden',
+                                        opacity: relicCooldownRemaining > 0 ? 0.5 : 1,
+                                        cursor: relicCooldownRemaining > 0 ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    <Image
+                                        src={`/images/relics/${equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
+                                        alt={equippedRelic.name}
+                                        width={32}
+                                        height={32}
+                                        style={{
+                                            objectFit: 'cover',
+                                            borderRadius: '6px',
+                                            filter: relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none'
+                                        }}
+                                    />
+                                    {relicCooldownRemaining > 0 && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            background: 'rgba(0,0,0,0.6)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '12px',
+                                            fontFamily: "'PressStart2P', monospace",
+                                            color: '#FF841C'
+                                        }}>{relicCooldownRemaining}</div>
+                                    )}
+                                </button>
+                            )}
+                            <button
+                                className="sidebar-btn"
+                                onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
+                                title="Relics"
+                                aria-label="Open Relics menu"
+                                disabled={isSpinning}
+                            ><GiCrystalGrowth size={20} color="#FF841C" /></button>
+                            <button
+                                className="sidebar-btn"
+                                onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }}
+                                title="Info"
+                                aria-label="Open Game Info"
+                                disabled={isSpinning}
+                            ><FaCircleQuestion size={20} color="#FF841C" /></button>
+                            <button
+                                className="sidebar-btn"
+                                onClick={(e) => { e.stopPropagation(); router.push("/"); }}
+                                title="Home"
+                                aria-label="Return to Home"
+                                disabled={isSpinning}
+                            ><FaHouse size={20} color="#FF841C" /></button>
+                        </div>
                     </div>
                 </div>
 
@@ -731,9 +686,14 @@ function GameContent() {
                                 if (!isActivatingRelic && sessionId) {
                                     setIsActivatingRelic(true);
                                     activateRelic(Number(sessionId))
-                                        .then(() => {
+                                        .then(async () => {
                                             setRelicCooldownRemaining(equippedRelic.cooldown);
-                                            loadSessionData();
+                                            await loadSessionData();
+                                            // Update grid with jackpot result from relics like Mortis
+                                            const spinResult = await getLastSpinResult(Number(sessionId));
+                                            if (spinResult && spinResult.grid.length === 15) {
+                                                setGrid(spinResult.grid);
+                                            }
                                         })
                                         .catch((err) => console.error(`Failed to activate: ${err.message}`))
                                         .finally(() => setIsActivatingRelic(false));
@@ -908,86 +868,12 @@ function GameContent() {
                 )}
 
                 {/* Game Over Modal */}
-                <AnimatePresence>
-                    {showGameOver && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            style={{
-                                position: "fixed",
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                background: "rgba(0, 0, 0, 0.5)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                zIndex: 99999,
-                            }}
-                        >
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.9, opacity: 0 }}
-                                style={{
-                                    background: "#000",
-                                    border: "3px solid #FF841C",
-                                    borderRadius: "12px",
-                                    padding: "60px 120px",
-                                    textAlign: "center",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center",
-                                    gap: "40px",
-                                }}
-                            >
-                                <h1 style={{
-                                    fontFamily: "'PressStart2P', monospace",
-                                    fontSize: "28px",
-                                    color: "#FF4848",
-                                    margin: 0,
-                                }}>
-                                    GAME OVER
-                                </h1>
-
-                                <p style={{
-                                    fontFamily: "'PressStart2P', monospace",
-                                    fontSize: "12px",
-                                    color: "#FF4848",
-                                    margin: 0,
-                                }}>
-                                    {gameOverReason === '666' ? '666 triggered' : 'no more spins left'}
-                                </p>
-
-                                <p style={{
-                                    fontFamily: "'PressStart2P', monospace",
-                                    fontSize: "16px",
-                                    color: "#FFD700",
-                                    margin: 0,
-                                }}>
-                                    +{Math.floor(finalScore / 20)} $CHIPS
-                                </p>
-
-                                <button
-                                    onClick={() => router.push("/")}
-                                    style={{
-                                        background: "transparent",
-                                        border: "none",
-                                        fontFamily: "'PressStart2P', monospace",
-                                        fontSize: "14px",
-                                        color: "#fff",
-                                        cursor: "pointer",
-                                        marginTop: "16px",
-                                    }}
-                                >
-                                    &gt; back to menu
-                                </button>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <GameOverModal
+                    isVisible={showGameOver}
+                    reason={gameOverReason}
+                    finalScore={finalScore}
+                    onBackToMenu={() => router.push("/")}
+                />
             </div>{/* End desktop-layout */}
 
             {/* Sell Confirmation Modal */}
@@ -1027,14 +913,31 @@ function GameContent() {
                     flex-direction: column;
                     gap: 12px;
                     position: fixed;
-                    left: 10px;
+                    left: 20px;
                     top: 180px;
                     z-index: 100;
                 }
 
                 /* Show sidebar on desktop (min-width 1024px) */
-                @media (min-width: 1024px) {
+                @media (min-width: 1025px) {
                     .left-sidebar {
+                        display: flex;
+                    }
+                }
+
+                .right-sidebar {
+                    display: none; /* Hidden on mobile by default */
+                    flex-direction: column;
+                    gap: 12px;
+                    position: fixed;
+                    right: 20px;
+                    top: 180px;
+                    z-index: 100;
+                }
+
+                /* Show right sidebar on desktop */
+                @media (min-width: 1280px) {
+                    .right-sidebar {
                         display: flex;
                     }
                 }
@@ -1126,6 +1029,28 @@ function GameContent() {
                     text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
                 }
 
+                .score-label {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 1.5vh;
+                    color: rgba(255, 132, 28, 0.6);
+                    margin-left: 6px;
+                    align-self: flex-end;
+                    margin-bottom: 0.5vh;
+                }
+
+                .danger-pulse {
+                    animation: dangerPulse 0.5s ease-in-out infinite;
+                }
+
+                @keyframes dangerPulse {
+                    0%, 100% { 
+                        background: rgba(255, 68, 68, 0.1);
+                    }
+                    50% { 
+                        background: rgba(255, 68, 68, 0.4);
+                    }
+                }
+
                 .grid-area {
                     position: absolute;
                     top: 44.5%;
@@ -1137,24 +1062,45 @@ function GameContent() {
                     cursor: pointer;
                 }
 
-                /* Desktop Side Buttons */
-                .side-buttons {
+                /* Tap to Spin text */
+                .tap-to-spin {
                     position: absolute;
-                    right: 20px;
-                    top: 60%;
-                    transform: translateY(-50%);
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    z-index: 100;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 16px;
+                    color: #fff;
+                    animation: blinkText 1.2s ease-in-out infinite;
+                    z-index: 50;
+                    pointer-events: none;
+                    white-space: nowrap;
                 }
 
-                .side-button {
-                    width: 50px;
-                    height: 50px;
-                    border: 3px solid #FF841C;
+                @keyframes blinkText {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.3; }
+                }
+
+                /* Sidebar Buttons - Horizontal row below stats */
+                .sidebar-buttons {
+                    display: flex;
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    gap: 8px;
+                    padding: 12px;
+                    background: rgba(0, 0, 0, 0.85);
+                    border: 2px solid #FF841C;
                     border-radius: 8px;
-                    background: rgba(0,0,0,0.5);
+                }
+
+                .sidebar-btn {
+                    width: 40px;
+                    height: 40px;
+                    border: 2px solid #FF841C;
+                    border-radius: 6px;
+                    background: rgba(0, 0, 0, 0.5);
                     cursor: pointer;
                     transition: all 0.2s ease;
                     display: flex;
@@ -1162,9 +1108,8 @@ function GameContent() {
                     justify-content: center;
                 }
 
-                .side-button:hover {
+                .sidebar-btn:hover:not(:disabled) {
                     background: rgba(255, 132, 28, 0.2);
-                    border-color: #fff;
                 }
 
                 /* Mobile Bottom Nav - Hidden by default */
@@ -1202,18 +1147,51 @@ function GameContent() {
                     background-size: cover;
                 }
                 
-                /* Media Query for Mobile layout adjustments if needed */
-                /* MEDIA QUERY FOR MOBILE / PORTRAIT */
-                /* MEDIA QUERY FOR MOBILE / PORTRAIT */
-                /* MEDIA QUERY FOR MOBILE / PORTRAIT */
-                @media (max-aspect-ratio: 1/1) {
+                /* Tablet breakpoint (1024-1279px) - only show mobile nav, keep desktop layout */
+                @media (min-width: 1025px) and (max-width: 1279px) {
+                    .mobile-nav {
+                        position: fixed;
+                        bottom: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 60px;
+                        background: #000;
+                        display: flex;
+                        justify-content: space-around;
+                        align-items: center;
+                        z-index: 200;
+                        border-top: 2px solid #333;
+                    }
+
+                    .nav-item {
+                        background: none;
+                        border: none;
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 14px;
+                        color: #000;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    }
+
+                    .nav-item:active {
+                        background: rgba(255, 132, 28, 0.2);
+                    }
+
+                    /* Adjust main content to account for nav */
                     .game-content-wrapper {
-                        height: auto; /* Height auto for width-based scaling */
+                        margin-bottom: 60px;
+                    }
+                }
+
+                /* Mobile breakpoint (<1024px) - full mobile layout */
+                @media (max-width: 1024px) {
+                    .game-content-wrapper {
+                        height: auto;
                         width: 95vw;
-                        margin-top: auto; /* Push to bottom */
-                        margin-bottom: 60px; /* Space for nav bar only, no extra gap */
+                        margin-top: auto;
+                        margin-bottom: 60px;
                         padding-bottom: 0;
-                        align-items: flex-end; /* Ensure it sits at bottom */
+                        align-items: flex-end;
                     }
 
                     .machine-wrapper {
@@ -1356,11 +1334,10 @@ function GameContent() {
                     font-size: 14px;
                     color: #000;
                     cursor: pointer;
-                    transition: transform 0.2s, background 0.2s;
+                    transition: background 0.2s;
                 }
 
                 .game-over-button:hover {
-                    transform: scale(1.05);
                     background: #FFa040;
                 }
             `}</style>
