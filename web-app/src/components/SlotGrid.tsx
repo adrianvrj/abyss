@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { SYMBOLS } from '@/lib/constants';
@@ -39,112 +41,105 @@ export default function SlotGrid({ grid, isSpinning }: SlotGridProps) {
           key={colIndex}
           finalSymbols={columnSymbols}
           isSpinning={isSpinning}
-          delay={colIndex * 100}
+          columnIndex={colIndex}
         />
       ))}
     </div>
   );
 }
 
-function SlotColumn({ finalSymbols, isSpinning, delay }: { finalSymbols: number[], isSpinning: boolean, delay: number }) {
+interface SlotColumnProps {
+  finalSymbols: number[];
+  isSpinning: boolean;
+  columnIndex: number;
+}
+
+function SlotColumn({ finalSymbols, isSpinning, columnIndex }: SlotColumnProps) {
   const [displaySymbols, setDisplaySymbols] = useState<number[]>(finalSymbols);
-  const [animState, setAnimState] = useState<'idle' | 'spinning' | 'stopping'>('idle');
+  const [isColumnSpinning, setIsColumnSpinning] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Stagger delays for each column
+  const startDelay = columnIndex * 50;
+  const stopDelay = columnIndex * 10;
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    // Cleanup function
+    const cleanup = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
 
     if (isSpinning) {
-      timeout = setTimeout(() => {
-        setAnimState('spinning');
+      // Start spinning after delay
+      timeoutRef.current = setTimeout(() => {
+        setIsColumnSpinning(true);
         intervalRef.current = setInterval(() => {
           setDisplaySymbols(getRandomColumn());
-        }, 120);
-      }, delay);
+        }, 100); // Symbol changes during spin
+      }, startDelay);
     } else {
-      if (animState === 'spinning') {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        setDisplaySymbols(finalSymbols);
-        setAnimState('stopping');
-        timeout = setTimeout(() => {
-          setAnimState('idle');
-        }, 300);
+      // Stop spinning after delay
+      if (isColumnSpinning) {
+        timeoutRef.current = setTimeout(() => {
+          cleanup();
+          setDisplaySymbols(finalSymbols);
+          setIsColumnSpinning(false);
+        }, stopDelay);
       } else {
+        // Not spinning, just update symbols
         setDisplaySymbols(finalSymbols);
       }
     }
 
-    return () => {
-      clearTimeout(timeout);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isSpinning, finalSymbols, delay, animState]);
+    return cleanup;
+  }, [isSpinning, finalSymbols, startDelay, stopDelay, isColumnSpinning]);
 
   return (
     <div style={{
       flex: 1,
       height: '100%',
-      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      <div
-        className={animState}
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        {displaySymbols.map((id, i) => (
-          <SlotSymbol key={i} id={id} />
-        ))}
-      </div>
+      {displaySymbols.map((symbolId, rowIndex) => (
+        <div
+          key={rowIndex}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4%',
+            animation: isColumnSpinning ? `pulse 0.05s ease-in-out` : 'none',
+          }}
+        >
+          <div style={{ position: 'relative', width: '90%', height: '90%' }}>
+            <Image
+              src={`/images/${(SYMBOLS[symbolId] || SYMBOLS[1]).name.toLowerCase()}.png`}
+              alt="symbol"
+              fill
+              sizes="20vw"
+              style={{ objectFit: 'contain' }}
+            />
+          </div>
+        </div>
+      ))}
 
       <style jsx>{`
-        .spinning {
-          animation: spinDown 0.12s linear infinite;
-        }
-        
-        .stopping {
-          animation: bounceIn 0.3s ease-out;
-        }
-
-        @keyframes spinDown {
-          0% { transform: translateY(-10%); }
-          100% { transform: translateY(10%); }
-        }
-
-        @keyframes bounceIn {
-          0% { transform: translateY(-5%); }
-          60% { transform: translateY(3%); }
-          100% { transform: translateY(0); }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: translateY(0); }
+          50% { opacity: 0.8; transform: translateY(2px); }
         }
       `}</style>
-    </div>
-  );
-}
-
-function SlotSymbol({ id }: { id: number }) {
-  const symbol = SYMBOLS[id] || SYMBOLS[1];
-  return (
-    <div style={{
-      width: '100%',
-      height: '33.333%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2%'
-    }}>
-      <div style={{ position: 'relative', width: '95%', height: '95%' }}>
-        <Image
-          src={`/images/${symbol.name.toLowerCase()}.png`}
-          alt={symbol.name}
-          fill
-          sizes="20vw"
-          style={{ objectFit: 'contain' }}
-        />
-      </div>
     </div>
   );
 }
