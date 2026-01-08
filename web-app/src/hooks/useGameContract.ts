@@ -33,20 +33,20 @@ export interface SpinResult {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useGameContract(account: any | null) {
-    // Provider for read-only calls - SEPOLIA for testing
-    // Use 'pending' block identifier to read pre-confirmed state (starknet.js v9 maps this to pre_confirmed)
     const provider = useMemo(() => new RpcProvider({
         nodeUrl: RPC_ENDPOINTS.SEPOLIA
     }), []);
 
     // Helper for pre-confirmations (~0.5s vs 2-5s for full L2)
+    // Includes a small delay after confirmation to allow RPC state propagation
     const waitForPreConfirmation = useCallback(async (txHash: string) => {
-        return provider.waitForTransaction(txHash, {
+        await provider.waitForTransaction(txHash, {
             successStates: [
                 TransactionExecutionStatus.SUCCEEDED
             ],
-            retryInterval: 250, // Check every 250ms for faster feedback
+            retryInterval: 250,
         });
+        await new Promise(resolve => setTimeout(resolve, 1200));
     }, [provider]);
 
     const createSession = useCallback(async (paymentToken: string = CONTRACTS.ETH_TOKEN): Promise<number | null> => {
@@ -63,9 +63,6 @@ export function useGameContract(account: any | null) {
             // Result is u256 [low, high]
             const amountLow = amountResult[0];
             const amountHigh = amountResult[1] || "0";
-
-            console.log("Payment amount needed:", { low: amountLow, high: amountHigh });
-
             const tx = await account.execute([
                 {
                     contractAddress: paymentToken,
@@ -188,13 +185,9 @@ export function useGameContract(account: any | null) {
                 for (let i = 0; i < 15; i++) {
                     grid.push(Number(result[gridStart + i]));
                 }
-
-                // Validate grid is not all zeros (default/uninitialized state)
-                // This happens when reading before state propagates after pre-confirmation
                 const hasValidGrid = grid.some((val: number) => val > 0 && val <= 6);
                 if (!hasValidGrid) {
-                    console.log("Grid is uninitialized (all zeros), will retry...");
-                    return null; // Return null to trigger retry in polling
+                    return null;
                 }
 
                 const scoreIndex = gridStart + 15;

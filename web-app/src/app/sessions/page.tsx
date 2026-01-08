@@ -208,14 +208,11 @@ export default function SessionsPage() {
     const [selectedToken, setSelectedToken] = useState<string>(CONTRACTS.ETH_TOKEN);
 
     const handleCreateSessionClick = useCallback(() => {
-        console.log("Create session clicked", { isReady });
         if (!isReady) {
-            console.log("Not ready");
             alert("Wallet not ready. Please wait or reconnect.");
             return;
         }
         setShowPayment(true);
-        console.log("Setting showPayment to true");
     }, [isReady]);
 
     const handleConfirmPayment = useCallback(async () => {

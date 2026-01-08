@@ -22,6 +22,11 @@ import RelicActivationAnimation from "@/components/RelicActivationAnimation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSessionItems, getItemInfo, ItemEffectType } from "@/utils/abyssContract";
 
+// Helper to compare arrays (for detecting grid changes)
+function arraysEqual(a: number[], b: number[]): boolean {
+    if (a.length !== b.length) return false;
+    return a.every((val, i) => val === b[i]);
+}
 
 function GameContent() {
     const searchParams = useSearchParams();
@@ -198,33 +203,20 @@ function GameContent() {
                     setTimeout(() => setShowLevelUp(false), 1600);
                 }
                 previousLevelRef.current = data.level;
-
                 setScore(data.score);
                 setLevel(data.level);
-
-                // Update spins if data is fresh (totalSpins >= our last known value)
-                // This handles: initial load (0), normal spins, level ups, etc.
                 if (data.totalSpins >= lastKnownTotalSpinsRef.current) {
-                    console.log('Updating from contract - spins:', data.spinsRemaining, 'totalSpins:', data.totalSpins);
                     setSpinsRemaining(data.spinsRemaining);
                     lastKnownTotalSpinsRef.current = data.totalSpins;
                 } else {
                     console.log('Stale data - skipping. Contract:', data.totalSpins, 'Expected:', lastKnownTotalSpinsRef.current);
                 }
-
-                setIsSessionActive(data.isActive); // Track session active status
-
-                // Fetch Synced Rules from Contract
+                setIsSessionActive(data.isActive);
                 const th = await getLevelThreshold(data.level);
                 setThreshold(th);
-
                 const prob = await get666Probability(data.level);
-                setRisk(prob / 10); // Contract returns *10 (e.g. 15 = 1.5%)
-
-                // Check for double points relic effect (effect_type 3 = DoubleNextSpin)
-                console.log('relicPendingEffect from contract:', data.relicPendingEffect);
+                setRisk(prob / 10);
                 if (data.relicPendingEffect === 3) {
-                    console.log('Setting scoreMultiplier to 2 (Double Points active)');
                     setScoreMultiplier(2);
                     scoreMultiplierRef.current = 2;
                 } else {
@@ -240,27 +232,17 @@ function GameContent() {
                         const { CONTRACTS } = await import('@/lib/constants');
                         const provider = new RpcProvider({ nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia" });
 
-                        // Split u256 into low/high for contract call
-                        // tokenId from session is already combined, need to split it back
                         const tokenId = data.equippedRelic;
-                        // For u256: low is first 128 bits, high is upper 128 bits
                         const mask128 = (BigInt(1) << BigInt(128)) - BigInt(1);
                         const low = tokenId & mask128;
                         const high = tokenId >> BigInt(128);
-
-                        console.log("Fetching relic metadata for tokenId:", tokenId.toString(), "low:", low.toString(), "high:", high.toString());
-
                         const metaResult = await provider.callContract({
                             contractAddress: CONTRACTS.RELIC_NFT,
                             entrypoint: "get_relic_metadata",
                             calldata: [low.toString(), high.toString()]
                         });
-
-                        console.log("Relic metadata result:", metaResult);
-
                         const relicId = Number(metaResult[0]);
                         const cooldown = Number(metaResult[4]);
-
                         const RELIC_NAMES_MAP: Record<number, string> = {
                             1: 'Mortis', 2: 'Phantom', 3: 'Lucky the Dealer', 4: 'Scorcher', 5: 'Inferno',
                         };
@@ -273,9 +255,6 @@ function GameContent() {
                         };
 
                         setEquippedRelic(relicData);
-
-                        // Calculate remaining cooldown from contract data
-                        // If relic_last_used_spin is 0, relic was never activated yet (ready to use)
                         if (data.relicLastUsedSpin === 0) {
                             setRelicCooldownRemaining(0);
                         } else {
@@ -320,54 +299,32 @@ function GameContent() {
     const spinSoundRef = useRef<HTMLAudioElement | null>(null);
 
     const handleSpin = useCallback(async () => {
-        // Block spin if: no session, already spinning, no spins, game over shown, or session inactive
         if (!sessionId || isSpinning || spinsRemaining <= 0 || showGameOver || !isSessionActive) {
-            console.log('Spin blocked:', { sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive });
             return;
         }
 
         setIsSpinning(true);
         setError(null);
-        setPatterns([]); // Clear previous patterns
-
-        // Start spin sound and keep reference to stop later
+        setPatterns([]);
         spinSoundRef.current = playSound('spin');
 
         try {
-            // Capture current totalSpins BEFORE spinning
             const preSpinTotalSpins = lastKnownTotalSpinsRef.current;
-            console.log("Pre-spin totalSpins:", preSpinTotalSpins);
 
             await requestSpin(Number(sessionId));
-
-            // Poll for BOTH: valid spin result AND fresh session data
+            const previousGrid = [...grid];
             let attempts = 0;
             const pollForFreshData = async () => {
-                console.log("Polling attempt:", attempts + 1);
-
-                // Get spin result
                 const result = await getLastSpinResult(Number(sessionId));
-
-                // Validate spin result has valid grid
                 const isValidResult = result &&
                     !result.isPending &&
                     result.grid &&
                     result.grid.length === 15 &&
                     result.grid.some((val: number) => val > 0 && val <= 6);
-
-                // Get session data and check if it's fresh (totalSpins increased)
                 const sessionData = await getSessionData(Number(sessionId));
                 const isFreshSessionData = sessionData && sessionData.totalSpins > preSpinTotalSpins;
-
-                console.log("Polling:", {
-                    validResult: isValidResult,
-                    freshSessionData: isFreshSessionData,
-                    contractTotalSpins: sessionData?.totalSpins,
-                    expectedTotalSpins: preSpinTotalSpins + 1
-                });
-
-                // Wait until we have BOTH valid result AND fresh session data
-                if (!isValidResult || !isFreshSessionData) {
+                const gridChanged = isValidResult && !arraysEqual(result.grid, previousGrid);
+                if (!isValidResult || !isFreshSessionData || !gridChanged) {
                     if (attempts < 20) {
                         attempts++;
                         setTimeout(pollForFreshData, 300);
@@ -383,57 +340,29 @@ function GameContent() {
                     }
                     return;
                 }
-
-                // ====== WE HAVE FRESH DATA - UPDATE EVERYTHING ======
-                console.log("Fresh data received!", {
-                    grid: result.grid,
-                    spinsRemaining: sessionData.spinsRemaining,
-                    score: sessionData.score,
-                    level: sessionData.level,
-                    totalSpins: sessionData.totalSpins,
-                    isActive: sessionData.isActive
-                });
-
-                // Update our tracking ref
                 lastKnownTotalSpinsRef.current = sessionData.totalSpins;
-
-                // Stop spin sound
                 if (spinSoundRef.current) {
                     spinSoundRef.current.pause();
                     spinSoundRef.current.currentTime = 0;
                     spinSoundRef.current = null;
                 }
-
-                // Update grid from spin result
                 setGrid(result.grid);
                 setHasSpunOnce(true);
-
-                // Update ALL session state from fresh contract data
                 setScore(sessionData.score);
                 setLevel(sessionData.level);
                 setSpinsRemaining(sessionData.spinsRemaining);
                 setIsSessionActive(sessionData.isActive);
-
-                // Check for level up
                 if (sessionData.level > previousLevelRef.current && previousLevelRef.current > 0) {
                     setShowLevelUp(true);
                     setTimeout(() => setShowLevelUp(false), 1600);
                 }
                 previousLevelRef.current = sessionData.level;
-
-                // Decrement relic cooldown
                 setRelicCooldownRemaining(prev => Math.max(0, prev - 1));
-
-                // Stop spinning animation
                 setIsSpinning(false);
-
-                // Update threshold and risk for new level
                 const th = await getLevelThreshold(sessionData.level);
                 setThreshold(th);
                 const prob = await get666Probability(sessionData.level);
                 setRisk(prob / 10);
-
-                // Check relic effects
                 if (sessionData.relicPendingEffect === 3) {
                     setScoreMultiplier(2);
                     scoreMultiplierRef.current = 2;
@@ -441,18 +370,13 @@ function GameContent() {
                     setScoreMultiplier(1);
                     scoreMultiplierRef.current = 1;
                 }
-
-                // Wait for reels to settle before showing patterns/sounds
                 setTimeout(() => {
                     if (result.bibliaUsed) {
                         setShowBibliaAnimation(true);
                         loadScoreBonuses();
                     }
-
-                    // Detect patterns
                     const detectedPatterns = detectPatterns(result.grid, undefined, scoreBonusesRef.current);
                     const currentMultiplier = scoreMultiplierRef.current;
-                    console.log('Applying score multiplier:', currentMultiplier);
                     const multipliedPatterns = detectedPatterns.map(p => ({
                         ...p,
                         score: p.score * currentMultiplier
@@ -460,8 +384,6 @@ function GameContent() {
                     setPatterns(multipliedPatterns);
                     setScoreMultiplier(1);
                     scoreMultiplierRef.current = 1;
-
-                    // Play sounds
                     if (result.is666) {
                         playSound('game-over');
                         setTimeout(() => {
@@ -472,8 +394,6 @@ function GameContent() {
                     } else if (result.isJackpot) {
                         playSound('jackpot');
                     }
-
-                    // Check for game over (no spins)
                     if (!result.is666 && sessionData.spinsRemaining <= 0) {
                         setTimeout(() => {
                             setFinalScore(sessionData.score);
@@ -481,22 +401,18 @@ function GameContent() {
                             setShowGameOver(true);
                         }, 1000);
                     }
-                }, 50); // Reduced from 400ms for faster pattern display
+                }, 50);
             };
-
-            // Start polling immediately
             setTimeout(pollForFreshData, 200);
         } catch (err) {
             console.error("Spin failed:", err);
             setError("Spin failed");
             setIsSpinning(false);
-            // Stop spin sound on error
             if (spinSoundRef.current) {
                 spinSoundRef.current.pause();
                 spinSoundRef.current.currentTime = 0;
                 spinSoundRef.current = null;
             }
-            // Revert optimistic spin decrement and resync with contract
             await loadSessionData();
         }
     }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, getLastSpinResult, loadSessionData]);
