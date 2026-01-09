@@ -579,6 +579,7 @@ function GameContent() {
                             level={level}
                             score={score}
                             threshold={threshold}
+                            sessionId={sessionId ? Number(sessionId) : undefined}
                         />
 
                         {/* Action Buttons - Below stats panel */}
