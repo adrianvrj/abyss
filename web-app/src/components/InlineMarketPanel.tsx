@@ -571,4 +571,39 @@ const styles = `
         color: #A78BFA;
         margin-top: 8px;
     }
+
+    @media (max-width: 1024px) {
+        .inline-market-panel {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            padding: 0;
+            justify-content: space-between;
+        }
+        
+        .panel-header {
+            font-size: 16px;
+            padding: 15px 0;
+        }
+
+        .item-display {
+            flex: 1;
+            width: 100%;
+            height: auto;
+            margin: 10px 0;
+            background: rgba(255, 132, 28, 0.05);
+            border: 1px solid #FF841C44;
+        }
+
+        .buy-btn, .refresh-btn {
+            padding: 15px;
+            font-size: 12px;
+        }
+
+        .carousel-nav button {
+            padding: 10px 15px;
+            font-size: 20px;
+        }
+    }
 `;

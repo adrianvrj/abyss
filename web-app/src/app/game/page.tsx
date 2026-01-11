@@ -4,9 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useController } from "@/hooks/useController";
 import { useAbyssGame } from "@/hooks/useAbyssGame";
 import { useTransactionCart } from "@/hooks/useTransactionCart";
-import { parseReceiptEvents } from "@/utils/gameEvents";
 import { useState, useEffect, useCallback, Suspense, useRef } from "react";
-import { Provider } from 'starknet';
 import SlotGrid from "@/components/SlotGrid";
 import { useRouter } from "next/navigation";
 import { FaShop, FaBoxOpen, FaCircleQuestion, FaHouse } from "react-icons/fa6";
@@ -22,24 +20,16 @@ import { Pattern, detectPatterns, ScoreBonuses } from "@/utils/patternDetector";
 import PatternOverlay from "@/components/PatternOverlay";
 import BibliaSaveAnimation from "@/components/BibliaSaveAnimation";
 import RelicActivationAnimation from "@/components/RelicActivationAnimation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { getSessionItems, getItemInfo, ItemEffectType, ContractItem, sellItem, getCharmInfo, CharmInfo } from "@/utils/abyssContract"; // Keeping these for non-hook utils for now
-import { hash } from 'starknet';
-import { CONTRACTS } from '@/lib/constants';
 import InlineMarketPanel from "@/components/InlineMarketPanel";
 import InlineInventoryPanel from "@/components/InlineInventoryPanel";
 import SellConfirmModal from "@/components/SellConfirmModal";
 import GameHUD from "@/components/GameHUD";
-import GameOverModal from "@/components/GameOverModal";
+import GameOverModal from '@/components/GameOverModal';
 import LevelUpAnimation from "@/components/LevelUpAnimation";
-import GameStatsPanel from "@/components/GameStatsPanel";
+import GameStatsPanel from '@/components/GameStatsPanel';
 import CharmMintAnimation from "@/components/CharmMintAnimation";
-
-// Helper to compare arrays (for detecting grid changes)
-function arraysEqual(a: number[], b: number[]): boolean {
-    if (a.length !== b.length) return false;
-    return a.every((val, i) => val === b[i]);
-}
 
 function GameContent() {
     const searchParams = useSearchParams();
@@ -79,6 +69,7 @@ function GameContent() {
     const [hasSpunOnce, setHasSpunOnce] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showLevelUp, setShowLevelUp] = useState(false);
+    const [activeMobileTab, setActiveMobileTab] = useState<'home' | 'market' | 'inventory' | 'info'>('home');
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const previousLevelRef = useRef<number>(1);
     const lastKnownTotalSpinsRef = useRef<number>(0); // Track total spins to detect fresh data
@@ -122,6 +113,7 @@ function GameContent() {
     // Inline panel state (desktop)
     const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
     const [isSelling, setIsSelling] = useState(false);
+    const [hiddenItems, setHiddenItems] = useState<number[]>([]);
     const [inventoryRefreshTrigger, setInventoryRefreshTrigger] = useState(0);
     const [optimisticItems, setOptimisticItems] = useState<any[]>([]); // Using any for now to avoid import churn, but it's ContractItem
     const [currentLuck, setCurrentLuck] = useState<number | undefined>(undefined);
@@ -480,6 +472,7 @@ function GameContent() {
             }
 
             setInventoryRefreshTrigger(prev => prev + 1);
+            setHiddenItems(prev => [...prev, itemToSell.item_id]);
             loadScoreBonuses();
             setItemToSell(null);
         } catch (e) {
@@ -554,7 +547,54 @@ function GameContent() {
                 threshold={threshold}
                 spinsRemaining={spinsRemaining}
                 risk={risk}
+                onExit={() => router.push('/')}
             />
+
+            {/* Mobile Tab Content Overlay */}
+            <div className="mobile-content-overlay" style={{ display: (activeMobileTab !== 'home' && activeMobileTab !== undefined) ? 'flex' : 'none' }}>
+                <div style={{ display: activeMobileTab === 'market' ? 'contents' : 'none' }}>
+                    <InlineMarketPanel
+                        sessionId={Number(sessionId)}
+                        controller={account}
+                        currentScore={score}
+                        currentTickets={tickets}
+                        onUpdateScore={setScore}
+                        onInventoryChange={() => {
+                            setInventoryRefreshTrigger(prev => prev + 1);
+                            pollSessionData();
+                        }}
+                        onPurchaseSuccess={(item) => setOptimisticItems(prev => [...prev, item])}
+                    />
+                </div>
+                <div style={{ display: activeMobileTab === 'inventory' ? 'contents' : 'none' }}>
+                    <InlineInventoryPanel
+                        sessionId={Number(sessionId)}
+                        controller={account}
+                        currentScore={score}
+                        currentTickets={tickets}
+                        onUpdateScore={setScore}
+                        onUpdateTickets={setTickets}
+                        onItemClick={(item) => setItemToSell(item)}
+                        refreshTrigger={inventoryRefreshTrigger}
+                        optimisticItems={optimisticItems}
+                        onOpenRelics={() => setShowRelicModal(true)}
+                        sellingItemId={isSelling && itemToSell ? itemToSell.item_id : undefined}
+                        hiddenItemIds={hiddenItems}
+                    />
+                </div>
+                <div style={{ display: activeMobileTab === 'info' ? 'contents' : 'none' }}>
+                    <GameStatsPanel
+                        level={level}
+                        score={score}
+                        threshold={threshold}
+                        sessionId={sessionId ? Number(sessionId) : undefined}
+                        refreshTrigger={inventoryRefreshTrigger}
+                        currentLuck={currentLuck}
+                        currentTickets={tickets}
+                        lastSpinPatternCount={patterns.length}
+                    />
+                </div>
+            </div>
 
             {/* Desktop Layout: Left Panel + Game */}
             <div className="desktop-layout">
@@ -582,11 +622,13 @@ function GameContent() {
                         onItemClick={(item) => setItemToSell(item)}
                         refreshTrigger={inventoryRefreshTrigger}
                         optimisticItems={optimisticItems}
+                        sellingItemId={isSelling && itemToSell ? itemToSell.item_id : undefined}
+                        hiddenItemIds={hiddenItems}
                     />
                 </div>
 
                 {/* Main Game Wrapper - Centers the machine and maintains aspect ratio dependencies */}
-                <div className="game-content-wrapper">
+                <div className={`game-content-wrapper ${activeMobileTab !== 'home' ? 'hidden-on-mobile' : ''}`}>
                     <div
                         className="machine-wrapper"
                         onClick={handleSpin}
@@ -622,42 +664,33 @@ function GameContent() {
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* Right Sidebar - Game Stats + Buttons (hidden on mobile) */}
-                    <div className="right-sidebar">
-                        <GameStatsPanel
-                            level={level}
-                            score={score}
-                            threshold={threshold}
-                            sessionId={sessionId ? Number(sessionId) : undefined}
-                            refreshTrigger={inventoryRefreshTrigger}
-                            currentLuck={currentLuck}
-                            currentTickets={tickets}
-                            lastSpinPatternCount={patterns.length}
-                        />
+                        {/* Mobile Relic Activation Floating Button */}
+                        {/* Mobile Relic Controls */}
+                        <div className="mobile-floating-controls">
+                            <button
+                                className="mobile-relic-btn equip-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowRelicModal(true);
+                                }}
+                            >
+                                <GiCrystalGrowth size={24} color="#FF841C" />
+                            </button>
 
-                        {/* Action Buttons - Below stats panel */}
-                        <div className="sidebar-buttons">
-                            {/* Equipped Relic Display */}
                             {equippedRelic && (
                                 <button
-                                    className="sidebar-btn equipped-relic"
+                                    className="mobile-relic-btn activate-btn"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (relicCooldownRemaining > 0) {
-                                            alert(`Relic on cooldown: ${relicCooldownRemaining} spins remaining`);
-                                            return;
-                                        }
+                                        if (relicCooldownRemaining > 0) return;
                                         if (!isActivatingRelic && sessionId) {
                                             setIsActivatingRelic(true);
                                             activateRelic(Number(sessionId))
                                                 .then(async () => {
                                                     setShowRelicActivation(true);
                                                     setRelicCooldownRemaining(equippedRelic.cooldown);
-                                                    setRelicCooldownRemaining(equippedRelic.cooldown);
                                                     await pollSessionData();
-                                                    // Update grid with jackpot result from relics like Mortis
                                                     const spinResult = await getLastSpinResult(Number(sessionId));
                                                     if (spinResult && spinResult.grid.length === 15) {
                                                         setGrid(spinResult.grid);
@@ -667,109 +700,93 @@ function GameContent() {
                                                 .finally(() => setIsActivatingRelic(false));
                                         }
                                     }}
-                                    title={relicCooldownRemaining > 0 ? `Cooldown: ${relicCooldownRemaining} spins` : `Activate ${equippedRelic.name}`}
-                                    aria-label="Activate Relic"
                                     disabled={relicCooldownRemaining > 0}
-                                    style={{
-                                        position: 'relative',
-                                        padding: 0,
-                                        overflow: 'hidden',
-                                        opacity: relicCooldownRemaining > 0 ? 0.5 : 1,
-                                        cursor: relicCooldownRemaining > 0 ? 'not-allowed' : 'pointer'
-                                    }}
                                 >
                                     <Image
                                         src={`/images/relics/${equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
                                         alt={equippedRelic.name}
-                                        width={32}
-                                        height={32}
+                                        width={48}
+                                        height={48}
                                         style={{
                                             objectFit: 'cover',
-                                            borderRadius: '6px',
+                                            borderRadius: '50%',
+                                            border: '2px solid #FF841C',
                                             filter: relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none'
                                         }}
                                     />
                                     {relicCooldownRemaining > 0 && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            inset: 0,
-                                            background: 'rgba(0,0,0,0.6)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '12px',
-                                            fontFamily: "'PressStart2P', monospace",
-                                            color: '#FF841C'
-                                        }}>{relicCooldownRemaining}</div>
+                                        <div className="mobile-relic-cooldown">
+                                            {relicCooldownRemaining}
+                                        </div>
                                     )}
                                 </button>
                             )}
-                            <button
-                                className="sidebar-btn"
-                                onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
-                                title="Relics"
-                                aria-label="Open Relics menu"
-                                disabled={isSpinning}
-                            ><GiCrystalGrowth size={20} color="#FF841C" /></button>
-                            <button
-                                className="sidebar-btn"
-                                onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }}
-                                title="Info"
-                                aria-label="Open Game Info"
-                                disabled={isSpinning}
-                            ><FaCircleQuestion size={20} color="#FF841C" /></button>
-                            <button
-                                className="sidebar-btn"
-                                onClick={(e) => { e.stopPropagation(); router.push("/"); }}
-                                title="Home"
-                                aria-label="Return to Home"
-                                disabled={isSpinning}
-                            ><FaHouse size={20} color="#FF841C" /></button>
                         </div>
                     </div>
                 </div>
 
-                {/* Mobile Bottom Navigation Bar */}
-                <div className="mobile-nav">
-                    {/* Equipped Relic for activation on mobile */}
-                    {equippedRelic && (
-                        <button
-                            className="nav-item"
-                            onClick={() => {
-                                if (relicCooldownRemaining > 0) {
-                                    alert(`Cooldown: ${relicCooldownRemaining} spins remaining`);
-                                    return;
-                                }
-                                if (!isActivatingRelic && sessionId) {
-                                    setIsActivatingRelic(true);
-                                    activateRelic(Number(sessionId))
-                                        .then(async () => {
-                                            setRelicCooldownRemaining(equippedRelic.cooldown);
-                                            await loadSessionData();
-                                            // Update grid with jackpot result from relics like Mortis
-                                            const spinResult = await getLastSpinResult(Number(sessionId));
-                                            if (spinResult && spinResult.grid.length === 15) {
-                                                setGrid(spinResult.grid);
-                                            }
-                                        })
-                                        .catch((err) => console.error(`Failed to activate: ${err.message}`))
-                                        .finally(() => setIsActivatingRelic(false));
-                                }
-                            }}
-                            disabled={relicCooldownRemaining > 0}
-                            style={{
-                                opacity: relicCooldownRemaining > 0 ? 0.5 : 1,
-                                position: 'relative'
-                            }}
-                        >
-                            <div style={{ position: 'relative', width: 24, height: 24 }}>
+                {/* Right Sidebar - Game Stats + Buttons (hidden on mobile) */}
+                <div className="right-sidebar">
+                    <GameStatsPanel
+                        level={level}
+                        score={score}
+                        threshold={threshold}
+                        sessionId={sessionId ? Number(sessionId) : undefined}
+                        refreshTrigger={inventoryRefreshTrigger}
+                        currentLuck={currentLuck}
+                        currentTickets={tickets}
+                        lastSpinPatternCount={patterns.length}
+                    />
+
+                    {/* Action Buttons - Below stats panel */}
+                    <div className="sidebar-buttons">
+                        {/* Equipped Relic Display */}
+                        {equippedRelic && (
+                            <button
+                                className="sidebar-btn equipped-relic"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (relicCooldownRemaining > 0) {
+                                        alert(`Relic on cooldown: ${relicCooldownRemaining} spins remaining`);
+                                        return;
+                                    }
+                                    if (!isActivatingRelic && sessionId) {
+                                        setIsActivatingRelic(true);
+                                        activateRelic(Number(sessionId))
+                                            .then(async () => {
+                                                setShowRelicActivation(true);
+                                                setRelicCooldownRemaining(equippedRelic.cooldown);
+                                                setRelicCooldownRemaining(equippedRelic.cooldown);
+                                                await pollSessionData();
+                                                // Update grid with jackpot result from relics like Mortis
+                                                const spinResult = await getLastSpinResult(Number(sessionId));
+                                                if (spinResult && spinResult.grid.length === 15) {
+                                                    setGrid(spinResult.grid);
+                                                }
+                                            })
+                                            .catch((err) => console.error(`Failed to activate: ${err.message}`))
+                                            .finally(() => setIsActivatingRelic(false));
+                                    }
+                                }}
+                                title={relicCooldownRemaining > 0 ? `Cooldown: ${relicCooldownRemaining} spins` : `Activate ${equippedRelic.name}`}
+                                aria-label="Activate Relic"
+                                disabled={relicCooldownRemaining > 0}
+                                style={{
+                                    position: 'relative',
+                                    padding: 0,
+                                    overflow: 'hidden',
+                                    opacity: relicCooldownRemaining > 0 ? 0.5 : 1,
+                                    cursor: relicCooldownRemaining > 0 ? 'not-allowed' : 'pointer'
+                                }}
+                            >
                                 <Image
                                     src={`/images/relics/${equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
                                     alt={equippedRelic.name}
-                                    fill
+                                    width={32}
+                                    height={32}
                                     style={{
                                         objectFit: 'cover',
-                                        borderRadius: '4px',
+                                        borderRadius: '6px',
                                         filter: relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none'
                                     }}
                                 />
@@ -777,82 +794,87 @@ function GameContent() {
                                     <div style={{
                                         position: 'absolute',
                                         inset: 0,
+                                        background: 'rgba(0,0,0,0.6)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: 'rgba(0,0,0,0.5)',
-                                        color: '#FF841C',
-                                        fontSize: '10px',
+                                        fontSize: '12px',
                                         fontFamily: "'PressStart2P', monospace",
+                                        color: '#FF841C'
                                     }}>{relicCooldownRemaining}</div>
                                 )}
-                                {isActivatingRelic && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: 'rgba(0,0,0,0.8)',
-                                        color: '#fff',
-                                        fontSize: '10px',
-                                        fontFamily: "'PressStart2P', monospace",
-                                    }}>...</div>
-                                )}
-                            </div>
-                            <span>Use</span>
-                        </button>
-                    )}
-                    <button
-                        className="nav-item"
-                        onClick={() => setShowRelicModal(true)}
-                        disabled={isSpinning}
-                    >
-                        <GiCrystalGrowth size={24} color="#fff" />
-                        <span>Relic</span>
-                    </button>
-                    <button
-                        className="nav-item"
-                        onClick={() => setActiveModal('market')}
-                        disabled={isSpinning}
-                    >
-                        <FaShop size={24} color="#fff" />
-                        <span>Market</span>
-                    </button>
-                    <button
-                        className="nav-item"
-                        onClick={() => setActiveModal('inventory')}
-                        disabled={isSpinning}
-                    >
-                        <FaBoxOpen size={24} color="#fff" />
-                        <span>Inv</span>
-                    </button>
-                    {/* Spin button removed as per user request */}
-                    <button
-                        className="nav-item"
-                        onClick={() => setActiveModal('info')}
-                        disabled={isSpinning}
-                    >
-                        <FaCircleQuestion size={24} color="#fff" />
-                        <span>Info</span>
-                    </button>
-                    <button
-                        className="nav-item"
-                        onClick={() => router.push("/")}
-                        disabled={isSpinning}
-                    >
-                        <FaHouse size={24} color="#fff" />
-                        <span>Exit</span>
-                    </button>
+                            </button>
+                        )}
+                        <button
+                            className="sidebar-btn"
+                            onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
+                            title="Relics"
+                            aria-label="Open Relics menu"
+                            disabled={isSpinning}
+                        ><GiCrystalGrowth size={20} color="#FF841C" /></button>
+                        <button
+                            className="sidebar-btn"
+                            onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }}
+                            title="Info"
+                            aria-label="Open Game Info"
+                            disabled={isSpinning}
+                        ><FaCircleQuestion size={20} color="#FF841C" /></button>
+                        <button
+                            className="sidebar-btn"
+                            onClick={(e) => { e.stopPropagation(); router.push("/"); }}
+                            title="Home"
+                            aria-label="Return to Home"
+                            disabled={isSpinning}
+                        ><FaHouse size={20} color="#FF841C" /></button>
+                    </div>
                 </div>
+            </div>
 
-                {isSpinning && <div className="spinning-indicator">N</div>}
-                {error && <p className="error-text">{error}</p>}
+            {/* Mobile Bottom Navigation Bar */}
+            {/* Mobile Bottom Navigation Bar */}
+            <div className="mobile-nav">
+                <button
+                    className="nav-item"
+                    onClick={() => setActiveMobileTab('home')}
+                    style={{ color: activeMobileTab === 'home' ? '#FF841C' : '#fff' }}
+                >
+                    <FaHouse size={20} />
+                    <span>HOME</span>
+                </button>
+                <button
+                    className="nav-item"
+                    onClick={() => setActiveMobileTab('market')}
+                    style={{ color: activeMobileTab === 'market' ? '#FF841C' : '#fff' }}
+                >
+                    <FaShop size={20} />
+                    <span>MARKET</span>
+                </button>
+                <button
+                    className="nav-item"
+                    onClick={() => setActiveMobileTab('inventory')}
+                    style={{ color: activeMobileTab === 'inventory' ? '#FF841C' : '#fff' }}
+                >
+                    <FaBoxOpen size={20} />
+                    <span>ITEMS</span>
+                </button>
+                <button
+                    className="nav-item"
+                    onClick={() => setActiveMobileTab('info')}
+                    style={{ color: activeMobileTab === 'info' ? '#FF841C' : '#fff' }}
+                >
+                    <GiCrystalGrowth size={20} />
+                    <span>INFO</span>
+                </button>
+            </div>
+
+            {isSpinning && <div className="spinning-indicator">N</div>}
+            {error && <p className="error-text">{error}</p>}
 
 
 
-                {/* Modals */}
-                {activeModal === 'market' && sessionId && (
+            {/* Modals */}
+            {
+                activeModal === 'market' && sessionId && (
                     <MarketModal
                         sessionId={Number(sessionId)}
                         controller={account}
@@ -864,8 +886,10 @@ function GameContent() {
                         }}
                         onUpdateScore={setScore}
                     />
-                )}
-                {activeModal === 'inventory' && sessionId && (
+                )
+            }
+            {
+                activeModal === 'inventory' && sessionId && (
                     <InventoryModal
                         sessionId={Number(sessionId)}
                         controller={account}
@@ -877,17 +901,21 @@ function GameContent() {
                         }}
                         onUpdateScore={setScore}
                     />
-                )}
-                {activeModal === 'info' && sessionId && (
+                )
+            }
+            {
+                activeModal === 'info' && sessionId && (
                     <InfoModal
                         sessionId={Number(sessionId)}
                         onClose={() => setActiveModal(null)}
                         optimisticItems={optimisticItems}
                     />
-                )}
+                )
+            }
 
-                {/* Relic Selection Modal */}
-                {showRelicModal && (
+            {/* Relic Selection Modal */}
+            {
+                showRelicModal && (
                     <RelicModal
                         ownedRelics={ownedRelics}
                         equippedRelic={equippedRelic}
@@ -911,25 +939,29 @@ function GameContent() {
                             }
                         }}
                     />
+                )
+            }
+
+            {/* Biblia Save Animation */}
+            <AnimatePresence>
+                {showBibliaAnimation && (
+                    <BibliaSaveAnimation discarded={bibliaDiscarded} onComplete={() => setShowBibliaAnimation(false)} />
                 )}
+            </AnimatePresence>
 
-                {/* Biblia Save Animation */}
-                <AnimatePresence>
-                    {showBibliaAnimation && (
-                        <BibliaSaveAnimation discarded={bibliaDiscarded} onComplete={() => setShowBibliaAnimation(false)} />
-                    )}
-                </AnimatePresence>
-
-                {/* Relic Activation Animation */}
-                {showRelicActivation && equippedRelic && (
+            {/* Relic Activation Animation */}
+            {
+                showRelicActivation && equippedRelic && (
                     <RelicActivationAnimation
                         relicName={equippedRelic.name}
                         onComplete={() => setShowRelicActivation(false)}
                     />
-                )}
+                )
+            }
 
-                {/* Charm Mint Animation - Shows when player earns a charm on session end */}
-                {showCharmAnimation && mintedCharmInfo && (
+            {/* Charm Mint Animation - Shows when player earns a charm on session end */}
+            {
+                showCharmAnimation && mintedCharmInfo && (
                     <CharmMintAnimation
                         charmId={mintedCharmInfo.charm_id}
                         charmName={mintedCharmInfo.name}
@@ -944,30 +976,33 @@ function GameContent() {
                             }
                         }}
                     />
-                )}
+                )
+            }
 
-                {/* Game Over Modal */}
-                <GameOverModal
-                    isVisible={showGameOver && !mintedCharmInfo}
-                    reason={gameOverReason}
-                    finalScore={finalScore}
-                    totalScore={finalTotalScore}
-                    sessionId={sessionId ? Number(sessionId) : undefined}
-                    level={level}
-                    chipsClaimed={chipsClaimed}
-                    onBackToMenu={() => router.push("/")}
-                />
-            </div>{/* End desktop-layout */}
+            {/* Game Over Modal */}
+            <GameOverModal
+                isVisible={showGameOver && !mintedCharmInfo}
+                reason={gameOverReason}
+                finalScore={finalScore}
+                totalScore={finalTotalScore}
+                sessionId={sessionId ? Number(sessionId) : undefined}
+                level={level}
+                chipsClaimed={chipsClaimed}
+                onBackToMenu={() => router.push("/")}
+            />
+
 
             {/* Sell Confirmation Modal */}
-            {itemToSell && (
-                <SellConfirmModal
-                    item={itemToSell}
-                    onConfirm={handleSellConfirm}
-                    onCancel={() => setItemToSell(null)}
-                    isSelling={isSelling}
-                />
-            )}
+            {
+                itemToSell && (
+                    <SellConfirmModal
+                        item={itemToSell}
+                        onConfirm={handleSellConfirm}
+                        onCancel={() => setItemToSell(null)}
+                        isSelling={isSelling}
+                    />
+                )
+            }
 
             <style jsx>{`
                 .game-container {
@@ -1230,6 +1265,13 @@ function GameContent() {
                     background-size: cover;
                 }
                 
+                /* Hide mobile overlay on desktop */
+                @media (min-width: 1025px) {
+                    .mobile-content-overlay {
+                        display: none !important;
+                    }
+                }
+
                 /* Tablet breakpoint (1024-1279px) - only show mobile nav, keep desktop layout */
                 @media (min-width: 1025px) and (max-width: 1279px) {
                     .mobile-nav {
@@ -1266,8 +1308,55 @@ function GameContent() {
                     }
                 }
 
+                .mobile-relic-btn {
+                    display: none;
+                }
+
                 /* Mobile breakpoint (<1024px) - full mobile layout */
                 @media (max-width: 1024px) {
+                    .mobile-floating-controls {
+                        position: absolute;
+                        top: 10px;
+                        right: 10px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                        z-index: 100;
+                    }
+
+                    .mobile-relic-btn {
+                        display: block;
+                        position: relative;
+                        width: 50px;
+                        height: 50px;
+                        background: transparent;
+                        border: none;
+                        cursor: pointer;
+                        padding: 0;
+                    }
+                    
+                    .equip-btn {
+                        background: rgba(0, 0, 0, 0.7);
+                        border: 2px solid #FF841C;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+
+                    .mobile-relic-cooldown {
+                        position: absolute;
+                        inset: 0;
+                        background: rgba(0,0,0,0.6);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: #FF841C;
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 14px;
+                    }
+
                     .game-content-wrapper {
                         height: auto;
                         width: 95vw;
@@ -1423,8 +1512,29 @@ function GameContent() {
                 .game-over-button:hover {
                     background: #FFa040;
                 }
+
+                @media (max-width: 1024px) {
+                    .hidden-on-mobile {
+                        display: none !important;
+                    }
+                    
+                    .mobile-content-overlay {
+                        position: fixed;
+                        top: 60px; /* Below HUD (approx) */
+                        bottom: 60px; /* Above Nav */
+                        left: 0;
+                        right: 0;
+                        background: rgba(0,0,0,0.9);
+                        z-index: 150;
+                        overflow-y: auto;
+                        padding: 20px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                    }
+                }
             `}</style>
-        </div>
+        </div >
     );
 }
 

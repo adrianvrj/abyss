@@ -160,18 +160,9 @@ export default function GameStatsPanel({
     const modifiedPatterns = getModifiedPatterns();
 
     return (
-        <div style={{
-            background: 'rgba(0, 0, 0, 0.85)',
-            border: '2px solid #FF841C',
-            borderRadius: '8px',
-            padding: '16px',
-            width: '280px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-        }}>
+        <div className="game-stats-panel">
             {/* Level Progress */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="stats-section level-section">
                 <div style={{
                     fontFamily: "'PressStart2P', monospace",
                     fontSize: '12px',
@@ -203,7 +194,7 @@ export default function GameStatsPanel({
             </div>
 
             {/* Tickets & Luck Row */}
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="stats-section tickets-section">
                 <div style={{
                     flex: 1,
                     display: 'flex',
@@ -265,7 +256,7 @@ export default function GameStatsPanel({
             </div>
 
             {/* Symbol Values */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="stats-section symbols-section">
                 <div style={{
                     fontFamily: "'PressStart2P', monospace",
                     fontSize: '12px',
@@ -288,7 +279,7 @@ export default function GameStatsPanel({
             </div>
 
             {/* Pattern Multipliers */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="stats-section patterns-section">
                 <div style={{
                     fontFamily: "'PressStart2P', monospace",
                     fontSize: '12px',
@@ -326,6 +317,58 @@ export default function GameStatsPanel({
                     })}
                 </div>
             </div>
+            <style jsx>{`
+                .game-stats-panel {
+                    background: rgba(0, 0, 0, 0.85);
+                    border: 2px solid #FF841C;
+                    border-radius: 8px;
+                    padding: 16px;
+                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .stats-section {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .tickets-section {
+                    flex-direction: row;
+                }
+
+                @media (max-width: 1024px) {
+                    .game-stats-panel {
+                        width: 100%;
+                        min-height: 100%;
+                        flex: 1;
+                        border: none;
+                        background: transparent;
+                        padding: 10px 0;
+                        /* space-between removed */
+                        gap: 24px; /* Uniform gap */
+                    }
+                    
+                    .stats-section {
+                        width: 100%;
+                    }
+
+                    .symbols-section, .patterns-section {
+                        flex: 1;
+                        justify-content: center;
+                    }
+
+                    .symbols-section > div, .patterns-section > div {
+                         gap: 12px !important; /* Increase gap between rows */
+                         display: flex;
+                         flex-direction: column;
+                         justify-content: center;
+                         height: 100%;
+                    }
+                }
+            `}</style>
         </div >
     );
 }

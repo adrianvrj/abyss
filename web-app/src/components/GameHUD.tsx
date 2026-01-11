@@ -11,8 +11,9 @@ export default function GameHUD({
     level,
     threshold,
     spinsRemaining,
-    risk
-}: GameHUDProps) {
+    risk,
+    onExit
+}: GameHUDProps & { onExit?: () => void }) {
     const isDanger = risk > 50;
 
     return (
@@ -24,10 +25,32 @@ export default function GameHUD({
             display: 'flex',
             justifyContent: 'center',
             gap: '2vw',
-            padding: '12px 24px',
+            padding: '12px 24px 12px 70px',
             background: 'rgba(0, 0, 0, 0.85)',
             zIndex: 1000,
         }}>
+            {onExit && (
+                <button
+                    onClick={onExit}
+                    style={{
+                        position: 'absolute',
+                        left: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: '1px solid #FF841C',
+                        borderRadius: '4px',
+                        color: '#FF841C',
+                        fontFamily: "'PressStart2P', monospace",
+                        fontSize: '10px',
+                        padding: '6px 8px',
+                        cursor: 'pointer',
+                        zIndex: 1001,
+                    }}
+                >
+                    EXIT
+                </button>
+            )}
             <StatItem label="LVL" value={level} />
             <StatItem label="GOAL" value={threshold} />
             <StatItem label="SPINS" value={spinsRemaining} valueColor="#FFEA00" />
