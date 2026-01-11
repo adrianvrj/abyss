@@ -16,6 +16,10 @@ pub struct GameSession {
     pub relic_last_used_spin: u32,
     pub relic_pending_effect: u8,
     pub total_spins: u32,
+    // Soul Charms system
+    pub luck: u32, // Current luck value from charms
+    pub blocked_666_this_session: bool, // For Chaos Orb conditional effect
+    pub tickets: u32 // Ticket system for item purchasing
 }
 
 #[derive(Drop, Serde, starknet::Store)]
@@ -155,6 +159,11 @@ pub trait IAbyssGame<TContractState> {
     fn add_prize_token(ref self: TContractState, token: ContractAddress);
     fn distribute_prizes(ref self: TContractState);
     fn get_prize_token_balances(self: @TContractState) -> Array<(ContractAddress, u256)>;
+    // Soul Charms system
+    fn set_charm_nft_address(ref self: TContractState, address: ContractAddress);
+    fn get_session_luck(self: @TContractState, session_id: u32) -> u32;
+    fn get_charm_drop_chance(self: @TContractState, session_id: u32) -> u32;
+    fn update_item_price(ref self: TContractState, item_id: u32, price: u32, sell_price: u32);
 }
 
 
@@ -241,6 +250,30 @@ pub mod AbyssGame {
         fn owner_of(self: @TContractState, token_id: u256) -> ContractAddress;
     }
 
+    // Soul Charm NFT interface
+    #[derive(Drop, Serde, Copy)]
+    pub struct CharmMetadata {
+        pub charm_id: u32,
+        pub name: felt252,
+        pub description: felt252,
+        pub effect_type: u8,
+        pub effect_value: u32,
+        pub effect_value_2: u32,
+        pub condition_type: u8,
+        pub rarity: u8,
+        pub shop_cost: u32,
+    }
+
+    #[starknet::interface]
+    trait ICharm<TContractState> {
+        fn get_player_charms(self: @TContractState, player: ContractAddress) -> Array<u256>;
+        fn get_charm_metadata(self: @TContractState, token_id: u256) -> CharmMetadata;
+        fn get_charm_type_info(self: @TContractState, charm_id: u32) -> CharmMetadata;
+        fn mint_random_charm_of_rarity(
+            ref self: TContractState, player: ContractAddress, rarity: u8, random_seed: felt252,
+        ) -> u256;
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // STORAGE: All contract state variables
     // ═══════════════════════════════════════════════════════════════════════════
@@ -282,14 +315,113 @@ pub mod AbyssGame {
         prize_tokens: Map<u32, ContractAddress>,
         prize_tokens_count: u32,
         prizes_distributed: bool,
+        // Soul Charms system
+        charm_nft_address: ContractAddress,
+        session_charm_ids: Map<(u32, u32), u32>, // (session_id, index) -> charm_id (in session)
+        session_charm_count: Map<u32, u32>, // session_id -> count (in session)
+        // Owned charms cache for market generation
+        session_owned_charm_ids: Map<(u32, u32), u32>,
+        session_owned_charm_count: Map<u32, u32> // session_id -> count (owned by player)
     }
 
-    // Event for upgrades
+    // Events for frontend receipt reading (LootSurvivor pattern)
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        CharmMinted: CharmMinted,
+        SpinCompleted: SpinCompleted,
+        ItemPurchased: ItemPurchased,
+        ItemSold: ItemSold,
+        MarketRefreshed: MarketRefreshed,
+        RelicActivated: RelicActivated,
+        RelicEquipped: RelicEquipped,
+        BibliaDiscarded: BibliaDiscarded,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct CharmMinted {
+        #[key]
+        player: ContractAddress,
+        #[key]
+        session_id: u32,
+        charm_id: u32,
+        rarity: u8,
+        token_id: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct SpinCompleted {
+        #[key]
+        session_id: u32,
+        grid: [u8; 15],
+        score_gained: u32,
+        new_total_score: u32,
+        new_level: u32,
+        spins_remaining: u32,
+        is_active: bool,
+        is_666: bool,
+        is_jackpot: bool,
+        biblia_used: bool,
+        current_luck: u32,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct ItemPurchased {
+        #[key]
+        session_id: u32,
+        item_id: u32,
+        price: u32,
+        new_score: u32,
+        new_spins: u32,
+        is_charm: bool,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct ItemSold {
+        #[key]
+        session_id: u32,
+        item_id: u32,
+        sell_price: u32,
+        new_score: u32,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct MarketRefreshed {
+        #[key]
+        session_id: u32,
+        new_score: u32,
+        slot_1: u32,
+        slot_2: u32,
+        slot_3: u32,
+        slot_4: u32,
+        slot_5: u32,
+        slot_6: u32,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct RelicActivated {
+        #[key]
+        session_id: u32,
+        relic_id: u32,
+        effect_type: u8,
+        cooldown_until_spin: u32,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct RelicEquipped {
+        #[key]
+        session_id: u32,
+        relic_token_id: u256,
+        relic_id: u32,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct BibliaDiscarded {
+        #[key]
+        session_id: u32,
+        discarded: bool,
     }
 
     // Implement IUpgradeable - only admin can upgrade
@@ -376,7 +508,10 @@ pub mod AbyssGame {
                 equipped_relic: 0, // No relic equipped
                 relic_last_used_spin: 0,
                 relic_pending_effect: RelicEffectTypeValues::NoEffect,
-                total_spins: 0 // No spins performed yet
+                total_spins: 0, // No spins performed yet 
+                luck: 0,
+                blocked_666_this_session: false,
+                tickets: 2,
             };
             self.sessions.entry(session_id).write(new_session);
             let session_count = self.player_sessions_count.entry(player_address).read();
@@ -511,7 +646,7 @@ pub mod AbyssGame {
             assert(market_slot >= 1 && market_slot <= 6, 'Invalid market slot');
             let slot_purchased = self.market_slot_purchased.entry((session_id, market_slot)).read();
             assert(!slot_purchased, 'Item already purchased');
-            let unique_item_count = self.session_item_count.entry(session_id).read();
+
             let market = self.session_markets.entry(session_id).read();
             let item_id = if market_slot == 1 {
                 market.item_slot_1
@@ -527,30 +662,108 @@ pub mod AbyssGame {
                 market.item_slot_6
             };
             assert(item_id > 0, 'Market slot is empty');
-            let item = self.items.entry(item_id).read();
-            assert(item.item_id == item_id, 'Item does not exist');
-            let mut item_already_owned = false;
-            let mut i = 0;
-            while i < unique_item_count {
-                if self.session_item_ids.entry((session_id, i)).read() == item_id {
-                    item_already_owned = true;
-                    break;
+
+            // Check if this is a charm (item_id >= 1000)
+            if item_id >= 1000 {
+                // It's a charm!
+                let charm_id = item_id - 1000;
+                let charm_count = self.session_charm_count.entry(session_id).read();
+
+                // Check if charm already in session
+                let mut charm_already_owned = false;
+                let mut i: u32 = 0;
+                while i < charm_count {
+                    if self.session_charm_ids.entry((session_id, i)).read() == charm_id {
+                        charm_already_owned = true;
+                        break;
+                    }
+                    i += 1;
                 }
-                i += 1;
+                assert(!charm_already_owned, 'Charm already in session');
+
+                // Get charm cost based on charm_id (from our hardcoded charm definitions)
+                let charm_cost = InternalImpl::get_charm_cost(charm_id);
+                assert(session.tickets >= charm_cost, 'Insufficient tickets');
+
+                // Deduct cost
+                session.tickets -= charm_cost;
+
+                // Apply charm effects immediately
+                // Get luck boost from charm and add to session
+                let luck_boost = InternalImpl::get_charm_luck_boost(charm_id);
+                session.luck += luck_boost;
+
+                // Check for ExtraSpinWithLuck charms (IDs 13, 16, 20)
+                let extra_spins = InternalImpl::get_charm_extra_spins(charm_id);
+                session.spins_remaining += extra_spins;
+
+                // Save session with updated luck and spins
+                self.sessions.entry(session_id).write(session);
+
+                // Add charm to session
+                self.session_charm_ids.entry((session_id, charm_count)).write(charm_id);
+                self.session_charm_count.entry(session_id).write(charm_count + 1);
+
+                // Mark slot as purchased
+                self.market_slot_purchased.entry((session_id, market_slot)).write(true);
+
+                // Emit ItemPurchased event for charm purchase
+                self
+                    .emit(
+                        ItemPurchased {
+                            session_id,
+                            item_id, // This is charm_id + 1000
+                            price: charm_cost,
+                            new_score: session.score,
+                            new_spins: session.spins_remaining,
+                            is_charm: true,
+                        },
+                    );
+            } else {
+                // Regular item purchase
+                let unique_item_count = self.session_item_count.entry(session_id).read();
+                let item = self.items.entry(item_id).read();
+                assert(item.item_id == item_id, 'Item does not exist');
+
+                let mut item_already_owned = false;
+                let mut i: u32 = 0;
+                while i < unique_item_count {
+                    if self.session_item_ids.entry((session_id, i)).read() == item_id {
+                        item_already_owned = true;
+                        break;
+                    }
+                    i += 1;
+                }
+                assert(!item_already_owned, 'Item already owned');
+                assert(unique_item_count < 7, 'Inventory full');
+
+                let total_cost = item.price;
+                assert(session.tickets >= total_cost, 'Insufficient tickets');
+                session.tickets -= total_cost;
+
+                // Handle spin bonus items
+                if item.effect_type == 4 {
+                    session.spins_remaining += item.effect_value;
+                }
+
+                self.sessions.entry(session_id).write(session);
+                self.market_slot_purchased.entry((session_id, market_slot)).write(true);
+                self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
+                self.session_item_count.entry(session_id).write(unique_item_count + 1);
+
+                // Emit ItemPurchased event for frontend receipt reading
+                self
+                    .emit(
+                        ItemPurchased {
+                            session_id,
+                            item_id,
+                            price: total_cost,
+                            new_score: session.score,
+                            new_spins: session.spins_remaining,
+                            is_charm: false,
+                        },
+                    );
             }
-            assert(!item_already_owned, 'Item already owned');
-            assert(unique_item_count < 7, 'Inventory full');
-            let total_cost = item.price;
-            assert(session.score >= total_cost, 'Insufficient score');
-            session.score -= total_cost;
-            session.total_score -= total_cost;
-            if item.effect_type == 4 {
-                session.spins_remaining += item.effect_value;
-            }
-            self.sessions.entry(session_id).write(session);
-            self.market_slot_purchased.entry((session_id, market_slot)).write(true);
-            self.session_item_ids.entry((session_id, unique_item_count)).write(item_id);
-            self.session_item_count.entry(session_id).write(unique_item_count + 1);
         }
 
         fn refresh_market(ref self: ContractState, session_id: u32) {
@@ -581,6 +794,24 @@ pub mod AbyssGame {
             self.market_slot_purchased.entry((session_id, 5)).write(false);
             self.market_slot_purchased.entry((session_id, 6)).write(false);
             InternalImpl::generate_market_items(ref self, session_id, market.refresh_count + 1);
+
+            // Read the new market to emit in event
+            let new_market = self.session_markets.entry(session_id).read();
+
+            // Emit MarketRefreshed event for frontend receipt reading
+            self
+                .emit(
+                    MarketRefreshed {
+                        session_id,
+                        new_score: session.score,
+                        slot_1: new_market.item_slot_1,
+                        slot_2: new_market.item_slot_2,
+                        slot_3: new_market.item_slot_3,
+                        slot_4: new_market.item_slot_4,
+                        slot_5: new_market.item_slot_5,
+                        slot_6: new_market.item_slot_6,
+                    },
+                );
         }
 
         fn get_session_market(self: @ContractState, session_id: u32) -> SessionMarket {
@@ -607,8 +838,7 @@ pub mod AbyssGame {
             let item = self.items.entry(item_id).read();
             assert(item.item_id == item_id, 'Item does not exist');
             let total_value = item.sell_price;
-            session.score += total_value;
-            session.total_score += total_value;
+            session.tickets += total_value;
             self.sessions.entry(session_id).write(session);
             let mut j = found_index;
             while j < item_count - 1 {
@@ -618,6 +848,14 @@ pub mod AbyssGame {
             }
             self.session_item_ids.entry((session_id, item_count - 1)).write(0);
             self.session_item_count.entry(session_id).write(item_count - 1);
+
+            // Emit ItemSold event for frontend receipt reading
+            self
+                .emit(
+                    ItemSold {
+                        session_id, item_id, sell_price: total_value, new_score: session.score,
+                    },
+                );
         }
 
         fn get_session_items(self: @ContractState, session_id: u32) -> Array<PlayerItem> {
@@ -631,6 +869,18 @@ pub mod AbyssGame {
                     items_array.append(PlayerItem { item_id, quantity: 1 });
                 }
                 i += 1;
+            }
+
+            // Include Charms in the session items list (ID >= 1000)
+            let charm_count = self.session_charm_count.entry(session_id).read();
+            let mut j = 0;
+            while j < charm_count {
+                let charm_id = self.session_charm_ids.entry((session_id, j)).read();
+                if charm_id > 0 {
+                    // Charms have IDs >= 1000 to distinguish them in frontend
+                    items_array.append(PlayerItem { item_id: charm_id + 1000, quantity: 1 });
+                }
+                j += 1;
             }
 
             items_array
@@ -667,49 +917,14 @@ pub mod AbyssGame {
             let market = self.session_markets.entry(session_id).read();
             let count = market.refresh_count;
 
-            // Progressive cost formula
-            // 0: 2, 1: 5, 2: 16, 3: 24, 4: 48, 5: 62, 6: 86, 7: 112, 8: 190, 9: 280, 10: 345, 11:
-            // 526, 12: 891, 13: 1200
-            if count == 0 {
-                2
-            } else if count == 1 {
-                5
-            } else if count == 2 {
-                16
-            } else if count == 3 {
-                24
-            } else if count == 4 {
-                48
-            } else if count == 5 {
-                62
-            } else if count == 6 {
-                86
-            } else if count == 7 {
-                112
-            } else if count == 8 {
-                190
-            } else if count == 9 {
-                280
-            } else if count == 10 {
-                345
-            } else if count == 11 {
-                526
-            } else if count == 12 {
-                891
-            } else if count == 13 {
-                1200
-            } else {
-                // After 13 refreshes, cost increases by 50% each time
-                let base_cost: u32 = 1200;
-                let extra_refreshes = count - 13;
-                let mut cost = base_cost;
-                let mut i: u32 = 0;
-                while i < extra_refreshes {
-                    cost = cost + (cost / 2); // Increase by 50%
-                    i += 1;
-                }
-                cost
-            }
+            // Progressive cost formula: 2 + (count * (count + 3)) / 2
+            // 0 -> 2
+            // 1 -> 4
+            // 2 -> 7
+            // 3 -> 11
+            // ...
+            let cost = 2 + (count * (count + 3)) / 2;
+            cost
         }
 
         // ─────────────────────────────────────────────────────────────────────────
@@ -784,33 +999,23 @@ pub mod AbyssGame {
             assert(caller == session.player_address, 'Only owner can spin');
             assert(session.is_active, 'Session is not active');
             assert(session.spins_remaining > 0, 'No spins left');
-
-            // Increment total spins for Relic cooldown tracking
             session.total_spins += 1;
             session.spins_remaining -= 1;
-
-            // Check for ResetSpins Relic effect (effect_type = 3)
             if session.relic_pending_effect == RelicEffectTypeValues::ResetSpins {
                 let spin_bonus = InternalImpl::get_inventory_spin_bonus(@self, session_id);
                 session.spins_remaining = 5 + spin_bonus;
                 session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
             }
-
             let vrf_address = self.vrf_provider_address.read();
             let vrf = IVrfProviderDispatcher { contract_address: vrf_address };
             let random_word = vrf.consume_random(Source::Nonce(caller));
-
-            // Check for Relic effects that modify grid generation
             let force_jackpot = session
                 .relic_pending_effect == RelicEffectTypeValues::RandomJackpot;
             let force_666 = session.relic_pending_effect == RelicEffectTypeValues::Trigger666;
-
             let (mut grid, mut is_666, mut is_jackpot) = if force_jackpot {
-                // Force a random symbol jackpot (all 15 cells same)
                 session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
                 InternalImpl::generate_jackpot_grid(@self, random_word)
             } else if force_666 {
-                // Force 666 pattern
                 session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
                 InternalImpl::generate_666_grid(@self, random_word)
             } else {
@@ -823,9 +1028,22 @@ pub mod AbyssGame {
             if is_666 {
                 let has_biblia = InternalImpl::has_item_in_inventory(@self, session_id, 40);
                 if has_biblia {
-                    InternalImpl::remove_item_from_inventory(ref self, session_id, 40);
+                    let biblia_seed = poseidon_hash_span(
+                        array![random_word, 'biblia_check'].span(),
+                    );
+                    let biblia_roll: u256 = biblia_seed.into();
+                    let should_discard = (biblia_roll % 100) < 50;
+
+                    if should_discard {
+                        InternalImpl::remove_item_from_inventory(ref self, session_id, 40);
+                    }
+
+                    self.emit(BibliaDiscarded { session_id, discarded: should_discard });
+
                     is_666 = false;
                     biblia_used = true;
+                    // Track for Chaos Orb charm effect
+                    session.blocked_666_this_session = true;
                 } else {
                     grid = InternalImpl::set_grid_value(grid, 6, super::SymbolType::SIX);
                     grid = InternalImpl::set_grid_value(grid, 7, super::SymbolType::SIX);
@@ -835,36 +1053,35 @@ pub mod AbyssGame {
             let (mut score, patterns_count) = InternalImpl::calculate_spin_result(
                 @self, grid, session_id,
             );
-
-            // Check for DoubleNextSpin Relic effect (effect_type = 2)
+            InternalImpl::update_luck_from_patterns(ref self, session_id, patterns_count);
             if session.relic_pending_effect == RelicEffectTypeValues::DoubleNextSpin {
                 score = score * 2;
                 session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
             }
-
             let new_score = session.score + score;
             let new_total_score = session.total_score + score;
             session.score = new_score;
             session.total_score = new_total_score;
-            let mut new_level = session.level;
-            while new_score >= Self::get_level_threshold(@self, new_level) {
-                new_level += 1;
-            }
-
-            if new_level > session.level {
-                session.level = new_level;
+            let threshold = Self::get_level_threshold(@self, session.level);
+            if session.total_score >= threshold {
+                session.level += 1;
+                // Level is now the NEW level
+                // Difficulty increase: Always grant 1 ticket per level
+                let gain: u32 = 1;
+                session.tickets += gain;
                 let spin_bonus = InternalImpl::get_inventory_spin_bonus(@self, session_id);
                 session.spins_remaining = 5 + spin_bonus;
             }
+            // 666 Economy Wipe
             if is_666 {
-                session.is_active = false;
-                session.spins_remaining = 0;
+                session.score = 0; // Wipe score
+                // Do NOT end session.
             }
             if session.is_active && session.spins_remaining == 0 {
                 session.is_active = false;
             }
 
-            // Auto-mint CHIP when session ends
+            // Auto-mint CHIP and Soul Charm when session ends
             if !session.is_active && !session.chips_claimed {
                 let base_chips = session.total_score / 20;
                 let emission_rate = self.chip_emission_rate.read();
@@ -877,6 +1094,72 @@ pub mod AbyssGame {
                     IChipDispatcher { contract_address: chip_token }
                         .mint(session.player_address, chip_amount);
                 }
+
+                // ═══════════════════════════════════════════════════════════════════
+                // SOUL CHARM MINTING - Based on score (moved from claim_chips)
+                // ═══════════════════════════════════════════════════════════════════
+                let charm_nft_addr = self.charm_nft_address.read();
+                if charm_nft_addr.is_non_zero() {
+                    // Calculate mint probability: min(score / 125, 50)% + luck bonus
+                    let charm_score = session.total_score;
+                    let base_chance = charm_score / 125;
+                    let luck_bonus = session.luck; // Luck from equipped charms
+                    let total_chance: u32 = if base_chance + luck_bonus > 50 {
+                        50
+                    } else {
+                        base_chance + luck_bonus
+                    };
+
+                    // Generate random number for mint check using VRF random word
+                    let mut charm_hash_data = ArrayTrait::new();
+                    charm_hash_data.append(session_id.into());
+                    charm_hash_data.append(random_word);
+                    charm_hash_data.append(session.player_address.into());
+                    let charm_hash_result = poseidon_hash_span(charm_hash_data.span());
+                    let charm_hash_u256: u256 = charm_hash_result.into();
+                    let charm_roll: u32 = (charm_hash_u256 % 100).try_into().unwrap();
+
+                    if charm_roll < total_chance {
+                        // Fixed rarity: 3% Legendary, 12% Epic, 25% Rare, 60% Common
+                        let rarity_roll: u32 = ((charm_hash_u256 / 100) % 100).try_into().unwrap();
+                        let legendary_threshold: u32 = 3;
+                        let epic_threshold: u32 = 15; // 3 + 12
+                        let rare_threshold: u32 = 40; // 3 + 12 + 25
+
+                        let rarity: u8 = if rarity_roll < legendary_threshold {
+                            3 // Legendary
+                        } else if rarity_roll < epic_threshold {
+                            2 // Epic
+                        } else if rarity_roll < rare_threshold {
+                            1 // Rare
+                        } else {
+                            0 // Common
+                        };
+
+                        // Mint the charm
+                        let token_id = ICharmDispatcher { contract_address: charm_nft_addr }
+                            .mint_random_charm_of_rarity(
+                                session.player_address, rarity, charm_hash_result,
+                            );
+
+                        // Get charm_id from the minted token
+                        let charm_meta = ICharmDispatcher { contract_address: charm_nft_addr }
+                            .get_charm_metadata(token_id);
+
+                        // Emit event for frontend to catch
+                        self
+                            .emit(
+                                CharmMinted {
+                                    player: session.player_address,
+                                    session_id,
+                                    charm_id: charm_meta.charm_id,
+                                    rarity,
+                                    token_id,
+                                },
+                            );
+                    }
+                }
+
                 session.chips_claimed = true;
             }
 
@@ -892,6 +1175,25 @@ pub mod AbyssGame {
                 biblia_used,
             };
             self.last_spin_results.entry(session_id).write(spin_result);
+
+            // Emit SpinCompleted event for frontend receipt reading
+            self
+                .emit(
+                    SpinCompleted {
+                        session_id,
+                        grid,
+                        score_gained: score,
+                        new_total_score: session.total_score,
+                        new_level: session.level,
+                        spins_remaining: session.spins_remaining,
+                        is_active: session.is_active,
+                        is_666,
+                        is_jackpot,
+                        biblia_used,
+                        current_luck: session.luck,
+                    },
+                );
+
             if !session.is_active && session.is_competitive {
                 InternalImpl::update_leaderboard_if_better(ref self, session);
             }
@@ -924,6 +1226,69 @@ pub mod AbyssGame {
             if chip_amount > 0 {
                 let chip_token = self.chip_token.read();
                 IChipDispatcher { contract_address: chip_token }.mint(caller, chip_amount);
+            }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // SOUL CHARM MINTING - Based on score
+            // ═══════════════════════════════════════════════════════════════════
+            let charm_nft_addr = self.charm_nft_address.read();
+            if charm_nft_addr.is_non_zero() {
+                // Calculate mint probability: min(score / 125, 50)%
+                let score = session.total_score;
+                let mint_chance = score / 125;
+                let total_chance: u32 = if mint_chance > 50 {
+                    50
+                } else {
+                    mint_chance
+                };
+
+                // Generate random number for mint check
+                let timestamp = get_block_timestamp();
+                let mut hash_data = ArrayTrait::new();
+                hash_data.append(session_id.into());
+                hash_data.append(timestamp.into());
+                hash_data.append(caller.into());
+                let hash_result = poseidon_hash_span(hash_data.span());
+                let hash_u256: u256 = hash_result.into();
+                let roll: u32 = (hash_u256 % 100).try_into().unwrap();
+
+                if roll < total_chance {
+                    // Fixed rarity: 3% Legendary, 12% Epic, 25% Rare, 60% Common
+                    let rarity_roll: u32 = ((hash_u256 / 100) % 100).try_into().unwrap();
+                    let legendary_threshold: u32 = 3;
+                    let epic_threshold: u32 = 15; // 3 + 12
+                    let rare_threshold: u32 = 40; // 3 + 12 + 25
+
+                    let rarity: u8 = if rarity_roll < legendary_threshold {
+                        3 // Legendary
+                    } else if rarity_roll < epic_threshold {
+                        2 // Epic
+                    } else if rarity_roll < rare_threshold {
+                        1 // Rare
+                    } else {
+                        0 // Common
+                    };
+
+                    // Mint the charm
+                    let token_id = ICharmDispatcher { contract_address: charm_nft_addr }
+                        .mint_random_charm_of_rarity(caller, rarity, hash_result);
+
+                    // Get charm_id from the minted token
+                    let charm_meta = ICharmDispatcher { contract_address: charm_nft_addr }
+                        .get_charm_metadata(token_id);
+
+                    // Emit event for frontend to catch
+                    self
+                        .emit(
+                            CharmMinted {
+                                player: caller,
+                                session_id,
+                                charm_id: charm_meta.charm_id,
+                                rarity,
+                                token_id,
+                            },
+                        );
+                }
             }
 
             // Mark as claimed
@@ -1000,6 +1365,16 @@ pub mod AbyssGame {
             self.pragma_oracle.write(oracle);
         }
 
+        fn update_item_price(ref self: ContractState, item_id: u32, price: u32, sell_price: u32) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            let mut item = self.items.entry(item_id).read();
+            assert(item.item_id == item_id, 'Item does not exist');
+            item.price = price;
+            item.sell_price = sell_price;
+            self.items.entry(item_id).write(item);
+        }
+
         fn get_usd_cost_in_token(self: @ContractState, token: ContractAddress) -> u256 {
             InternalImpl::get_usd_cost_in_token(self, token)
         }
@@ -1030,6 +1405,13 @@ pub mod AbyssGame {
             // Set to 0 - activate_relic handles first use case (relic_last_used_spin == 0)
             session.relic_last_used_spin = 0;
             self.sessions.entry(session_id).write(session);
+
+            // Get relic_id from metadata for the event
+            let metadata = IRelicDispatcher { contract_address: relic_nft }
+                .get_relic_metadata(relic_token_id);
+
+            // Emit RelicEquipped event for frontend receipt reading
+            self.emit(RelicEquipped { session_id, relic_token_id, relic_id: metadata.relic_id });
         }
 
         fn activate_relic(ref self: ContractState, session_id: u32) {
@@ -1057,12 +1439,51 @@ pub mod AbyssGame {
             session.relic_last_used_spin = session.total_spins;
 
             self.sessions.entry(session_id).write(session);
+
+            // Emit RelicActivated event for frontend receipt reading
+            self
+                .emit(
+                    RelicActivated {
+                        session_id,
+                        relic_id: metadata.relic_id,
+                        effect_type: metadata.effect_type,
+                        cooldown_until_spin: session.total_spins + metadata.cooldown_spins,
+                    },
+                );
         }
 
         fn set_relic_nft_address(ref self: ContractState, address: ContractAddress) {
             let caller = get_caller_address();
             assert(caller == self.admin.read(), 'Only admin');
             self.relic_nft_address.write(address);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // SOUL CHARMS SYSTEM
+        // ─────────────────────────────────────────────────────────────────────────
+
+        fn set_charm_nft_address(ref self: ContractState, address: ContractAddress) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            self.charm_nft_address.write(address);
+        }
+
+        fn get_session_luck(self: @ContractState, session_id: u32) -> u32 {
+            let session = self.sessions.entry(session_id).read();
+            session.luck
+        }
+
+        /// Get the probability (0-100) of receiving a charm at end of session
+        /// Based on score: min(score / 125, 50)%
+        fn get_charm_drop_chance(self: @ContractState, session_id: u32) -> u32 {
+            let session = self.sessions.entry(session_id).read();
+            let mint_chance = session.total_score / 125;
+
+            if mint_chance > 50 {
+                50
+            } else {
+                mint_chance
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────────
@@ -1176,6 +1597,38 @@ pub mod AbyssGame {
             let mut grid: [u8; 15] = [0_u8; 15];
             let mut is_jackpot = true;
             let mut first_symbol: u8 = 0;
+
+            // Get session luck value
+            let session = self.sessions.entry(session_id).read();
+            let mut luck = session.luck;
+            let last_spin = self.last_spin_results.entry(session_id).read();
+            let patterns_count = last_spin.patterns_count;
+
+            // Iterate through owned charms to find conditional boosters
+            let charm_count = self.session_charm_count.entry(session_id).read();
+            let mut k = 0;
+            while k < charm_count {
+                let charm_id = self.session_charm_ids.entry((session_id, k)).read();
+
+                // Charm ID 12: Ethereal Chain (+6 per pattern in last spin)
+                if charm_id == 12 {
+                    luck += (patterns_count.into() * 6);
+                }
+
+                // Charm ID 3: Broken Mirror (+5 if no patterns in last spin)
+                if charm_id == 3 && patterns_count == 0 {
+                    luck += 5;
+                }
+                k += 1;
+            }
+
+            // Cap luck bias at 50% to prevent guaranteed patterns
+            let luck_bias_chance: u32 = if luck > 50 {
+                50
+            } else {
+                luck
+            };
+
             let (p7, pd, pc, p_coin, pl) = Self::get_inventory_probability_bonuses(
                 self, session_id,
             );
@@ -1189,22 +1642,41 @@ pub mod AbyssGame {
             let thresh_diamond = thresh_seven + prob_diamond;
             let thresh_cherry = thresh_diamond + prob_cherry;
             let thresh_coin = thresh_cherry + prob_coin;
+
             let mut i: u32 = 0;
             while i < 15 {
                 let position_seed = poseidon_hash_span(array![random_word, i.into()].span());
                 let seed_value: u256 = position_seed.into();
-                let symbol_roll: u32 = (seed_value % total_prob.into()).try_into().unwrap();
-                let symbol: u8 = if symbol_roll < thresh_seven {
-                    super::SymbolType::SEVEN
-                } else if symbol_roll < thresh_diamond {
-                    super::SymbolType::DIAMOND
-                } else if symbol_roll < thresh_cherry {
-                    super::SymbolType::CHERRY
-                } else if symbol_roll < thresh_coin {
-                    super::SymbolType::COIN
-                } else {
-                    super::SymbolType::LEMON
-                };
+
+                // Luck bias: chance to copy symbol from adjacent cell to form patterns
+                let luck_roll: u32 = ((seed_value / 1000) % 100).try_into().unwrap();
+                let mut symbol: u8 = 0;
+
+                if luck_bias_chance > 0 && luck_roll < luck_bias_chance && i > 0 {
+                    // Copy symbol from an adjacent cell based on position
+                    // This increases pattern formation probability
+                    let copy_from = Self::get_pattern_neighbor(i);
+                    if copy_from < i {
+                        symbol = Self::get_grid_value(grid, copy_from);
+                    }
+                }
+
+                // If no luck bias applied, use normal random symbol
+                if symbol == 0 {
+                    let symbol_roll: u32 = (seed_value % total_prob.into()).try_into().unwrap();
+                    symbol =
+                        if symbol_roll < thresh_seven {
+                            super::SymbolType::SEVEN
+                        } else if symbol_roll < thresh_diamond {
+                            super::SymbolType::DIAMOND
+                        } else if symbol_roll < thresh_cherry {
+                            super::SymbolType::CHERRY
+                        } else if symbol_roll < thresh_coin {
+                            super::SymbolType::COIN
+                        } else {
+                            super::SymbolType::LEMON
+                        };
+                }
 
                 grid = Self::set_grid_value(grid, i, symbol);
 
@@ -1227,20 +1699,46 @@ pub mod AbyssGame {
             (grid, is_666, is_jackpot)
         }
 
+        /// Get the best neighbor cell to copy for pattern formation
+        /// Grid layout (5x3):
+        ///   [0]  [1]  [2]  [3]  [4]   <- Row 0
+        ///   [5]  [6]  [7]  [8]  [9]   <- Row 1
+        ///   [10] [11] [12] [13] [14]  <- Row 2
+        fn get_pattern_neighbor(index: u32) -> u32 {
+            // Prioritize horizontal patterns (same row, previous cell)
+            // Then vertical patterns (same column, row above)
+            // Then diagonal patterns
+            if index % 5 > 0 {
+                // Can copy from left (horizontal pattern)
+                index - 1
+            } else if index >= 5 {
+                // Can copy from above (vertical pattern)
+                index - 5
+            } else {
+                // First cell, no neighbor
+                0
+            }
+        }
+
+        /// Get value from grid at index
+        fn get_grid_value(grid: [u8; 15], index: u32) -> u8 {
+            *grid.span().at(index)
+        }
+
         /// Generate a jackpot grid (all 15 cells same symbol)
         fn generate_jackpot_grid(
             self: @ContractState, random_word: felt252,
         ) -> ([u8; 15], bool, bool) {
-            // Pick a random symbol (1-8, not SIX which is 9)
             let symbol_roll: u256 = random_word.into();
-            let symbol = ((symbol_roll % 8) + 1).try_into().unwrap(); // 1-8
-
+            // Symbols are 1-6. 6 is SIX/Death.
+            // We want 1-5 (Safe symbols: SEVEN, DIAMOND, CHERRY, COIN, LEMON)
+            // Roll % 5 gives 0-4. +1 gives 1-5.
+            let symbol = ((symbol_roll % 5) + 1).try_into().unwrap();
             let grid: [u8; 15] = [
                 symbol, symbol, symbol, symbol, symbol, symbol, symbol, symbol, symbol, symbol,
                 symbol, symbol, symbol, symbol, symbol,
             ];
-
-            (grid, false, true) // No 666, is jackpot
+            (grid, false, true)
         }
 
         /// Generate a 666 grid (normal grid but forced 666 pattern)
@@ -1365,48 +1863,67 @@ pub mod AbyssGame {
             let mut patterns_count: u8 = 0;
             let g = grid.span();
 
+            // Get charm retrigger bonuses
+            let (h3_retrigger, diag_retrigger, all_retrigger, _jackpot_retrigger) =
+                Self::get_charm_retrigger_bonuses(
+                self, session_id,
+            );
+            // Vertical patterns use all_retrigger since there's no specific vertical charm
+            let vert_retrigger = all_retrigger;
+
             // === HORIZONTAL PATTERNS (per row) ===
             // Row 0: indices 0-4
             let (score, pats) = Self::check_horizontal_line(self, g, 0, session_id);
-            total_score += score;
-            patterns_count += pats;
+            // Apply H3 retrigger (multiplies score and pattern count)
+            total_score += score * h3_retrigger;
+            patterns_count += pats * h3_retrigger.try_into().unwrap();
 
             // Row 1: indices 5-9
             let (score, pats) = Self::check_horizontal_line(self, g, 5, session_id);
-            total_score += score;
-            patterns_count += pats;
+            total_score += score * h3_retrigger;
+            patterns_count += pats * h3_retrigger.try_into().unwrap();
 
             // Row 2: indices 10-14
             let (score, pats) = Self::check_horizontal_line(self, g, 10, session_id);
-            total_score += score;
-            patterns_count += pats;
+            total_score += score * h3_retrigger;
+            patterns_count += pats * h3_retrigger.try_into().unwrap();
 
             // === VERTICAL PATTERNS (3 in a column) ===
             // Server parity: vertical-3 = 2x, so points * 3 * 2 = points * 6
             // Column 0: 0, 5, 10
             if *g.at(0) == *g.at(5) && *g.at(5) == *g.at(10) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(0)) * 6;
-                patterns_count += 1;
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(0))
+                    * 6
+                    * vert_retrigger;
+                patterns_count += vert_retrigger.try_into().unwrap();
             }
             // Column 1: 1, 6, 11
             if *g.at(1) == *g.at(6) && *g.at(6) == *g.at(11) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(1)) * 6;
-                patterns_count += 1;
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(1))
+                    * 6
+                    * vert_retrigger;
+                patterns_count += vert_retrigger.try_into().unwrap();
             }
             // Column 2: 2, 7, 12
             if *g.at(2) == *g.at(7) && *g.at(7) == *g.at(12) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 6;
-                patterns_count += 1;
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(2))
+                    * 6
+                    * vert_retrigger;
+                patterns_count += vert_retrigger.try_into().unwrap();
             }
             // Column 3: 3, 8, 13
             if *g.at(3) == *g.at(8) && *g.at(8) == *g.at(13) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(3)) * 6;
-                patterns_count += 1;
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(3))
+                    * 6
+                    * vert_retrigger;
+                patterns_count += vert_retrigger.try_into().unwrap();
             }
             // Column 4: 4, 9, 14
             if *g.at(4) == *g.at(9) && *g.at(9) == *g.at(14) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(4)) * 6;
-                patterns_count += 1;
+                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(4))
+                    * 6
+                    * vert_retrigger;
+                patterns_count += vert_retrigger.try_into().unwrap();
             }
 
             // === DIAGONAL PATTERNS (3 in a row) ===
@@ -1418,40 +1935,40 @@ pub mod AbyssGame {
             // 0, 6, 12
             if *g.at(0) == *g.at(6) && *g.at(6) == *g.at(12) {
                 let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(0)) * 15) / 2;
-                total_score += base * (100 + diag_bonus) / 100;
-                patterns_count += 1;
+                total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
+                patterns_count += diag_retrigger.try_into().unwrap();
             }
             // 1, 7, 13
             if *g.at(1) == *g.at(7) && *g.at(7) == *g.at(13) {
                 let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(1)) * 15) / 2;
-                total_score += base * (100 + diag_bonus) / 100;
-                patterns_count += 1;
+                total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
+                patterns_count += diag_retrigger.try_into().unwrap();
             }
             // 2, 8, 14
             if *g.at(2) == *g.at(8) && *g.at(8) == *g.at(14) {
                 let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 15) / 2;
-                total_score += base * (100 + diag_bonus) / 100;
-                patterns_count += 1;
+                total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
+                patterns_count += diag_retrigger.try_into().unwrap();
             }
 
             // Top-right to bottom-left diagonals
             // 2, 6, 10
             if *g.at(2) == *g.at(6) && *g.at(6) == *g.at(10) {
                 let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 15) / 2;
-                total_score += base * (100 + diag_bonus) / 100;
-                patterns_count += 1;
+                total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
+                patterns_count += diag_retrigger.try_into().unwrap();
             }
             // 3, 7, 11
             if *g.at(3) == *g.at(7) && *g.at(7) == *g.at(11) {
                 let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(3)) * 15) / 2;
-                total_score += base * (100 + diag_bonus) / 100;
-                patterns_count += 1;
+                total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
+                patterns_count += diag_retrigger.try_into().unwrap();
             }
             // 4, 8, 12
             if *g.at(4) == *g.at(8) && *g.at(8) == *g.at(12) {
                 let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(4)) * 15) / 2;
-                total_score += base * (100 + diag_bonus) / 100;
-                patterns_count += 1;
+                total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
+                patterns_count += diag_retrigger.try_into().unwrap();
             }
 
             (total_score, patterns_count)
@@ -1665,6 +2182,121 @@ pub mod AbyssGame {
             (h3, h4, h5, diag, jp)
         }
 
+        /// Get pattern retrigger bonuses from session charms
+        /// Returns (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger)
+        /// Retrigger means patterns trigger X extra times (value = multiplier, e.g. 2 = trigger
+        /// twice)
+        fn get_charm_retrigger_bonuses(
+            self: @ContractState, session_id: u32,
+        ) -> (u32, u32, u32, u32) {
+            let mut h3_retrigger: u32 = 1; // Default 1x (no retrigger)
+            let mut diag_retrigger: u32 = 1; // Default 1x
+            let mut all_retrigger: u32 = 1; // Default 1x
+            let mut jackpot_retrigger: u32 = 1; // Default 1x
+
+            let charm_count = self.session_charm_count.entry(session_id).read();
+            let mut i: u32 = 0;
+            while i < charm_count {
+                let charm_id = self.session_charm_ids.entry((session_id, i)).read();
+
+                // Charm effect types from charm.cairo:
+                // 8 = PatternRetrigger
+                // effect_value = multiplier (2 = 2x)
+                // effect_value_2 = pattern type: 0=all, 1=H3, 3=Diagonal, 5=Jackpot
+
+                // Note: We store charm_id in session, need to look up effect from charm contract
+                // For now, we'll use hardcoded mapping based on charm_id from our plan:
+                // Charm 10 (Cursed Pendant): H3 x2
+                // Charm 14 (Demon's Tooth): Diagonal x2
+                // Charm 17 (Reaper's Mark): All x2
+                // Charm 19 (Soul of Abyss): Jackpot x2 (plus +30 luck)
+
+                if charm_id == 10 {
+                    h3_retrigger = 2;
+                } else if charm_id == 14 {
+                    diag_retrigger = 2;
+                } else if charm_id == 17 {
+                    all_retrigger = 2;
+                } else if charm_id == 19 {
+                    jackpot_retrigger = 2;
+                }
+
+                i += 1;
+            }
+
+            // If all_retrigger is set, it overrides individual retriggers
+            if all_retrigger > 1 {
+                if h3_retrigger < all_retrigger {
+                    h3_retrigger = all_retrigger;
+                }
+                if diag_retrigger < all_retrigger {
+                    diag_retrigger = all_retrigger;
+                }
+                if jackpot_retrigger < all_retrigger {
+                    jackpot_retrigger = all_retrigger;
+                }
+            }
+
+            (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger)
+        }
+
+        fn get_charm_cost(charm_id: u32) -> u32 {
+            if charm_id <= 8 {
+                1 // Common: 1 Ticket
+            } else if charm_id <= 12 {
+                2 // Rare Low: 2 Tickets
+            } else if charm_id <= 14 {
+                3 // Rare High: 3 Tickets
+            } else if charm_id <= 16 {
+                4 // Epic Low: 4 Tickets
+            } else if charm_id <= 18 {
+                5 // Epic High: 5 Tickets
+            } else if charm_id == 19 {
+                6 // Legendary: 6 Tickets
+            } else if charm_id == 20 {
+                7 // Void Heart: 7 Tickets
+            } else {
+                1
+            }
+        }
+
+        fn get_charm_luck_boost(charm_id: u32) -> u32 {
+            if charm_id == 1 {
+                3
+            } else if charm_id == 2 {
+                4
+            } else if charm_id == 5 {
+                5
+            } else if charm_id == 7 {
+                6
+            } else if charm_id == 9 {
+                10
+            } else if charm_id == 11 {
+                8
+            } else if charm_id == 15 {
+                20
+            } else if charm_id == 19 {
+                30
+            } else if charm_id == 20 {
+                25
+            } else {
+                0
+            }
+        }
+
+        /// Get charm extra spins based on charm_id
+        fn get_charm_extra_spins(charm_id: u32) -> u32 {
+            if charm_id == 13 {
+                1
+            } else if charm_id == 16 {
+                2
+            } else if charm_id == 20 {
+                1
+            } else {
+                0
+            }
+        }
+
         fn has_item_in_inventory(self: @ContractState, session_id: u32, item_id: u32) -> bool {
             let item_count = self.session_item_count.entry(session_id).read();
             let mut i: u32 = 0;
@@ -1706,23 +2338,50 @@ pub mod AbyssGame {
             }
         }
 
-        /// Calculate spin bonus from inventory items (effect_type == 4)
         fn get_inventory_spin_bonus(self: @ContractState, session_id: u32) -> u32 {
             let item_count = self.session_item_count.entry(session_id).read();
             let mut total_bonus: u32 = 0;
             let mut i: u32 = 0;
             while i < item_count {
-                let item_id = self.session_item_ids.entry((session_id, i)).read();
-                if item_id > 0 {
-                    let item = self.items.entry(item_id).read();
-                    // SpinBonus effect type = 4
-                    if item.effect_type == 4 {
-                        total_bonus += item.effect_value;
-                    }
+                match self.session_item_ids.entry((session_id, i)).read() {
+                    // Bonus Spin Items
+                    9 => total_bonus += 1,
+                    10 => total_bonus += 3,
+                    18 => total_bonus += 5,
+                    23 => total_bonus += 10,
+                    _ => {},
                 }
                 i += 1;
             }
             total_bonus
+        }
+
+        // Update luck based on patterns hit (for Ethereal Chain - Charm 15)
+        fn update_luck_from_patterns(ref self: ContractState, session_id: u32, patterns_count: u8) {
+            // Charm 15: Ethereal Chain - +6 Luck per pattern hit
+            if patterns_count > 0 {
+                let has_charm_15 = Self::has_charm_in_session(@self, session_id, 15);
+                if has_charm_15 {
+                    let mut session = self.sessions.entry(session_id).read();
+                    let bonus_luck: u32 = patterns_count.into() * 6;
+                    session.luck += bonus_luck;
+                    self.sessions.entry(session_id).write(session);
+                }
+            }
+        }
+
+        fn has_charm_in_session(self: @ContractState, session_id: u32, charm_id: u32) -> bool {
+            let charm_count = self.session_charm_count.entry(session_id).read();
+            let mut k = 0;
+            let mut found = false;
+            while k < charm_count {
+                if self.session_charm_ids.entry((session_id, k)).read() == charm_id {
+                    found = true;
+                    break;
+                }
+                k += 1;
+            }
+            found
         }
 
 
@@ -1863,8 +2522,8 @@ pub mod AbyssGame {
                         item_id: 1,
                         name: 'Chilly Pepper',
                         description: '+5 points to seven',
-                        price: 15,
-                        sell_price: 11,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 5,
                         target_symbol: 'seven',
@@ -1880,8 +2539,8 @@ pub mod AbyssGame {
                         item_id: 7,
                         name: 'Nerd Glasses',
                         description: '+15% seven probability',
-                        price: 80,
-                        sell_price: 60,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 15,
                         target_symbol: 'seven',
@@ -1897,8 +2556,8 @@ pub mod AbyssGame {
                         item_id: 11,
                         name: 'Ghost Mask',
                         description: '+25% seven probability',
-                        price: 180,
-                        sell_price: 135,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 25,
                         target_symbol: 'seven',
@@ -1918,8 +2577,8 @@ pub mod AbyssGame {
                         item_id: 2,
                         name: 'Milk',
                         description: '+3 points to diamond',
-                        price: 20,
-                        sell_price: 15,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 3,
                         target_symbol: 'diamond',
@@ -1935,8 +2594,8 @@ pub mod AbyssGame {
                         item_id: 8,
                         name: 'Ace of Spades',
                         description: '+12% diamond probability',
-                        price: 50,
-                        sell_price: 37,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 12,
                         target_symbol: 'diamond',
@@ -1956,8 +2615,8 @@ pub mod AbyssGame {
                         item_id: 3,
                         name: 'Magic Dice',
                         description: '+8 points to cherry',
-                        price: 30,
-                        sell_price: 22,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 8,
                         target_symbol: 'cherry',
@@ -1973,8 +2632,8 @@ pub mod AbyssGame {
                         item_id: 12,
                         name: 'Skull',
                         description: '+10% cherry probability',
-                        price: 40,
-                        sell_price: 30,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 10,
                         target_symbol: 'cherry',
@@ -1990,8 +2649,8 @@ pub mod AbyssGame {
                         item_id: 13,
                         name: 'Pig Bank',
                         description: '+12 points to cherry',
-                        price: 85,
-                        sell_price: 63,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 12,
                         target_symbol: 'cherry',
@@ -2007,8 +2666,8 @@ pub mod AbyssGame {
                         item_id: 16,
                         name: 'Weird Hand',
                         description: '+18% cherry probability',
-                        price: 95,
-                        sell_price: 71,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 18,
                         target_symbol: 'cherry',
@@ -2024,8 +2683,8 @@ pub mod AbyssGame {
                         item_id: 20,
                         name: 'Smelly Boots',
                         description: '+20 points to cherry',
-                        price: 200,
-                        sell_price: 150,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 20,
                         target_symbol: 'cherry',
@@ -2045,8 +2704,8 @@ pub mod AbyssGame {
                         item_id: 4,
                         name: 'Old Cassette',
                         description: '+6 points to lemon',
-                        price: 35,
-                        sell_price: 26,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 6,
                         target_symbol: 'lemon',
@@ -2062,8 +2721,8 @@ pub mod AbyssGame {
                         item_id: 14,
                         name: 'Old Wig',
                         description: '+4 points to lemon',
-                        price: 25,
-                        sell_price: 18,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 4,
                         target_symbol: 'lemon',
@@ -2083,8 +2742,8 @@ pub mod AbyssGame {
                         item_id: 17,
                         name: 'Golden Globe',
                         description: '+14% coin probability',
-                        price: 55,
-                        sell_price: 41,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 14,
                         target_symbol: 'coin',
@@ -2100,8 +2759,8 @@ pub mod AbyssGame {
                         item_id: 19,
                         name: 'Old Phone',
                         description: '+10 points to coin',
-                        price: 75,
-                        sell_price: 56,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 10,
                         target_symbol: 'coin',
@@ -2121,8 +2780,8 @@ pub mod AbyssGame {
                         item_id: 5,
                         name: 'Bat Boomerang',
                         description: '+15% pattern multiplier',
-                        price: 70,
-                        sell_price: 52,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 15,
                         target_symbol: '',
@@ -2138,8 +2797,8 @@ pub mod AbyssGame {
                         item_id: 6,
                         name: 'Holy Eye',
                         description: '+30% pattern multiplier',
-                        price: 150,
-                        sell_price: 112,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 30,
                         target_symbol: '',
@@ -2155,8 +2814,8 @@ pub mod AbyssGame {
                         item_id: 15,
                         name: 'Amulet',
                         description: '+50% pattern multiplier',
-                        price: 280,
-                        sell_price: 210,
+                        price: 4,
+                        sell_price: 2,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 50,
                         target_symbol: '',
@@ -2172,8 +2831,8 @@ pub mod AbyssGame {
                         item_id: 21,
                         name: 'Bloody Wrench',
                         description: '+80% pattern multiplier',
-                        price: 450,
-                        sell_price: 337,
+                        price: 5,
+                        sell_price: 2,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 80,
                         target_symbol: '',
@@ -2193,8 +2852,8 @@ pub mod AbyssGame {
                         item_id: 9,
                         name: 'Devil Onion',
                         description: '+1 extra spin',
-                        price: 150,
-                        sell_price: 112,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 4, // SpinBonus
                         effect_value: 1,
                         target_symbol: '',
@@ -2210,8 +2869,8 @@ pub mod AbyssGame {
                         item_id: 10,
                         name: 'Red Button',
                         description: '+3 extra spins',
-                        price: 420,
-                        sell_price: 315,
+                        price: 4,
+                        sell_price: 2,
                         effect_type: 4, // SpinBonus
                         effect_value: 3,
                         target_symbol: '',
@@ -2227,8 +2886,8 @@ pub mod AbyssGame {
                         item_id: 18,
                         name: 'Pyramid',
                         description: '+5 extra spins',
-                        price: 700,
-                        sell_price: 525,
+                        price: 6,
+                        sell_price: 3,
                         effect_type: 4, // SpinBonus
                         effect_value: 5,
                         target_symbol: '',
@@ -2244,8 +2903,8 @@ pub mod AbyssGame {
                         item_id: 23,
                         name: 'Devil Seal',
                         description: '+10 extra spins',
-                        price: 1400,
-                        sell_price: 1050,
+                        price: 7,
+                        sell_price: 3,
                         effect_type: 4, // SpinBonus
                         effect_value: 10,
                         target_symbol: '',
@@ -2265,8 +2924,8 @@ pub mod AbyssGame {
                         item_id: 22,
                         name: 'Car Keys',
                         description: '+100% pattern multiplier',
-                        price: 650,
-                        sell_price: 487,
+                        price: 6,
+                        sell_price: 3,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 100,
                         target_symbol: '',
@@ -2282,8 +2941,8 @@ pub mod AbyssGame {
                         item_id: 24,
                         name: 'Holy Grail',
                         description: '+150% pattern multiplier',
-                        price: 1400,
-                        sell_price: 1050,
+                        price: 7,
+                        sell_price: 3,
                         effect_type: 1, // PatternMultiplierBoost
                         effect_value: 150,
                         target_symbol: '',
@@ -2303,8 +2962,8 @@ pub mod AbyssGame {
                         item_id: 25,
                         name: 'Hockey Mask',
                         description: '+15 points to seven',
-                        price: 180,
-                        sell_price: 135,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 15,
                         target_symbol: 'seven',
@@ -2320,8 +2979,8 @@ pub mod AbyssGame {
                         item_id: 26,
                         name: 'Rune',
                         description: '+12 points to diamond',
-                        price: 160,
-                        sell_price: 120,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 12,
                         target_symbol: 'diamond',
@@ -2337,8 +2996,8 @@ pub mod AbyssGame {
                         item_id: 27,
                         name: 'Bloody knife',
                         description: '+22% diamond probability',
-                        price: 130,
-                        sell_price: 97,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 22,
                         target_symbol: 'diamond',
@@ -2354,8 +3013,8 @@ pub mod AbyssGame {
                         item_id: 28,
                         name: 'Devil Head',
                         description: '+28% cherry probability',
-                        price: 220,
-                        sell_price: 165,
+                        price: 4,
+                        sell_price: 2,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 28,
                         target_symbol: 'cherry',
@@ -2371,8 +3030,8 @@ pub mod AbyssGame {
                         item_id: 29,
                         name: 'Cigarettes',
                         description: '+16% lemon probability',
-                        price: 70,
-                        sell_price: 52,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 16,
                         target_symbol: 'lemon',
@@ -2388,8 +3047,8 @@ pub mod AbyssGame {
                         item_id: 30,
                         name: 'Soul Contract',
                         description: '+18 points to lemon',
-                        price: 170,
-                        sell_price: 127,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 18,
                         target_symbol: 'lemon',
@@ -2405,8 +3064,8 @@ pub mod AbyssGame {
                         item_id: 31,
                         name: 'Beer Can',
                         description: '+25% coin probability',
-                        price: 140,
-                        sell_price: 105,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 25,
                         target_symbol: 'coin',
@@ -2422,8 +3081,8 @@ pub mod AbyssGame {
                         item_id: 32,
                         name: 'Memory Card',
                         description: '+22 points to coin',
-                        price: 250,
-                        sell_price: 187,
+                        price: 4,
+                        sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 22,
                         target_symbol: 'coin',
@@ -2443,8 +3102,8 @@ pub mod AbyssGame {
                         item_id: 33,
                         name: 'Ticket',
                         description: '+25 points to seven',
-                        price: 350,
-                        sell_price: 262,
+                        price: 4,
+                        sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 25,
                         target_symbol: 'seven',
@@ -2460,8 +3119,8 @@ pub mod AbyssGame {
                         item_id: 34,
                         name: 'Devil Train',
                         description: '+35% seven probability',
-                        price: 400,
-                        sell_price: 300,
+                        price: 5,
+                        sell_price: 2,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 35,
                         target_symbol: 'seven',
@@ -2481,8 +3140,8 @@ pub mod AbyssGame {
                         item_id: 35,
                         name: 'Fake Dollar',
                         description: '+18 points to diamond',
-                        price: 300,
-                        sell_price: 225,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 18,
                         target_symbol: 'diamond',
@@ -2498,8 +3157,8 @@ pub mod AbyssGame {
                         item_id: 36,
                         name: 'Bull Skull',
                         description: '+30% diamond probability',
-                        price: 260,
-                        sell_price: 195,
+                        price: 4,
+                        sell_price: 2,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 30,
                         target_symbol: 'diamond',
@@ -2519,8 +3178,8 @@ pub mod AbyssGame {
                         item_id: 37,
                         name: 'Fake Coin',
                         description: '+24% lemon probability',
-                        price: 120,
-                        sell_price: 90,
+                        price: 2,
+                        sell_price: 1,
                         effect_type: 2, // SymbolProbabilityBoost
                         effect_value: 24,
                         target_symbol: 'lemon',
@@ -2536,8 +3195,8 @@ pub mod AbyssGame {
                         item_id: 38,
                         name: 'Pocket Watch',
                         description: '+28 points to lemon',
-                        price: 320,
-                        sell_price: 240,
+                        price: 4,
+                        sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 28,
                         target_symbol: 'lemon',
@@ -2557,8 +3216,8 @@ pub mod AbyssGame {
                         item_id: 39,
                         name: 'Knight Helmet',
                         description: '+5 points to coin',
-                        price: 28,
-                        sell_price: 21,
+                        price: 1,
+                        sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
                         effect_value: 5,
                         target_symbol: 'coin',
@@ -2568,8 +3227,6 @@ pub mod AbyssGame {
             // ═══════════════════════════════════════════════════════════════════
             // SPECIAL PROTECTION ITEM
             // ═══════════════════════════════════════════════════════════════════
-
-            // Item 44: Biblia - 666 Protection (Consumable)
             self
                 .items
                 .entry(40)
@@ -2578,8 +3235,8 @@ pub mod AbyssGame {
                         item_id: 40,
                         name: 'La Biblia',
                         description: 'Protects from 666 once',
-                        price: 1100,
-                        sell_price: 825,
+                        price: 3,
+                        sell_price: 1,
                         effect_type: 6, // Special: 666 Protection (new type)
                         effect_value: 1, // Single use
                         target_symbol: 'six',
@@ -2595,18 +3252,68 @@ pub mod AbyssGame {
         }
 
         /// Generate random market items for a session
+        /// Charms owned by the player have a 30% chance to appear in each slot
         fn generate_market_items(ref self: ContractState, session_id: u32, refresh_count: u32) {
             // Increment nonce for randomness
             let current_nonce = self.nonce.read();
             self.nonce.write(current_nonce + 1);
 
-            // Generate 6 random item IDs
-            let item_1 = Self::generate_random_item_id(@self, session_id, current_nonce, 1);
-            let item_2 = Self::generate_random_item_id(@self, session_id, current_nonce, 2);
-            let item_3 = Self::generate_random_item_id(@self, session_id, current_nonce, 3);
-            let item_4 = Self::generate_random_item_id(@self, session_id, current_nonce, 4);
-            let item_5 = Self::generate_random_item_id(@self, session_id, current_nonce, 5);
-            let item_6 = Self::generate_random_item_id(@self, session_id, current_nonce, 6);
+            // Get player's owned charms from charm contract
+            let session = self.sessions.entry(session_id).read();
+            let player_address = session.player_address;
+            let charm_nft_addr = self.charm_nft_address.read();
+
+            // Get owned charm token IDs using cross-contract call
+            let mut owned_charm_ids: Array<u32> = ArrayTrait::new();
+
+            if charm_nft_addr.is_non_zero() {
+                // Call charm contract to get player's owned charm tokens
+                let charm_dispatcher = ICharmDispatcher { contract_address: charm_nft_addr };
+                let player_token_ids = charm_dispatcher.get_player_charms(player_address);
+
+                // Get the charm_id for each token
+                let mut i: u32 = 0;
+                while i < player_token_ids.len() {
+                    let token_id = *player_token_ids.at(i);
+                    let charm_meta = charm_dispatcher.get_charm_metadata(token_id);
+
+                    // Check if this charm_id is already in our list
+                    let charm_id = charm_meta.charm_id;
+                    let mut already_added = false;
+                    let mut j: u32 = 0;
+                    while j < owned_charm_ids.len() {
+                        if *owned_charm_ids.at(j) == charm_id {
+                            already_added = true;
+                            break;
+                        }
+                        j += 1;
+                    }
+
+                    if !already_added {
+                        owned_charm_ids.append(charm_id);
+                    }
+                    i += 1;
+                };
+            }
+
+            // Store owned charms count for generate_market_slot_item to use
+            self.session_owned_charm_count.entry(session_id).write(owned_charm_ids.len());
+            let mut idx: u32 = 0;
+            while idx < owned_charm_ids.len() {
+                self
+                    .session_owned_charm_ids
+                    .entry((session_id, idx))
+                    .write(*owned_charm_ids.at(idx));
+                idx += 1;
+            }
+
+            // Generate 6 random item IDs, potentially replacing with charms
+            let item_1 = Self::generate_market_slot_item(@self, session_id, current_nonce, 1);
+            let item_2 = Self::generate_market_slot_item(@self, session_id, current_nonce, 2);
+            let item_3 = Self::generate_market_slot_item(@self, session_id, current_nonce, 3);
+            let item_4 = Self::generate_market_slot_item(@self, session_id, current_nonce, 4);
+            let item_5 = Self::generate_market_slot_item(@self, session_id, current_nonce, 5);
+            let item_6 = Self::generate_market_slot_item(@self, session_id, current_nonce, 6);
 
             // Clear purchased status for all slots (new market)
             self.market_slot_purchased.entry((session_id, 1)).write(false);
@@ -2628,6 +3335,57 @@ pub mod AbyssGame {
             };
 
             self.session_markets.entry(session_id).write(market);
+        }
+
+        /// Generate a market slot item - may be a regular item or a charm
+        /// Charms use item_id >= 1000 (charm_id = item_id - 1000)
+        /// Only shows charms that the player actually owns
+        fn generate_market_slot_item(
+            self: @ContractState, session_id: u32, nonce: u64, slot: u32,
+        ) -> u32 {
+            let timestamp = get_block_timestamp();
+
+            // Create hash for this slot
+            let mut hash_data = ArrayTrait::new();
+            hash_data.append(session_id.into());
+            hash_data.append(nonce.into());
+            hash_data.append(slot.into());
+            hash_data.append(timestamp.into());
+            let hash_result = poseidon_hash_span(hash_data.span());
+            let hash_u256: u256 = hash_result.into();
+
+            // Get count of charms player owns
+            let owned_count = self.session_owned_charm_count.entry(session_id).read();
+
+            // 30% chance to show an owned charm
+            let charm_roll: u32 = (hash_u256 % 100).try_into().unwrap();
+
+            if charm_roll < 30 && owned_count > 0 {
+                // Pick a random owned charm
+                let owned_index: u32 = ((hash_u256 / 100) % owned_count.into()).try_into().unwrap();
+                let charm_id = self.session_owned_charm_ids.entry((session_id, owned_index)).read();
+
+                // Check if this charm is already in the session
+                let session_charm_count = self.session_charm_count.entry(session_id).read();
+                let mut charm_in_session = false;
+                let mut i: u32 = 0;
+                while i < session_charm_count {
+                    if self.session_charm_ids.entry((session_id, i)).read() == charm_id {
+                        charm_in_session = true;
+                        break;
+                    }
+                    i += 1;
+                }
+
+                // Only show if not already in session
+                if !charm_in_session && charm_id > 0 {
+                    // Return charm as item_id >= 1000
+                    return 1000 + charm_id;
+                }
+            }
+
+            // Otherwise, return a regular item
+            Self::generate_random_item_id(self, session_id, nonce, slot)
         }
 
         /// Generate a random item ID (1-24)

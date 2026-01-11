@@ -173,6 +173,18 @@ export default function MenuContent() {
                         </motion.button>
                     )}
 
+                    {/* Charms */}
+                    {isConnected && (
+                        <motion.button
+                            style={styles.menuOption}
+                            onClick={() => router.push("/charms")}
+                            whileHover={{ scale: 1.05, color: "#FF841C" }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            &gt; charms
+                        </motion.button>
+                    )}
+
                     {/* Leaderboard */}
                     <motion.button
                         style={styles.menuOption}

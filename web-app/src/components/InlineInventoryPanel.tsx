@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useAbyssGame } from '@/hooks/useAbyssGame';
 import {
-    getSessionItems,
     getItemInfo,
     ContractItem,
 } from '@/utils/abyssContract';
@@ -13,19 +13,27 @@ interface InlineInventoryPanelProps {
     sessionId: number;
     controller: any;
     currentScore: number;
+    currentTickets?: number;
     onUpdateScore: (newScore: number) => void;
+    onUpdateTickets?: (newTickets: number) => void;
     onItemClick: (item: ContractItem) => void;
     refreshTrigger?: number;
+    optimisticItems?: ContractItem[];
 }
 
 export default function InlineInventoryPanel({
     sessionId,
+    controller, // Added controller to destructuring if it wasn't there implicitly
     onItemClick,
-    refreshTrigger = 0
+    currentTickets = 0,
+    refreshTrigger = 0,
+    optimisticItems = []
 }: InlineInventoryPanelProps) {
     const [loading, setLoading] = useState(true);
     const [ownedItems, setOwnedItems] = useState<ContractItem[]>([]);
     const [hoveredItem, setHoveredItem] = useState<ContractItem | null>(null);
+
+    const { getSessionItems } = useAbyssGame(controller);
 
     useEffect(() => {
         if (sessionId) loadInventory();
@@ -35,8 +43,34 @@ export default function InlineInventoryPanel({
         try {
             setLoading(true);
             const playerItems = await getSessionItems(sessionId);
-            const items = await Promise.all(playerItems.map(pi => getItemInfo(pi.item_id)));
-            setOwnedItems(items);
+
+            const items = await Promise.all(playerItems.map(async (pi) => {
+                if (pi.item_id >= 1000) {
+                    // It's a charm
+                    const charmId = pi.item_id - 1000;
+                    const charmInfo = await import('@/utils/abyssContract').then(m => m.getCharmInfo(charmId));
+                    if (!charmInfo) return null;
+
+                    // Map CharmInfo to ContractItem for display
+                    return {
+                        item_id: pi.item_id,
+                        name: charmInfo.name,
+                        description: charmInfo.description,
+                        price: charmInfo.shop_cost,
+                        sell_price: 0, // Charms cannot be sold back to shop currently
+                        effect_type: 7, // Custom type for Charms
+                        effect_value: charmInfo.luck,
+                        target_symbol: charmInfo.rarity,
+                        image: charmInfo.image
+                    } as ContractItem;
+                } else {
+                    // Regular item
+                    return getItemInfo(pi.item_id);
+                }
+            }));
+
+            // Filter out any failed loads
+            setOwnedItems(items.filter((i): i is ContractItem => i !== null));
         } catch (error) {
             console.error("Failed to load inventory:", error);
         } finally {
@@ -57,11 +91,18 @@ export default function InlineInventoryPanel({
             case 4: return `+${value} bonus spins`;
             case 5: return `+${value}% level progress`;
             case 6: return `666 protection (${value} spins)`;
+            case 7: return `${targetSymbol} | +${value}% LUCK | ${item.description}`;
             default: return item.description || `Effect: ${value}`;
         }
     }
 
-    const slots = Array.from({ length: 7 }, (_, i) => ownedItems[i] || null);
+    // Merge owned and optimistic items, but limit to 7 slots total
+    // We filter out optimistic items that are already in ownedItems to prevent duplication
+    const ownedIds = new Set(ownedItems.map(i => i.item_id));
+    const uniqueOptimisticItems = optimisticItems.filter(i => !ownedIds.has(i.item_id));
+
+    const displayItems = [...ownedItems, ...uniqueOptimisticItems];
+    const slots = Array.from({ length: 7 }, (_, i) => displayItems[i] || null);
 
     return (
         <div className="inline-inventory-panel">
@@ -76,7 +117,7 @@ export default function InlineInventoryPanel({
                     >
                         {item ? (
                             <Image
-                                src={getItemImage(item.item_id)}
+                                src={item.image || getItemImage(item.item_id)}
                                 alt={item.name}
                                 width={40}
                                 height={40}
@@ -91,6 +132,18 @@ export default function InlineInventoryPanel({
                             <div className="item-tooltip">
                                 <div className="tooltip-name">{item.name}</div>
                                 <div className="tooltip-effect">{formatItemEffect(item)}</div>
+                                <div style={{
+                                    marginTop: '4px',
+                                    fontSize: '10px',
+                                    color: '#FF841C',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '4px'
+                                }}>
+                                    SELL FOR {item.sell_price}
+                                    <Image src="/images/ticket.png" alt="Tickets" width={12} height={12} />
+                                </div>
                                 <div className="tooltip-action">Click to sell</div>
                             </div>
                         )}

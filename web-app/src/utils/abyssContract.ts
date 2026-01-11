@@ -1,4 +1,4 @@
-import { RpcProvider, Contract, Call, shortString } from 'starknet';
+import { RpcProvider, Contract, Call, shortString, TransactionExecutionStatus } from 'starknet';
 import { CONTRACTS, RPC_ENDPOINTS } from '@/lib/constants';
 
 // RPC Provider
@@ -14,6 +14,16 @@ const toHex = (value: number | bigint | string): string => {
     return `0x${BigInt(value).toString(16)}`;
 };
 
+const waitForPreConfirmation: any = async (txHash: string) => {
+    const receipt = await provider.waitForTransaction(txHash, {
+        successStates: [
+            "PRE_CONFIRMED", "ACCEPTED_ON_L2", "ACCEPTED_ON_L1"
+        ],
+        retryInterval: 270,
+    });
+    return receipt;
+};
+
 // Types
 export enum ItemEffectType {
     ScoreMultiplier = 0,
@@ -23,6 +33,7 @@ export enum ItemEffectType {
     SpinBonus = 4,
     LevelProgressionBonus = 5,
     SixSixSixProtection = 6,
+    CharmEffect = 7,
 }
 
 export interface ContractItem {
@@ -34,6 +45,59 @@ export interface ContractItem {
     effect_type: ItemEffectType;
     effect_value: number;
     target_symbol: string;
+    image?: string;
+}
+
+// Soul Charm types
+export interface CharmInfo {
+    charm_id: number;
+    name: string;
+    description: string;
+    rarity: string;
+    effect: string;
+    luck: number;
+    shop_cost: number;
+    image: string;
+    background_color: string;
+}
+
+// Check if an item_id represents a charm (>= 1000)
+export function isCharmItem(itemId: number): boolean {
+    return itemId >= 1000;
+}
+
+// Get charm_id from item_id
+export function getCharmIdFromItemId(itemId: number): number {
+    return itemId - 1000;
+}
+
+// Fetch charm info from API
+export async function getCharmInfo(charmId: number): Promise<CharmInfo | null> {
+    try {
+        const response = await fetch(`/api/charms/${charmId}`);
+        if (!response.ok) return null;
+
+        const data = await response.json();
+
+        // Extract fields from OpenSea attributes format
+        const getAttribute = (trait: string) =>
+            data.attributes?.find((a: any) => a.trait_type === trait)?.value;
+
+        return {
+            charm_id: Number(getAttribute('Charm ID') || charmId),
+            name: data.name,
+            description: data.description,
+            rarity: getAttribute('Rarity') || 'Common',
+            effect: getAttribute('Effect') || '',
+            luck: Number(getAttribute('Luck Value') || 0),
+            shop_cost: Number(getAttribute('Shop Cost') || 0),
+            image: data.image,
+            background_color: data.background_color ? `#${data.background_color}` : ''
+        };
+    } catch (e) {
+        console.error('Failed to fetch charm info:', e);
+        return null;
+    }
 }
 
 export interface SessionMarket {
@@ -138,6 +202,34 @@ export async function isMarketSlotPurchased(sessionId: number, marketSlot: numbe
     return Number(result[0]) !== 0;
 }
 
+export async function getSessionLuck(sessionId: number): Promise<number> {
+    try {
+        const result = await provider.callContract({
+            contractAddress: CONTRACTS.ABYSS_GAME,
+            entrypoint: 'get_session_luck',
+            calldata: [toHex(sessionId)]
+        });
+        return Number(result[0]);
+    } catch (e) {
+        console.warn('Failed to get session luck:', e);
+        return 0;
+    }
+}
+
+export async function getCharmDropChance(sessionId: number): Promise<number> {
+    try {
+        const result = await provider.callContract({
+            contractAddress: CONTRACTS.ABYSS_GAME,
+            entrypoint: 'get_charm_drop_chance',
+            calldata: [toHex(sessionId)]
+        });
+        return Number(result[0]);
+    } catch (e) {
+        console.warn('Failed to get charm drop chance:', e);
+        return 0;
+    }
+}
+
 export async function getSessionInventoryCount(sessionId: number): Promise<number> {
     const result = await provider.callContract({
         contractAddress: CONTRACTS.ABYSS_GAME,
@@ -155,7 +247,7 @@ export async function buyItemFromMarket(sessionId: number, marketSlot: number, e
     };
 
     const res = await (executor.execute ? executor.execute(call) : executor(call));
-    await provider.waitForTransaction(res.transaction_hash);
+    await waitForPreConfirmation(res.transaction_hash);
     return res.transaction_hash;
 }
 
@@ -166,7 +258,7 @@ export async function sellItem(sessionId: number, itemId: number, quantity: numb
         calldata: [sessionId, itemId, quantity],
     };
     const res = await (executor.execute ? executor.execute(call) : executor(call));
-    await provider.waitForTransaction(res.transaction_hash);
+    await waitForPreConfirmation(res.transaction_hash);
     return res.transaction_hash;
 }
 
@@ -177,7 +269,8 @@ export async function refreshMarket(sessionId: number, executor: any): Promise<s
         calldata: [sessionId],
     };
     const res = await (executor.execute ? executor.execute(call) : executor(call));
-    await provider.waitForTransaction(res.transaction_hash);
+    const receipt = await waitForPreConfirmation(res.transaction_hash);
+    console.log("Receipt:", receipt);
     return res.transaction_hash;
 }
 
@@ -331,13 +424,13 @@ export async function getChipsToClaim(sessionId: number): Promise<bigint> {
     }
 }
 
-export async function claimChips(sessionId: number, executor: any): Promise<string> {
+export async function claimChips(sessionId: number, executor: any): Promise<any> {
     const call = {
         contractAddress: CONTRACTS.ABYSS_GAME,
         entrypoint: 'claim_chips',
         calldata: [sessionId],
     };
     const res = await (executor.execute ? executor.execute(call) : executor(call));
-    await provider.waitForTransaction(res.transaction_hash);
-    return res.transaction_hash;
+    const receipt = await provider.waitForTransaction(res.transaction_hash);
+    return receipt;
 }

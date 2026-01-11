@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useController } from "@/hooks/useController";
-import { useGameContract } from "@/hooks/useGameContract";
+import { useAbyssGame } from "@/hooks/useAbyssGame";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getAvailableBeastSessions } from "@/utils/abyssContract";
@@ -141,12 +141,10 @@ const styles = {
 };
 
 
-
-
 export default function SessionsPage() {
     const router = useRouter();
     const { account, isConnected, disconnect } = useController();
-    const { getPlayerSessions, getSessionData, createSession, isReady } = useGameContract(account);
+    const { getPlayerSessions, getSessionData, createSession, isReady } = useAbyssGame(account);
 
 
     const [sessions, setSessions] = useState<SessionInfo[]>([]);
@@ -166,7 +164,7 @@ export default function SessionsPage() {
 
         setIsLoading(true);
         try {
-            const sessionIds = await getPlayerSessions();
+            const sessionIds = await getPlayerSessions(account.address);
             const sessionPromises = sessionIds.map(async (id: number) => {
                 const data = await getSessionData(id);
                 if (!data) return null;
@@ -289,7 +287,7 @@ export default function SessionsPage() {
                             </motion.span>
                         </span>
                     ) : (
-                        <span>&gt; new session</span>
+                        <span>&gt; new run</span>
                     )}
                 </motion.button>
 
@@ -329,12 +327,12 @@ export default function SessionsPage() {
 
                 {/* Active Sessions */}
                 <div>
-                    <p style={styles.sectionTitle}>Active Sessions</p>
+                    <p style={styles.sectionTitle}>active runs</p>
 
                     {isLoading ? (
-                        <p style={styles.loading}>Loading sessions...</p>
+                        <p style={styles.loading}>loading runs...</p>
                     ) : sessions.length === 0 ? (
-                        <p style={styles.noSessions}>No active sessions</p>
+                        <p style={styles.noSessions}>no active runs</p>
                     ) : (
                         <AnimatePresence>
                             {sessions.map((session) => (
@@ -349,7 +347,7 @@ export default function SessionsPage() {
                                 >
                                     <div style={styles.sessionInfo}>
                                         <span style={styles.sessionId}>
-                                            Session #{session.sessionId}
+                                            RUN #{session.sessionId}
                                         </span>
                                         <div style={styles.sessionStats}>
                                             <div style={styles.stat}>
@@ -381,7 +379,7 @@ export default function SessionsPage() {
 
             {/* Payment Modal */}
             {showPayment && (
-                <ModalWrapper onClose={() => setShowPayment(false)} title="START SESSION">
+                <ModalWrapper onClose={() => setShowPayment(false)} title="START RUN">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
                         <div style={{ textAlign: 'center' }}>
                             <p style={{

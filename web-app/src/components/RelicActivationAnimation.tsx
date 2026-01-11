@@ -16,14 +16,12 @@ export default function RelicActivationAnimation({ relicName, onComplete }: Reli
         // Enter -> Hold for 1s -> Exit
         const holdTimer = setTimeout(() => setPhase('hold'), 600);
         const exitTimer = setTimeout(() => setPhase('exit'), 1600);
-        const completeTimer = setTimeout(onComplete, 2200);
 
         return () => {
             clearTimeout(holdTimer);
             clearTimeout(exitTimer);
-            clearTimeout(completeTimer);
         };
-    }, [onComplete]);
+    }, []);
 
     const imagePath = `/images/relics/${relicName.toLowerCase().replace(/ /g, '_')}.png`;
 
@@ -62,14 +60,19 @@ export default function RelicActivationAnimation({ relicName, onComplete }: Reli
                 <motion.div
                     initial={{ y: '100vh', scale: 0.5 }}
                     animate={{
-                        y: phase === 'exit' ? '100vh' : 0,
+                        y: phase === 'exit' ? '120vh' : 0, // 120vh for extra clearance
                         scale: phase === 'hold' ? 1.1 : 1,
                     }}
                     transition={{
                         type: 'spring',
-                        stiffness: 200,
-                        damping: 20,
+                        stiffness: 150,
+                        damping: 24,
                         duration: 0.6
+                    }}
+                    onAnimationComplete={() => {
+                        if (phase === 'exit') {
+                            onComplete();
+                        }
                     }}
                     style={{
                         position: 'relative',

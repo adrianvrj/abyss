@@ -8,9 +8,10 @@ import { applyItemEffects } from '@/utils/itemEffects';
 interface InfoModalProps {
     sessionId: number;
     onClose: () => void;
+    optimisticItems?: ContractItem[];
 }
 
-export default function InfoModal({ sessionId, onClose }: InfoModalProps) {
+export default function InfoModal({ sessionId, onClose, optimisticItems = [] }: InfoModalProps) {
     const [activeTab, setActiveTab] = useState<'how' | 'symbols' | 'patterns'>('how');
     const [loading, setLoading] = useState(true);
     const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
@@ -18,14 +19,20 @@ export default function InfoModal({ sessionId, onClose }: InfoModalProps) {
 
     useEffect(() => {
         loadItemsAndApplyEffects();
-    }, [sessionId]);
+    }, [sessionId, optimisticItems]);
 
     async function loadItemsAndApplyEffects() {
         if (sessionId > 0) {
             try {
                 setLoading(true);
                 const playerItems = await getSessionItems(sessionId);
-                const items = await Promise.all(playerItems.map(pi => getItemInfo(pi.item_id)));
+                let items = await Promise.all(playerItems.map(pi => getItemInfo(pi.item_id)));
+
+                // Merge with optimistic items (deduplicating)
+                const existingIds = new Set(items.map(i => i.item_id));
+                const uniqueOptimistic = optimisticItems.filter(i => !existingIds.has(i.item_id));
+                items = [...items, ...uniqueOptimistic];
+
                 setOwnedItems(items);
                 const effects = applyItemEffects(DEFAULT_GAME_CONFIG, items);
                 setGameConfig(effects.modifiedConfig);

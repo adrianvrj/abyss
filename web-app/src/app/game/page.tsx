@@ -2,8 +2,11 @@
 
 import { useSearchParams } from "next/navigation";
 import { useController } from "@/hooks/useController";
-import { useGameContract } from "@/hooks/useGameContract";
+import { useAbyssGame } from "@/hooks/useAbyssGame";
+import { useTransactionCart } from "@/hooks/useTransactionCart";
+import { parseReceiptEvents } from "@/utils/gameEvents";
 import { useState, useEffect, useCallback, Suspense, useRef } from "react";
+import { Provider } from 'starknet';
 import SlotGrid from "@/components/SlotGrid";
 import { useRouter } from "next/navigation";
 import { FaShop, FaBoxOpen, FaCircleQuestion, FaHouse } from "react-icons/fa6";
@@ -20,7 +23,9 @@ import PatternOverlay from "@/components/PatternOverlay";
 import BibliaSaveAnimation from "@/components/BibliaSaveAnimation";
 import RelicActivationAnimation from "@/components/RelicActivationAnimation";
 import { motion, AnimatePresence } from "framer-motion";
-import { getSessionItems, getItemInfo, ItemEffectType, ContractItem, sellItem } from "@/utils/abyssContract";
+import { getSessionItems, getItemInfo, ItemEffectType, ContractItem, sellItem, getCharmInfo, CharmInfo } from "@/utils/abyssContract"; // Keeping these for non-hook utils for now
+import { hash } from 'starknet';
+import { CONTRACTS } from '@/lib/constants';
 import InlineMarketPanel from "@/components/InlineMarketPanel";
 import InlineInventoryPanel from "@/components/InlineInventoryPanel";
 import SellConfirmModal from "@/components/SellConfirmModal";
@@ -28,6 +33,7 @@ import GameHUD from "@/components/GameHUD";
 import GameOverModal from "@/components/GameOverModal";
 import LevelUpAnimation from "@/components/LevelUpAnimation";
 import GameStatsPanel from "@/components/GameStatsPanel";
+import CharmMintAnimation from "@/components/CharmMintAnimation";
 
 // Helper to compare arrays (for detecting grid changes)
 function arraysEqual(a: number[], b: number[]): boolean {
@@ -50,13 +56,19 @@ function GameContent() {
         get666Probability,
         equipRelic,
         activateRelic,
-    } = useGameContract(account);
+        provider,
+        sellItem: sellItemHook, // Rename to avoid conflict with imported utils
+    } = useAbyssGame(account);
+
+    // Transaction Cart for optimized multicall execution and receipt reading
+    const txCart = useTransactionCart(account, provider);
 
     // Game State
     const [level, setLevel] = useState(1);
     const [score, setScore] = useState(0);
     const [threshold, setThreshold] = useState(100); // Next Level Threshold
     const [risk, setRisk] = useState(0); // 666 Risk %
+    const [tickets, setTickets] = useState(0); // Ticket Master Currency
     const [spinsRemaining, setSpinsRemaining] = useState(5);
     const [isSessionActive, setIsSessionActive] = useState(true); // Track if session is still active
     const [patterns, setPatterns] = useState<Pattern[]>([]);
@@ -79,9 +91,16 @@ function GameContent() {
     const [showGameOver, setShowGameOver] = useState(false);
     const [gameOverReason, setGameOverReason] = useState<'666' | 'no_spins' | null>(null);
     const [finalScore, setFinalScore] = useState(0);
+    const [finalTotalScore, setFinalTotalScore] = useState(0);
+    const [chipsClaimed, setChipsClaimed] = useState(false);
 
     // Biblia Save Animation
     const [showBibliaAnimation, setShowBibliaAnimation] = useState(false);
+
+    // Soul Charm Mint Animation (from spin receipt)
+    const [showCharmAnimation, setShowCharmAnimation] = useState(false);
+    const [mintedCharmInfo, setMintedCharmInfo] = useState<CharmInfo | null>(null);
+    const spinReceiptRef = useRef<any>(null); // Store receipt to check for CharmMinted event
 
     // Relic State
     const [equippedRelic, setEquippedRelic] = useState<{ tokenId: bigint; relicId: number; name: string; cooldown: number } | null>(null);
@@ -94,6 +113,7 @@ function GameContent() {
     const [scoreMultiplier, setScoreMultiplier] = useState(1); // For double points relic
     const scoreMultiplierRef = useRef(1);
     const [showRelicActivation, setShowRelicActivation] = useState(false);
+    const [bibliaDiscarded, setBibliaDiscarded] = useState(true);
 
     // Score bonuses from inventory
     const [scoreBonuses, setScoreBonuses] = useState<ScoreBonuses>({ seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 });
@@ -103,6 +123,8 @@ function GameContent() {
     const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
     const [isSelling, setIsSelling] = useState(false);
     const [inventoryRefreshTrigger, setInventoryRefreshTrigger] = useState(0);
+    const [optimisticItems, setOptimisticItems] = useState<any[]>([]); // Using any for now to avoid import churn, but it's ContractItem
+    const [currentLuck, setCurrentLuck] = useState<number | undefined>(undefined);
 
     useEffect(() => {
         scoreBonusesRef.current = scoreBonuses;
@@ -217,6 +239,8 @@ function GameContent() {
                 previousLevelRef.current = data.level;
                 setScore(data.score);
                 setLevel(data.level);
+                setTickets(data.tickets); // Sync tickets
+                setCurrentLuck(data.luck); // Sync luck
                 if (data.totalSpins >= lastKnownTotalSpinsRef.current) {
                     setSpinsRemaining(data.spinsRemaining);
                     lastKnownTotalSpinsRef.current = data.totalSpins;
@@ -224,6 +248,7 @@ function GameContent() {
                     console.log('Stale data - skipping. Contract:', data.totalSpins, 'Expected:', lastKnownTotalSpinsRef.current);
                 }
                 setIsSessionActive(data.isActive);
+                setChipsClaimed(data.chipsClaimed);
                 const th = await getLevelThreshold(data.level);
                 setThreshold(th);
                 const prob = await get666Probability(data.level);
@@ -291,10 +316,17 @@ function GameContent() {
         }
     };
 
+    const pollSessionData = async (retries = 6, delay = 800) => {
+        for (let i = 0; i < retries; i++) {
+            await new Promise(r => setTimeout(r, delay));
+            await loadSessionData();
+        }
+    };
+
     const playSound = (soundName: 'spin' | 'win' | 'jackpot' | 'game-over', durationMs?: number): HTMLAudioElement | null => {
         const audio = new Audio(`/sounds/${soundName}${soundName === 'win' ? '.wav' : '.mp3'}`);
         audio.volume = 0.5;
-        audio.loop = soundName === 'spin'; // Loop spin sound until stopped
+        audio.loop = soundName === 'spin';
         audio.play().catch(e => console.error("Audio play failed", e));
 
         if (durationMs) {
@@ -318,104 +350,110 @@ function GameContent() {
         setIsSpinning(true);
         setError(null);
         setPatterns([]);
+        setPatterns([]);
+        setGameOverReason(null); // Reset game over flags
         spinSoundRef.current = playSound('spin');
 
         try {
-            const preSpinTotalSpins = lastKnownTotalSpinsRef.current;
+            // Execute spin and get parsed events directly!
+            const events = await requestSpin(Number(sessionId));
+            // spinReceiptRef.current = events; // If needed elsewhere, or just store for charm check
 
-            await requestSpin(Number(sessionId));
-            const previousGrid = [...grid];
-            let attempts = 0;
-            const pollForFreshData = async () => {
-                const result = await getLastSpinResult(Number(sessionId));
-                const isValidResult = result &&
-                    !result.isPending &&
-                    result.grid &&
-                    result.grid.length === 15 &&
-                    result.grid.some((val: number) => val > 0 && val <= 6);
-                const sessionData = await getSessionData(Number(sessionId));
-                const isFreshSessionData = sessionData && sessionData.totalSpins > preSpinTotalSpins;
-                const gridChanged = isValidResult && !arraysEqual(result.grid, previousGrid);
-                if (!isValidResult || !isFreshSessionData || !gridChanged) {
-                    if (attempts < 20) {
-                        attempts++;
-                        setTimeout(pollForFreshData, 300);
-                        return;
-                    }
-                    console.error("Spin timeout - could not get fresh data");
-                    setError("Spin timeout");
-                    setIsSpinning(false);
-                    if (spinSoundRef.current) {
-                        spinSoundRef.current.pause();
-                        spinSoundRef.current.currentTime = 0;
-                        spinSoundRef.current = null;
-                    }
-                    return;
-                }
-                lastKnownTotalSpinsRef.current = sessionData.totalSpins;
-                if (spinSoundRef.current) {
-                    spinSoundRef.current.pause();
-                    spinSoundRef.current.currentTime = 0;
-                    spinSoundRef.current = null;
-                }
-                setGrid(result.grid);
+            if (spinSoundRef.current) {
+                spinSoundRef.current.pause();
+                spinSoundRef.current.currentTime = 0;
+                spinSoundRef.current = null;
+            }
+
+            // Use SpinCompleted event (now guaranteed if transaction succeeded)
+            if (events.spinCompleted && events.spinCompleted.grid.length === 15) {
+                const spin = events.spinCompleted;
+                console.log("Spin completed:", spin);
+                setGrid(spin.grid);
                 setHasSpunOnce(true);
-                setScore(sessionData.score);
-                setLevel(sessionData.level);
-                setSpinsRemaining(sessionData.spinsRemaining);
-                setIsSessionActive(sessionData.isActive);
-                if (sessionData.level > previousLevelRef.current && previousLevelRef.current > 0) {
+                setScore(prev => {
+                    if (spin.is666) return 0; // Economy Wipe
+                    const next = prev + spin.scoreGained;
+                    return next;
+                });
+                setLevel(spin.newLevel);
+                setSpinsRemaining(spin.spinsRemaining);
+                setIsSessionActive(spin.isActive);
+
+                if (spin.newLevel > previousLevelRef.current && previousLevelRef.current > 0) {
                     setShowLevelUp(true);
                     setTimeout(() => setShowLevelUp(false), 1600);
+                    let ticketGain = 1;
+                    console.log(`[handleSpin] Level Up! ${previousLevelRef.current} -> ${spin.newLevel}. Granting ${ticketGain} tickets.`);
+                    setTickets(prev => prev + ticketGain);
                 }
-                previousLevelRef.current = sessionData.level;
+                previousLevelRef.current = spin.newLevel;
                 setRelicCooldownRemaining(prev => Math.max(0, prev - 1));
                 setIsSpinning(false);
-                const th = await getLevelThreshold(sessionData.level);
+                setInventoryRefreshTrigger(prev => prev + 1);
+
+                // Fetch threshold and risk (still need these from contract)
+                const th = await getLevelThreshold(spin.newLevel);
                 setThreshold(th);
-                const prob = await get666Probability(sessionData.level);
+                const prob = await get666Probability(spin.newLevel);
                 setRisk(prob / 10);
-                if (sessionData.relicPendingEffect === 3) {
-                    setScoreMultiplier(2);
-                    scoreMultiplierRef.current = 2;
-                } else {
-                    setScoreMultiplier(1);
-                    scoreMultiplierRef.current = 1;
+
+                // Check for patterns and animations
+                const detectedPatterns = detectPatterns(spin.grid, undefined, scoreBonusesRef.current);
+                setPatterns(detectedPatterns);
+
+                if (spin.bibliaUsed) {
+                    // Check if discarded from event (default to true if event missing/failed)
+                    const discarded = events.bibliaDiscarded?.discarded ?? true;
+                    setBibliaDiscarded(discarded);
+                    setShowBibliaAnimation(true);
+                    loadScoreBonuses();
                 }
-                setTimeout(() => {
-                    if (result.bibliaUsed) {
-                        setShowBibliaAnimation(true);
-                        loadScoreBonuses();
+
+                if (spin.isJackpot) {
+                    playSound('jackpot');
+                }
+                const patternDuration = detectedPatterns.length * 600;
+                const sequenceDelay = Math.max(1000, patternDuration + 800);
+
+                setTimeout(async () => {
+                    // Check for CharmMinted event
+                    let hasCharm = false;
+                    if (events.charmMinted) {
+                        const info = await getCharmInfo(events.charmMinted.charmId);
+                        if (info) {
+                            setMintedCharmInfo(info);
+                            hasCharm = true;
+                        }
                     }
-                    const detectedPatterns = detectPatterns(result.grid, undefined, scoreBonusesRef.current);
-                    const currentMultiplier = scoreMultiplierRef.current;
-                    const multipliedPatterns = detectedPatterns.map(p => ({
-                        ...p,
-                        score: p.score * currentMultiplier
-                    }));
-                    setPatterns(multipliedPatterns);
-                    setScoreMultiplier(1);
-                    scoreMultiplierRef.current = 1;
-                    if (result.is666) {
+
+                    // Check Game Over Conditions (Only No Spins)
+                    if (spin.spinsRemaining <= 0) {
                         playSound('game-over');
-                        setTimeout(() => {
-                            setFinalScore(sessionData.score);
-                            setGameOverReason('666');
+                        // Calculate final balance: if 666 hit, it's 0. Otherwise current + gained.
+                        const finalBalance = spin.is666 ? 0 : (score + spin.scoreGained);
+                        setFinalScore(finalBalance);
+                        setFinalTotalScore(spin.newTotalScore);
+                        setGameOverReason('no_spins');
+
+                        if (hasCharm) {
+                            // 2. Show Charm Animation FIRST
+                            // The animation's onComplete will trigger setShowGameOver(true)
+                            setShowCharmAnimation(true);
+                        } else {
+                            // 3. Show Game Over IMMEDIATELY if no charm
                             setShowGameOver(true);
-                        }, 1500);
-                    } else if (result.isJackpot) {
-                        playSound('jackpot');
+                        }
+                    } else if (hasCharm) {
+                        setShowCharmAnimation(true);
                     }
-                    if (!result.is666 && sessionData.spinsRemaining <= 0) {
-                        setTimeout(() => {
-                            setFinalScore(sessionData.score);
-                            setGameOverReason('no_spins');
-                            setShowGameOver(true);
-                        }, 1000);
-                    }
-                }, 50);
-            };
-            setTimeout(pollForFreshData, 200);
+                }, sequenceDelay);
+            } else {
+                // If we got here, something weird happened (receipt ok but event missing).
+                console.error('SpinCompleted event not found in receipt events:', events);
+                setError("Spin data missing");
+                setIsSpinning(false);
+            }
         } catch (err) {
             console.error("Spin failed:", err);
             setError("Spin failed");
@@ -427,15 +465,20 @@ function GameContent() {
             }
             await loadSessionData();
         }
-    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, getLastSpinResult, loadSessionData]);
+    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, getLastSpinResult, getSessionData, loadSessionData, getLevelThreshold, get666Probability]);
 
-    // Handle sell confirmation from inline inventory
     const handleSellConfirm = async () => {
         if (!itemToSell || !sessionId || !account) return;
         setIsSelling(true);
         try {
-            await sellItem(Number(sessionId), itemToSell.item_id, 1, account);
-            setScore(prev => prev + itemToSell.sell_price);
+            const events = await sellItemHook(Number(sessionId), itemToSell.item_id);
+            const soldEvent = events.itemsSold[0];
+            if (soldEvent) {
+                setScore(soldEvent.newScore);
+            } else {
+                setScore(prev => prev + itemToSell.sell_price);
+            }
+
             setInventoryRefreshTrigger(prev => prev + 1);
             loadScoreBonuses();
             setItemToSell(null);
@@ -521,16 +564,24 @@ function GameContent() {
                         sessionId={Number(sessionId)}
                         controller={account}
                         currentScore={score}
+                        currentTickets={tickets}
                         onUpdateScore={setScore}
-                        onInventoryChange={() => setInventoryRefreshTrigger(prev => prev + 1)}
+                        onInventoryChange={() => {
+                            setInventoryRefreshTrigger(prev => prev + 1);
+                            pollSessionData();
+                        }}
+                        onPurchaseSuccess={(item) => setOptimisticItems(prev => [...prev, item])}
                     />
                     <InlineInventoryPanel
                         sessionId={Number(sessionId)}
                         controller={account}
                         currentScore={score}
+                        currentTickets={tickets}
                         onUpdateScore={setScore}
+                        onUpdateTickets={setTickets}
                         onItemClick={(item) => setItemToSell(item)}
                         refreshTrigger={inventoryRefreshTrigger}
+                        optimisticItems={optimisticItems}
                     />
                 </div>
 
@@ -580,6 +631,10 @@ function GameContent() {
                             score={score}
                             threshold={threshold}
                             sessionId={sessionId ? Number(sessionId) : undefined}
+                            refreshTrigger={inventoryRefreshTrigger}
+                            currentLuck={currentLuck}
+                            currentTickets={tickets}
+                            lastSpinPatternCount={patterns.length}
                         />
 
                         {/* Action Buttons - Below stats panel */}
@@ -600,7 +655,8 @@ function GameContent() {
                                                 .then(async () => {
                                                     setShowRelicActivation(true);
                                                     setRelicCooldownRemaining(equippedRelic.cooldown);
-                                                    await loadSessionData();
+                                                    setRelicCooldownRemaining(equippedRelic.cooldown);
+                                                    await pollSessionData();
                                                     // Update grid with jackpot result from relics like Mortis
                                                     const spinResult = await getLastSpinResult(Number(sessionId));
                                                     if (spinResult && spinResult.grid.length === 15) {
@@ -823,7 +879,11 @@ function GameContent() {
                     />
                 )}
                 {activeModal === 'info' && sessionId && (
-                    <InfoModal sessionId={Number(sessionId)} onClose={() => setActiveModal(null)} />
+                    <InfoModal
+                        sessionId={Number(sessionId)}
+                        onClose={() => setActiveModal(null)}
+                        optimisticItems={optimisticItems}
+                    />
                 )}
 
                 {/* Relic Selection Modal */}
@@ -843,7 +903,7 @@ function GameContent() {
                                 setEquippedRelic(relic);
                                 setRelicCooldownRemaining(0);
                                 setShowRelicModal(false);
-                                loadSessionData();
+                                pollSessionData();
                             } catch (err) {
                                 console.error(err);
                             } finally {
@@ -856,7 +916,7 @@ function GameContent() {
                 {/* Biblia Save Animation */}
                 <AnimatePresence>
                     {showBibliaAnimation && (
-                        <BibliaSaveAnimation onComplete={() => setShowBibliaAnimation(false)} />
+                        <BibliaSaveAnimation discarded={bibliaDiscarded} onComplete={() => setShowBibliaAnimation(false)} />
                     )}
                 </AnimatePresence>
 
@@ -868,11 +928,33 @@ function GameContent() {
                     />
                 )}
 
+                {/* Charm Mint Animation - Shows when player earns a charm on session end */}
+                {showCharmAnimation && mintedCharmInfo && (
+                    <CharmMintAnimation
+                        charmId={mintedCharmInfo.charm_id}
+                        charmName={mintedCharmInfo.name}
+                        charmImage={mintedCharmInfo.image}
+                        rarity={mintedCharmInfo.rarity}
+                        onComplete={() => {
+                            setShowCharmAnimation(false);
+                            setMintedCharmInfo(null);
+                            // Only open Game Over modal if the game actually ended
+                            if (gameOverReason) {
+                                setShowGameOver(true);
+                            }
+                        }}
+                    />
+                )}
+
                 {/* Game Over Modal */}
                 <GameOverModal
-                    isVisible={showGameOver}
+                    isVisible={showGameOver && !mintedCharmInfo}
                     reason={gameOverReason}
                     finalScore={finalScore}
+                    totalScore={finalTotalScore}
+                    sessionId={sessionId ? Number(sessionId) : undefined}
+                    level={level}
+                    chipsClaimed={chipsClaimed}
                     onBackToMenu={() => router.push("/")}
                 />
             </div>{/* End desktop-layout */}

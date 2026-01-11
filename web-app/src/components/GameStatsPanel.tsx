@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { DEFAULT_GAME_CONFIG, SYMBOL_INFO, SymbolType, SymbolConfig, PatternMultiplier } from '@/utils/GameConfig';
-import { getSessionItems, getItemInfo, ContractItem, ItemEffectType } from '@/utils/abyssContract';
+import { getSessionItems, getItemInfo, getSessionLuck, ContractItem, ItemEffectType, isCharmItem, getCharmIdFromItemId, getCharmInfo } from '@/utils/abyssContract';
 import Image from 'next/image';
 
 interface GameStatsPanelProps {
@@ -10,6 +10,10 @@ interface GameStatsPanelProps {
     score: number;
     threshold: number;
     sessionId?: number;
+    refreshTrigger?: number;
+    currentLuck?: number;
+    currentTickets?: number;
+    lastSpinPatternCount?: number;
 }
 
 // Map target_symbol strings to SymbolType
@@ -25,26 +29,89 @@ export default function GameStatsPanel({
     level,
     score,
     threshold,
-    sessionId
+    sessionId,
+    refreshTrigger = 0,
+    currentLuck,
+    currentTickets = 0,
+    lastSpinPatternCount = 0
 }: GameStatsPanelProps) {
     const [items, setItems] = useState<ContractItem[]>([]);
+    const [luck, setLuck] = useState<number>(0);
     const progress = Math.min((score / threshold) * 100, 100);
+
+    useEffect(() => {
+        if (typeof currentLuck !== 'undefined') {
+            setLuck(currentLuck);
+        } else if (sessionId) {
+            loadLuck();
+        }
+    }, [currentLuck, sessionId, refreshTrigger, lastSpinPatternCount, items]);
 
     useEffect(() => {
         if (sessionId) {
             loadItems();
         }
-    }, [sessionId]);
+    }, [sessionId, refreshTrigger]);
 
     async function loadItems() {
         try {
             const playerItems = await getSessionItems(sessionId!);
             const itemDetails = await Promise.all(
-                playerItems.map(pi => getItemInfo(pi.item_id))
+                playerItems.map(async (pi) => {
+                    if (isCharmItem(pi.item_id)) {
+                        const charmId = getCharmIdFromItemId(pi.item_id);
+                        const charmInfo = await getCharmInfo(charmId);
+                        if (charmInfo) {
+                            return {
+                                item_id: pi.item_id,
+                                name: charmInfo.name,
+                                description: charmInfo.description,
+                                price: charmInfo.shop_cost,
+                                sell_price: 0,
+                                effect_type: 7 as ItemEffectType, // CharmEffect
+                                effect_value: charmInfo.luck,
+                                target_symbol: ''
+                            } as ContractItem;
+                        }
+                    }
+                    return getItemInfo(pi.item_id);
+                })
             );
-            setItems(itemDetails);
+            // Filter out any potential nulls if getCharmInfo fails (though logic above returns getItemInfo promise or Charm object)
+            setItems(itemDetails.filter(Boolean));
         } catch (err) {
             console.error('Failed to load items for stats panel:', err);
+        }
+    }
+
+    async function loadLuck() {
+        try {
+            let sessionLuck = 0;
+            if (typeof currentLuck !== 'undefined') {
+                sessionLuck = currentLuck;
+            } else {
+                sessionLuck = await getSessionLuck(sessionId!);
+            }
+
+            // Calculate conditional bonuses
+            let conditionalBonus = 0;
+            items.forEach(item => {
+                // Ethereal Chain (Charm ID 12 -> Item ID 1012)
+                // Effect: +6 luck per pattern in last spin
+                if (item.item_id === 1012) {
+                    conditionalBonus += (6 * lastSpinPatternCount);
+                }
+
+                // Broken Mirror (Charm ID 3 -> Item ID 1003)
+                // Effect: +5 luck if last spin had no patterns
+                if (item.item_id === 1003 && lastSpinPatternCount === 0) {
+                    conditionalBonus += 5;
+                }
+            });
+
+            setLuck(sessionLuck + conditionalBonus);
+        } catch (err) {
+            console.error('Failed to load session luck:', err);
         }
     }
 
@@ -135,6 +202,68 @@ export default function GameStatsPanel({
                 </div>
             </div>
 
+            {/* Tickets & Luck Row */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                }}>
+                    <div style={{ position: 'relative', width: 28, height: 28 }}>
+                        <Image
+                            src="/images/ticket.png"
+                            alt="Tickets"
+                            fill
+                            style={{ objectFit: 'contain' }}
+                        />
+                    </div>
+                    <div style={{
+                        fontFamily: "'PressStart2P', monospace",
+                        fontSize: '14px',
+                        color: '#FF841C',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                    }}>
+                        {currentTickets}
+                    </div>
+                </div>
+
+                {luck > 0 && (
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: 'rgba(167, 139, 250, 0.1)',
+                        border: '1px solid rgba(167, 139, 250, 0.3)',
+                    }}>
+                        <div style={{
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                        }}>
+                            LUCK
+                        </div>
+                        <div style={{
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: '14px',
+                            textShadow: '0 0 8px rgba(167, 139, 250, 0.5)',
+                            color: '#A78BFA',
+                        }}>
+                            +{luck}
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* Symbol Values */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{
@@ -197,7 +326,7 @@ export default function GameStatsPanel({
                     })}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

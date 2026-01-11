@@ -1,17 +1,14 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
+import { useAbyssGame } from '@/hooks/useAbyssGame';
 import {
-    getSessionMarket,
     getItemInfo,
-    isMarketSlotPurchased,
-    getSessionInventoryCount,
-    getSessionItems,
-    buyItemFromMarket,
-    refreshMarket,
     ContractItem,
     SessionMarket,
-    ItemEffectType
+    ItemEffectType,
+    isCharmItem,
+    getCharmIdFromItemId,
+    getCharmInfo,
+    CharmInfo
 } from '@/utils/abyssContract';
 import { getItemImage } from '@/utils/itemImages';
 import Image from 'next/image';
@@ -21,26 +18,40 @@ interface InlineMarketPanelProps {
     sessionId: number;
     controller: any;
     currentScore: number;
+    currentTickets: number;
     onUpdateScore: (newScore: number) => void;
     onInventoryChange?: () => void;
+    onPurchaseSuccess?: (item: ContractItem) => void;
 }
 
 export default function InlineMarketPanel({
     sessionId,
     controller,
     currentScore,
+    currentTickets,
     onUpdateScore,
-    onInventoryChange
+    onInventoryChange,
+    onPurchaseSuccess
 }: InlineMarketPanelProps) {
     const [loading, setLoading] = useState(true);
     const [marketData, setMarketData] = useState<SessionMarket | null>(null);
     const [marketItems, setMarketItems] = useState<ContractItem[]>([]);
+    const [charmInfoMap, setCharmInfoMap] = useState<Map<number, CharmInfo>>(new Map());
     const [ownedItemIds, setOwnedItemIds] = useState<Set<number>>(new Set());
     const [inventoryCount, setInventoryCount] = useState(0);
     const [purchasedInCurrentMarket, setPurchasedInCurrentMarket] = useState<Set<number>>(new Set());
     const [refreshing, setRefreshing] = useState(false);
     const [purchasingSlot, setPurchasingSlot] = useState<number | null>(null);
     const [currentItemIndex, setCurrentItemIndex] = useState(0);
+
+    const {
+        getSessionMarket,
+        getSessionItems,
+        getSessionInventoryCount,
+        isMarketSlotPurchased,
+        buyItem,
+        refreshMarket
+    } = useAbyssGame(controller);
 
     useEffect(() => {
         if (sessionId) loadMarketData();
@@ -52,6 +63,8 @@ export default function InlineMarketPanel({
             const market = await getSessionMarket(sessionId);
             setMarketData(market);
 
+            if (!market) return; // Safety check
+
             const itemIds = [
                 market.item_slot_1,
                 market.item_slot_2,
@@ -61,8 +74,38 @@ export default function InlineMarketPanel({
                 market.item_slot_6,
             ];
 
-            const items = await Promise.all(itemIds.map(id => getItemInfo(id)));
+            // Fetch items and charms separately
+            const items: ContractItem[] = [];
+            const charmMap = new Map<number, CharmInfo>();
+
+            for (const id of itemIds) {
+                if (isCharmItem(id)) {
+                    // It's a charm - fetch from charm API
+                    const charmId = getCharmIdFromItemId(id);
+                    const charmInfo = await getCharmInfo(charmId);
+                    if (charmInfo) {
+                        charmMap.set(id, charmInfo);
+                        // Create a dummy ContractItem for compatibility
+                        items.push({
+                            item_id: id,
+                            name: charmInfo.name,
+                            description: charmInfo.description,
+                            price: charmInfo.shop_cost,
+                            sell_price: 0,
+                            effect_type: 7 as ItemEffectType, // LuckBoost marker
+                            effect_value: charmInfo.luck,
+                            target_symbol: charmInfo.rarity
+                        });
+                    }
+                } else {
+                    // Regular item
+                    const item = await getItemInfo(id);
+                    items.push(item);
+                }
+            }
+
             setMarketItems(items);
+            setCharmInfoMap(charmMap);
 
             const invCount = await getSessionInventoryCount(sessionId);
             setInventoryCount(invCount);
@@ -97,28 +140,89 @@ export default function InlineMarketPanel({
         if (!marketData || currentScore < refreshCost) return;
         setRefreshing(true);
         try {
-            await refreshMarket(sessionId, controller);
-            onUpdateScore(currentScore - refreshCost);
-            setPurchasedInCurrentMarket(new Set());
-            await loadMarketData();
-            setCurrentItemIndex(0);
+            // refreshMarket returns ParsedEvents
+            const events = await refreshMarket(sessionId);
+
+            const refreshEvent = events.marketRefreshed;
+            if (refreshEvent) {
+                // Optimistic Update using Event Data
+                const newScore = refreshEvent.newScore;
+                onUpdateScore(newScore);
+                setPurchasedInCurrentMarket(new Set());
+
+                // Update Market Data State
+                const newMarketData: SessionMarket = {
+                    // We don't have refresh_count from event, but we can increment local
+                    // session_id is irrelevant for display usually
+                    refresh_count: marketData.refresh_count + 1,
+                    item_slot_1: refreshEvent.slots[0],
+                    item_slot_2: refreshEvent.slots[1],
+                    item_slot_3: refreshEvent.slots[2],
+                    item_slot_4: refreshEvent.slots[3],
+                    item_slot_5: refreshEvent.slots[4],
+                    item_slot_6: refreshEvent.slots[5],
+                };
+                setMarketData(newMarketData);
+
+                // Fetch Info for new items directly
+                const items: ContractItem[] = [];
+                const charmMap = new Map<number, CharmInfo>();
+
+                for (const id of refreshEvent.slots) {
+                    if (isCharmItem(id)) {
+                        const charmId = getCharmIdFromItemId(id);
+                        // Try to get from existing map first? No, likely new.
+                        const charmInfo = await getCharmInfo(charmId);
+                        if (charmInfo) {
+                            charmMap.set(id, charmInfo);
+                            items.push({
+                                item_id: id,
+                                name: charmInfo.name,
+                                description: charmInfo.description,
+                                price: charmInfo.shop_cost,
+                                sell_price: 0,
+                                effect_type: 7 as ItemEffectType,
+                                effect_value: charmInfo.luck,
+                                target_symbol: charmInfo.rarity
+                            });
+                        }
+                    } else {
+                        // Regular item - check cache? simple fetch for now
+                        const item = await getItemInfo(id);
+                        items.push(item);
+                    }
+                }
+                setMarketItems(items);
+                setCharmInfoMap(charmMap);
+                setCurrentItemIndex(0);
+
+                // No need to call loadMarketData(); we have everything!
+            } else {
+                // Fallback if event missing (shouldn't happen with new contract)
+                await loadMarketData();
+            }
+
         } catch (e) {
             console.error("Refresh failed", e);
+            // On error, try to reload to be safe
+            await loadMarketData();
         } finally {
             setRefreshing(false);
         }
     }
 
     async function handleBuy(slot: number, item: ContractItem) {
-        if (currentScore < item.price) return;
+        if (currentTickets < item.price) return;
         setPurchasingSlot(slot);
         try {
-            await buyItemFromMarket(sessionId, slot, controller);
-            onUpdateScore(currentScore - item.price);
+            await buyItem(sessionId, slot);
+            // No score deduction for buying items anymore
+            // onUpdateScore(currentScore - item.price); // REMOVED
             setPurchasedInCurrentMarket(prev => new Set(prev).add(slot));
             setOwnedItemIds(prev => new Set(prev).add(item.item_id));
             setInventoryCount(prev => prev + 1);
             onInventoryChange?.();
+            onPurchaseSuccess?.(item);
         } catch (e) {
             console.error("Purchase failed", e);
         } finally {
@@ -131,10 +235,12 @@ export default function InlineMarketPanel({
 
     const currentItem = marketItems[currentItemIndex];
     const currentSlot = currentItemIndex + 1;
+    const isCurrentCharm = currentItem ? isCharmItem(currentItem.item_id) : false;
+    const currentCharmInfo = currentItem ? charmInfoMap.get(currentItem.item_id) : undefined;
     const isOwned = currentItem ? ownedItemIds.has(currentItem.item_id) : false;
     const wasPurchased = purchasedInCurrentMarket.has(currentSlot);
-    const isInventoryFull = inventoryCount >= 7 && !isOwned;
-    const canAfford = currentItem ? currentScore >= currentItem.price : false;
+    const isInventoryFull = inventoryCount >= 7 && !isOwned && !isCurrentCharm; // Charms don't use inventory
+    const canAfford = currentItem ? currentTickets >= currentItem.price : false;
     const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && !purchasingSlot;
 
     function getEffectDetails(item: ContractItem): string {
@@ -160,6 +266,15 @@ export default function InlineMarketPanel({
         }
     }
 
+    function getRarityColor(rarity: string): string {
+        switch (rarity) {
+            case 'Legendary': return '#FFD700';
+            case 'Epic': return '#A855F7';
+            case 'Rare': return '#3B82F6';
+            default: return '#9CA3AF';
+        }
+    }
+
     if (loading) {
         return (
             <div className="inline-market-panel">
@@ -171,23 +286,54 @@ export default function InlineMarketPanel({
     }
 
     return (
-        <div className="inline-market-panel">
-            <div className="panel-header">MARKET</div>
+        <div className={`inline-market-panel ${isCurrentCharm ? 'charm-mode' : ''}`}>
+            <div className={`panel-header ${isCurrentCharm ? 'charm-header' : ''}`}>
+                {isCurrentCharm ? 'CHARM' : 'MARKET'}
+            </div>
 
-            <div className="item-display">
+            <div className={`item-display ${isCurrentCharm ? 'charm-display' : ''}`}>
                 {wasPurchased ? (
                     <div className="sold-state">
                         <div className="item-image sold">
-                            <Image
-                                src={getItemImage(currentItem?.item_id || 1)}
-                                alt={currentItem?.name || "Item"}
-                                width={180}
-                                height={180}
-                                style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
-                            />
+                            {isCurrentCharm && currentCharmInfo ? (
+                                <Image
+                                    src={currentCharmInfo.image}
+                                    alt={currentCharmInfo.name}
+                                    width={180}
+                                    height={180}
+                                    style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
+                                />
+                            ) : (
+                                <Image
+                                    src={getItemImage(currentItem?.item_id || 1)}
+                                    alt={currentItem?.name || "Item"}
+                                    width={180}
+                                    height={180}
+                                    style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
+                                />
+                            )}
                         </div>
                         <div className="sold-badge">SOLD</div>
                     </div>
+                ) : isCurrentCharm && currentCharmInfo ? (
+                    <>
+                        <div className="charm-image">
+                            <Image
+                                src={currentCharmInfo.image}
+                                alt={currentCharmInfo.name}
+                                width={140}
+                                height={140}
+                                style={{ objectFit: 'contain' }}
+                            />
+                        </div>
+                        {currentCharmInfo.rarity && (
+                            <div className="charm-rarity" style={{ color: getRarityColor(currentCharmInfo.rarity) }}>
+                                {currentCharmInfo.rarity.toUpperCase()}
+                            </div>
+                        )}
+                        <div className="item-name charm-name">{currentCharmInfo.name}</div>
+                        <div className="charm-effect">{currentCharmInfo.effect || currentCharmInfo.description}</div>
+                    </>
                 ) : (
                     <>
                         <div className="item-image">
@@ -220,7 +366,18 @@ export default function InlineMarketPanel({
                     purchasingSlot === currentSlot ? "..." : (
                         isOwned ? "OWNED" :
                             isInventoryFull ? "FULL" :
-                                !canAfford ? `NEED ${currentItem?.price}` : `BUY ${currentItem?.price}`
+                                !currentItem ? "..." :
+                                    !canAfford ? (
+                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                            NEED {currentItem.price ?? '...'}
+                                            <Image src="/images/ticket.png" alt="Tickets" width={28} height={28} />
+                                        </span>
+                                    ) : (
+                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                            BUY {currentItem.price ?? '...'}
+                                            <Image src="/images/ticket.png" alt="Tickets" width={28} height={28} />
+                                        </span>
+                                    )
                     )
                 )}
             </button>
@@ -382,5 +539,36 @@ const styles = `
     @keyframes spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
+    }
+    
+    .charm-image {
+        width: 160px;
+        height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+    .charm-rarity {
+        font-family: 'PressStart2P', monospace;
+        font-size: 8px;
+        margin-bottom: 6px;
+    }
+
+    .charm-effect {
+        font-family: 'PressStart2P', monospace;
+        font-size: 8px;
+        color: #000;
+        text-align: center;
+        padding: 6px 10px;
+        background: #FF841C;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+    .charm-luck {
+        font-family: 'PressStart2P', monospace;
+        font-size: 10px;
+        color: #A78BFA;
+        margin-top: 8px;
     }
 `;
