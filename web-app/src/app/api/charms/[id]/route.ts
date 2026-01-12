@@ -26,7 +26,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost",
         effect_description: "+3 luck permanently",
         luck_value: 3,
-        shop_cost: 50
+        shop_cost: 1
     },
     "2": {
         name: "Faded Coin",
@@ -36,7 +36,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost",
         effect_description: "+4 luck permanently",
         luck_value: 4,
-        shop_cost: 65
+        shop_cost: 1
     },
     "3": {
         name: "Broken Mirror",
@@ -46,7 +46,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ConditionalLuckBoost",
         effect_description: "+5 luck when last spin had no patterns",
         luck_value: 5,
-        shop_cost: 70
+        shop_cost: 1
     },
     "4": {
         name: "Dusty Hourglass",
@@ -56,7 +56,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ConditionalLuckBoost",
         effect_description: "+4 luck when ≤2 spins remaining",
         luck_value: 4,
-        shop_cost: 75
+        shop_cost: 1
     },
     "5": {
         name: "Cracked Skull",
@@ -66,7 +66,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost",
         effect_description: "+5 luck permanently",
         luck_value: 5,
-        shop_cost: 80
+        shop_cost: 1
     },
     "6": {
         name: "Rusty Key",
@@ -76,7 +76,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ConditionalLuckBoost",
         effect_description: "+3 luck per item in inventory",
         luck_value: 3,
-        shop_cost: 85
+        shop_cost: 1
     },
     "7": {
         name: "Moth Wing",
@@ -86,7 +86,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost",
         effect_description: "+6 luck permanently",
         luck_value: 6,
-        shop_cost: 90
+        shop_cost: 1
     },
     "8": {
         name: "Bone Dice",
@@ -96,7 +96,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ConditionalLuckBoost",
         effect_description: "+8 luck when score < 100",
         luck_value: 8,
-        shop_cost: 100
+        shop_cost: 1
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -110,7 +110,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost",
         effect_description: "+10 luck permanently",
         luck_value: 10,
-        shop_cost: 150
+        shop_cost: 2
     },
     "10": {
         name: "Cursed Pendant",
@@ -120,7 +120,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "PatternRetrigger",
         effect_description: "Horizontal-3 patterns trigger twice",
         luck_value: 0,
-        shop_cost: 200
+        shop_cost: 2
     },
     "11": {
         name: "Shadow Lantern",
@@ -130,7 +130,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost",
         effect_description: "+8 luck, +4 more at level 5+",
         luck_value: 12,
-        shop_cost: 220
+        shop_cost: 2
     },
     "12": {
         name: "Ethereal Chain",
@@ -140,7 +140,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ConditionalLuckBoost",
         effect_description: "+6 luck per pattern in last spin",
         luck_value: 6,
-        shop_cost: 250
+        shop_cost: 2
     },
     "13": {
         name: "Void Compass",
@@ -150,7 +150,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ExtraSpinWithLuck",
         effect_description: "+1 spin with +15 luck",
         luck_value: 15,
-        shop_cost: 280
+        shop_cost: 3
     },
     "14": {
         name: "Demon's Tooth",
@@ -160,7 +160,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "PatternRetrigger",
         effect_description: "Diagonal patterns trigger twice",
         luck_value: 0,
-        shop_cost: 300
+        shop_cost: 3
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -174,7 +174,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost",
         effect_description: "+20 luck permanently",
         luck_value: 20,
-        shop_cost: 400
+        shop_cost: 4
     },
     "16": {
         name: "Phoenix Feather",
@@ -184,7 +184,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ExtraSpinWithLuck",
         effect_description: "+2 spins with +10 luck each",
         luck_value: 10,
-        shop_cost: 500
+        shop_cost: 4
     },
     "17": {
         name: "Reaper's Mark",
@@ -194,7 +194,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "PatternRetrigger",
         effect_description: "ALL patterns trigger twice",
         luck_value: 0,
-        shop_cost: 550
+        shop_cost: 5
     },
     "18": {
         name: "Chaos Orb",
@@ -204,7 +204,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ConditionalLuckBoost",
         effect_description: "+15 luck if 666 was blocked this session",
         luck_value: 15,
-        shop_cost: 600
+        shop_cost: 5
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -218,7 +218,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "LuckBoost + PatternRetrigger",
         effect_description: "+30 luck, Jackpot patterns trigger twice",
         luck_value: 30,
-        shop_cost: 1000
+        shop_cost: 6
     },
     "20": {
         name: "Void Heart",
@@ -228,7 +228,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "ExtraSpinWithLuck + Combo",
         effect_description: "+25 luck, +1 spin with +50 luck, patterns 1.5x",
         luck_value: 75,
-        shop_cost: 1200
+        shop_cost: 7
     }
 };
 
