@@ -230,15 +230,10 @@ mod Relic {
             let mut player_relics: Array<u256> = ArrayTrait::new();
 
             let mut i: u256 = 1;
-            loop {
-                if i > total_supply {
-                    break;
-                }
-
+            while i <= total_supply {
                 if self.erc721.owner_of(i) == player {
                     player_relics.append(i);
                 }
-
                 i += 1;
             }
 

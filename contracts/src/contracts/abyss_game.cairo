@@ -164,6 +164,7 @@ pub trait IAbyssGame<TContractState> {
     fn get_session_luck(self: @TContractState, session_id: u32) -> u32;
     fn get_charm_drop_chance(self: @TContractState, session_id: u32) -> u32;
     fn update_item_price(ref self: TContractState, item_id: u32, price: u32, sell_price: u32);
+    fn update_item_effect_value(ref self: TContractState, item_id: u32, new_value: u32);
 }
 
 
@@ -1372,6 +1373,15 @@ pub mod AbyssGame {
             assert(item.item_id == item_id, 'Item does not exist');
             item.price = price;
             item.sell_price = sell_price;
+            self.items.entry(item_id).write(item);
+        }
+
+        fn update_item_effect_value(ref self: ContractState, item_id: u32, new_value: u32) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            let mut item = self.items.entry(item_id).read();
+            assert(item.item_id == item_id, 'Item does not exist');
+            item.effect_value = new_value;
             self.items.entry(item_id).write(item);
         }
 
