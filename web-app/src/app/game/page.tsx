@@ -748,6 +748,8 @@ function GameContent() {
                         currentLuck={currentLuck}
                         currentTickets={tickets}
                         lastSpinPatternCount={patterns.length}
+                        optimisticItems={optimisticItems}
+                        hiddenItemIds={hiddenItems}
                     />
 
                     {/* Action Buttons - Below stats panel */}

@@ -27,6 +27,8 @@ const symbolNameToType: Record<string, SymbolType> = {
     'lemon': 'lemon',
 };
 
+const EMPTY_ARRAY: any[] = [];
+
 export default function GameStatsPanel({
     level,
     score,
@@ -36,8 +38,8 @@ export default function GameStatsPanel({
     currentLuck,
     currentTickets = 0,
     lastSpinPatternCount = 0,
-    optimisticItems = [],
-    hiddenItemIds = []
+    optimisticItems = EMPTY_ARRAY,
+    hiddenItemIds = EMPTY_ARRAY
 }: GameStatsPanelProps) {
     const [fetchedItems, setFetchedItems] = useState<ContractItem[]>([]);
     const [items, setItems] = useState<ContractItem[]>([]);
