@@ -126,13 +126,23 @@ function GameContent() {
         scoreMultiplierRef.current = scoreMultiplier;
     }, [scoreMultiplier]);
 
+    useEffect(() => {
+        loadScoreBonuses();
+    }, [optimisticItems]);
+
     const loadScoreBonuses = async () => {
         if (!sessionId) return;
         try {
             const items = await getSessionItems(Number(sessionId));
+
+            // Merge with optimistic items (deduplicated by ID to prevent double counting if not yet cleared)
+            const ownedIds = new Set(items.map(i => i.item_id));
+            const uniqueOptimistic = optimisticItems.filter(i => !ownedIds.has(i.item_id));
+            const allItems = [...items, ...uniqueOptimistic];
+
             const bonuses: ScoreBonuses = { seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 };
 
-            for (const item of items) {
+            for (const item of allItems) {
                 const info = await getItemInfo(item.item_id);
                 if (info.effect_type === ItemEffectType.DirectScoreBonus) {
                     const symbol = info.target_symbol.toLowerCase() as keyof ScoreBonuses;
