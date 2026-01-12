@@ -11,29 +11,29 @@ import { RpcProvider } from "starknet";
 // All 20 Soul Charms
 const ALL_CHARMS = [
     // Common (8)
-    { id: 1, name: "Whisper Stone", rarity: "Common", effect: "+3 Luck", description: "A stone that whispers secrets of fortune", luck: 3, cost: 50, image: "/images/charms/whisper_stone.png" },
-    { id: 2, name: "Faded Coin", rarity: "Common", effect: "+4 Luck", description: "An ancient coin worn smooth by time", luck: 4, cost: 65, image: "/images/charms/faded_coin.png" },
-    { id: 3, name: "Broken Mirror", rarity: "Common", effect: "+5 Luck (no pattern)", description: "See the future in its fragments", luck: 5, cost: 70, image: "/images/charms/broken_mirror.png" },
-    { id: 4, name: "Dusty Hourglass", rarity: "Common", effect: "+6 Luck (low spins)", description: "Time bends for the desperate", luck: 6, cost: 75, image: "/images/charms/dusty_hourglass.png" },
-    { id: 5, name: "Cracked Skull", rarity: "Common", effect: "+5 Luck", description: "Memento of a lucky gambler", luck: 5, cost: 80, image: "/images/charms/cracked_skull.png" },
-    { id: 6, name: "Rusty Key", rarity: "Common", effect: "+2 Luck/item", description: "Unlocks hidden potential", luck: 2, cost: 85, image: "/images/charms/rusty_key.png" },
-    { id: 7, name: "Moth Wing", rarity: "Common", effect: "+6 Luck", description: "Drawn to the light of fortune", luck: 6, cost: 90, image: "/images/charms/moth_wing.png" },
-    { id: 8, name: "Bone Dice", rarity: "Common", effect: "+8 Luck (low score)", description: "Roll with the ancestors", luck: 8, cost: 100, image: "/images/charms/bone_dice.png" },
+    { id: 1, name: "Whisper Stone", rarity: "Common", effect: "+3 Luck", description: "A stone that whispers secrets of fortune", luck: 3, cost: 1, image: "/images/charms/whisper_stone.png" },
+    { id: 2, name: "Faded Coin", rarity: "Common", effect: "+4 Luck", description: "An ancient coin worn smooth by time", luck: 4, cost: 1, image: "/images/charms/faded_coin.png" },
+    { id: 3, name: "Broken Mirror", rarity: "Common", effect: "+5 Luck (no pattern)", description: "See the future in its fragments", luck: 5, cost: 1, image: "/images/charms/broken_mirror.png" },
+    { id: 4, name: "Dusty Hourglass", rarity: "Common", effect: "+6 Luck (low spins)", description: "Time bends for the desperate", luck: 6, cost: 1, image: "/images/charms/dusty_hourglass.png" },
+    { id: 5, name: "Cracked Skull", rarity: "Common", effect: "+5 Luck", description: "Memento of a lucky gambler", luck: 5, cost: 1, image: "/images/charms/cracked_skull.png" },
+    { id: 6, name: "Rusty Key", rarity: "Common", effect: "+2 Luck/item", description: "Unlocks hidden potential", luck: 2, cost: 1, image: "/images/charms/rusty_key.png" },
+    { id: 7, name: "Moth Wing", rarity: "Common", effect: "+6 Luck", description: "Drawn to the light of fortune", luck: 6, cost: 1, image: "/images/charms/moth_wing.png" },
+    { id: 8, name: "Bone Dice", rarity: "Common", effect: "+8 Luck (low score)", description: "Roll with the ancestors", luck: 8, cost: 1, image: "/images/charms/bone_dice.png" },
     // Rare (4)
-    { id: 9, name: "Soul Fragment", rarity: "Rare", effect: "+10 Luck", description: "A piece of pure fortune", luck: 10, cost: 150, image: "/images/charms/soul_fragment.png" },
-    { id: 10, name: "Cursed Pendant", rarity: "Rare", effect: "H3 Retrigger x2", description: "Patterns repeat in the darkness", luck: 0, cost: 200, image: "/images/charms/cursed_pendant.png" },
-    { id: 11, name: "Shadow Lantern", rarity: "Rare", effect: "+8 Luck, +4 high level", description: "Illuminates hidden paths", luck: 8, cost: 220, image: "/images/charms/shadow_lantern.png" },
-    { id: 12, name: "Ethereal Chain", rarity: "Rare", effect: "+12 Luck (666 blocked)", description: "Bound by fate's protection", luck: 12, cost: 250, image: "/images/charms/ethereal_chain.png" },
+    { id: 9, name: "Soul Fragment", rarity: "Rare", effect: "+10 Luck", description: "A piece of pure fortune", luck: 10, cost: 2, image: "/images/charms/soul_fragment.png" },
+    { id: 10, name: "Cursed Pendant", rarity: "Rare", effect: "H3 Retrigger x2", description: "Patterns repeat in the darkness", luck: 0, cost: 2, image: "/images/charms/cursed_pendant.png" },
+    { id: 11, name: "Shadow Lantern", rarity: "Rare", effect: "+8 Luck, +4 high level", description: "Illuminates hidden paths", luck: 8, cost: 2, image: "/images/charms/shadow_lantern.png" },
+    { id: 12, name: "Ethereal Chain", rarity: "Rare", effect: "+12 Luck (666 blocked)", description: "Bound by fate's protection", luck: 12, cost: 2, image: "/images/charms/ethereal_chain.png" },
     // Epic (6)
-    { id: 13, name: "Void Compass", rarity: "Epic", effect: "+1 spin, +5 Luck", description: "Points to fortune in the void", luck: 5, cost: 280, image: "/images/charms/void_compass.png" },
-    { id: 14, name: "Demon's Tooth", rarity: "Epic", effect: "Diagonal Retrigger x2", description: "Bite through bad luck", luck: 0, cost: 300, image: "/images/charms/demons_tooth.png" },
-    { id: 15, name: "Abyssal Eye", rarity: "Epic", effect: "+20 Luck", description: "See all possibilities", luck: 20, cost: 400, image: "/images/charms/abyssal_eye.png" },
-    { id: 16, name: "Phoenix Feather", rarity: "Epic", effect: "+2 spins, +10 Luck", description: "Rise from the ashes", luck: 10, cost: 500, image: "/images/charms/phoenix_feather.png" },
-    { id: 17, name: "Reaper's Mark", rarity: "Epic", effect: "All patterns x2", description: "Death favors the bold", luck: 0, cost: 550, image: "/images/charms/reapers_mark.png" },
-    { id: 18, name: "Chaos Orb", rarity: "Epic", effect: "+15 Luck (666 blocked)", description: "Embrace the chaos", luck: 15, cost: 600, image: "/images/charms/chaos_orb.png" },
+    { id: 13, name: "Void Compass", rarity: "Epic", effect: "+1 spin, +5 Luck", description: "Points to fortune in the void", luck: 5, cost: 3, image: "/images/charms/void_compass.png" },
+    { id: 14, name: "Demon's Tooth", rarity: "Epic", effect: "Diagonal Retrigger x2", description: "Bite through bad luck", luck: 0, cost: 3, image: "/images/charms/demons_tooth.png" },
+    { id: 15, name: "Abyssal Eye", rarity: "Epic", effect: "+20 Luck", description: "See all possibilities", luck: 20, cost: 4, image: "/images/charms/abyssal_eye.png" },
+    { id: 16, name: "Phoenix Feather", rarity: "Epic", effect: "+2 spins, +10 Luck", description: "Rise from the ashes", luck: 10, cost: 4, image: "/images/charms/phoenix_feather.png" },
+    { id: 17, name: "Reaper's Mark", rarity: "Epic", effect: "All patterns x2", description: "Death favors the bold", luck: 0, cost: 5, image: "/images/charms/reapers_mark.png" },
+    { id: 18, name: "Chaos Orb", rarity: "Epic", effect: "+15 Luck (666 blocked)", description: "Embrace the chaos", luck: 15, cost: 5, image: "/images/charms/chaos_orb.png" },
     // Legendary (2)
-    { id: 19, name: "Soul of the Abyss", rarity: "Legendary", effect: "+30 Luck, Jackpot x2", description: "The heart of fortune itself", luck: 30, cost: 1000, image: "/images/charms/soul_of_abyss.png" },
-    { id: 20, name: "Void Heart", rarity: "Legendary", effect: "+25 Luck, +1 spin", description: "Become one with the void", luck: 25, cost: 1200, image: "/images/charms/void_heart.png" },
+    { id: 19, name: "Soul of the Abyss", rarity: "Legendary", effect: "+30 Luck, Jackpot x2", description: "The heart of fortune itself", luck: 30, cost: 6, image: "/images/charms/soul_of_abyss.png" },
+    { id: 20, name: "Void Heart", rarity: "Legendary", effect: "+25 Luck, +1 spin", description: "Become one with the void", luck: 25, cost: 7, image: "/images/charms/void_heart.png" },
 ];
 
 const RARITY_COLORS: Record<string, string> = {
@@ -284,8 +284,15 @@ export default function CharmsPage() {
                                         +{charm.luck} LUCK
                                     </span>
                                 )}
-                                <span>
-                                    {charm.cost} pts
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {charm.cost}
+                                    <Image
+                                        src="/images/ticket.png"
+                                        alt="Tickets"
+                                        width={14}
+                                        height={14}
+                                        style={{ objectFit: 'contain' }}
+                                    />
                                 </span>
                             </div>
                         </motion.div>
