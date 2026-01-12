@@ -14,6 +14,8 @@ interface GameStatsPanelProps {
     currentLuck?: number;
     currentTickets?: number;
     lastSpinPatternCount?: number;
+    optimisticItems?: ContractItem[];
+    hiddenItemIds?: number[];
 }
 
 // Map target_symbol strings to SymbolType
@@ -33,11 +35,23 @@ export default function GameStatsPanel({
     refreshTrigger = 0,
     currentLuck,
     currentTickets = 0,
-    lastSpinPatternCount = 0
+    lastSpinPatternCount = 0,
+    optimisticItems = [],
+    hiddenItemIds = []
 }: GameStatsPanelProps) {
+    const [fetchedItems, setFetchedItems] = useState<ContractItem[]>([]);
     const [items, setItems] = useState<ContractItem[]>([]);
     const [luck, setLuck] = useState<number>(0);
     const progress = Math.min((score / threshold) * 100, 100);
+
+    // Merge fetched and optimistic items
+    useEffect(() => {
+        const ownedIds = new Set(fetchedItems.map(i => i.item_id));
+        const uniqueOptimistic = optimisticItems.filter(i => !ownedIds.has(i.item_id));
+        const allItems = [...fetchedItems, ...uniqueOptimistic];
+        const filteredItems = allItems.filter(i => !hiddenItemIds.includes(i.item_id));
+        setItems(filteredItems);
+    }, [fetchedItems, optimisticItems, hiddenItemIds]);
 
     useEffect(() => {
         if (typeof currentLuck !== 'undefined') {
@@ -78,7 +92,7 @@ export default function GameStatsPanel({
                 })
             );
             // Filter out any potential nulls if getCharmInfo fails (though logic above returns getItemInfo promise or Charm object)
-            setItems(itemDetails.filter(Boolean));
+            setFetchedItems(itemDetails.filter(Boolean));
         } catch (err) {
             console.error('Failed to load items for stats panel:', err);
         }

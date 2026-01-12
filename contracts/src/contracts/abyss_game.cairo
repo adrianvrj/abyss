@@ -165,6 +165,7 @@ pub trait IAbyssGame<TContractState> {
     fn get_charm_drop_chance(self: @TContractState, session_id: u32) -> u32;
     fn update_item_price(ref self: TContractState, item_id: u32, price: u32, sell_price: u32);
     fn update_item_effect_value(ref self: TContractState, item_id: u32, new_value: u32);
+    fn initialize_items(ref self: TContractState);
 }
 
 
@@ -1385,6 +1386,12 @@ pub mod AbyssGame {
             self.items.entry(item_id).write(item);
         }
 
+        fn initialize_items(ref self: ContractState) {
+            let caller = get_caller_address();
+            assert(caller == self.admin.read(), 'Only admin');
+            InternalImpl::initialize_items(ref self);
+        }
+
         fn get_usd_cost_in_token(self: @ContractState, token: ContractAddress) -> u256 {
             InternalImpl::get_usd_cost_in_token(self, token)
         }
@@ -2531,11 +2538,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 1,
                         name: 'Chilly Pepper',
-                        description: '+5 points to seven',
+                        description: '+2 points to seven',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 5,
+                        effect_value: 2,
                         target_symbol: 'seven',
                     },
                 );
@@ -2586,11 +2593,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 2,
                         name: 'Milk',
-                        description: '+3 points to diamond',
+                        description: '+2 points to diamond',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 3,
+                        effect_value: 2,
                         target_symbol: 'diamond',
                     },
                 );
@@ -2624,11 +2631,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 3,
                         name: 'Magic Dice',
-                        description: '+8 points to cherry',
+                        description: '+3 points to cherry',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 8,
+                        effect_value: 3,
                         target_symbol: 'cherry',
                     },
                 );
@@ -2658,11 +2665,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 13,
                         name: 'Pig Bank',
-                        description: '+12 points to cherry',
+                        description: '+6 points to cherry',
                         price: 2,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 12,
+                        effect_value: 6,
                         target_symbol: 'cherry',
                     },
                 );
@@ -2692,11 +2699,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 20,
                         name: 'Smelly Boots',
-                        description: '+20 points to cherry',
+                        description: '+8 points to cherry',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 20,
+                        effect_value: 8,
                         target_symbol: 'cherry',
                     },
                 );
@@ -2713,11 +2720,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 4,
                         name: 'Old Cassette',
-                        description: '+6 points to lemon',
+                        description: '+2 points to lemon',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 6,
+                        effect_value: 2,
                         target_symbol: 'lemon',
                     },
                 );
@@ -2730,11 +2737,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 14,
                         name: 'Old Wig',
-                        description: '+4 points to lemon',
+                        description: '+3 points to lemon',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 4,
+                        effect_value: 3,
                         target_symbol: 'lemon',
                     },
                 );
@@ -2768,11 +2775,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 19,
                         name: 'Old Phone',
-                        description: '+10 points to coin',
+                        description: '+5 points to coin',
                         price: 2,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 10,
+                        effect_value: 5,
                         target_symbol: 'coin',
                     },
                 );
@@ -2971,11 +2978,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 25,
                         name: 'Hockey Mask',
-                        description: '+15 points to seven',
+                        description: '+11 points to seven',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 15,
+                        effect_value: 11,
                         target_symbol: 'seven',
                     },
                 );
@@ -2988,11 +2995,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 26,
                         name: 'Rune',
-                        description: '+12 points to diamond',
+                        description: '+9 points to diamond',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 12,
+                        effect_value: 9,
                         target_symbol: 'diamond',
                     },
                 );
@@ -3056,11 +3063,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 30,
                         name: 'Soul Contract',
-                        description: '+18 points to lemon',
+                        description: '+8 points to lemon',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 18,
+                        effect_value: 8,
                         target_symbol: 'lemon',
                     },
                 );
@@ -3090,11 +3097,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 32,
                         name: 'Memory Card',
-                        description: '+22 points to coin',
+                        description: '+10 points to coin',
                         price: 4,
                         sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 22,
+                        effect_value: 10,
                         target_symbol: 'coin',
                     },
                 );
@@ -3111,11 +3118,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 33,
                         name: 'Ticket',
-                        description: '+25 points to seven',
+                        description: '+12 points to seven',
                         price: 4,
                         sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 25,
+                        effect_value: 12,
                         target_symbol: 'seven',
                     },
                 );
@@ -3149,11 +3156,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 35,
                         name: 'Fake Dollar',
-                        description: '+18 points to diamond',
+                        description: '+12 points to diamond',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 18,
+                        effect_value: 12,
                         target_symbol: 'diamond',
                     },
                 );
@@ -3204,11 +3211,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 38,
                         name: 'Pocket Watch',
-                        description: '+28 points to lemon',
+                        description: '+12 points to lemon',
                         price: 4,
                         sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 28,
+                        effect_value: 12,
                         target_symbol: 'lemon',
                     },
                 );
@@ -3225,11 +3232,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 39,
                         name: 'Knight Helmet',
-                        description: '+5 points to coin',
+                        description: '+2 points to coin',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 5,
+                        effect_value: 2,
                         target_symbol: 'coin',
                     },
                 );
@@ -3244,7 +3251,7 @@ pub mod AbyssGame {
                     Item {
                         item_id: 40,
                         name: 'La Biblia',
-                        description: 'Protects from 666 once',
+                        description: 'Protects from 666 pattern',
                         price: 3,
                         sell_price: 1,
                         effect_type: 6, // Special: 666 Protection (new type)
@@ -3347,9 +3354,6 @@ pub mod AbyssGame {
             self.session_markets.entry(session_id).write(market);
         }
 
-        /// Generate a market slot item - may be a regular item or a charm
-        /// Charms use item_id >= 1000 (charm_id = item_id - 1000)
-        /// Only shows charms that the player actually owns
         fn generate_market_slot_item(
             self: @ContractState, session_id: u32, nonce: u64, slot: u32,
         ) -> u32 {
