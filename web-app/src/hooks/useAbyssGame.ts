@@ -60,7 +60,7 @@ export function useAbyssGame(account: any | null) {
             const receipt = await waiter.waitForTransaction(
                 txHash,
                 {
-                    retryInterval: 200, // CHECK EVERY 200ms
+                    retryInterval: 100, // CHECK EVERY 200ms
                     successStates: ["PRE_CONFIRMED", "ACCEPTED_ON_L2", "ACCEPTED_ON_L1"]
                 }
             );
@@ -104,11 +104,7 @@ export function useAbyssGame(account: any | null) {
                 }
             ]);
 
-            await waitForPreConfirmation(tx.transaction_hash);
-
-            // We can't easily get the return value (session ID) from the transaction execution itself 
-            // without parsing internal transaction events or assuming it's the next ID.
-            // For now, returning 1 to signal success, caller should refetch or assume latest.
+            await provider.waitForTransaction(tx.transaction_hash);
             return 1;
         } catch (err) {
             console.error("Create session error:", err);

@@ -513,7 +513,7 @@ pub mod AbyssGame {
                 total_spins: 0, // No spins performed yet 
                 luck: 0,
                 blocked_666_this_session: false,
-                tickets: 2,
+                tickets: 4,
             };
             self.sessions.entry(session_id).write(new_session);
             let session_count = self.player_sessions_count.entry(player_address).read();
@@ -785,7 +785,7 @@ pub mod AbyssGame {
                 let refresh_cost = self.get_refresh_cost(session_id);
                 assert(session.score >= refresh_cost, 'Insufficient score');
                 session.score -= refresh_cost;
-                session.total_score -= refresh_cost;
+                session.total_score = session.score; // Mirror
             }
 
             self.sessions.entry(session_id).write(session);
@@ -1061,23 +1061,27 @@ pub mod AbyssGame {
                 session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
             }
             let new_score = session.score + score;
-            let new_total_score = session.total_score + score;
             session.score = new_score;
-            session.total_score = new_total_score;
-            let threshold = Self::get_level_threshold(@self, session.level);
-            if session.total_score >= threshold {
+            session.total_score = new_score; // Mirror for ABI compatibility
+            loop {
+                // Check if current score meets threshold for NEXT level
+                let threshold = Self::get_level_threshold(@self, session.level);
+                if session.score < threshold {
+                    break;
+                }
+
+                // Level Up!
                 session.level += 1;
-                // Level is now the NEW level
-                // Difficulty increase: Always grant 1 ticket per level
+
+                // Rewards
                 let gain: u32 = 1;
                 session.tickets += gain;
                 let spin_bonus = InternalImpl::get_inventory_spin_bonus(@self, session_id);
                 session.spins_remaining = 5 + spin_bonus;
             }
-            // 666 Economy Wipe
             if is_666 {
-                session.score = 0; // Wipe score
-                // Do NOT end session.
+                session.score = 0;
+                session.total_score = 0;
             }
             if session.is_active && session.spins_remaining == 0 {
                 session.is_active = false;
@@ -1085,7 +1089,7 @@ pub mod AbyssGame {
 
             // Auto-mint CHIP and Soul Charm when session ends
             if !session.is_active && !session.chips_claimed {
-                let base_chips = session.total_score / 20;
+                let base_chips = session.score / 20;
                 let emission_rate = self.chip_emission_rate.read();
                 let multiplier = self.chip_boost_multiplier.read();
                 let chip_amount: u256 = (base_chips * emission_rate * multiplier).into()
@@ -1103,7 +1107,7 @@ pub mod AbyssGame {
                 let charm_nft_addr = self.charm_nft_address.read();
                 if charm_nft_addr.is_non_zero() {
                     // Calculate mint probability: min(score / 125, 50)% + luck bonus
-                    let charm_score = session.total_score;
+                    let charm_score = session.score;
                     let base_chance = charm_score / 125;
                     let luck_bonus = session.luck; // Luck from equipped charms
                     let total_chance: u32 = if base_chance + luck_bonus > 50 {
@@ -1218,7 +1222,7 @@ pub mod AbyssGame {
             assert(!session.chips_claimed, 'Already claimed');
 
             // Calculate CHIP amount: floor(score / 20) * emission_rate * multiplier
-            let base_chips = session.total_score / 20;
+            let base_chips = session.score / 20;
             let emission_rate = self.chip_emission_rate.read();
             let multiplier = self.chip_boost_multiplier.read();
             let chip_amount: u256 = (base_chips * emission_rate * multiplier).into()
@@ -1305,7 +1309,7 @@ pub mod AbyssGame {
                 return 0;
             }
 
-            let base_chips = session.total_score / 20;
+            let base_chips = session.score / 20;
             let emission_rate = self.chip_emission_rate.read();
             let multiplier = self.chip_boost_multiplier.read();
             (base_chips * emission_rate * multiplier).into() * 1_000_000_000_000_000_000
@@ -2061,8 +2065,10 @@ pub mod AbyssGame {
                 4
             } else if symbol == super::SymbolType::COIN {
                 3
+            } else if symbol == super::SymbolType::LEMON {
+                2
             } else {
-                2 // Lemon
+                0
             }
         }
 
@@ -2081,8 +2087,10 @@ pub mod AbyssGame {
                 bc
             } else if symbol == super::SymbolType::COIN {
                 b_coin
+            } else if symbol == super::SymbolType::LEMON {
+                bl
             } else {
-                bl // Lemon
+                0
             };
 
             base_score + bonus
@@ -2404,7 +2412,7 @@ pub mod AbyssGame {
 
         /// Update the leaderboard only if this is a new best score for the session
         fn update_leaderboard_if_better(ref self: ContractState, session: GameSession) {
-            let new_score = session.total_score;
+            let new_score = session.score;
             let new_level = session.level;
 
             // Check if this session already has a better score in the leaderboard

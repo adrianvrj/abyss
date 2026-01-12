@@ -476,9 +476,10 @@ function GameContent() {
             const events = await sellItemHook(Number(sessionId), itemToSell.item_id);
             const soldEvent = events.itemsSold[0];
             if (soldEvent) {
-                setScore(soldEvent.newScore);
+                // setScore(soldEvent.newScore); // REMOVED - Sales give Tickets
+                setTickets(prev => prev + itemToSell.sell_price);
             } else {
-                setScore(prev => prev + itemToSell.sell_price);
+                setTickets(prev => prev + itemToSell.sell_price);
             }
 
             setInventoryRefreshTrigger(prev => prev + 1);
@@ -569,6 +570,7 @@ function GameContent() {
                         currentScore={score}
                         currentTickets={tickets}
                         onUpdateScore={setScore}
+                        onUpdateTickets={setTickets}
                         onInventoryChange={() => {
                             setInventoryRefreshTrigger(prev => prev + 1);
                             pollSessionData();
@@ -1427,7 +1429,8 @@ function GameContent() {
                         bottom: 0;
                         left: 0;
                         width: 100%;
-                        height: 60px;
+                        height: 85px;
+                        padding-bottom: 15px;
                         background: #000;
                         display: flex;
                         justify-content: space-around;

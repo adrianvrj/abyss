@@ -20,6 +20,7 @@ interface InlineMarketPanelProps {
     currentScore: number;
     currentTickets: number;
     onUpdateScore: (newScore: number) => void;
+    onUpdateTickets?: (newTickets: number) => void;
     onInventoryChange?: () => void;
     onPurchaseSuccess?: (item: ContractItem) => void;
 }
@@ -30,6 +31,7 @@ export default function InlineMarketPanel({
     currentScore,
     currentTickets,
     onUpdateScore,
+    onUpdateTickets,
     onInventoryChange,
     onPurchaseSuccess
 }: InlineMarketPanelProps) {
@@ -215,9 +217,8 @@ export default function InlineMarketPanel({
         if (currentTickets < item.price) return;
         setPurchasingSlot(slot);
         try {
+            if (onUpdateTickets) onUpdateTickets(currentTickets - item.price);
             await buyItem(sessionId, slot);
-            // No score deduction for buying items anymore
-            // onUpdateScore(currentScore - item.price); // REMOVED
             setPurchasedInCurrentMarket(prev => new Set(prev).add(slot));
             setOwnedItemIds(prev => new Set(prev).add(item.item_id));
             setInventoryCount(prev => prev + 1);
@@ -225,6 +226,7 @@ export default function InlineMarketPanel({
             onPurchaseSuccess?.(item);
         } catch (e) {
             console.error("Purchase failed", e);
+            if (onUpdateTickets) onUpdateTickets(currentTickets);
         } finally {
             setPurchasingSlot(null);
         }
@@ -370,12 +372,12 @@ export default function InlineMarketPanel({
                                     !canAfford ? (
                                         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                             NEED {currentItem.price ?? '...'}
-                                            <Image src="/images/ticket.png" alt="Tickets" width={28} height={28} />
+                                            <Image src="/images/ticket.png" alt="Tickets" width={18} height={9} />
                                         </span>
                                     ) : (
                                         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                             BUY {currentItem.price ?? '...'}
-                                            <Image src="/images/ticket.png" alt="Tickets" width={28} height={28} />
+                                            <Image src="/images/ticket.png" alt="Tickets" width={18} height={9} />
                                         </span>
                                     )
                     )

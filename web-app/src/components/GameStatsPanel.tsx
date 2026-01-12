@@ -219,7 +219,7 @@ export default function GameStatsPanel({
                     padding: '8px 12px',
                     borderRadius: '6px',
                 }}>
-                    <div style={{ position: 'relative', width: 28, height: 28 }}>
+                    <div style={{ position: 'relative', width: 36, height: 28 }}>
                         <Image
                             src="/images/ticket.png"
                             alt="Tickets"

@@ -218,7 +218,7 @@ export default function SessionsPage() {
         setShowPayment(false);
         try {
             await createSession(selectedToken);
-            await loadSessions();
+            loadSessions();
         } catch (error) {
             console.error("Failed to create session:", error);
         } finally {
