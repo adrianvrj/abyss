@@ -293,64 +293,85 @@ export default function InlineMarketPanel({
                 {isCurrentCharm ? 'CHARM' : 'MARKET'}
             </div>
 
-            <div className={`item-display ${isCurrentCharm ? 'charm-display' : ''}`}>
-                {wasPurchased ? (
-                    <div className="sold-state">
-                        <div className="item-image sold">
-                            {isCurrentCharm && currentCharmInfo ? (
-                                <Image
-                                    src={currentCharmInfo.image}
-                                    alt={currentCharmInfo.name}
-                                    width={180}
-                                    height={180}
-                                    style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
-                                />
+            <div className={`item-display ${isCurrentCharm ? 'charm-display' : ''}`} style={{ position: 'relative', overflow: 'hidden' }}>
+                {marketItems.map((item, index) => {
+                    const isVisible = index === currentItemIndex;
+                    const slot = index + 1;
+                    const isPurchasedSlot = purchasedInCurrentMarket.has(slot);
+                    const isItemCharm = isCharmItem(item.item_id);
+                    const charmInfo = charmInfoMap.get(item.item_id);
+
+                    return (
+                        <div key={`${item.item_id}-${index}`} style={{
+                            display: isVisible ? 'flex' : 'none',
+                            width: '100%',
+                            height: '100%',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            {isPurchasedSlot ? (
+                                <div className="sold-state">
+                                    <div className="item-image sold">
+                                        {isItemCharm && charmInfo ? (
+                                            <Image
+                                                src={charmInfo.image}
+                                                alt={charmInfo.name}
+                                                width={180}
+                                                height={180}
+                                                style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
+                                            />
+                                        ) : (
+                                            <Image
+                                                src={getItemImage(item.item_id)}
+                                                alt={item.name}
+                                                width={180}
+                                                height={180}
+                                                style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="sold-badge">SOLD</div>
+                                </div>
+                            ) : isItemCharm && charmInfo ? (
+                                <>
+                                    <div className="charm-image">
+                                        <Image
+                                            src={charmInfo.image}
+                                            alt={charmInfo.name}
+                                            width={140}
+                                            height={140}
+                                            priority={index === 0} // Priority for first item
+                                            style={{ objectFit: 'contain' }}
+                                        />
+                                    </div>
+                                    {charmInfo.rarity && (
+                                        <div className="charm-rarity" style={{ color: getRarityColor(charmInfo.rarity) }}>
+                                            {charmInfo.rarity.toUpperCase()}
+                                        </div>
+                                    )}
+                                    <div className="item-name charm-name">{charmInfo.name}</div>
+                                    <div className="charm-effect">{charmInfo.effect || charmInfo.description}</div>
+                                </>
                             ) : (
-                                <Image
-                                    src={getItemImage(currentItem?.item_id || 1)}
-                                    alt={currentItem?.name || "Item"}
-                                    width={180}
-                                    height={180}
-                                    style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
-                                />
+                                <>
+                                    <div className="item-image">
+                                        <Image
+                                            src={getItemImage(item.item_id)}
+                                            alt={item.name}
+                                            width={180}
+                                            height={180}
+                                            priority={index === 0} // Priority for first item
+                                            style={{ objectFit: 'contain' }}
+                                        />
+                                    </div>
+                                    <div className="item-name">{item.name}</div>
+                                    <div className="effect-badge">{getEffectDetails(item)}</div>
+                                </>
                             )}
                         </div>
-                        <div className="sold-badge">SOLD</div>
-                    </div>
-                ) : isCurrentCharm && currentCharmInfo ? (
-                    <>
-                        <div className="charm-image">
-                            <Image
-                                src={currentCharmInfo.image}
-                                alt={currentCharmInfo.name}
-                                width={140}
-                                height={140}
-                                style={{ objectFit: 'contain' }}
-                            />
-                        </div>
-                        {currentCharmInfo.rarity && (
-                            <div className="charm-rarity" style={{ color: getRarityColor(currentCharmInfo.rarity) }}>
-                                {currentCharmInfo.rarity.toUpperCase()}
-                            </div>
-                        )}
-                        <div className="item-name charm-name">{currentCharmInfo.name}</div>
-                        <div className="charm-effect">{currentCharmInfo.effect || currentCharmInfo.description}</div>
-                    </>
-                ) : (
-                    <>
-                        <div className="item-image">
-                            <Image
-                                src={getItemImage(currentItem?.item_id || 1)}
-                                alt={currentItem?.name || "Item"}
-                                width={180}
-                                height={180}
-                                style={{ objectFit: 'contain' }}
-                            />
-                        </div>
-                        <div className="item-name">{currentItem?.name}</div>
-                        <div className="effect-badge">{currentItem && getEffectDetails(currentItem)}</div>
-                    </>
-                )}
+                    );
+                })}
             </div>
 
             <div className="carousel-nav">

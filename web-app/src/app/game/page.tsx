@@ -325,20 +325,49 @@ function GameContent() {
         }
     };
 
-    const playSound = (soundName: 'spin' | 'win' | 'jackpot' | 'game-over', durationMs?: number): HTMLAudioElement | null => {
-        const audio = new Audio(`/sounds/${soundName}${soundName === 'win' ? '.wav' : '.mp3'}`);
-        audio.volume = 0.5;
-        audio.loop = soundName === 'spin';
-        audio.play().catch(e => console.error("Audio play failed", e));
+    // Cache audio instances to improve performance and mobile support
+    const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
-        if (durationMs) {
-            setTimeout(() => {
-                audio.pause();
-                audio.currentTime = 0;
-            }, durationMs);
+    const getCachedAudio = (soundName: string): HTMLAudioElement => {
+        if (!audioCacheRef.current.has(soundName)) {
+            const audio = new Audio(`/sounds/${soundName}${soundName === 'win' ? '.wav' : '.mp3'}`);
+            audio.preload = 'auto';
+            audioCacheRef.current.set(soundName, audio);
         }
+        return audioCacheRef.current.get(soundName)!;
+    };
 
-        return audio;
+    const playSound = (soundName: 'spin' | 'win' | 'jackpot' | 'game-over', durationMs?: number): HTMLAudioElement | null => {
+        try {
+            const audio = getCachedAudio(soundName);
+            audio.volume = 0.5;
+            audio.loop = soundName === 'spin';
+
+            // Reset if already playing (except spin which we might want to just ensure is playing)
+            if (soundName !== 'spin') {
+                audio.currentTime = 0;
+            }
+
+            // Promise handling for play() which can be rejected by browsers
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.warn(`Audio play failed for ${soundName}:`, error);
+                });
+            }
+
+            if (durationMs) {
+                setTimeout(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }, durationMs);
+            }
+
+            return audio;
+        } catch (e) {
+            console.error("Audio system error:", e);
+            return null;
+        }
     };
 
     // Ref to hold current spin sound so we can stop it
