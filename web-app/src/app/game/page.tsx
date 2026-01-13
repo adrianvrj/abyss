@@ -7,7 +7,7 @@ import { useTransactionCart } from "@/hooks/useTransactionCart";
 import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import SlotGrid from "@/components/SlotGrid";
 import { useRouter } from "next/navigation";
-import { FaShop, FaBoxOpen, FaCircleQuestion, FaHouse } from "react-icons/fa6";
+import { FaShop, FaBoxOpen, FaCircleQuestion, FaHouse, FaSkullCrossbones } from "react-icons/fa6";
 import { GiCrystalGrowth } from "react-icons/gi";
 
 
@@ -586,7 +586,8 @@ function GameContent() {
                 level={level}
                 threshold={threshold}
                 spinsRemaining={spinsRemaining}
-                risk={risk}
+                score={score}
+                tickets={tickets}
                 onExit={() => router.push('/')}
             />
 
@@ -684,10 +685,11 @@ function GameContent() {
                             className="slot-machine-image"
                         />
 
-                        {/* Score Display - Relative to wrapper */}
-                        <div className="score-display">
-                            <span className="score-value">{score}</span>
-                            <span className="score-label">PTS</span>
+                        {/* 666 Risk Display - Relative to wrapper */}
+                        <div className="score-display" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                            <span className="score-value" style={{ color: '#FF841C' }}>666</span>
+                            <Image src="/images/skull_danger.png" alt="Danger" width={24} height={24} />
+                            <span className="score-value" style={{ color: '#FF841C' }}>{risk.toFixed(1)}%</span>
                         </div>
 
                         {/* Grid Overlay - Relative to wrapper */}
@@ -1103,6 +1105,9 @@ function GameContent() {
                     .right-sidebar {
                         display: flex;
                     }
+                    .game-hud {
+                        display: none !important;
+                    }
                 }
 
                 .stats-bar {
@@ -1187,7 +1192,7 @@ function GameContent() {
 
                 .score-value {
                     font-family: 'PressStart2P', monospace;
-                    font-size: 4vh; /* Scale with height since machine scales with height */
+                    font-size: 1.5vw; /* Scale with height since machine scales with height */
                     color: #FF841C;
                     text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
                 }
@@ -1422,10 +1427,6 @@ function GameContent() {
                         width: 100%;
                         height: auto;
                         transform: none;
-                    }
-
-                    .score-value {
-                        font-size: 5vw;
                     }
 
                     .stats-bar {
