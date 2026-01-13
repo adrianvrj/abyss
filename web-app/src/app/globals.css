@@ -50,6 +50,10 @@ body {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background-image: url('/images/bg-desktop.png');
   background-size: cover;
   background-position: center;

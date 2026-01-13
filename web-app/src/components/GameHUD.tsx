@@ -29,8 +29,8 @@ export default function GameHUD({
                     display: flex;
                     justify-content: center;
                     align-items: center;
-                    gap: 4px;
-                    padding: 8px 8px 8px 50px;
+                    gap: 8px;
+                    padding: 10px 10px 10px 50px;
                     background: rgba(0, 0, 0, 0.9);
                     z-index: 1000;
                 }
@@ -38,22 +38,22 @@ export default function GameHUD({
                     display: flex;
                     flex-direction: column;
                     align-items: center;
-                    padding: 2px 6px;
+                    padding: 4px 8px;
                     min-width: auto;
                 }
                 .game-hud .stat-label {
                     font-family: 'PressStart2P', monospace;
-                    font-size: 6px;
+                    font-size: 8px;
                     color: rgba(255, 255, 255, 0.5);
-                    margin-bottom: 2px;
+                    margin-bottom: 3px;
                 }
                 .game-hud .stat-value {
                     font-family: 'PressStart2P', monospace;
-                    font-size: 10px;
+                    font-size: 12px;
                     color: #fff;
                     display: flex;
                     align-items: center;
-                    gap: 3px;
+                    gap: 4px;
                 }
                 @media (min-width: 1280px) {
                     .game-hud {

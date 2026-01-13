@@ -1055,6 +1055,7 @@ function GameContent() {
                 .game-container {
                     width: 100vw;
                     height: 100vh;
+                    height: 100dvh; /* Dynamic viewport height for mobile */
                     overflow: hidden;
                     position: relative;
                     display: flex;
