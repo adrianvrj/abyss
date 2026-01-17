@@ -38,22 +38,38 @@ export interface ScoreBonuses {
 
 const DEFAULT_BONUSES: ScoreBonuses = { seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 };
 
-function calculateScore(symbolId: number, patternType: PatternType, symbolCount: number, config: GameConfig, bonuses: ScoreBonuses = DEFAULT_BONUSES): number {
+function calculateScore(symbolId: number, patternType: PatternType, symbolCount: number, config: GameConfig, bonuses: ScoreBonuses = DEFAULT_BONUSES, symbolScores?: number[]): number {
     const symbolType = getSymbolType(symbolId);
     const symbolConfig = config.symbols.find(s => s.type === symbolType);
     const multiplierConfig = config.patternMultipliers.find(pm => pm.type === patternType);
 
     if (!symbolConfig || !multiplierConfig) return 0;
 
-    // Get bonus for this symbol type
-    const bonus = bonuses[symbolType as keyof ScoreBonuses] || 0;
+    let baseScore = 0;
 
-    // Logic: ((Symbol Points + Bonus) * Count) * Pattern Multiplier
-    const baseScore = (symbolConfig.points + bonus) * symbolCount;
+    // If dynamic symbolScores are provided, use them directly (they include cumulative upgrades)
+    if (symbolScores && symbolScores.length === 5) {
+        // Map symbol types to score indices: 0: seven, 1: diamond, 2: cherry, 3: coin, 4: lemon
+        const scoreIndices: Record<string, number> = {
+            'seven': 0, 'diamond': 1, 'cherry': 2, 'coin': 3, 'lemon': 4
+        };
+        const index = scoreIndices[symbolType] ?? -1;
+        if (index >= 0) {
+            baseScore = symbolScores[index] * symbolCount;
+        } else {
+            // Fallback for symbols not in the upgradable list (e.g. if any)
+            baseScore = symbolConfig.points * symbolCount;
+        }
+    } else {
+        // Fallback to old logic: ((Symbol Points + Bonus) * Count)
+        const bonus = bonuses[symbolType as keyof ScoreBonuses] || 0;
+        baseScore = (symbolConfig.points + bonus) * symbolCount;
+    }
+
     return Math.floor(baseScore * multiplierConfig.multiplier);
 }
 
-export function detectPatterns(flatGrid: number[], config: GameConfig = DEFAULT_GAME_CONFIG, bonuses: ScoreBonuses = DEFAULT_BONUSES): Pattern[] {
+export function detectPatterns(flatGrid: number[], config: GameConfig = DEFAULT_GAME_CONFIG, bonuses: ScoreBonuses = DEFAULT_BONUSES, symbolScores?: number[]): Pattern[] {
     const grid = convertToMatrix(flatGrid);
     const patterns: Pattern[] = [];
 
@@ -158,7 +174,7 @@ export function detectPatterns(flatGrid: number[], config: GameConfig = DEFAULT_
 
     // Calculate Scores & Multipliers
     return patterns.map(p => {
-        const score = calculateScore(p.symbolId, p.type, p.positions.length, config, bonuses);
+        const score = calculateScore(p.symbolId, p.type, p.positions.length, config, bonuses, symbolScores);
         const mult = config.patternMultipliers.find(pm => pm.type === p.type)?.multiplier || 0;
         return { ...p, score, multiplier: mult };
     });

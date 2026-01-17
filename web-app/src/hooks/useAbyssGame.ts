@@ -24,6 +24,7 @@ export interface SessionData {
     luck: number;
     blocked666: boolean;
     tickets: number;
+    symbolScores: number[];
 }
 
 export interface SpinResult {
@@ -280,6 +281,13 @@ export function useAbyssGame(account: any | null) {
                     luck: Number(result[15]),
                     blocked666: Number(result[16]) === 1,
                     tickets: Number(result[17]),
+                    symbolScores: [
+                        Number(result[18]),
+                        Number(result[19]),
+                        Number(result[20]),
+                        Number(result[21]),
+                        Number(result[22]),
+                    ]
                 };
             }
             return null;

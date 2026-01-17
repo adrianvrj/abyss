@@ -14,6 +14,7 @@ export interface SpinCompletedEvent {
     isJackpot: boolean;
     bibliaUsed: boolean;
     currentLuck: number;
+    symbolScores: number[];
 }
 
 export interface ItemPurchasedEvent {
@@ -123,6 +124,13 @@ function parseSpinCompletedEvent(eventData: string[], keys: string[]): SpinCompl
             isJackpot: eventData[offset + 6] === '0x1' || eventData[offset + 6] === '1',
             bibliaUsed: eventData[offset + 7] === '0x1' || eventData[offset + 7] === '1',
             currentLuck: Number(eventData[offset + 8] || 0),
+            symbolScores: [
+                Number(eventData[offset + 9] || 7),
+                Number(eventData[offset + 10] || 5),
+                Number(eventData[offset + 11] || 4),
+                Number(eventData[offset + 12] || 3),
+                Number(eventData[offset + 13] || 2),
+            ]
         };
     } catch (e) {
         console.error('Failed to parse SpinCompleted event:', e);

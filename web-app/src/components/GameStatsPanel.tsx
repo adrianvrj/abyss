@@ -9,6 +9,7 @@ interface GameStatsPanelProps {
     level: number;
     score: number;
     threshold: number;
+    spinsRemaining?: number;
     sessionId?: number;
     refreshTrigger?: number;
     currentLuck?: number;
@@ -16,6 +17,7 @@ interface GameStatsPanelProps {
     lastSpinPatternCount?: number;
     optimisticItems?: ContractItem[];
     hiddenItemIds?: number[];
+    symbolScores?: number[];
 }
 
 // Map target_symbol strings to SymbolType
@@ -33,13 +35,15 @@ export default function GameStatsPanel({
     level,
     score,
     threshold,
+    spinsRemaining = 0,
     sessionId,
     refreshTrigger = 0,
     currentLuck,
     currentTickets = 0,
     lastSpinPatternCount = 0,
     optimisticItems = EMPTY_ARRAY,
-    hiddenItemIds = EMPTY_ARRAY
+    hiddenItemIds = EMPTY_ARRAY,
+    symbolScores = [7, 5, 4, 3, 2] // Default scores if not provided
 }: GameStatsPanelProps) {
     const [fetchedItems, setFetchedItems] = useState<ContractItem[]>([]);
     const [items, setItems] = useState<ContractItem[]>([]);
@@ -132,28 +136,30 @@ export default function GameStatsPanel({
     }
 
     // Calculate modified symbol values
-    function getModifiedSymbols(): (SymbolConfig & { pointsBonus: number; probBonus: number })[] {
+    function getModifiedSymbols(): (SymbolConfig & { points: number; probBonus: number })[] {
+        // Map symbol types to score indices: 0: seven, 1: diamond, 2: cherry, 3: coin, 4: lemon
+        const scoreIndices: Record<string, number> = {
+            'seven': 0, 'diamond': 1, 'cherry': 2, 'coin': 3, 'lemon': 4
+        };
+
         return DEFAULT_GAME_CONFIG.symbols
             .filter(s => s.type !== 'six')
             .map(symbol => {
-                let pointsBonus = 0;
                 let probBonus = 0;
+                // Use dynamic score if available, otherwise base
+                const currentScore = symbolScores ? symbolScores[scoreIndices[symbol.type] ?? 0] : symbol.points;
 
                 items.forEach(item => {
                     const targetType = symbolNameToType[item.target_symbol?.toLowerCase() || ''];
                     const matchesSymbol = targetType === symbol.type || !item.target_symbol;
 
-                    // DirectScoreBonus - adds points per symbol
-                    if (item.effect_type === ItemEffectType.DirectScoreBonus && matchesSymbol) {
-                        pointsBonus += item.effect_value;
-                    }
                     // SymbolProbabilityBoost - adds % probability
                     if (item.effect_type === ItemEffectType.SymbolProbabilityBoost && matchesSymbol) {
                         probBonus += item.effect_value;
                     }
                 });
 
-                return { ...symbol, pointsBonus, probBonus };
+                return { ...symbol, points: currentScore, probBonus };
             });
     }
 
@@ -209,39 +215,69 @@ export default function GameStatsPanel({
                 </div>
             </div>
 
-            {/* Tickets & Luck Row */}
-            <div className="stats-section tickets-section">
+            {/* Resources Row: Spins & Tickets */}
+            <div className="stats-section resources-section" style={{
+                display: 'flex',
+                gap: '12px',
+            }}>
+                {/* Spins */}
                 <div style={{
                     flex: 1,
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
                     alignItems: 'center',
-                    padding: '8px 12px',
+                    padding: '8px',
+                    background: 'rgba(255, 255, 255, 0.05)',
                     borderRadius: '6px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
                 }}>
-                    <div style={{ position: 'relative', width: 36, height: 28 }}>
-                        <Image
-                            src="/images/ticket.png"
-                            alt="Tickets"
-                            fill
-                            style={{ objectFit: 'contain' }}
-                        />
-                    </div>
-                    <div style={{
+                    <span style={{
+                        fontFamily: "'PressStart2P', monospace",
+                        fontSize: '9px',
+                        color: 'rgba(255, 255, 255, 0.5)',
+                        marginBottom: '4px'
+                    }}>SPINS</span>
+                    <span style={{
                         fontFamily: "'PressStart2P', monospace",
                         fontSize: '14px',
-                        color: '#FF841C',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                    }}>
-                        {currentTickets}
-                    </div>
+                        color: '#FFEA00',
+                    }}>{spinsRemaining}</span>
                 </div>
 
-                {luck > 0 && (
+                {/* Tickets */}
+                <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: '8px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                    <span style={{
+                        fontFamily: "'PressStart2P', monospace",
+                        fontSize: '9px',
+                        color: 'rgba(255, 255, 255, 0.5)',
+                        marginBottom: '4px'
+                    }}>TICKETS</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: '14px',
+                            color: '#FF841C',
+                        }}>{currentTickets}</span>
+                        <Image src="/images/ticket.png" alt="T" width={14} height={7} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Luck Row (Conditional) */}
+            {luck > 0 && (
+                <div className="stats-section luck-section">
                     <div style={{
-                        flex: 1,
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -268,8 +304,8 @@ export default function GameStatsPanel({
                             +{luck}
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Symbol Values */}
             <div className="stats-section symbols-section">
@@ -286,7 +322,6 @@ export default function GameStatsPanel({
                             key={symbol.type}
                             symbolType={symbol.type}
                             points={symbol.points}
-                            pointsBonus={symbol.pointsBonus}
                             probability={symbol.probability}
                             probBonus={symbol.probBonus}
                         />
@@ -392,18 +427,18 @@ export default function GameStatsPanel({
 interface SymbolRowProps {
     symbolType: SymbolType;
     points: number;
-    pointsBonus: number;
     probability: number;
     probBonus: number;
 }
 
-function SymbolRow({ symbolType, points, pointsBonus, probability, probBonus }: SymbolRowProps) {
+function SymbolRow({ symbolType, points, probability, probBonus }: SymbolRowProps) {
     const info = SYMBOL_INFO[symbolType];
-    const totalPoints = points + pointsBonus;
+    const basePoints = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbolType)?.points || 0;
+    const totalPoints = points; // Points are pre-calculated now
     const totalProb = probability + probBonus;
-    const hasPointsBonus = pointsBonus > 0;
     const hasProbBonus = probBonus > 0;
-    const hasAnyBonus = hasPointsBonus || hasProbBonus;
+    const isBaseScore = points > basePoints; // Check if points > base
+    const hasAnyBonus = isBaseScore || hasProbBonus;
 
     return (
         <div style={{
@@ -432,10 +467,9 @@ function SymbolRow({ symbolType, points, pointsBonus, probability, probBonus }: 
             <span style={{
                 fontFamily: "'PressStart2P', monospace",
                 fontSize: '10px',
-                color: hasPointsBonus ? '#00FF64' : '#fff',
+                color: isBaseScore ? '#00FF64' : '#fff',
             }}>
                 {totalPoints}pt
-                {hasPointsBonus && <span style={{ fontSize: '8px', color: '#00FF64' }}> (+{pointsBonus})</span>}
             </span>
             <span style={{
                 fontFamily: "'PressStart2P', monospace",

@@ -62,6 +62,7 @@ function GameContent() {
     const [spinsRemaining, setSpinsRemaining] = useState(5);
     const [isSessionActive, setIsSessionActive] = useState(true); // Track if session is still active
     const [patterns, setPatterns] = useState<Pattern[]>([]);
+    const [symbolScores, setSymbolScores] = useState<number[]>([7, 5, 4, 3, 2]);
 
 
     const [grid, setGrid] = useState<number[]>([]);
@@ -109,6 +110,14 @@ function GameContent() {
     // Score bonuses from inventory
     const [scoreBonuses, setScoreBonuses] = useState<ScoreBonuses>({ seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 });
     const scoreBonusesRef = useRef(scoreBonuses);
+    const symbolScoresRef = useRef(symbolScores);
+
+    // Biblia mask state for visual removal
+    const [bibliaBroken, setBibliaBroken] = useState(false);
+
+    useEffect(() => {
+        symbolScoresRef.current = symbolScores;
+    }, [symbolScores]);
 
     // Inline panel state (desktop)
     const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
@@ -249,6 +258,9 @@ function GameContent() {
                 } else {
                     console.log('Stale data - skipping. Contract:', data.totalSpins, 'Expected:', lastKnownTotalSpinsRef.current);
                 }
+                if (data.symbolScores && data.symbolScores.length === 5) {
+                    setSymbolScores(data.symbolScores);
+                }
                 setIsSessionActive(data.isActive);
                 setChipsClaimed(data.chipsClaimed);
                 const th = await getLevelThreshold(data.level);
@@ -383,6 +395,8 @@ function GameContent() {
         setPatterns([]);
         setPatterns([]);
         setGameOverReason(null); // Reset game over flags
+        setHiddenItems([]); // Clear sold hidden items from previous spin
+        setBibliaBroken(false); // Reset broken protection mask
         spinSoundRef.current = playSound('spin');
 
         try {
@@ -408,6 +422,9 @@ function GameContent() {
                     return next;
                 });
                 setLevel(spin.newLevel);
+                if (spin.symbolScores && spin.symbolScores.length === 5) {
+                    setSymbolScores(spin.symbolScores);
+                }
                 setSpinsRemaining(spin.spinsRemaining);
                 setIsSessionActive(spin.isActive);
 
@@ -430,13 +447,17 @@ function GameContent() {
                 setRisk(prob / 10);
 
                 // Check for patterns and animations
-                const detectedPatterns = detectPatterns(spin.grid, undefined, scoreBonusesRef.current);
+                // Use symbolScores if available for accurate prediction
+                const detectedPatterns = detectPatterns(spin.grid, undefined, scoreBonusesRef.current, spin.symbolScores);
                 setPatterns(detectedPatterns);
 
                 if (spin.bibliaUsed) {
                     // Check if discarded from event (default to true if event missing/failed)
                     const discarded = events.bibliaDiscarded?.discarded ?? true;
                     setBibliaDiscarded(discarded);
+                    if (discarded) {
+                        setBibliaBroken(true);
+                    }
                     setShowBibliaAnimation(true);
                     loadScoreBonuses();
                 }
@@ -622,6 +643,7 @@ function GameContent() {
                         onOpenRelics={() => setShowRelicModal(true)}
                         sellingItemId={isSelling && itemToSell ? itemToSell.item_id : undefined}
                         hiddenItemIds={hiddenItems}
+                        bibliaBroken={bibliaBroken}
                     />
                 </div>
                 <div style={{ display: activeMobileTab === 'info' ? 'contents' : 'none' }}>
@@ -629,6 +651,7 @@ function GameContent() {
                         level={level}
                         score={score}
                         threshold={threshold}
+                        spinsRemaining={spinsRemaining}
                         sessionId={sessionId ? Number(sessionId) : undefined}
                         refreshTrigger={inventoryRefreshTrigger}
                         currentLuck={currentLuck}
@@ -636,6 +659,7 @@ function GameContent() {
                         lastSpinPatternCount={patterns.length}
                         optimisticItems={optimisticItems}
                         hiddenItemIds={hiddenItems}
+                        symbolScores={symbolScores}
                     />
                 </div>
             </div>
@@ -668,6 +692,7 @@ function GameContent() {
                         optimisticItems={optimisticItems}
                         sellingItemId={isSelling && itemToSell ? itemToSell.item_id : undefined}
                         hiddenItemIds={hiddenItems}
+                        bibliaBroken={bibliaBroken}
                     />
                 </div>
 
@@ -703,7 +728,7 @@ function GameContent() {
                                 onPatternShow={() => playSound('win', 300)}
                             />
                             {/* Tap to Spin indicator */}
-                            {!isSpinning && spinsRemaining > 0 && (
+                            {!isSpinning && spinsRemaining > 0 && !showLevelUp && !showBibliaAnimation && !showCharmAnimation && !showRelicActivation && (
                                 <div className="tap-to-spin">
                                     TAP TO SPIN
                                 </div>
@@ -776,6 +801,7 @@ function GameContent() {
                         level={level}
                         score={score}
                         threshold={threshold}
+                        spinsRemaining={spinsRemaining}
                         sessionId={sessionId ? Number(sessionId) : undefined}
                         refreshTrigger={inventoryRefreshTrigger}
                         currentLuck={currentLuck}
@@ -783,6 +809,7 @@ function GameContent() {
                         lastSpinPatternCount={patterns.length}
                         optimisticItems={optimisticItems}
                         hiddenItemIds={hiddenItems}
+                        symbolScores={symbolScores}
                     />
 
                     {/* Action Buttons - Below stats panel */}

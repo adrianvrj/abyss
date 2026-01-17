@@ -23,6 +23,7 @@ interface InlineInventoryPanelProps {
     onOpenRelics?: () => void;
     sellingItemId?: number;
     hiddenItemIds?: number[];
+    bibliaBroken?: boolean;
 }
 
 export default function InlineInventoryPanel({
@@ -34,7 +35,8 @@ export default function InlineInventoryPanel({
     optimisticItems = [],
     onOpenRelics,
     sellingItemId,
-    hiddenItemIds = []
+    hiddenItemIds = [],
+    bibliaBroken = false,
 }: InlineInventoryPanelProps) {
     const [loading, setLoading] = useState(true);
     const [ownedItems, setOwnedItems] = useState<ContractItem[]>([]);
@@ -118,7 +120,19 @@ export default function InlineInventoryPanel({
     const uniqueOptimisticItems = optimisticItems.filter(i => !ownedIds.has(i.item_id));
 
     const allItems = [...ownedItems, ...uniqueOptimisticItems];
-    const displayItems = allItems.filter(item => !hiddenItemIds?.includes(item.item_id));
+
+    // First filter by specifically hidden generic IDs (like sold items)
+    let displayItems = allItems.filter(item => !hiddenItemIds?.includes(item.item_id));
+
+    // Special handling for Biblia broken event (removes exactly one instance of ID 40)
+    if (bibliaBroken) {
+        const idx = displayItems.findIndex(i => i.item_id === 40);
+        if (idx !== -1) {
+            const newArr = [...displayItems];
+            newArr.splice(idx, 1);
+            displayItems = newArr;
+        }
+    }
 
     const inventoryCount = displayItems.length;
     const slots = Array.from({ length: 7 }, (_, i) => displayItems[i] || null);

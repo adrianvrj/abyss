@@ -134,6 +134,10 @@ export default function MarketModal({ sessionId, controller, currentScore, onClo
 
     // Effect details helper
     function getEffectDetails(item: ContractItem): string {
+        if (item.description && item.description.length > 0) {
+            return item.description;
+        }
+
         const val = item.effect_value;
         switch (item.effect_type) {
             case ItemEffectType.DirectScoreBonus: return `+${val} pts to ${item.target_symbol}`;

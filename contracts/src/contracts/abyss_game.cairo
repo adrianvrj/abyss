@@ -19,7 +19,13 @@ pub struct GameSession {
     // Soul Charms system
     pub luck: u32, // Current luck value from charms
     pub blocked_666_this_session: bool, // For Chaos Orb conditional effect
-    pub tickets: u32 // Ticket system for item purchasing
+    pub tickets: u32, // Ticket system for item purchasing
+    // Dynamic Symbol Scores (Cumulative Item Buffs)
+    pub score_seven: u32,
+    pub score_diamond: u32,
+    pub score_cherry: u32,
+    pub score_coin: u32,
+    pub score_lemon: u32,
 }
 
 #[derive(Drop, Serde, starknet::Store)]
@@ -367,6 +373,7 @@ pub mod AbyssGame {
         is_jackpot: bool,
         biblia_used: bool,
         current_luck: u32,
+        symbol_scores: [u32; 5],
     }
 
     #[derive(Drop, starknet::Event)]
@@ -513,7 +520,12 @@ pub mod AbyssGame {
                 total_spins: 0, // No spins performed yet 
                 luck: 0,
                 blocked_666_this_session: false,
-                tickets: 4,
+                tickets: 8,
+                score_seven: 7,
+                score_diamond: 5,
+                score_cherry: 4,
+                score_coin: 3,
+                score_lemon: 2,
             };
             self.sessions.entry(session_id).write(new_session);
             let session_count = self.player_sessions_count.entry(player_address).read();
@@ -1053,8 +1065,16 @@ pub mod AbyssGame {
                 }
             }
             let (mut score, patterns_count) = InternalImpl::calculate_spin_result(
-                @self, grid, session_id,
+                ref self, grid, session_id,
             );
+
+            // Reload symbol scores from storage as they might have been updated by scaling items
+            let updated_session = self.sessions.entry(session_id).read();
+            session.score_seven = updated_session.score_seven;
+            session.score_diamond = updated_session.score_diamond;
+            session.score_cherry = updated_session.score_cherry;
+            session.score_coin = updated_session.score_coin;
+            session.score_lemon = updated_session.score_lemon;
             InternalImpl::update_luck_from_patterns(ref self, session_id, patterns_count);
             if session.relic_pending_effect == RelicEffectTypeValues::DoubleNextSpin {
                 score = score * 2;
@@ -1197,6 +1217,10 @@ pub mod AbyssGame {
                         is_jackpot,
                         biblia_used,
                         current_luck: session.luck,
+                        symbol_scores: [
+                            session.score_seven, session.score_diamond, session.score_cherry,
+                            session.score_coin, session.score_lemon,
+                        ],
                     },
                 );
 
@@ -1872,13 +1896,40 @@ pub mod AbyssGame {
             ]
         }
 
-        /// Calculate spin result: detect patterns and compute score
-        /// Grid layout (5x3, row-major):
-        ///   [0]  [1]  [2]  [3]  [4]   <- Row 0
-        ///   [5]  [6]  [7]  [8]  [9]   <- Row 1
-        ///   [10] [11] [12] [13] [14]  <- Row 2
+        fn try_upgrade_symbol_score(
+            ref self: ContractState,
+            session_id: u32,
+            symbol: u8,
+            scaling_factors: (u32, u32, u32, u32, u32),
+        ) {
+            let (b7, bd, bc, b_coin, bl) = scaling_factors;
+            let mut session = self.sessions.entry(session_id).read();
+            let mut updated = false;
+
+            if symbol == super::SymbolType::SEVEN && b7 > 0 {
+                session.score_seven += b7;
+                updated = true;
+            } else if symbol == super::SymbolType::DIAMOND && bd > 0 {
+                session.score_diamond += bd;
+                updated = true;
+            } else if symbol == super::SymbolType::CHERRY && bc > 0 {
+                session.score_cherry += bc;
+                updated = true;
+            } else if symbol == super::SymbolType::COIN && b_coin > 0 {
+                session.score_coin += b_coin;
+                updated = true;
+            } else if symbol == super::SymbolType::LEMON && bl > 0 {
+                session.score_lemon += bl;
+                updated = true;
+            }
+
+            if updated {
+                self.sessions.entry(session_id).write(session);
+            }
+        }
+
         fn calculate_spin_result(
-            self: @ContractState, grid: [u8; 15], session_id: u32,
+            ref self: ContractState, grid: [u8; 15], session_id: u32,
         ) -> (u32, u8) {
             let mut total_score: u32 = 0;
             let mut patterns_count: u8 = 0;
@@ -1887,25 +1938,44 @@ pub mod AbyssGame {
             // Get charm retrigger bonuses
             let (h3_retrigger, diag_retrigger, all_retrigger, _jackpot_retrigger) =
                 Self::get_charm_retrigger_bonuses(
-                self, session_id,
+                @self, session_id,
             );
             // Vertical patterns use all_retrigger since there's no specific vertical charm
             let vert_retrigger = all_retrigger;
 
+            // Get scaling factors for cumulative updates
+            let scaling_factors = Self::get_inventory_scaling_factors(@self, session_id);
+
+            // Get symbol scores snapshot for atomic calculation
+            let session = self.sessions.entry(session_id).read();
+            let symbol_scores = (
+                session.score_seven,
+                session.score_diamond,
+                session.score_cherry,
+                session.score_coin,
+                session.score_lemon,
+            );
+
             // === HORIZONTAL PATTERNS (per row) ===
             // Row 0: indices 0-4
-            let (score, pats) = Self::check_horizontal_line(self, g, 0, session_id);
+            let (score, pats) = Self::check_horizontal_line(
+                ref self, g, 0, session_id, scaling_factors, symbol_scores,
+            );
             // Apply H3 retrigger (multiplies score and pattern count)
             total_score += score * h3_retrigger;
             patterns_count += pats * h3_retrigger.try_into().unwrap();
 
             // Row 1: indices 5-9
-            let (score, pats) = Self::check_horizontal_line(self, g, 5, session_id);
+            let (score, pats) = Self::check_horizontal_line(
+                ref self, g, 5, session_id, scaling_factors, symbol_scores,
+            );
             total_score += score * h3_retrigger;
             patterns_count += pats * h3_retrigger.try_into().unwrap();
 
             // Row 2: indices 10-14
-            let (score, pats) = Self::check_horizontal_line(self, g, 10, session_id);
+            let (score, pats) = Self::check_horizontal_line(
+                ref self, g, 10, session_id, scaling_factors, symbol_scores,
+            );
             total_score += score * h3_retrigger;
             patterns_count += pats * h3_retrigger.try_into().unwrap();
 
@@ -1913,83 +1983,94 @@ pub mod AbyssGame {
             // Server parity: vertical-3 = 2x, so points * 3 * 2 = points * 6
             // Column 0: 0, 5, 10
             if *g.at(0) == *g.at(5) && *g.at(5) == *g.at(10) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(0))
+                total_score += Self::get_score_from_snapshot(*g.at(0), symbol_scores)
                     * 6
                     * vert_retrigger;
                 patterns_count += vert_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(0), scaling_factors);
             }
             // Column 1: 1, 6, 11
             if *g.at(1) == *g.at(6) && *g.at(6) == *g.at(11) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(1))
+                total_score += Self::get_score_from_snapshot(*g.at(1), symbol_scores)
                     * 6
                     * vert_retrigger;
                 patterns_count += vert_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(1), scaling_factors);
             }
             // Column 2: 2, 7, 12
             if *g.at(2) == *g.at(7) && *g.at(7) == *g.at(12) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(2))
+                total_score += Self::get_score_from_snapshot(*g.at(2), symbol_scores)
                     * 6
                     * vert_retrigger;
                 patterns_count += vert_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(2), scaling_factors);
             }
             // Column 3: 3, 8, 13
             if *g.at(3) == *g.at(8) && *g.at(8) == *g.at(13) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(3))
+                total_score += Self::get_score_from_snapshot(*g.at(3), symbol_scores)
                     * 6
                     * vert_retrigger;
                 patterns_count += vert_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(3), scaling_factors);
             }
             // Column 4: 4, 9, 14
             if *g.at(4) == *g.at(9) && *g.at(9) == *g.at(14) {
-                total_score += Self::get_symbol_score_with_bonus(self, session_id, *g.at(4))
+                total_score += Self::get_score_from_snapshot(*g.at(4), symbol_scores)
                     * 6
                     * vert_retrigger;
                 patterns_count += vert_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(4), scaling_factors);
             }
 
             // === DIAGONAL PATTERNS (3 in a row) ===
             // Server parity: diagonal-3 = 2.5x, so (points * 3 * 5) / 2 = (points * 15) / 2
             // Get diagonal bonus from inventory
-            let (_, _, _, diag_bonus, _) = Self::get_inventory_pattern_bonuses(self, session_id);
+            let (_, _, _, diag_bonus, _) = Self::get_inventory_pattern_bonuses(@self, session_id);
 
             // Top-left to bottom-right diagonals
             // 0, 6, 12
             if *g.at(0) == *g.at(6) && *g.at(6) == *g.at(12) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(0)) * 15) / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(0), symbol_scores) * 15) / 2;
                 total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
                 patterns_count += diag_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(0), scaling_factors);
             }
             // 1, 7, 13
             if *g.at(1) == *g.at(7) && *g.at(7) == *g.at(13) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(1)) * 15) / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(1), symbol_scores) * 15) / 2;
                 total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
                 patterns_count += diag_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(1), scaling_factors);
             }
             // 2, 8, 14
             if *g.at(2) == *g.at(8) && *g.at(8) == *g.at(14) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 15) / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(2), symbol_scores) * 15) / 2;
                 total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
                 patterns_count += diag_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(2), scaling_factors);
             }
 
             // Top-right to bottom-left diagonals
             // 2, 6, 10
             if *g.at(2) == *g.at(6) && *g.at(6) == *g.at(10) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(2)) * 15) / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(2), symbol_scores) * 15) / 2;
                 total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
                 patterns_count += diag_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(2), scaling_factors);
             }
             // 3, 7, 11
             if *g.at(3) == *g.at(7) && *g.at(7) == *g.at(11) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(3)) * 15) / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(3), symbol_scores) * 15) / 2;
                 total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
                 patterns_count += diag_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(3), scaling_factors);
             }
             // 4, 8, 12
             if *g.at(4) == *g.at(8) && *g.at(8) == *g.at(12) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(4)) * 15) / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(4), symbol_scores) * 15) / 2;
                 total_score += (base * (100 + diag_bonus) / 100) * diag_retrigger;
                 patterns_count += diag_retrigger.try_into().unwrap();
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(4), scaling_factors);
             }
 
             (total_score, patterns_count)
@@ -1999,14 +2080,19 @@ pub mod AbyssGame {
         /// Server parity: 3=1.5x, 4=3x, 5=6x (using count * points * multiplier)
         /// Now applies PatternMultiplier bonuses from inventory
         fn check_horizontal_line(
-            self: @ContractState, g: Span<u8>, start: u32, session_id: u32,
+            ref self: ContractState,
+            g: Span<u8>,
+            start: u32,
+            session_id: u32,
+            scaling_factors: (u32, u32, u32, u32, u32),
+            symbol_scores: (u32, u32, u32, u32, u32),
         ) -> (u32, u8) {
             let mut score: u32 = 0;
             let mut patterns: u8 = 0;
 
             // Get pattern bonuses from inventory (h3, h4, h5, diagonal, jackpot)
             let (h3_bonus, h4_bonus, h5_bonus, _, _) = Self::get_inventory_pattern_bonuses(
-                self, session_id,
+                @self, session_id,
             );
 
             // Check for 5 in a row: points * 5 * 6 = points * 30
@@ -2014,88 +2100,83 @@ pub mod AbyssGame {
                 && *g.at(start + 1) == *g.at(start + 2)
                 && *g.at(start + 2) == *g.at(start + 3)
                 && *g.at(start + 3) == *g.at(start + 4) {
-                let base = Self::get_symbol_score_with_bonus(self, session_id, *g.at(start)) * 30;
+                let base = Self::get_score_from_snapshot(*g.at(start), symbol_scores) * 30;
                 score += base * (100 + h5_bonus) / 100;
                 patterns += 1;
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(start), scaling_factors);
             } // Check for 4 in a row: points * 4 * 3 = points * 12
             else if *g.at(start) == *g.at(start + 1)
                 && *g.at(start + 1) == *g.at(start + 2)
                 && *g.at(start + 2) == *g.at(start + 3) {
-                let base = Self::get_symbol_score_with_bonus(self, session_id, *g.at(start)) * 12;
+                let base = Self::get_score_from_snapshot(*g.at(start), symbol_scores) * 12;
                 score += base * (100 + h4_bonus) / 100;
                 patterns += 1;
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(start), scaling_factors);
             } else if *g.at(start + 1) == *g.at(start + 2)
                 && *g.at(start + 2) == *g.at(start + 3)
                 && *g.at(start + 3) == *g.at(start + 4) {
-                let base = Self::get_symbol_score_with_bonus(self, session_id, *g.at(start + 1))
-                    * 12;
+                let base = Self::get_score_from_snapshot(*g.at(start + 1), symbol_scores) * 12;
                 score += base * (100 + h4_bonus) / 100;
                 patterns += 1;
+                Self::try_upgrade_symbol_score(
+                    ref self, session_id, *g.at(start + 1), scaling_factors,
+                );
             } // Check for 3 in a row: (points * 3 * 3) / 2 = (points * 9) / 2
             else if *g.at(start) == *g.at(start + 1) && *g.at(start + 1) == *g.at(start + 2) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(start)) * 9)
-                    / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(start), symbol_scores) * 9) / 2;
                 score += base * (100 + h3_bonus) / 100;
                 patterns += 1;
+                Self::try_upgrade_symbol_score(ref self, session_id, *g.at(start), scaling_factors);
             } else if *g.at(start + 1) == *g.at(start + 2) && *g.at(start + 2) == *g.at(start + 3) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(start + 1))
-                    * 9)
-                    / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(start + 1), symbol_scores) * 9) / 2;
                 score += base * (100 + h3_bonus) / 100;
                 patterns += 1;
+                Self::try_upgrade_symbol_score(
+                    ref self, session_id, *g.at(start + 1), scaling_factors,
+                );
             } else if *g.at(start + 2) == *g.at(start + 3) && *g.at(start + 3) == *g.at(start + 4) {
-                let base = (Self::get_symbol_score_with_bonus(self, session_id, *g.at(start + 2))
-                    * 9)
-                    / 2;
+                let base = (Self::get_score_from_snapshot(*g.at(start + 2), symbol_scores) * 9) / 2;
                 score += base * (100 + h3_bonus) / 100;
                 patterns += 1;
+                Self::try_upgrade_symbol_score(
+                    ref self, session_id, *g.at(start + 2), scaling_factors,
+                );
             }
 
             (score, patterns)
         }
 
 
-        /// Get base score for a symbol (Server parity: 7, 5, 4, 3, 2)
-        fn get_symbol_score(symbol: u8) -> u32 {
+        /// Get current symbol score from session
+        fn get_symbol_score_from_session(self: @ContractState, session_id: u32, symbol: u8) -> u32 {
+            let session = self.sessions.entry(session_id).read();
             if symbol == super::SymbolType::SEVEN {
-                7
+                session.score_seven
             } else if symbol == super::SymbolType::DIAMOND {
-                5
+                session.score_diamond
             } else if symbol == super::SymbolType::CHERRY {
-                4
+                session.score_cherry
             } else if symbol == super::SymbolType::COIN {
-                3
-            } else if symbol == super::SymbolType::LEMON {
-                2
+                session.score_coin
             } else {
-                0
+                session.score_lemon
             }
         }
 
-        /// Get symbol score with DirectScoreBonus from inventory applied
-        fn get_symbol_score_with_bonus(self: @ContractState, session_id: u32, symbol: u8) -> u32 {
-            let base_score = Self::get_symbol_score(symbol);
-
-            // Get bonuses from inventory
-            let (b7, bd, bc, b_coin, bl) = Self::get_inventory_score_bonuses(self, session_id);
-
-            let bonus = if symbol == super::SymbolType::SEVEN {
-                b7
+        fn get_score_from_snapshot(symbol: u8, scores: (u32, u32, u32, u32, u32)) -> u32 {
+            let (s7, sd, sc, sco, sl) = scores;
+            if symbol == super::SymbolType::SEVEN {
+                s7
             } else if symbol == super::SymbolType::DIAMOND {
-                bd
+                sd
             } else if symbol == super::SymbolType::CHERRY {
-                bc
+                sc
             } else if symbol == super::SymbolType::COIN {
-                b_coin
-            } else if symbol == super::SymbolType::LEMON {
-                bl
+                sco
             } else {
-                0
-            };
-
-            base_score + bonus
+                sl
+            }
         }
-
 
         /// Get 666 probability for a given level (per 1000)
         fn get_666_probability_internal(self: @ContractState, level: u32) -> u32 {
@@ -2107,8 +2188,8 @@ pub mod AbyssGame {
             }
         }
 
-        /// Get all DirectScoreBonus values from inventory items
-        fn get_inventory_score_bonuses(
+        /// Get all scaling factors (cumulative buffs) from inventory items
+        fn get_inventory_scaling_factors(
             self: @ContractState, session_id: u32,
         ) -> (u32, u32, u32, u32, u32) {
             let mut b7: u32 = 0;
@@ -2546,11 +2627,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 1,
                         name: 'Chilly Pepper',
-                        description: '+2 points to seven',
+                        description: '+1 to seven score on pattern',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 2,
+                        effect_value: 1,
                         target_symbol: 'seven',
                     },
                 );
@@ -2601,11 +2682,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 2,
                         name: 'Milk',
-                        description: '+2 points to diamond',
+                        description: '+1 to diamond score on pattern',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 2,
+                        effect_value: 1,
                         target_symbol: 'diamond',
                     },
                 );
@@ -2639,11 +2720,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 3,
                         name: 'Magic Dice',
-                        description: '+3 points to cherry',
+                        description: '+1 to cherry score on pattern',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 3,
+                        effect_value: 1,
                         target_symbol: 'cherry',
                     },
                 );
@@ -2673,11 +2754,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 13,
                         name: 'Pig Bank',
-                        description: '+6 points to cherry',
+                        description: '+2 to cherry score on pattern',
                         price: 2,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 6,
+                        effect_value: 2,
                         target_symbol: 'cherry',
                     },
                 );
@@ -2707,11 +2788,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 20,
                         name: 'Smelly Boots',
-                        description: '+8 points to cherry',
+                        description: '+3 to cherry score on pattern',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 8,
+                        effect_value: 3,
                         target_symbol: 'cherry',
                     },
                 );
@@ -2728,11 +2809,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 4,
                         name: 'Old Cassette',
-                        description: '+2 points to lemon',
+                        description: '+1 to lemon score on pattern',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 2,
+                        effect_value: 1,
                         target_symbol: 'lemon',
                     },
                 );
@@ -2745,11 +2826,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 14,
                         name: 'Old Wig',
-                        description: '+3 points to lemon',
+                        description: '+2 to lemon score on pattern',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 3,
+                        effect_value: 2,
                         target_symbol: 'lemon',
                     },
                 );
@@ -2783,11 +2864,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 19,
                         name: 'Old Phone',
-                        description: '+5 points to coin',
+                        description: '+2 to coin score on pattern',
                         price: 2,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 5,
+                        effect_value: 2,
                         target_symbol: 'coin',
                     },
                 );
@@ -2986,11 +3067,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 25,
                         name: 'Hockey Mask',
-                        description: '+11 points to seven',
+                        description: '+2 to seven score on pattern',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 11,
+                        effect_value: 2,
                         target_symbol: 'seven',
                     },
                 );
@@ -3003,11 +3084,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 26,
                         name: 'Rune',
-                        description: '+9 points to diamond',
+                        description: '+2 to diamond score on pattern',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 9,
+                        effect_value: 2,
                         target_symbol: 'diamond',
                     },
                 );
@@ -3071,11 +3152,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 30,
                         name: 'Soul Contract',
-                        description: '+8 points to lemon',
+                        description: '+3 to lemon score on pattern',
                         price: 3,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 8,
+                        effect_value: 3,
                         target_symbol: 'lemon',
                     },
                 );
@@ -3105,11 +3186,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 32,
                         name: 'Memory Card',
-                        description: '+10 points to coin',
+                        description: '+3 to coin score on pattern',
                         price: 4,
                         sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 10,
+                        effect_value: 3,
                         target_symbol: 'coin',
                     },
                 );
@@ -3126,11 +3207,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 33,
                         name: 'Ticket',
-                        description: '+12 points to seven',
+                        description: '+3 to seven score on pattern',
                         price: 4,
                         sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 12,
+                        effect_value: 3,
                         target_symbol: 'seven',
                     },
                 );
@@ -3164,11 +3245,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 35,
                         name: 'Fake Dollar',
-                        description: '+12 points to diamond',
-                        price: 3,
+                        description: '+3 to diamond score on pattern',
+                        price: 4,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 12,
+                        effect_value: 3,
                         target_symbol: 'diamond',
                     },
                 );
@@ -3219,11 +3300,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 38,
                         name: 'Pocket Watch',
-                        description: '+12 points to lemon',
+                        description: '+4 to lemon score on pattern',
                         price: 4,
                         sell_price: 2,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 12,
+                        effect_value: 4,
                         target_symbol: 'lemon',
                     },
                 );
@@ -3240,11 +3321,11 @@ pub mod AbyssGame {
                     Item {
                         item_id: 39,
                         name: 'Knight Helmet',
-                        description: '+2 points to coin',
+                        description: '+1 to coin score on pattern',
                         price: 1,
                         sell_price: 1,
                         effect_type: 3, // DirectScoreBonus
-                        effect_value: 2,
+                        effect_value: 1,
                         target_symbol: 'coin',
                     },
                 );
@@ -3332,13 +3413,54 @@ pub mod AbyssGame {
                 idx += 1;
             }
 
-            // Generate 6 random item IDs, potentially replacing with charms
-            let item_1 = Self::generate_market_slot_item(@self, session_id, current_nonce, 1);
-            let item_2 = Self::generate_market_slot_item(@self, session_id, current_nonce, 2);
-            let item_3 = Self::generate_market_slot_item(@self, session_id, current_nonce, 3);
-            let item_4 = Self::generate_market_slot_item(@self, session_id, current_nonce, 4);
-            let item_5 = Self::generate_market_slot_item(@self, session_id, current_nonce, 5);
-            let item_6 = Self::generate_market_slot_item(@self, session_id, current_nonce, 6);
+            // Generate 6 unique random items
+            let mut generated_items: Array<u32> = ArrayTrait::new();
+            let mut slot: u32 = 1;
+
+            while slot <= 6 {
+                let mut attempts: u32 = 0;
+                let mut unique_item: u32 = 0;
+
+                // Try to find a unique item
+                while attempts < 5 {
+                    // Use different nonce/seed modification for each attempt to get different
+                    // result
+                    let attempt_modifier: u64 = (attempts * 100).into();
+                    let item = Self::generate_market_slot_item(
+                        @self, session_id, current_nonce + attempt_modifier, slot,
+                    );
+
+                    // Check if already generated
+                    let mut is_dup = false;
+                    let mut k = 0;
+                    while k < generated_items.len() {
+                        if *generated_items.at(k) == item {
+                            is_dup = true;
+                            break;
+                        }
+                        k += 1;
+                    }
+
+                    if !is_dup {
+                        unique_item = item;
+                        break;
+                    }
+
+                    attempts += 1;
+                }
+
+                // If we failed to find a unique item after retries, just take the last one
+                // generated (duplicates better than crash)
+                if unique_item == 0 {
+                    unique_item =
+                        Self::generate_market_slot_item(
+                            @self, session_id, current_nonce + 500, slot,
+                        );
+                }
+
+                generated_items.append(unique_item);
+                slot += 1;
+            }
 
             // Clear purchased status for all slots (new market)
             self.market_slot_purchased.entry((session_id, 1)).write(false);
@@ -3351,12 +3473,12 @@ pub mod AbyssGame {
             // Save market state
             let market = SessionMarket {
                 refresh_count,
-                item_slot_1: item_1,
-                item_slot_2: item_2,
-                item_slot_3: item_3,
-                item_slot_4: item_4,
-                item_slot_5: item_5,
-                item_slot_6: item_6,
+                item_slot_1: *generated_items.at(0),
+                item_slot_2: *generated_items.at(1),
+                item_slot_3: *generated_items.at(2),
+                item_slot_4: *generated_items.at(3),
+                item_slot_5: *generated_items.at(4),
+                item_slot_6: *generated_items.at(5),
             };
 
             self.session_markets.entry(session_id).write(market);

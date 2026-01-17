@@ -246,6 +246,11 @@ export default function InlineMarketPanel({
     const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && !purchasingSlot;
 
     function getEffectDetails(item: ContractItem): string {
+        // If the item has a description, use it as the source of truth
+        if (item.description && item.description.length > 0) {
+            return item.description;
+        }
+
         const val = item.effect_value;
         const target = item.target_symbol || '';
         switch (item.effect_type) {
