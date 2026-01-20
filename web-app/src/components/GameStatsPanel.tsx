@@ -218,7 +218,8 @@ export default function GameStatsPanel({
             {/* Resources Row: Spins & Tickets */}
             <div className="stats-section resources-section" style={{
                 display: 'flex',
-                gap: '12px',
+                flexDirection: 'row', // Explicitly override class column direction
+                gap: '8px',
             }}>
                 {/* Spins */}
                 <div style={{
@@ -283,12 +284,13 @@ export default function GameStatsPanel({
                         alignItems: 'center',
                         padding: '8px 12px',
                         borderRadius: '6px',
-                        background: 'rgba(167, 139, 250, 0.1)',
-                        border: '1px solid rgba(167, 139, 250, 0.3)',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
                     }}>
                         <div style={{
                             fontFamily: "'PressStart2P', monospace",
                             fontSize: '10px',
+                            color: 'rgba(255, 255, 255, 0.5)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
@@ -298,8 +300,7 @@ export default function GameStatsPanel({
                         <div style={{
                             fontFamily: "'PressStart2P', monospace",
                             fontSize: '14px',
-                            textShadow: '0 0 8px rgba(167, 139, 250, 0.5)',
-                            color: '#A78BFA',
+                            color: '#FFEA00', // Matches Spins yellow/gold or could be Orange #FF841C
                         }}>
                             +{luck}
                         </div>
@@ -373,11 +374,11 @@ export default function GameStatsPanel({
                     background: rgba(0, 0, 0, 0.85);
                     border: 2px solid #FF841C;
                     border-radius: 8px;
-                    padding: 16px;
+                    padding: 12px;
                     width: 100%;
                     display: flex;
                     flex-direction: column;
-                    gap: 16px;
+                    gap: 12px;
                 }
 
                 .stats-section {

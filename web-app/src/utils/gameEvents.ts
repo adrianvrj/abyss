@@ -23,6 +23,7 @@ export interface ItemPurchasedEvent {
     price: number;
     newScore: number;
     newSpins: number;
+    newTickets: number;
     isCharm: boolean;
 }
 
@@ -31,6 +32,7 @@ export interface ItemSoldEvent {
     itemId: number;
     sellPrice: number;
     newScore: number;
+    newTickets: number;
 }
 
 export interface MarketRefreshedEvent {
@@ -142,7 +144,7 @@ function parseSpinCompletedEvent(eventData: string[], keys: string[]): SpinCompl
  * Parse ItemPurchased event
  */
 function parseItemPurchasedEvent(eventData: string[]): ItemPurchasedEvent | null {
-    if (!eventData || eventData.length < 5) return null;
+    if (!eventData || eventData.length < 6) return null;
 
     try {
         return {
@@ -151,7 +153,8 @@ function parseItemPurchasedEvent(eventData: string[]): ItemPurchasedEvent | null
             price: Number(eventData[1]),
             newScore: Number(eventData[2]),
             newSpins: Number(eventData[3]),
-            isCharm: eventData[4] === '0x1' || eventData[4] === '1',
+            newTickets: Number(eventData[4]),
+            isCharm: eventData[5] === '0x1' || eventData[5] === '1',
         };
     } catch (e) {
         console.error('Failed to parse ItemPurchased event:', e);
@@ -163,7 +166,7 @@ function parseItemPurchasedEvent(eventData: string[]): ItemPurchasedEvent | null
  * Parse ItemSold event
  */
 function parseItemSoldEvent(eventData: string[]): ItemSoldEvent | null {
-    if (!eventData || eventData.length < 3) return null;
+    if (!eventData || eventData.length < 4) return null;
 
     try {
         return {
@@ -171,6 +174,7 @@ function parseItemSoldEvent(eventData: string[]): ItemSoldEvent | null {
             itemId: Number(eventData[0]),
             sellPrice: Number(eventData[1]),
             newScore: Number(eventData[2]),
+            newTickets: Number(eventData[3]),
         };
     } catch (e) {
         console.error('Failed to parse ItemSold event:', e);

@@ -384,6 +384,7 @@ pub mod AbyssGame {
         price: u32,
         new_score: u32,
         new_spins: u32,
+        new_tickets: u32,
         is_charm: bool,
     }
 
@@ -394,6 +395,7 @@ pub mod AbyssGame {
         item_id: u32,
         sell_price: u32,
         new_score: u32,
+        new_tickets: u32,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -730,6 +732,7 @@ pub mod AbyssGame {
                             price: charm_cost,
                             new_score: session.score,
                             new_spins: session.spins_remaining,
+                            new_tickets: session.tickets,
                             is_charm: true,
                         },
                     );
@@ -774,6 +777,7 @@ pub mod AbyssGame {
                             price: total_cost,
                             new_score: session.score,
                             new_spins: session.spins_remaining,
+                            new_tickets: session.tickets,
                             is_charm: false,
                         },
                     );
@@ -867,7 +871,11 @@ pub mod AbyssGame {
             self
                 .emit(
                     ItemSold {
-                        session_id, item_id, sell_price: total_value, new_score: session.score,
+                        session_id,
+                        item_id,
+                        sell_price: total_value,
+                        new_score: session.score,
+                        new_tickets: session.tickets,
                     },
                 );
         }

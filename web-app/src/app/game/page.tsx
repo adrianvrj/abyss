@@ -526,9 +526,10 @@ function GameContent() {
             const events = await sellItemHook(Number(sessionId), itemToSell.item_id);
             const soldEvent = events.itemsSold[0];
             if (soldEvent) {
-                // setScore(soldEvent.newScore); // REMOVED - Sales give Tickets
-                setTickets(prev => prev + itemToSell.sell_price);
+                // Use event-driven tickets update
+                setTickets(soldEvent.newTickets);
             } else {
+                // Fallback: optimistic update (shouldn't happen with new contract)
                 setTickets(prev => prev + itemToSell.sell_price);
             }
 
@@ -624,7 +625,6 @@ function GameContent() {
                         onUpdateTickets={setTickets}
                         onInventoryChange={() => {
                             setInventoryRefreshTrigger(prev => prev + 1);
-                            pollSessionData();
                         }}
                         onPurchaseSuccess={(item) => setOptimisticItems(prev => [...prev, item])}
                     />
@@ -674,9 +674,9 @@ function GameContent() {
                         currentScore={score}
                         currentTickets={tickets}
                         onUpdateScore={setScore}
+                        onUpdateTickets={setTickets}
                         onInventoryChange={() => {
                             setInventoryRefreshTrigger(prev => prev + 1);
-                            pollSessionData();
                         }}
                         onPurchaseSuccess={(item) => setOptimisticItems(prev => [...prev, item])}
                     />
@@ -760,7 +760,6 @@ function GameContent() {
                                                 .then(async () => {
                                                     setShowRelicActivation(true);
                                                     setRelicCooldownRemaining(equippedRelic.cooldown);
-                                                    await pollSessionData();
                                                     const spinResult = await getLastSpinResult(Number(sessionId));
                                                     if (spinResult && spinResult.grid.length === 15) {
                                                         setGrid(spinResult.grid);
@@ -830,8 +829,6 @@ function GameContent() {
                                             .then(async () => {
                                                 setShowRelicActivation(true);
                                                 setRelicCooldownRemaining(equippedRelic.cooldown);
-                                                setRelicCooldownRemaining(equippedRelic.cooldown);
-                                                await pollSessionData();
                                                 // Update grid with jackpot result from relics like Mortis
                                                 const spinResult = await getLastSpinResult(Number(sessionId));
                                                 if (spinResult && spinResult.grid.length === 15) {
@@ -1005,7 +1002,6 @@ function GameContent() {
                                 setEquippedRelic(relic);
                                 setRelicCooldownRemaining(0);
                                 setShowRelicModal(false);
-                                pollSessionData();
                             } catch (err) {
                                 console.error(err);
                             } finally {

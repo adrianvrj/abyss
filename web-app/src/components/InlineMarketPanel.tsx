@@ -217,8 +217,17 @@ export default function InlineMarketPanel({
         if (currentTickets < item.price) return;
         setPurchasingSlot(slot);
         try {
+            // Optimistic UI update for responsiveness
             if (onUpdateTickets) onUpdateTickets(currentTickets - item.price);
-            await buyItem(sessionId, slot);
+
+            const events = await buyItem(sessionId, slot);
+
+            // Use event data for authoritative ticket update
+            const purchaseEvent = events.itemsPurchased[0];
+            if (purchaseEvent && onUpdateTickets) {
+                onUpdateTickets(purchaseEvent.newTickets);
+            }
+
             setPurchasedInCurrentMarket(prev => new Set(prev).add(slot));
             setOwnedItemIds(prev => new Set(prev).add(item.item_id));
             setInventoryCount(prev => prev + 1);
@@ -226,6 +235,7 @@ export default function InlineMarketPanel({
             onPurchaseSuccess?.(item);
         } catch (e) {
             console.error("Purchase failed", e);
+            // Revert optimistic update on error
             if (onUpdateTickets) onUpdateTickets(currentTickets);
         } finally {
             setPurchasingSlot(null);
