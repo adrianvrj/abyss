@@ -113,23 +113,9 @@ export default function GameStatsPanel({
                 sessionLuck = await getSessionLuck(sessionId!);
             }
 
-            // Calculate conditional bonuses
-            let conditionalBonus = 0;
-            items.forEach(item => {
-                // Ethereal Chain (Charm ID 12 -> Item ID 1012)
-                // Effect: +6 luck per pattern in last spin
-                if (item.item_id === 1012) {
-                    conditionalBonus += (6 * lastSpinPatternCount);
-                }
-
-                // Broken Mirror (Charm ID 3 -> Item ID 1003)
-                // Effect: +5 luck if last spin had no patterns
-                if (item.item_id === 1003 && lastSpinPatternCount === 0) {
-                    conditionalBonus += 5;
-                }
-            });
-
-            setLuck(sessionLuck + conditionalBonus);
+            // Now that contract returns effective luck in both events and getter,
+            // we don't need manual calculation here.
+            setLuck(sessionLuck);
         } catch (err) {
             console.error('Failed to load session luck:', err);
         }

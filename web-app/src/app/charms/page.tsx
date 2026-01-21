@@ -112,6 +112,8 @@ export default function CharmsPage() {
 
     return (
         <div style={{
+            height: "100vh",
+            overflowY: "auto",
             minHeight: "100vh",
             background: "#000",
             padding: "24px",

@@ -74,6 +74,8 @@ const RELICS = [
 
 const styles = {
     container: {
+        height: "100vh",
+        overflowY: "auto" as const,
         minHeight: "100vh",
         background: "linear-gradient(180deg, #0a0a0a 0%, #1a0a0a 100%)",
         padding: "24px",

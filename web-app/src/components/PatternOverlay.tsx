@@ -5,11 +5,13 @@ import { Pattern } from '@/utils/patternDetector';
 interface PatternOverlayProps {
     patterns: Pattern[];
     onPatternShow?: () => void; // Callback to play sound per pattern
+    onComplete?: () => void;
 }
 
-export default function PatternOverlay({ patterns, onPatternShow }: PatternOverlayProps) {
+export default function PatternOverlay({ patterns, onPatternShow, onComplete }: PatternOverlayProps) {
     const [currentIndex, setCurrentIndex] = useState(-1);
-    const [phase, setPhase] = useState<'highlight' | 'score'>('highlight');
+    const [phase, setPhase] = useState<'highlight' | 'score' | 'alert'>('highlight');
+    const [subCycle, setSubCycle] = useState(0); // Tracks repetitions (0 to retriggerMultiplier-1)
     const [flash, setFlash] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -21,6 +23,7 @@ export default function PatternOverlay({ patterns, onPatternShow }: PatternOverl
     useEffect(() => {
         if (patterns && patterns.length > 0) {
             setCurrentIndex(0);
+            setSubCycle(0);
             setPhase('highlight');
         } else {
             setCurrentIndex(-1);
@@ -31,34 +34,61 @@ export default function PatternOverlay({ patterns, onPatternShow }: PatternOverl
     useEffect(() => {
         if (currentIndex === -1 || !patterns || currentIndex >= patterns.length) return;
 
-        // 1. Play sound at start of pattern
-        if (onPatternShow) onPatternShow();
+        const pattern = patterns[currentIndex];
+        const retriggerCount = pattern.retriggerMultiplier || 1;
 
-        // Trigger Flash
-        setFlash(true);
-        const flashTimer = setTimeout(() => setFlash(false), 100);
+        // 1. Play sound at start of highlight phase (only if beginning of a cycle)
+        if (phase === 'highlight') {
+            if (onPatternShow) onPatternShow();
 
-        // 2. Show score VERY quickly after highlight
-        const timerScore = setTimeout(() => {
-            setPhase('score');
-        }, 100); // 0.1s pause (was 0.2s)
+            // Trigger Flash
+            setFlash(true);
+            const flashTimer = setTimeout(() => setFlash(false), 50);
 
-        // 3. Move to next pattern fast
-        const timerNext = setTimeout(() => {
-            if (currentIndex < patterns.length - 1) {
-                setCurrentIndex(prev => prev + 1);
-                setPhase('highlight'); // Reset phase for next
-            } else {
-                setCurrentIndex(-1); // Finished
-            }
-        }, 600); // 0.6s total duration per pattern (was 1.2s)
+            // Move to Score
+            const timerScore = setTimeout(() => {
+                setPhase('score');
+            }, 100); // 0.1s highlight duration
 
-        return () => {
-            clearTimeout(flashTimer);
-            clearTimeout(timerScore);
-            clearTimeout(timerNext);
-        };
-    }, [currentIndex, patterns]);
+            return () => {
+                clearTimeout(flashTimer);
+                clearTimeout(timerScore);
+            };
+        }
+
+        // 2. Score Phase
+        if (phase === 'score') {
+            const timerNext = setTimeout(() => {
+                // Check if we need to retrigger
+                if (subCycle < retriggerCount - 1) {
+                    setPhase('alert');
+                } else {
+                    // Move to next pattern
+                    if (currentIndex < patterns.length - 1) {
+                        setCurrentIndex(prev => prev + 1);
+                        setSubCycle(0);
+                        setPhase('highlight');
+                    } else {
+                        if (onComplete) onComplete();
+                        setCurrentIndex(-1); // Finished
+                    }
+                }
+            }, 300); // 0.5s score duration
+
+            return () => clearTimeout(timerNext);
+        }
+
+        // 3. Alert Phase (AGAIN!)
+        if (phase === 'alert') {
+            const timerRestart = setTimeout(() => {
+                setSubCycle(prev => prev + 1);
+                setPhase('highlight');
+            }, 300); // 0.3s alert duration
+
+            return () => clearTimeout(timerRestart);
+        }
+
+    }, [currentIndex, phase, patterns, subCycle, onPatternShow]);
 
     const renderFlash = () => {
         if (!mounted || !flash) return null;
@@ -153,7 +183,7 @@ export default function PatternOverlay({ patterns, onPatternShow }: PatternOverl
                                 justifyContent: 'center',
                                 alignItems: 'center',
                                 minWidth: '80px',
-                                animation: `popInCenter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`
+                                animation: `popInCenter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`
                             }}
                         >
                             <span style={{
@@ -161,7 +191,32 @@ export default function PatternOverlay({ patterns, onPatternShow }: PatternOverl
                                 color: '#FFEA00',
                                 fontSize: '3vmin',
                                 textShadow: '2px 2px 0px #000'
-                            }}>+{pattern.score}</span>
+                            }}>
+                                +{(pattern.score / (pattern.retriggerMultiplier || 1)).toFixed(0)}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Alert Popup - Visible in 'alert' phase */}
+                    {phase === 'alert' && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 101,
+                                animation: `popInCenter 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`
+                            }}
+                        >
+                            <span style={{
+                                fontFamily: "'PressStart2P', monospace",
+                                color: '#fff',
+                                fontSize: '4vmin',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                AGAIN!
+                            </span>
                         </div>
                     )}
                 </div>

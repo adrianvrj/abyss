@@ -7,6 +7,7 @@ export interface Pattern {
     symbolId: number;
     multiplier: number;
     score: number;
+    retriggerMultiplier?: number;
 }
 
 // Convert 1D grid (15) to 2D grid (3x5)

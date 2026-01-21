@@ -62,6 +62,7 @@ function GameContent() {
     const [spinsRemaining, setSpinsRemaining] = useState(5);
     const [isSessionActive, setIsSessionActive] = useState(true); // Track if session is still active
     const [patterns, setPatterns] = useState<Pattern[]>([]);
+    const [showingPatterns, setShowingPatterns] = useState(false);
     const [symbolScores, setSymbolScores] = useState<number[]>([7, 5, 4, 3, 2]);
 
 
@@ -137,7 +138,7 @@ function GameContent() {
 
     useEffect(() => {
         loadScoreBonuses();
-    }, [optimisticItems]);
+    }, [optimisticItems, inventoryRefreshTrigger]);
 
     const loadScoreBonuses = async () => {
         if (!sessionId) return;
@@ -393,7 +394,7 @@ function GameContent() {
         setIsSpinning(true);
         setError(null);
         setPatterns([]);
-        setPatterns([]);
+        setShowingPatterns(false);
         setGameOverReason(null); // Reset game over flags
         setHiddenItems([]); // Clear sold hidden items from previous spin
         setBibliaBroken(false); // Reset broken protection mask
@@ -427,6 +428,9 @@ function GameContent() {
                 }
                 setSpinsRemaining(spin.spinsRemaining);
                 setIsSessionActive(spin.isActive);
+                if (spin.currentLuck !== undefined) {
+                    setCurrentLuck(spin.currentLuck);
+                }
 
                 if (spin.newLevel > previousLevelRef.current && previousLevelRef.current > 0) {
                     setShowLevelUp(true);
@@ -448,8 +452,59 @@ function GameContent() {
 
                 // Check for patterns and animations
                 // Use symbolScores if available for accurate prediction
-                const detectedPatterns = detectPatterns(spin.grid, undefined, scoreBonusesRef.current, spin.symbolScores);
+                let detectedPatterns = detectPatterns(spin.grid, undefined, scoreBonusesRef.current, spin.symbolScores);
+
+                // --- Apply Charm Retrigger Visuals ---
+                // We need to check active charms to visualize "x2" retriggers
+                // Fetch current items (or rely on optimistic/cached if valid, but fetch is safer for sync)
+                try {
+                    const sessionItems = await getSessionItems(Number(sessionId));
+                    const ownedItemIds = new Set(sessionItems.map(i => i.item_id));
+
+                    // Charm IDs: 10 + 1000 = 1010 (Cursed Pendant - H3x2)
+                    // Charm IDs: 14 + 1000 = 1014 (Demon's Tooth - Diagx2)
+                    // Charm IDs: 17 + 1000 = 1017 (Reaper's Mark - Allx2)
+
+                    const hasCursedPendant = ownedItemIds.has(1010);
+                    const hasDemonsTooth = ownedItemIds.has(1014);
+                    const hasReapersMark = ownedItemIds.has(1017);
+                    const hasSoulOfTheAbyss = ownedItemIds.has(1019);
+
+                    if (hasCursedPendant || hasDemonsTooth || hasReapersMark || hasSoulOfTheAbyss) {
+                        detectedPatterns = detectedPatterns.map(p => {
+                            let mult = 1;
+
+                            // Reaper's Mark: All x2
+                            if (hasReapersMark) mult *= 2;
+
+                            // Soul of the Abyss: Jackpot x2
+                            if (hasSoulOfTheAbyss && p.type === 'jackpot') mult *= 2;
+
+                            // Cursed Pendant: H3 x2
+                            if (hasCursedPendant && p.type === 'horizontal-3') mult *= 2;
+
+                            // Demon's Tooth: Diagonal x2
+                            if (hasDemonsTooth && p.type.startsWith('diagonal')) mult *= 2;
+
+                            if (mult > 1) {
+                                return {
+                                    ...p,
+                                    retriggerMultiplier: mult,
+                                    score: p.score * mult
+                                };
+                            }
+                            return p;
+                        });
+                    }
+                } catch (e) {
+                    console.warn("Failed to check retrigger charms:", e);
+                }
+
                 setPatterns(detectedPatterns);
+                if (detectedPatterns.length > 0) {
+                    setShowingPatterns(true);
+                }
+
 
                 if (spin.bibliaUsed) {
                     // Check if discarded from event (default to true if event missing/failed)
@@ -623,10 +678,14 @@ function GameContent() {
                         currentTickets={tickets}
                         onUpdateScore={setScore}
                         onUpdateTickets={setTickets}
+                        onUpdateSpins={(spins) => setSpinsRemaining(spins)}
+                        onUpdateLuck={(luck) => setCurrentLuck(luck)}
                         onInventoryChange={() => {
                             setInventoryRefreshTrigger(prev => prev + 1);
                         }}
-                        onPurchaseSuccess={(item) => setOptimisticItems(prev => [...prev, item])}
+                        onPurchaseSuccess={(item) => {
+                            setOptimisticItems(prev => [...prev, item]);
+                        }}
                     />
                 </div>
                 <div style={{ display: activeMobileTab === 'inventory' ? 'contents' : 'none' }}>
@@ -675,10 +734,14 @@ function GameContent() {
                         currentTickets={tickets}
                         onUpdateScore={setScore}
                         onUpdateTickets={setTickets}
+                        onUpdateSpins={(spins) => setSpinsRemaining(spins)}
+                        onUpdateLuck={(luck) => setCurrentLuck(luck)}
                         onInventoryChange={() => {
                             setInventoryRefreshTrigger(prev => prev + 1);
                         }}
-                        onPurchaseSuccess={(item) => setOptimisticItems(prev => [...prev, item])}
+                        onPurchaseSuccess={(item) => {
+                            setOptimisticItems(prev => [...prev, item]);
+                        }}
                     />
                     <InlineInventoryPanel
                         sessionId={Number(sessionId)}
@@ -726,9 +789,10 @@ function GameContent() {
                             <PatternOverlay
                                 patterns={patterns}
                                 onPatternShow={() => playSound('win', 300)}
+                                onComplete={() => setShowingPatterns(false)}
                             />
                             {/* Tap to Spin indicator */}
-                            {!isSpinning && spinsRemaining > 0 && !showLevelUp && !showBibliaAnimation && !showCharmAnimation && !showRelicActivation && (
+                            {!isSpinning && spinsRemaining > 0 && !showLevelUp && !showBibliaAnimation && !showCharmAnimation && !showRelicActivation && !showingPatterns && (
                                 <div className="tap-to-spin">
                                     TAP TO SPIN
                                 </div>

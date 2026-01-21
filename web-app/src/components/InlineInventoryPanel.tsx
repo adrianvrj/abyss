@@ -70,15 +70,18 @@ export default function InlineInventoryPanel({
                     if (!charmInfo) return null;
 
                     // Map CharmInfo to ContractItem for display
+                    // We pack rarity and effect into target_symbol separated by '|||' to preserve the special effect text
+                    const packedEffect = `${charmInfo.rarity}|||${charmInfo.effect}`;
+
                     return {
                         item_id: pi.item_id,
                         name: charmInfo.name,
                         description: charmInfo.description,
                         price: charmInfo.shop_cost,
-                        sell_price: 0, // Charms cannot be sold back to shop currently
-                        effect_type: 7, // Custom type for Charms
+                        sell_price: Math.floor(charmInfo.shop_cost / 2),
+                        effect_type: 7,
                         effect_value: charmInfo.luck,
-                        target_symbol: charmInfo.rarity,
+                        target_symbol: packedEffect,
                         image: charmInfo.image
                     } as ContractItem;
                 } else {
@@ -109,7 +112,17 @@ export default function InlineInventoryPanel({
             case 4: return `+${value} bonus spins`;
             case 5: return `+${value}% level progress`;
             case 6: return `666 protection (${value} spins)`;
-            case 7: return `${targetSymbol} | +${value}% LUCK | ${item.description}`;
+            case 7: {
+                if (targetSymbol && targetSymbol.includes('|||')) {
+                    const [rarity, effectText] = targetSymbol.split('|||');
+                    // Display: Rarity | Effect (which includes luck text usually)
+                    // If effectText is empty, fall back to luck
+                    const displayEffect = effectText || `+${value}% LUCK`;
+                    return `${rarity} | ${displayEffect}`;
+                }
+                // Fallback for optimism or legacy
+                return `${targetSymbol} | +${value}% LUCK`;
+            }
             default: return item.description || `Effect: ${value}`;
         }
     }

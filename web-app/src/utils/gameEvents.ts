@@ -25,6 +25,7 @@ export interface ItemPurchasedEvent {
     newSpins: number;
     newTickets: number;
     isCharm: boolean;
+    currentLuck: number;
 }
 
 export interface ItemSoldEvent {
@@ -33,12 +34,14 @@ export interface ItemSoldEvent {
     sellPrice: number;
     newScore: number;
     newTickets: number;
+    currentLuck: number;
 }
 
 export interface MarketRefreshedEvent {
     sessionId: number;
     newScore: number;
     slots: number[];
+    currentLuck: number;
 }
 
 export interface RelicActivatedEvent {
@@ -46,12 +49,14 @@ export interface RelicActivatedEvent {
     relicId: number;
     effectType: number;
     cooldownUntilSpin: number;
+    currentLuck: number;
 }
 
 export interface RelicEquippedEvent {
     sessionId: number;
     relicTokenId: bigint;
     relicId: number;
+    currentLuck: number;
 }
 
 export interface CharmMintedEvent {
@@ -155,6 +160,7 @@ function parseItemPurchasedEvent(eventData: string[]): ItemPurchasedEvent | null
             newSpins: Number(eventData[3]),
             newTickets: Number(eventData[4]),
             isCharm: eventData[5] === '0x1' || eventData[5] === '1',
+            currentLuck: Number(eventData[6] || 0),
         };
     } catch (e) {
         console.error('Failed to parse ItemPurchased event:', e);
@@ -175,6 +181,7 @@ function parseItemSoldEvent(eventData: string[]): ItemSoldEvent | null {
             sellPrice: Number(eventData[1]),
             newScore: Number(eventData[2]),
             newTickets: Number(eventData[3]),
+            currentLuck: Number(eventData[4] || 0),
         };
     } catch (e) {
         console.error('Failed to parse ItemSold event:', e);
@@ -200,6 +207,7 @@ function parseMarketRefreshedEvent(eventData: string[]): MarketRefreshedEvent | 
                 Number(eventData[5]),
                 Number(eventData[6]),
             ],
+            currentLuck: Number(eventData[7] || 0),
         };
     } catch (e) {
         console.error('Failed to parse MarketRefreshed event:', e);
@@ -219,6 +227,7 @@ function parseRelicActivatedEvent(eventData: string[]): RelicActivatedEvent | nu
             relicId: Number(eventData[0]),
             effectType: Number(eventData[1]),
             cooldownUntilSpin: Number(eventData[2]),
+            currentLuck: Number(eventData[3] || 0),
         };
     } catch (e) {
         console.error('Failed to parse RelicActivated event:', e);
@@ -240,6 +249,7 @@ function parseRelicEquippedEvent(eventData: string[]): RelicEquippedEvent | null
             sessionId: 0,
             relicTokenId: BigInt(eventData[0]) + (BigInt(eventData[1]) << BigInt(128)),
             relicId: Number(eventData[2]),
+            currentLuck: Number(eventData[3] || 0),
         };
     } catch (e) {
         console.error('Failed to parse RelicEquipped event:', e);

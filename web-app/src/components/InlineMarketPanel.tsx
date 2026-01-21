@@ -21,6 +21,8 @@ interface InlineMarketPanelProps {
     currentTickets: number;
     onUpdateScore: (newScore: number) => void;
     onUpdateTickets?: (newTickets: number) => void;
+    onUpdateSpins?: (newSpins: number) => void;
+    onUpdateLuck?: (newLuck: number) => void;
     onInventoryChange?: () => void;
     onPurchaseSuccess?: (item: ContractItem) => void;
 }
@@ -32,6 +34,8 @@ export default function InlineMarketPanel({
     currentTickets,
     onUpdateScore,
     onUpdateTickets,
+    onUpdateSpins,
+    onUpdateLuck,
     onInventoryChange,
     onPurchaseSuccess
 }: InlineMarketPanelProps) {
@@ -129,11 +133,13 @@ export default function InlineMarketPanel({
     }
 
     function calculateRefreshCost(refreshCount: number): number {
-        const costs = [2, 5, 16, 24, 48, 62, 86, 112, 190, 280, 345, 526, 891, 1200];
-        if (refreshCount < costs.length) return costs[refreshCount];
-        let cost = 1200;
-        for (let i = 0; i < refreshCount - 13; i++) cost += Math.floor(cost / 2);
-        return cost;
+        // Contract formula: 2 + (count * (count + 3)) / 2
+        // 0 -> 2
+        // 1 -> 4
+        // 2 -> 7
+        // etc.
+        const count = refreshCount;
+        return 2 + Math.floor((count * (count + 3)) / 2);
     }
 
     const refreshCost = marketData ? calculateRefreshCost(marketData.refresh_count) : 2;
@@ -150,6 +156,9 @@ export default function InlineMarketPanel({
                 // Optimistic Update using Event Data
                 const newScore = refreshEvent.newScore;
                 onUpdateScore(newScore);
+                if (onUpdateLuck && refreshEvent.currentLuck !== undefined) {
+                    onUpdateLuck(refreshEvent.currentLuck);
+                }
                 setPurchasedInCurrentMarket(new Set());
 
                 // Update Market Data State
@@ -224,8 +233,12 @@ export default function InlineMarketPanel({
 
             // Use event data for authoritative ticket update
             const purchaseEvent = events.itemsPurchased[0];
-            if (purchaseEvent && onUpdateTickets) {
-                onUpdateTickets(purchaseEvent.newTickets);
+            if (purchaseEvent) {
+                if (onUpdateTickets) onUpdateTickets(purchaseEvent.newTickets);
+                if (onUpdateSpins) onUpdateSpins(purchaseEvent.newSpins);
+                if (onUpdateLuck && purchaseEvent.currentLuck !== undefined) {
+                    onUpdateLuck(purchaseEvent.currentLuck);
+                }
             }
 
             setPurchasedInCurrentMarket(prev => new Set(prev).add(slot));
