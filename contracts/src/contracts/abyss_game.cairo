@@ -1113,23 +1113,22 @@ pub mod AbyssGame {
             assert(session.spins_remaining > 0, 'No spins left');
             session.total_spins += 1;
             session.spins_remaining -= 1;
-            if session.relic_pending_effect == RelicEffectTypeValues::ResetSpins {
-                let spin_bonus = InternalImpl::get_inventory_spin_bonus(@self, session_id);
-                session.spins_remaining = 5 + spin_bonus;
-                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
-            }
+
+            // Relic Effect: ResetSpins now handled in activate_relic immediately
+            // Legacy check removed
+
             let vrf_address = self.vrf_provider_address.read();
             let vrf = IVrfProviderDispatcher { contract_address: vrf_address };
             let random_word = vrf.consume_random(Source::Nonce(caller));
             let force_jackpot = session
                 .relic_pending_effect == RelicEffectTypeValues::RandomJackpot;
-            let force_666 = session.relic_pending_effect == RelicEffectTypeValues::Trigger666;
+
+            // Relic Effect: Trigger666 (Scorcher) now Ends Session immediately
+            // Legacy force_666 check removed
+
             let (mut grid, mut is_666, mut is_jackpot) = if force_jackpot {
                 session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
                 InternalImpl::generate_jackpot_grid(@self, random_word)
-            } else if force_666 {
-                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
-                InternalImpl::generate_666_grid(@self, random_word)
             } else {
                 InternalImpl::generate_grid_from_random(
                     @self, random_word, session.level, session_id,
@@ -1171,9 +1170,9 @@ pub mod AbyssGame {
             session.score_cherry = updated_session.score_cherry;
             session.score_coin = updated_session.score_coin;
             session.score_lemon = updated_session.score_lemon;
-            InternalImpl::update_luck_from_patterns(ref self, session_id, patterns_count);
+
             if session.relic_pending_effect == RelicEffectTypeValues::DoubleNextSpin {
-                score = score * 2;
+                score = score * 5; // Updated to x5 (Lucky the Dealer)
                 session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
             }
             let new_score = session.score + score;
@@ -1203,87 +1202,10 @@ pub mod AbyssGame {
                 session.is_active = false;
             }
 
-            // Auto-mint CHIP and Soul Charm when session ends
-            if !session.is_active && !session.chips_claimed {
-                let base_chips = session.score / 333;
-                let emission_rate = self.chip_emission_rate.read();
-                let multiplier = self.chip_boost_multiplier.read();
-                let chip_amount: u256 = (base_chips * emission_rate * multiplier).into()
-                    * 1_000_000_000_000_000_000;
-
-                if chip_amount > 0 {
-                    let chip_token = self.chip_token.read();
-                    IChipDispatcher { contract_address: chip_token }
-                        .mint(session.player_address, chip_amount);
-                }
-
-                // ═══════════════════════════════════════════════════════════════════
-                // SOUL CHARM MINTING - Based on score (moved from claim_chips)
-                // ═══════════════════════════════════════════════════════════════════
-                let charm_nft_addr = self.charm_nft_address.read();
-                if charm_nft_addr.is_non_zero() {
-                    // Calculate mint probability: min(score / 125, 50)% + luck bonus
-                    let charm_score = session.score;
-                    let base_chance = charm_score / 125;
-                    let luck_bonus = session.luck; // Luck from equipped charms
-                    let total_chance: u32 = if base_chance + luck_bonus > 50 {
-                        50
-                    } else {
-                        base_chance + luck_bonus
-                    };
-
-                    // Generate random number for mint check using VRF random word
-                    let mut charm_hash_data = ArrayTrait::new();
-                    charm_hash_data.append(session_id.into());
-                    charm_hash_data.append(random_word);
-                    charm_hash_data.append(session.player_address.into());
-                    let charm_hash_result = poseidon_hash_span(charm_hash_data.span());
-                    let charm_hash_u256: u256 = charm_hash_result.into();
-                    let charm_roll: u32 = (charm_hash_u256 % 100).try_into().unwrap();
-
-                    if charm_roll < total_chance {
-                        // Fixed rarity: 3% Legendary, 12% Epic, 25% Rare, 60% Common
-                        let rarity_roll: u32 = ((charm_hash_u256 / 100) % 100).try_into().unwrap();
-                        let legendary_threshold: u32 = 3;
-                        let epic_threshold: u32 = 15; // 3 + 12
-                        let rare_threshold: u32 = 40; // 3 + 12 + 25
-
-                        let rarity: u8 = if rarity_roll < legendary_threshold {
-                            3 // Legendary
-                        } else if rarity_roll < epic_threshold {
-                            2 // Epic
-                        } else if rarity_roll < rare_threshold {
-                            1 // Rare
-                        } else {
-                            0 // Common
-                        };
-
-                        // Mint the charm
-                        let token_id = ICharmDispatcher { contract_address: charm_nft_addr }
-                            .mint_random_charm_of_rarity(
-                                session.player_address, rarity, charm_hash_result,
-                            );
-
-                        // Get charm_id from the minted token
-                        let charm_meta = ICharmDispatcher { contract_address: charm_nft_addr }
-                            .get_charm_metadata(token_id);
-
-                        // Emit event for frontend to catch
-                        self
-                            .emit(
-                                CharmMinted {
-                                    player: session.player_address,
-                                    session_id,
-                                    charm_id: charm_meta.charm_id,
-                                    rarity,
-                                    token_id,
-                                },
-                            );
-                    }
-                }
-
-                session.chips_claimed = true;
-            }
+            // Auto-mint CHIP and Soul Charm when session ends using helper
+            InternalImpl::process_end_session_rewards(
+                ref self, ref session, session_id, random_word,
+            );
 
             self.sessions.entry(session_id).write(session);
             let spin_result = super::SpinResult {
@@ -1583,9 +1505,64 @@ pub mod AbyssGame {
                 assert(spins_since_last_use >= metadata.cooldown_spins, 'Relic on cooldown');
             }
 
-            // Queue the effect for next action
-            session.relic_pending_effect = metadata.effect_type;
+            // Update last used spin
             session.relic_last_used_spin = session.total_spins;
+
+            if metadata.effect_type == RelicEffectTypeValues::ResetSpins || metadata.relic_id == 2 {
+                // PHANTOM: Immediate Reset
+                let spin_bonus = InternalImpl::get_inventory_spin_bonus(@self, session_id);
+                session.spins_remaining = 5 + spin_bonus;
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+            } else if metadata.effect_type == RelicEffectTypeValues::FreeMarketRefresh
+                || metadata.relic_id == 5 {
+                // INFERNO: Immediate Market Refresh (Free)
+                let mut market = self.session_markets.entry(session_id).read();
+                market.refresh_count += 1;
+                self.session_markets.entry(session_id).write(market);
+
+                // Refresh items
+                InternalImpl::generate_market_items(ref self, session_id, market.refresh_count);
+
+                // Emit event manually since we bypass refresh_market
+                let new_market = self.session_markets.entry(session_id).read();
+                self
+                    .emit(
+                        MarketRefreshed {
+                            session_id,
+                            new_score: session.score,
+                            slot_1: new_market.item_slot_1,
+                            slot_2: new_market.item_slot_2,
+                            slot_3: new_market.item_slot_3,
+                            slot_4: new_market.item_slot_4,
+                            slot_5: new_market.item_slot_5,
+                            slot_6: new_market.item_slot_6,
+                            current_luck: InternalImpl::calculate_effective_luck(@self, session_id),
+                        },
+                    );
+
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+            } else if metadata.effect_type == RelicEffectTypeValues::Trigger666
+                || metadata.relic_id == 4 {
+                session.is_active = false;
+                session.relic_pending_effect = RelicEffectTypeValues::NoEffect;
+
+                // Get random word for rewards
+                let vrf_address = self.vrf_provider_address.read();
+                let vrf = IVrfProviderDispatcher { contract_address: vrf_address };
+                let random_word = vrf.consume_random(Source::Nonce(caller));
+
+                // Run end session rewards
+                InternalImpl::process_end_session_rewards(
+                    ref self, ref session, session_id, random_word,
+                );
+
+                if session.is_competitive {
+                    InternalImpl::update_leaderboard_if_better(ref self, session);
+                }
+            } else {
+                // OTHER (Lucky): Queue effect
+                session.relic_pending_effect = metadata.effect_type;
+            }
 
             self.sessions.entry(session_id).write(session);
 
@@ -1768,6 +1745,86 @@ pub mod AbyssGame {
         // ═══════════════════════════════════════════════════════════════════════════
         // LUCK CALCULATION
         // ═══════════════════════════════════════════════════════════════════════════
+        fn process_end_session_rewards(
+            ref self: ContractState,
+            ref session: GameSession,
+            session_id: u32,
+            random_word: felt252,
+        ) {
+            // Auto-mint CHIP and Soul Charm when session ends
+            if !session.is_active && !session.chips_claimed {
+                let base_chips = session.score / 333;
+                let emission_rate = self.chip_emission_rate.read();
+                let multiplier = self.chip_boost_multiplier.read();
+                let chip_amount: u256 = (base_chips * emission_rate * multiplier).into()
+                    * 1_000_000_000_000_000_000;
+
+                if chip_amount > 0 {
+                    let chip_token = self.chip_token.read();
+                    IChipDispatcher { contract_address: chip_token }
+                        .mint(session.player_address, chip_amount);
+                }
+
+                // SOUL CHARM MINTING
+                let charm_nft_addr = self.charm_nft_address.read();
+                if charm_nft_addr.is_non_zero() {
+                    let charm_score = session.score;
+                    let base_chance = charm_score / 125;
+                    let luck_bonus = session.luck;
+                    let total_chance: u32 = if base_chance + luck_bonus > 50 {
+                        50
+                    } else {
+                        base_chance + luck_bonus
+                    };
+
+                    let mut charm_hash_data = ArrayTrait::new();
+                    charm_hash_data.append(session_id.into());
+                    charm_hash_data.append(random_word);
+                    charm_hash_data.append(session.player_address.into());
+                    let charm_hash_result = poseidon_hash_span(charm_hash_data.span());
+                    let charm_hash_u256: u256 = charm_hash_result.into();
+                    let charm_roll: u32 = (charm_hash_u256 % 100).try_into().unwrap();
+
+                    if charm_roll < total_chance {
+                        let rarity_roll: u32 = ((charm_hash_u256 / 100) % 100).try_into().unwrap();
+                        let legendary_threshold: u32 = 3;
+                        let epic_threshold: u32 = 15;
+                        let rare_threshold: u32 = 40;
+
+                        let rarity: u8 = if rarity_roll < legendary_threshold {
+                            3
+                        } else if rarity_roll < epic_threshold {
+                            2
+                        } else if rarity_roll < rare_threshold {
+                            1
+                        } else {
+                            0
+                        };
+
+                        let token_id = ICharmDispatcher { contract_address: charm_nft_addr }
+                            .mint_random_charm_of_rarity(
+                                session.player_address, rarity, charm_hash_result,
+                            );
+
+                        let charm_meta = ICharmDispatcher { contract_address: charm_nft_addr }
+                            .get_charm_metadata(token_id);
+
+                        self
+                            .emit(
+                                CharmMinted {
+                                    player: session.player_address,
+                                    session_id,
+                                    charm_id: charm_meta.charm_id,
+                                    rarity,
+                                    token_id,
+                                },
+                            );
+                    }
+                }
+                session.chips_claimed = true;
+            }
+        }
+
         fn calculate_effective_luck(self: @ContractState, session_id: u32) -> u32 {
             let session = self.sessions.entry(session_id).read();
             let mut luck = session.luck; // Base luck from static charms (Type 7, 9)

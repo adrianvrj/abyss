@@ -27,13 +27,13 @@ const styles = {
         gap: "32px",
     },
     menuOption: {
-        fontFamily: "'PressStart2P', monospace",
-        fontSize: "18px",
+        fontFamily: "var(--font-title)",
+        fontSize: "32px",
         color: "#FFFFFF",
         background: "transparent",
-        border: "none",
-        padding: "8px",
         cursor: "pointer",
+        textTransform: "uppercase" as const,
+        letterSpacing: "2px",
     },
     bottomSection: {
         position: "absolute" as const,
@@ -132,10 +132,10 @@ export default function MenuContent() {
                         <motion.button
                             style={styles.menuOption}
                             onClick={handleContinue}
-                            whileHover={{ scale: 1.05, color: "#FF841C" }}
+                            whileHover={{ color: "#FF841C" }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            &gt; continue game
+                            continue game
                         </motion.button>
                     )}
 
@@ -147,17 +147,17 @@ export default function MenuContent() {
                         }}
                         onClick={handlePlay}
                         disabled={isConnecting || !controllerReady}
-                        whileHover={{ scale: 1.05, color: "#FF841C" }}
+                        whileHover={{ color: "#FF841C" }}
                         whileTap={{ scale: 0.95 }}
                     >
                         {!controllerReady ? (
-                            <span>&gt; loading...</span>
+                            <span>loading...</span>
                         ) : isConnecting ? (
-                            <span>&gt; connecting...</span>
+                            <span>connecting...</span>
                         ) : !isConnected ? (
-                            <span>&gt; connect wallet</span>
+                            <span>connect wallet</span>
                         ) : (
-                            <span>&gt; play</span>
+                            <span>play</span>
                         )}
                     </motion.button>
 
@@ -166,10 +166,10 @@ export default function MenuContent() {
                         <motion.button
                             style={styles.menuOption}
                             onClick={() => router.push("/relics")}
-                            whileHover={{ scale: 1.05, color: "#FF841C" }}
+                            whileHover={{ color: "#FF841C" }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            &gt; relics
+                            relics
                         </motion.button>
                     )}
 
@@ -178,10 +178,10 @@ export default function MenuContent() {
                         <motion.button
                             style={styles.menuOption}
                             onClick={() => router.push("/charms")}
-                            whileHover={{ scale: 1.05, color: "#FF841C" }}
+                            whileHover={{ color: "#FF841C" }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            &gt; charms
+                            charms
                         </motion.button>
                     )}
 
@@ -190,21 +190,21 @@ export default function MenuContent() {
                         style={styles.menuOption}
                         onClick={handleLeaderboard}
                         disabled={false}
-                        whileHover={{ scale: 1.05, color: "#FF841C" }}
+                        whileHover={{ color: "#FF841C" }}
                         whileTap={{ scale: 0.95 }}
                     >
-                        &gt; leaderboard
+                        leaderboard
                     </motion.button>
 
                     {/* Logout - only when connected */}
                     {isConnected && (
                         <motion.button
-                            style={{ ...styles.menuOption, color: '#888' }}
+                            style={{ ...styles.menuOption, color: '#fff' }}
                             onClick={handleLogout}
-                            whileHover={{ scale: 1.05, color: "#FF841C" }}
+                            whileHover={{ color: "#FF841C" }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            &gt; logout
+                            logout
                         </motion.button>
                     )}
                 </motion.div>

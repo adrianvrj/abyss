@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Abyss - On-Chain Slot Machine Game",
+    default: "Abyss",
     template: "%s | Abyss"
   },
   description: "Play a fully on-chain roguelike slot machine game on Starknet. Spin to win, compete for prizes, and collect powerful NFT relics. Provably fair with Cartridge VRF.",

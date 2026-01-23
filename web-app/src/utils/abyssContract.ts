@@ -71,8 +71,15 @@ export function getCharmIdFromItemId(itemId: number): number {
     return itemId - 1000;
 }
 
+// Cache to prevent repetitive RPC calls
+const charmInfoCache = new Map<number, CharmInfo>();
+
 // Fetch charm info from API
 export async function getCharmInfo(charmId: number): Promise<CharmInfo | null> {
+    if (charmInfoCache.has(charmId)) {
+        return charmInfoCache.get(charmId)!;
+    }
+
     try {
         const response = await fetch(`/api/charms/${charmId}`);
         if (!response.ok) return null;
@@ -83,7 +90,7 @@ export async function getCharmInfo(charmId: number): Promise<CharmInfo | null> {
         const getAttribute = (trait: string) =>
             data.attributes?.find((a: any) => a.trait_type === trait)?.value;
 
-        return {
+        const info: CharmInfo = {
             charm_id: Number(getAttribute('Charm ID') || charmId),
             name: data.name,
             description: data.description,
@@ -94,6 +101,9 @@ export async function getCharmInfo(charmId: number): Promise<CharmInfo | null> {
             image: data.image,
             background_color: data.background_color ? `#${data.background_color}` : ''
         };
+
+        charmInfoCache.set(charmId, info);
+        return info;
     } catch (e) {
         console.error('Failed to fetch charm info:', e);
         return null;
@@ -108,6 +118,7 @@ export interface SessionMarket {
     item_slot_4: number;
     item_slot_5: number;
     item_slot_6: number;
+    relicPendingEffect?: number;
 }
 
 export interface PlayerItem {
@@ -158,17 +169,21 @@ export async function getSessionItems(sessionId: number): Promise<PlayerItem[]> 
     return items;
 }
 
+// Cache to prevent repetitive RPC calls
+const itemInfoCache = new Map<number, ContractItem>();
+
 export async function getItemInfo(itemId: number): Promise<ContractItem> {
+    if (itemInfoCache.has(itemId)) {
+        return itemInfoCache.get(itemId)!;
+    }
+
     const result = await provider.callContract({
         contractAddress: CONTRACTS.ABYSS_GAME,
         entrypoint: 'get_item_info',
         calldata: [toHex(itemId)]
     });
 
-    // Result structure: [id, name, description, price, sell_price, effect_type, effect_value, target_symbol]
-    // Note: strings are felt252, need decoding
-
-    return {
+    const item: ContractItem = {
         item_id: Number(result[0]),
         name: decodeString(result[1]),
         description: decodeString(result[2]),
@@ -178,6 +193,9 @@ export async function getItemInfo(itemId: number): Promise<ContractItem> {
         effect_value: Number(result[6]),
         target_symbol: decodeString(result[7]),
     };
+
+    itemInfoCache.set(itemId, item);
+    return item;
 }
 
 function decodeString(felt: string): string {

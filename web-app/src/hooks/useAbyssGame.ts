@@ -215,15 +215,29 @@ export function useAbyssGame(account: any | null) {
         }
     }, [account, waitForPreConfirmation]);
 
-    const activateRelic = useCallback(async (sessionId: number): Promise<ParsedEvents> => {
+    const activateRelic = useCallback(async (sessionId: number, relicId?: number): Promise<ParsedEvents> => {
         if (!account) throw new Error("Not connected");
 
         try {
-            const tx = await account.execute({
+            const calls: any[] = [];
+
+            // Scorcher (ID 4) consumes randomness immediately, so we must request it.
+            // Other relics (like Inferno/Phantom) do not.
+            if (relicId === 4) {
+                calls.push({
+                    contractAddress: CONTRACTS.CARTRIDGE_VRF,
+                    entrypoint: "request_random",
+                    calldata: [CONTRACTS.ABYSS_GAME, "0", account.address],
+                });
+            }
+
+            calls.push({
                 contractAddress: CONTRACTS.ABYSS_GAME,
                 entrypoint: "activate_relic",
                 calldata: [sessionId.toString()],
             });
+
+            const tx = await account.execute(calls);
             const receipt = await waitForPreConfirmation(tx.transaction_hash);
             return parseReceiptEvents(receipt);
         } catch (err) {

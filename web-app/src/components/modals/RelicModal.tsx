@@ -24,10 +24,10 @@ interface RelicModalProps {
 
 const RELIC_EFFECTS: Record<number, string> = {
     1: 'Force Random Jackpot',
-    2: 'Reset Spins to 5',
-    3: 'Double Next Spin',
-    4: 'Trigger 666',
-    5: 'Free Market Refresh',
+    2: 'Immediate Reset to Max Spins',
+    3: '5x Next Spin Score',
+    4: 'Immediately End Session (Secure Rewards)',
+    5: 'Immediate Free Market Refresh',
 };
 
 export default function RelicModal({

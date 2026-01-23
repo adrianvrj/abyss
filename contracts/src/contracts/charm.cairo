@@ -38,6 +38,8 @@ pub trait ICharm<TContractState> {
     // Game contract authorization
     fn set_game_contract(ref self: TContractState, game_contract: ContractAddress);
     fn get_game_contract(self: @TContractState) -> ContractAddress;
+    fn upgrade(ref self: TContractState, new_class_hash: starknet::class_hash::ClassHash);
+    fn set_base_uri(ref self: TContractState, new_base_uri: ByteArray);
 }
 
 /// Charm metadata stored on-chain
@@ -85,25 +87,94 @@ pub mod Rarity {
 mod Charm {
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::introspection::src5::SRC5Component;
+    use openzeppelin::token::erc721::interface::IERC721Metadata;
     use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
+    use openzeppelin::upgrades::UpgradeableComponent;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ClassHash, ContractAddress, get_caller_address};
     use super::{CharmMetadata, ICharm};
 
     component!(path: ERC721Component, storage: erc721, event: ERC721Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     #[abi(embed_v0)]
-    impl ERC721MixinImpl = ERC721Component::ERC721MixinImpl<ContractState>;
+    impl ERC721CamelOnlyImpl = ERC721Component::ERC721CamelOnlyImpl<ContractState>;
     impl ERC721InternalImpl = ERC721Component::InternalImpl<ContractState>;
 
     #[abi(embed_v0)]
     impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    #[starknet::interface]
+    trait IMetadataOverride<TState> {
+        fn name(self: @TState) -> ByteArray;
+        fn symbol(self: @TState) -> ByteArray;
+        fn token_uri(self: @TState, token_id: u256) -> ByteArray;
+    }
+
+    #[abi(embed_v0)]
+    impl MetadataOverrideImpl of IMetadataOverride<ContractState> {
+        fn name(self: @ContractState) -> ByteArray {
+            self.erc721.name()
+        }
+        fn symbol(self: @ContractState) -> ByteArray {
+            self.erc721.symbol()
+        }
+        fn token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+            assert(self.erc721.exists(token_id), 'ERC721: invalid token ID');
+            let base_uri = self.erc721._base_uri();
+            let charm_id = self.token_to_charm.read(token_id);
+            format!("{}?charmId={}&tokenId={}&v=3", base_uri, charm_id, token_id)
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl ERC721Impl of openzeppelin::token::erc721::interface::IERC721<ContractState> {
+        fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
+            self.erc721.balance_of(account)
+        }
+        fn owner_of(self: @ContractState, token_id: u256) -> ContractAddress {
+            self.erc721.owner_of(token_id)
+        }
+        fn safe_transfer_from(
+            ref self: ContractState,
+            from: ContractAddress,
+            to: ContractAddress,
+            token_id: u256,
+            data: Span<felt252>,
+        ) {
+            self.erc721.safe_transfer_from(from, to, token_id, data)
+        }
+        fn transfer_from(
+            ref self: ContractState, from: ContractAddress, to: ContractAddress, token_id: u256,
+        ) {
+            self.erc721.transfer_from(from, to, token_id)
+        }
+        fn approve(ref self: ContractState, to: ContractAddress, token_id: u256) {
+            self.erc721.approve(to, token_id)
+        }
+        fn set_approval_for_all(
+            ref self: ContractState, operator: ContractAddress, approved: bool,
+        ) {
+            self.erc721.set_approval_for_all(operator, approved)
+        }
+        fn get_approved(self: @ContractState, token_id: u256) -> ContractAddress {
+            self.erc721.get_approved(token_id)
+        }
+        fn is_approved_for_all(
+            self: @ContractState, owner: ContractAddress, operator: ContractAddress,
+        ) -> bool {
+            self.erc721.is_approved_for_all(owner, operator)
+        }
+    }
+
 
     #[storage]
     struct Storage {
@@ -113,6 +184,8 @@ mod Charm {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // Charm type definitions
         charms: Map<u32, CharmMetadata>,
         charm_max_supply: Map<u32, u32>,
@@ -138,8 +211,16 @@ mod Charm {
         SRC5Event: SRC5Component::Event,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
         CharmMinted: CharmMinted,
         CharmTypeCreated: CharmTypeCreated,
+        MetadataUpdate: MetadataUpdate,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct MetadataUpdate {
+        timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -160,6 +241,8 @@ mod Charm {
 
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress, base_uri: ByteArray) {
+        // Base URI should be: https://play.abyssgame.fun/api/metadata/charm
+        // Force hash change v2
         self.erc721.initializer("Soul Charms", "CHARM", base_uri);
         self.ownable.initializer(owner);
         self.next_token_id.write(1);
@@ -354,6 +437,16 @@ mod Charm {
         /// Get the authorized game contract
         fn get_game_contract(self: @ContractState) -> ContractAddress {
             self.game_contract.read()
+        }
+
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
+
+        fn set_base_uri(ref self: ContractState, new_base_uri: ByteArray) {
+            self.ownable.assert_only_owner();
+            self.erc721._set_base_uri(new_base_uri);
         }
     }
 }

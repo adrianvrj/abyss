@@ -19,6 +19,7 @@ interface InlineInventoryPanelProps {
     onUpdateTickets?: (newTickets: number) => void;
     onItemClick: (item: ContractItem) => void;
     refreshTrigger?: number;
+    initialInventory?: ContractItem[];
     optimisticItems?: ContractItem[];
     onOpenRelics?: () => void;
     sellingItemId?: number;
@@ -32,14 +33,15 @@ export default function InlineInventoryPanel({
     onItemClick,
     currentTickets = 0,
     refreshTrigger = 0,
+    initialInventory = [],
     optimisticItems = [],
     onOpenRelics,
     sellingItemId,
     hiddenItemIds = [],
     bibliaBroken = false,
 }: InlineInventoryPanelProps) {
-    const [loading, setLoading] = useState(true);
-    const [ownedItems, setOwnedItems] = useState<ContractItem[]>([]);
+    const [loading, setLoading] = useState(!initialInventory.length);
+    const [ownedItems, setOwnedItems] = useState<ContractItem[]>(initialInventory);
     const [hoveredItem, setHoveredItem] = useState<ContractItem | null>(null);
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -59,7 +61,7 @@ export default function InlineInventoryPanel({
 
     async function loadInventory() {
         try {
-            setLoading(true);
+            if (ownedItems.length === 0) setLoading(true);
             const playerItems = await getSessionItems(sessionId);
 
             const items = await Promise.all(playerItems.map(async (pi) => {

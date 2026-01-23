@@ -25,6 +25,9 @@ interface InlineMarketPanelProps {
     onUpdateLuck?: (newLuck: number) => void;
     onInventoryChange?: () => void;
     onPurchaseSuccess?: (item: ContractItem) => void;
+    initialItems?: ContractItem[];
+    refreshTrigger?: number;
+    externalRefreshEvent?: import('@/utils/gameEvents').MarketRefreshedEvent | null;
 }
 
 export default function InlineMarketPanel({
@@ -37,11 +40,14 @@ export default function InlineMarketPanel({
     onUpdateSpins,
     onUpdateLuck,
     onInventoryChange,
-    onPurchaseSuccess
+    onPurchaseSuccess,
+    initialItems = [],
+    refreshTrigger = 0,
+    externalRefreshEvent = null
 }: InlineMarketPanelProps) {
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialItems.length);
     const [marketData, setMarketData] = useState<SessionMarket | null>(null);
-    const [marketItems, setMarketItems] = useState<ContractItem[]>([]);
+    const [marketItems, setMarketItems] = useState<ContractItem[]>(initialItems);
     const [charmInfoMap, setCharmInfoMap] = useState<Map<number, CharmInfo>>(new Map());
     const [ownedItemIds, setOwnedItemIds] = useState<Set<number>>(new Set());
     const [inventoryCount, setInventoryCount] = useState(0);
@@ -60,12 +66,18 @@ export default function InlineMarketPanel({
     } = useAbyssGame(controller);
 
     useEffect(() => {
+        if (externalRefreshEvent) {
+            processMarketRefreshedEvent(externalRefreshEvent);
+        }
+    }, [externalRefreshEvent]);
+
+    useEffect(() => {
         if (sessionId) loadMarketData();
-    }, [sessionId]);
+    }, [sessionId, refreshTrigger]);
 
     async function loadMarketData() {
         try {
-            setLoading(true);
+            if (marketItems.length === 0) setLoading(true); // Only show loader if no items
             const market = await getSessionMarket(sessionId);
             setMarketData(market);
 
@@ -100,7 +112,8 @@ export default function InlineMarketPanel({
                             sell_price: 0,
                             effect_type: 7 as ItemEffectType, // LuckBoost marker
                             effect_value: charmInfo.luck,
-                            target_symbol: charmInfo.rarity
+                            target_symbol: charmInfo.rarity,
+                            image: charmInfo.image
                         });
                     }
                 } else {
@@ -144,6 +157,62 @@ export default function InlineMarketPanel({
 
     const refreshCost = marketData ? calculateRefreshCost(marketData.refresh_count) : 2;
 
+    async function processMarketRefreshedEvent(refreshEvent: import('@/utils/gameEvents').MarketRefreshedEvent) {
+        if (!refreshEvent) return;
+
+        // Optimistic Update using Event Data
+        const newScore = refreshEvent.newScore;
+        onUpdateScore(newScore);
+        if (onUpdateLuck && refreshEvent.currentLuck !== undefined) {
+            onUpdateLuck(refreshEvent.currentLuck);
+        }
+        setPurchasedInCurrentMarket(new Set());
+
+        // Update Market Data State
+        const newMarketData: SessionMarket = {
+            // We don't have refresh_count from event, but we can increment local or default to 0
+            refresh_count: marketData ? marketData.refresh_count + 1 : 0,
+            item_slot_1: refreshEvent.slots[0],
+            item_slot_2: refreshEvent.slots[1],
+            item_slot_3: refreshEvent.slots[2],
+            item_slot_4: refreshEvent.slots[3],
+            item_slot_5: refreshEvent.slots[4],
+            item_slot_6: refreshEvent.slots[5],
+        };
+        setMarketData(newMarketData);
+
+        // Fetch Info for new items directly
+        const items: ContractItem[] = [];
+        const charmMap = new Map<number, CharmInfo>();
+
+        for (const id of refreshEvent.slots) {
+            if (isCharmItem(id)) {
+                const charmId = getCharmIdFromItemId(id);
+                const charmInfo = await getCharmInfo(charmId);
+                if (charmInfo) {
+                    charmMap.set(id, charmInfo);
+                    items.push({
+                        item_id: id,
+                        name: charmInfo.name,
+                        description: charmInfo.description,
+                        price: charmInfo.shop_cost,
+                        sell_price: 0,
+                        effect_type: 7 as ItemEffectType,
+                        effect_value: charmInfo.luck,
+                        target_symbol: charmInfo.rarity,
+                        image: charmInfo.image
+                    });
+                }
+            } else {
+                const item = await getItemInfo(id);
+                items.push(item);
+            }
+        }
+        setMarketItems(items);
+        setCharmInfoMap(charmMap);
+        setCurrentItemIndex(0);
+    }
+
     async function handleRefresh() {
         if (!marketData || currentScore < refreshCost) return;
         setRefreshing(true);
@@ -153,61 +222,7 @@ export default function InlineMarketPanel({
 
             const refreshEvent = events.marketRefreshed;
             if (refreshEvent) {
-                // Optimistic Update using Event Data
-                const newScore = refreshEvent.newScore;
-                onUpdateScore(newScore);
-                if (onUpdateLuck && refreshEvent.currentLuck !== undefined) {
-                    onUpdateLuck(refreshEvent.currentLuck);
-                }
-                setPurchasedInCurrentMarket(new Set());
-
-                // Update Market Data State
-                const newMarketData: SessionMarket = {
-                    // We don't have refresh_count from event, but we can increment local
-                    // session_id is irrelevant for display usually
-                    refresh_count: marketData.refresh_count + 1,
-                    item_slot_1: refreshEvent.slots[0],
-                    item_slot_2: refreshEvent.slots[1],
-                    item_slot_3: refreshEvent.slots[2],
-                    item_slot_4: refreshEvent.slots[3],
-                    item_slot_5: refreshEvent.slots[4],
-                    item_slot_6: refreshEvent.slots[5],
-                };
-                setMarketData(newMarketData);
-
-                // Fetch Info for new items directly
-                const items: ContractItem[] = [];
-                const charmMap = new Map<number, CharmInfo>();
-
-                for (const id of refreshEvent.slots) {
-                    if (isCharmItem(id)) {
-                        const charmId = getCharmIdFromItemId(id);
-                        // Try to get from existing map first? No, likely new.
-                        const charmInfo = await getCharmInfo(charmId);
-                        if (charmInfo) {
-                            charmMap.set(id, charmInfo);
-                            items.push({
-                                item_id: id,
-                                name: charmInfo.name,
-                                description: charmInfo.description,
-                                price: charmInfo.shop_cost,
-                                sell_price: 0,
-                                effect_type: 7 as ItemEffectType,
-                                effect_value: charmInfo.luck,
-                                target_symbol: charmInfo.rarity
-                            });
-                        }
-                    } else {
-                        // Regular item - check cache? simple fetch for now
-                        const item = await getItemInfo(id);
-                        items.push(item);
-                    }
-                }
-                setMarketItems(items);
-                setCharmInfoMap(charmMap);
-                setCurrentItemIndex(0);
-
-                // No need to call loadMarketData(); we have everything!
+                await processMarketRefreshedEvent(refreshEvent);
             } else {
                 // Fallback if event missing (shouldn't happen with new contract)
                 await loadMarketData();

@@ -50,11 +50,11 @@ body {
 
 body {
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background-image: url('/images/bg-desktop.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -146,5 +146,25 @@ img {
 
   75% {
     transform: translateX(10px);
+  }
+}
+
+/* Game Page Background */
+.game-page-bg {
+  background-image: url('/images/bg-desktop.png');
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+@media (max-width: 768px) {
+  .game-page-bg {
+    background-image: url('/images/bg-mobile.png');
   }
 }

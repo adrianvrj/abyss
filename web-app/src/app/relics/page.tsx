@@ -15,7 +15,7 @@ const RELICS = [
         name: "Mortis",
         description: "Gentleman of Death - Forces a random jackpot",
         effect: "Force Random Jackpot",
-        price: 8000,
+        price: 44444,
         maxSupply: 5,
         rarity: "Mythic",
         image: "/images/relics/mortis.png",
@@ -25,9 +25,9 @@ const RELICS = [
     {
         id: 2,
         name: "Phantom",
-        description: "The Timeless Specter - Resets your spins to 5",
-        effect: "Reset Spins",
-        price: 5000,
+        description: "The Timeless Specter - Resets to Max Spins",
+        effect: "Reset to Max Spins",
+        price: 33333,
         maxSupply: 7,
         rarity: "Mythic",
         image: "/images/relics/phantom.png",
@@ -39,7 +39,7 @@ const RELICS = [
         name: "Lucky the Dealer",
         description: "Doubles down on every bet - 2x next spin score",
         effect: "Double Next Spin",
-        price: 3500,
+        price: 22222,
         maxSupply: 10,
         rarity: "Legendary",
         image: "/images/relics/lucky_the_dealer.png",
@@ -49,9 +49,9 @@ const RELICS = [
     {
         id: 4,
         name: "Scorcher",
-        description: "Master of the cursed 666 - Triggers 666 pattern",
-        effect: "Trigger 666",
-        price: 3200,
+        description: "Master of the cursed 666 - Immediately End Session",
+        effect: "End Session",
+        price: 15555,
         maxSupply: 10,
         rarity: "Legendary",
         image: "/images/relics/scorcher.png",
@@ -63,7 +63,7 @@ const RELICS = [
         name: "Inferno",
         description: "Hell's marketplace demon - Free market refresh",
         effect: "Free Market Refresh",
-        price: 3000,
+        price: 11111,
         maxSupply: 10,
         rarity: "Legendary",
         image: "/images/relics/inferno.png",
@@ -72,182 +72,14 @@ const RELICS = [
     },
 ];
 
-const styles = {
-    container: {
-        height: "100vh",
-        overflowY: "auto" as const,
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #0a0a0a 0%, #1a0a0a 100%)",
-        padding: "24px",
-        fontFamily: "'PressStart2P', monospace",
-    },
-    header: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: "32px",
-    },
-    backButton: {
-        background: "transparent",
-        border: "none",
-        color: "#888",
-        fontSize: "14px",
-        cursor: "pointer",
-        fontFamily: "'PressStart2P', monospace",
-    },
-    title: {
-        fontSize: "24px",
-        color: "#FF841C",
-        textAlign: "center" as const,
-    },
-    chipBalance: {
-        fontSize: "12px",
-        color: "#FFD700",
-    },
-    tabs: {
-        display: "flex",
-        gap: "16px",
-        marginBottom: "24px",
-        justifyContent: "center",
-    },
-    tab: {
-        padding: "12px 24px",
-        background: "transparent",
-        border: "2px solid #333",
-        color: "#888",
-        fontSize: "12px",
-        cursor: "pointer",
-        fontFamily: "'PressStart2P', monospace",
-        borderRadius: "8px",
-    },
-    activeTab: {
-        border: "2px solid #FF841C",
-        color: "#FF841C",
-    },
-    grid: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-        gap: "24px",
-        maxWidth: "1200px",
-        margin: "0 auto",
-    },
-    card: {
-        background: "linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%)",
-        border: "2px solid #333",
-        borderRadius: "16px",
-        padding: "20px",
-        position: "relative" as const,
-        overflow: "hidden",
-    },
-    mythicCard: {
-        border: "2px solid #FF841C",
-    },
-    legendaryCard: {
-        border: "2px solid #888",
-    },
-    cardImage: {
-        width: "100%",
-        height: "180px",
-        objectFit: "contain" as const,
-        borderRadius: "8px",
-        marginBottom: "16px",
-        background: "#0a0a0a",
-    },
-    cardName: {
-        fontSize: "16px",
-        color: "#fff",
-        marginBottom: "8px",
-    },
-    cardEffect: {
-        fontSize: "10px",
-        color: "#FF841C",
-        marginBottom: "8px",
-    },
-    cardDescription: {
-        fontSize: "9px",
-        color: "#888",
-        marginBottom: "12px",
-        lineHeight: "1.5",
-    },
-    cardStats: {
-        display: "flex",
-        justifyContent: "space-between",
-        marginBottom: "12px",
-    },
-    stat: {
-        fontSize: "9px",
-        color: "#666",
-    },
-    supply: {
-        fontSize: "10px",
-        color: "#4ade80",
-    },
-    soldOut: {
-        color: "#ef4444",
-    },
-    price: {
-        fontSize: "14px",
-        color: "#FFD700",
-        marginBottom: "12px",
-    },
-    mintButton: {
-        width: "100%",
-        padding: "12px",
-        background: "linear-gradient(90deg, #FF841C 0%, #FF5500 100%)",
-        border: "none",
-        borderRadius: "8px",
-        color: "#fff",
-        fontSize: "12px",
-        cursor: "pointer",
-        fontFamily: "'PressStart2P', monospace",
-    },
-    disabledButton: {
-        background: "#333",
-        cursor: "not-allowed",
-    },
-    rarityBadge: {
-        position: "absolute" as const,
-        top: "12px",
-        right: "12px",
-        padding: "4px 8px",
-        borderRadius: "4px",
-        fontSize: "8px",
-        fontWeight: "bold",
-    },
-    mythicBadge: {
-        background: "#FF841C",
-        color: "#000",
-    },
-    legendaryBadge: {
-        background: "#666",
-        color: "#fff",
-    },
-    ownedBadge: {
-        position: "absolute" as const,
-        top: "12px",
-        left: "12px",
-        padding: "4px 8px",
-        background: "#22c55e",
-        borderRadius: "4px",
-        fontSize: "8px",
-        color: "#fff",
-    },
-    emptyState: {
-        textAlign: "center" as const,
-        color: "#666",
-        fontSize: "12px",
-        padding: "48px",
-    },
-    cooldown: {
-        fontSize: "9px",
-        color: "#888",
-    },
+const RARITY_COLORS: Record<string, string> = {
+    Mythic: "#FF4444",
+    Legendary: "#FFD700",
 };
 
 export default function RelicsPage() {
     const router = useRouter();
     const { account } = useController();
-    const [activeTab, setActiveTab] = useState<"shop" | "owned">("shop");
     const [ownedRelics, setOwnedRelics] = useState<number[]>([]);
     const [supplyData, setSupplyData] = useState<Record<number, { current: number; max: number }>>({});
     const [chipBalance, setChipBalance] = useState<bigint>(BigInt(0));
@@ -380,12 +212,15 @@ export default function RelicsPage() {
         }
     }, [account]);
 
-    const filteredRelics = activeTab === "owned"
-        ? RELICS.filter(r => ownedRelics.includes(r.id))
-        : RELICS;
-
     return (
-        <div style={styles.container}>
+        <div style={{
+            height: "100vh",
+            overflowY: "auto",
+            minHeight: "100vh",
+            background: "#000",
+            padding: "24px",
+            fontFamily: "'PressStart2P', monospace",
+        }}>
             {isLoading && (
                 <div style={{
                     position: 'fixed',
@@ -395,104 +230,194 @@ export default function RelicsPage() {
                     justifyContent: 'center',
                     background: 'rgba(0,0,0,0.95)',
                     zIndex: 9999,
-                    fontFamily: "'PressStart2P', monospace",
                     fontSize: '16px',
                     color: '#FF841C',
                 }}>
                     Loading...
                 </div>
             )}
-            <div style={styles.header}>
-                <button style={styles.backButton} onClick={() => router.push("/")}>
+
+            {/* Header */}
+            <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "32px",
+            }}>
+                <button
+                    onClick={() => router.push("/")}
+                    style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#888",
+                        fontSize: "14px",
+                        cursor: "pointer",
+                        fontFamily: "'PressStart2P', monospace",
+                    }}
+                >
                     &lt; BACK
                 </button>
-                <h1 style={styles.title}>RELICS</h1>
-                <div style={styles.chipBalance}>
+                <h1 style={{
+                    fontSize: "24px",
+                    color: "#FF841C",
+                }}>
+                    RELICS
+                </h1>
+                <div style={{ fontSize: "12px", color: "#FFD700" }}>
                     {chipBalance.toString()} CHIP
                 </div>
             </div>
 
-            <div style={styles.tabs}>
-                <button
-                    style={{ ...styles.tab, ...(activeTab === "shop" ? styles.activeTab : {}) }}
-                    onClick={() => setActiveTab("shop")}
-                >
-                    SHOP
-                </button>
-                <button
-                    style={{ ...styles.tab, ...(activeTab === "owned" ? styles.activeTab : {}) }}
-                    onClick={() => setActiveTab("owned")}
-                >
-                    MY RELICS
-                </button>
-            </div>
+            {/* Relic Grid */}
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: "24px",
+                maxWidth: "1400px",
+                margin: "0 auto",
+            }}>
+                {RELICS.map((relic) => {
+                    const supply = supplyData[relic.id] || { current: 0, max: relic.maxSupply };
+                    const isSoldOut = supply.current >= supply.max;
+                    const canAfford = chipBalance >= BigInt(relic.price);
+                    const isOwned = ownedRelics.includes(relic.id);
+                    const rarityColor = RARITY_COLORS[relic.rarity];
 
-            {activeTab === "owned" && filteredRelics.length === 0 ? (
-                <div style={styles.emptyState}>
-                    <p>You don&apos;t own any relics yet.</p>
-                    <p style={{ marginTop: "16px" }}>Visit the shop to mint your first!</p>
-                </div>
-            ) : (
-                <div style={styles.grid}>
-                    {filteredRelics.map((relic) => {
-                        const supply = supplyData[relic.id] || { current: 0, max: relic.maxSupply };
-                        const isSoldOut = supply.current >= supply.max;
-                        const canAfford = chipBalance >= BigInt(relic.price);
-                        const isOwned = ownedRelics.includes(relic.id);
+                    return (
+                        <motion.div
+                            key={relic.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            style={{
+                                background: "linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%)",
+                                border: `2px solid ${isOwned ? rarityColor : "#333"}`,
+                                borderRadius: "16px",
+                                padding: "20px",
+                                position: "relative",
+                                overflow: "hidden",
+                            }}
+                        >
+                            {/* Rarity Badge */}
+                            <div style={{
+                                position: "absolute",
+                                top: "12px",
+                                right: "12px",
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                fontSize: "8px",
+                                background: isOwned ? rarityColor : "#333",
+                                color: isOwned ? "#000" : "#666",
+                            }}>
+                                {relic.rarity.toUpperCase()}
+                            </div>
 
-                        return (
-                            <motion.div
-                                key={relic.id}
-                                style={{
-                                    ...styles.card,
-                                    ...(relic.rarity === "Mythic" ? styles.mythicCard : styles.legendaryCard),
-                                }}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                {/* Rarity Badge */}
+                            {/* Owned Badge */}
+                            {isOwned && (
                                 <div style={{
-                                    ...styles.rarityBadge,
-                                    ...(relic.rarity === "Mythic" ? styles.mythicBadge : styles.legendaryBadge),
+                                    position: "absolute",
+                                    top: "12px",
+                                    left: "12px",
+                                    padding: "4px 8px",
+                                    background: "#22c55e",
+                                    borderRadius: "4px",
+                                    fontSize: "8px",
+                                    color: "#fff",
                                 }}>
-                                    {relic.rarity.toUpperCase()}
+                                    OWNED
                                 </div>
+                            )}
 
-                                {/* Owned Badge */}
-                                {isOwned && <div style={styles.ownedBadge}>OWNED</div>}
-
+                            {/* Relic Image */}
+                            <div style={{
+                                width: "100%",
+                                height: "160px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginBottom: "16px",
+                                background: "#0a0a0a",
+                                borderRadius: "12px",
+                            }}>
                                 <Image
                                     src={relic.image}
                                     alt={relic.name}
-                                    width={300}
-                                    height={200}
-                                    style={styles.cardImage}
+                                    width={120}
+                                    height={120}
+                                    style={{
+                                        objectFit: "contain",
+                                        filter: isOwned ? "none" : "grayscale(100%)",
+                                    }}
                                 />
+                            </div>
 
-                                <h3 style={styles.cardName}>{relic.name}</h3>
-                                <p style={styles.cardEffect}>{relic.effect}</p>
-                                <p style={styles.cardDescription}>{relic.description}</p>
+                            <h3 style={{
+                                fontSize: "14px",
+                                color: isOwned ? "#fff" : "#666",
+                                marginBottom: "8px",
+                            }}>
+                                {relic.name}
+                            </h3>
 
-                                <div style={styles.cardStats}>
-                                    <span style={styles.cooldown}>
-                                        {relic.cooldown} spin cooldown
-                                    </span>
-                                    <span style={{
-                                        ...styles.supply,
-                                        ...(isSoldOut ? styles.soldOut : {}),
+                            <p style={{
+                                fontSize: "10px",
+                                color: isOwned ? rarityColor : "#444",
+                                marginBottom: "8px",
+                            }}>
+                                {relic.effect}
+                            </p>
+
+                            <p style={{
+                                fontSize: "8px",
+                                color: "#666",
+                                lineHeight: "1.5",
+                                marginBottom: "16px",
+                                height: "30px",
+                            }}>
+                                {relic.description}
+                            </p>
+
+                            {/* Stats */}
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                marginBottom: "16px",
+                                fontSize: "9px",
+                                color: "#666",
+                            }}>
+                                <span>{relic.cooldown} spin CD</span>
+                                <span style={{
+                                    color: isSoldOut ? "#ef4444" : "#4ade80",
+                                }}>
+                                    {isSoldOut ? "SOLD OUT" : `${supply.current}/${supply.max} minted`}
+                                </span>
+                            </div>
+
+                            {/* Price / Mint Button */}
+                            {!isOwned ? (
+                                <>
+                                    <div style={{
+                                        fontSize: "12px",
+                                        color: "#FFD700",
+                                        marginBottom: "12px",
+                                        textAlign: "center",
                                     }}>
-                                        {isSoldOut ? "SOLD OUT" : `${supply.current}/${supply.max} minted`}
-                                    </span>
-                                </div>
+                                        {relic.price.toLocaleString()} CHIP
+                                    </div>
 
-                                <p style={styles.price}>{relic.price.toLocaleString()} CHIP</p>
-
-                                {activeTab === "shop" && (
                                     <motion.button
                                         style={{
-                                            ...styles.mintButton,
-                                            ...(isSoldOut || !canAfford ? styles.disabledButton : {}),
+                                            width: "100%",
+                                            padding: "12px",
+                                            background: isSoldOut || !canAfford
+                                                ? "#333"
+                                                : "linear-gradient(90deg, #FF841C 0%, #FF5500 100%)",
+                                            border: "none",
+                                            borderRadius: "8px",
+                                            color: isSoldOut || !canAfford ? "#666" : "#fff",
+                                            fontSize: "10px",
+                                            cursor: isSoldOut || !canAfford ? "not-allowed" : "pointer",
+                                            fontFamily: "'PressStart2P', monospace",
                                         }}
                                         onClick={() => handleMint(relic.id, relic.price)}
                                         disabled={isSoldOut || !canAfford || minting !== null}
@@ -501,29 +426,29 @@ export default function RelicsPage() {
                                     >
                                         {minting === relic.id ? "MINTING..." :
                                             isSoldOut ? "SOLD OUT" :
-                                                !canAfford ? "INSUFFICIENT CHIP" :
+                                                !canAfford ? "NEED CHIPS" :
                                                     "MINT RELIC"}
                                     </motion.button>
-                                )}
-
-                                {activeTab === "owned" && (
-                                    <motion.button
-                                        style={styles.mintButton}
-                                        onClick={() => {
-                                            // For now, just show alert - needs session integration
-                                            alert(`To equip ${relic.name}, you need an active game session. Start a game first, then equip from the game screen.`);
-                                        }}
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                    >
-                                        EQUIP TO SESSION
-                                    </motion.button>
-                                )}
-                            </motion.div>
-                        );
-                    })}
-                </div>
-            )}
+                                </>
+                            ) : (
+                                <div style={{
+                                    width: "100%",
+                                    padding: "12px",
+                                    background: "#22c55e20",
+                                    border: "1px solid #22c55e",
+                                    borderRadius: "8px",
+                                    color: "#22c55e",
+                                    fontSize: "10px",
+                                    textAlign: "center",
+                                    fontFamily: "'PressStart2P', monospace",
+                                }}>
+                                    OWNED
+                                </div>
+                            )}
+                        </motion.div>
+                    );
+                })}
+            </div>
         </div>
     );
 }

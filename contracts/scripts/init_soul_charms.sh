@@ -4,7 +4,7 @@
 # Run this after deploying the Charm contract to create all 20 charm types
 
 # Configuration - UPDATE THESE VALUES
-CHARM_CONTRACT="0x001cef3c4e30b3a55fb152933c5e7179b4b2cc5c0d4cc1510061af5f2d297976"
+CHARM_CONTRACT="0x076dc33ef7e8efbbd6f513f35a47bb94df3a57ab3c66e5985d316d435b70d745"
 ABYSS_GAME_CONTRACT="0x05b38052dcad094f11f71c78b0c1b84a001616f7f04619502b73a359d8b7e4ae"  # UPDATE THIS!
 PROFILE="dev"
 ACCOUNT="abyss_admin"
@@ -195,8 +195,8 @@ echo "[18/20] Creating Chaos Orb..."
 sncast -p $PROFILE --account $ACCOUNT invoke \
   --contract-address $CHARM_CONTRACT \
   --function create_charm_type \
-  --arguments '18, 0x4368616f73204f7262, 0x2b3330206c75636b206966206e6f207061747465726e73, 10, 30, 0, 1, 2, 5, 100'
-# Conditional: +30 luck if no patterns
+  --arguments '18, 0x4368616f73204f7262, 0x2b3330206c75636b2069662036363620626c6f636b6564, 10, 30, 0, 6, 2, 5, 100'
+# Conditional: +30 luck if 666 blocked
 sleep 5
 
 echo "[19/20] Creating Soul of the Abyss..."

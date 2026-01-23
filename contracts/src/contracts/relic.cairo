@@ -26,6 +26,25 @@ trait IRelic<TContractState> {
     fn get_relic_drop_info(self: @TContractState, relic_id: u32) -> (RelicMetadata, u256, u32, u32);
     fn get_player_relics(self: @TContractState, player: ContractAddress) -> Array<u256>;
     fn get_supply_info(self: @TContractState, relic_id: u32) -> (u32, u32);
+    fn update_relic_metadata(
+        ref self: TContractState,
+        relic_id: u32,
+        name: felt252,
+        description: felt252,
+        effect_type: u8,
+        cooldown_spins: u32,
+        rarity: u8,
+        image_uri: felt252,
+        strength: u8,
+        dexterity: u8,
+        intelligence: u8,
+        vitality: u8,
+        wisdom: u8,
+        charisma: u8,
+        luck: u8,
+    );
+    fn upgrade(ref self: TContractState, new_class_hash: starknet::class_hash::ClassHash);
+    fn set_base_uri(ref self: TContractState, new_base_uri: ByteArray);
 }
 
 #[derive(Drop, Serde, starknet::Store, Copy)]
@@ -50,25 +69,56 @@ pub struct RelicMetadata {
 mod Relic {
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::introspection::src5::SRC5Component;
+    use openzeppelin::token::erc721::interface::IERC721Metadata;
     use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
+    use openzeppelin::upgrades::UpgradeableComponent;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ClassHash, ContractAddress, get_caller_address};
     use super::{IRelic, RelicMetadata};
 
     component!(path: ERC721Component, storage: erc721, event: ERC721Event);
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     #[abi(embed_v0)]
-    impl ERC721MixinImpl = ERC721Component::ERC721MixinImpl<ContractState>;
+    #[abi(embed_v0)]
+    impl ERC721Impl = ERC721Component::ERC721Impl<ContractState>;
+    #[abi(embed_v0)]
+    impl ERC721CamelOnlyImpl = ERC721Component::ERC721CamelOnlyImpl<ContractState>;
     impl ERC721InternalImpl = ERC721Component::InternalImpl<ContractState>;
 
     #[abi(embed_v0)]
     impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    #[starknet::interface]
+    trait IMetadataOverride<TState> {
+        fn name(self: @TState) -> ByteArray;
+        fn symbol(self: @TState) -> ByteArray;
+        fn token_uri(self: @TState, token_id: u256) -> ByteArray;
+    }
+
+    #[abi(embed_v0)]
+    impl MetadataOverrideImpl of IMetadataOverride<ContractState> {
+        fn name(self: @ContractState) -> ByteArray {
+            self.erc721.name()
+        }
+        fn symbol(self: @ContractState) -> ByteArray {
+            self.erc721.symbol()
+        }
+        fn token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+            assert(self.erc721.exists(token_id), 'ERC721: invalid token ID');
+            let base_uri = self.erc721._base_uri();
+            let relic_id = self.token_to_relic.read(token_id);
+            format!("{}?relicId={}&tokenId={}&v=3", base_uri, relic_id, token_id)
+        }
+    }
 
     #[starknet::interface]
     trait IERC20<TContractState> {
@@ -88,6 +138,8 @@ mod Relic {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         relics: Map<u32, RelicMetadata>,
         token_to_relic: Map<u256, u32>,
         relic_price: Map<u32, u256>,
@@ -107,8 +159,16 @@ mod Relic {
         SRC5Event: SRC5Component::Event,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
         RelicMinted: RelicMinted,
         RelicDropCreated: RelicDropCreated,
+        MetadataUpdate: MetadataUpdate,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct MetadataUpdate {
+        timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -133,6 +193,7 @@ mod Relic {
         treasury_address: ContractAddress,
         base_uri: ByteArray,
     ) {
+        // Base URI should be: https://play.abyssgame.fun/api/metadata/relic
         self.erc721.initializer("Abyss Relics", "RELIC", base_uri);
         self.ownable.initializer(owner);
         self.chip_token.write(chip_token_address);
@@ -244,6 +305,57 @@ mod Relic {
             let current = self.relic_current_supply.read(relic_id);
             let max = self.relic_max_supply.read(relic_id);
             (current, max)
+        }
+
+        fn update_relic_metadata(
+            ref self: ContractState,
+            relic_id: u32,
+            name: felt252,
+            description: felt252,
+            effect_type: u8,
+            cooldown_spins: u32,
+            rarity: u8,
+            image_uri: felt252,
+            strength: u8,
+            dexterity: u8,
+            intelligence: u8,
+            vitality: u8,
+            wisdom: u8,
+            charisma: u8,
+            luck: u8,
+        ) {
+            self.ownable.assert_only_owner();
+
+            // Check if relic exists
+            let mut metadata = self.relics.read(relic_id);
+            assert(metadata.relic_id == relic_id, 'Relic does not exist');
+
+            // Update metadata (keep id)
+            metadata.name = name;
+            metadata.description = description;
+            metadata.effect_type = effect_type;
+            metadata.cooldown_spins = cooldown_spins;
+            metadata.rarity = rarity;
+            metadata.image_uri = image_uri;
+            metadata.strength = strength;
+            metadata.dexterity = dexterity;
+            metadata.intelligence = intelligence;
+            metadata.vitality = vitality;
+            metadata.wisdom = wisdom;
+            metadata.charisma = charisma;
+            metadata.luck = luck;
+
+            self.relics.write(relic_id, metadata);
+        }
+
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
+
+        fn set_base_uri(ref self: ContractState, new_base_uri: ByteArray) {
+            self.ownable.assert_only_owner();
+            self.erc721._set_base_uri(new_base_uri);
         }
     }
 }

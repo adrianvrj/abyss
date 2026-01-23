@@ -21,7 +21,7 @@ import PatternOverlay from "@/components/PatternOverlay";
 import BibliaSaveAnimation from "@/components/BibliaSaveAnimation";
 import RelicActivationAnimation from "@/components/RelicActivationAnimation";
 import { AnimatePresence } from "framer-motion";
-import { getSessionItems, getItemInfo, ItemEffectType, ContractItem, sellItem, getCharmInfo, CharmInfo } from "@/utils/abyssContract"; // Keeping these for non-hook utils for now
+import { getSessionItems, getItemInfo, ItemEffectType, ContractItem, sellItem, getCharmInfo, CharmInfo, getSessionMarket, isCharmItem, getCharmIdFromItemId } from "@/utils/abyssContract"; // Keeping these for non-hook utils for now
 import InlineMarketPanel from "@/components/InlineMarketPanel";
 import InlineInventoryPanel from "@/components/InlineInventoryPanel";
 import SellConfirmModal from "@/components/SellConfirmModal";
@@ -30,6 +30,25 @@ import GameOverModal from '@/components/GameOverModal';
 import LevelUpAnimation from "@/components/LevelUpAnimation";
 import GameStatsPanel from '@/components/GameStatsPanel';
 import CharmMintAnimation from "@/components/CharmMintAnimation";
+import { useAssetPreloader } from '@/hooks/useAssetPreloader';
+import PreloadingScreen from '@/components/PreloadingScreen';
+import { SYMBOL_INFO } from '@/utils/GameConfig';
+
+const PRELOAD_IMAGES = [
+    '/images/bg-desktop.png',
+    '/images/bg-mobile.png',
+    '/images/abyss-logo.png',
+    '/images/slot_machine.png',
+    '/images/skull_danger.png',
+    ...Object.values(SYMBOL_INFO).map(s => s.image)
+];
+
+const PRELOAD_AUDIO = [
+    '/sounds/spin.mp3',
+    '/sounds/win.wav',
+    '/sounds/jackpot.mp3',
+    '/sounds/game-over.mp3',
+];
 
 function GameContent() {
     const searchParams = useSearchParams();
@@ -58,12 +77,16 @@ function GameContent() {
     const [score, setScore] = useState(0);
     const [threshold, setThreshold] = useState(100); // Next Level Threshold
     const [risk, setRisk] = useState(0); // 666 Risk %
+    const [initialMarketItems, setInitialMarketItems] = useState<ContractItem[]>([]); // Preloaded market items
+    const [initialInventoryItems, setInitialInventoryItems] = useState<ContractItem[]>([]); // Preloaded inventory items
     const [tickets, setTickets] = useState(0); // Ticket Master Currency
     const [spinsRemaining, setSpinsRemaining] = useState(5);
     const [isSessionActive, setIsSessionActive] = useState(true); // Track if session is still active
     const [patterns, setPatterns] = useState<Pattern[]>([]);
     const [showingPatterns, setShowingPatterns] = useState(false);
     const [symbolScores, setSymbolScores] = useState<number[]>([7, 5, 4, 3, 2]);
+    const [blocked666, setBlocked666] = useState(false);
+    const [pendingRelicEffect, setPendingRelicEffect] = useState<number | null>(null);
 
 
     const [grid, setGrid] = useState<number[]>([]);
@@ -82,7 +105,7 @@ function GameContent() {
 
     // Game Over State
     const [showGameOver, setShowGameOver] = useState(false);
-    const [gameOverReason, setGameOverReason] = useState<'666' | 'no_spins' | null>(null);
+    const [gameOverReason, setGameOverReason] = useState<'666' | 'no_spins' | 'scorched' | null>(null);
     const [finalScore, setFinalScore] = useState(0);
     const [finalTotalScore, setFinalTotalScore] = useState(0);
     const [chipsClaimed, setChipsClaimed] = useState(false);
@@ -116,9 +139,19 @@ function GameContent() {
     // Biblia mask state for visual removal
     const [bibliaBroken, setBibliaBroken] = useState(false);
 
+    const [marketRefreshTrigger, setMarketRefreshTrigger] = useState(0);
+    const [lastMarketEvent, setLastMarketEvent] = useState<import('@/utils/gameEvents').MarketRefreshedEvent | null>(null);
+
     useEffect(() => {
         symbolScoresRef.current = symbolScores;
     }, [symbolScores]);
+
+    // Effect to trigger Game Over modal once animations are done
+    useEffect(() => {
+        if (gameOverReason && !showRelicActivation && !mintedCharmInfo && !showGameOver) {
+            setShowGameOver(true);
+        }
+    }, [gameOverReason, showRelicActivation, mintedCharmInfo, showGameOver]);
 
     // Inline panel state (desktop)
     const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
@@ -225,11 +258,93 @@ function GameContent() {
             if (sessionId && isConnected) {
                 setIsInitialLoading(true);
                 try {
-                    await Promise.all([
-                        loadSessionData(),
-                        loadScoreBonuses(),
-                        loadOwnedRelics()
-                    ]);
+                    // 1. Load Session Data (Stats, Relics, etc.)
+                    const sessionPromise = loadSessionData();
+                    const bonusPromise = loadScoreBonuses();
+                    const relicPromise = loadOwnedRelics();
+
+                    // 2. Load Market Data (Slots + Details) to Preload
+                    const marketPromise = (async () => {
+                        try {
+                            const market = await getSessionMarket(Number(sessionId));
+                            if (!market) return [];
+
+                            const itemIds = [
+                                market.item_slot_1, market.item_slot_2, market.item_slot_3,
+                                market.item_slot_4, market.item_slot_5, market.item_slot_6
+                            ];
+
+                            const items: ContractItem[] = [];
+                            for (const id of itemIds) {
+                                if (isCharmItem(id)) {
+                                    const charmId = getCharmIdFromItemId(id);
+                                    const charmInfo = await getCharmInfo(charmId);
+                                    if (charmInfo) {
+                                        items.push({
+                                            item_id: id,
+                                            name: charmInfo.name,
+                                            description: charmInfo.description,
+                                            price: charmInfo.shop_cost,
+                                            sell_price: 0,
+                                            effect_type: 7 as ItemEffectType,
+                                            effect_value: charmInfo.luck,
+                                            target_symbol: charmInfo.rarity,
+                                            image: charmInfo.image
+                                        });
+                                    }
+                                } else {
+                                    const item = await getItemInfo(id);
+                                    items.push(item);
+                                }
+                            }
+                            setInitialMarketItems(items);
+                            return items;
+                        } catch (e) {
+                            console.error("Failed to preload market:", e);
+                            return [];
+                        }
+                    })();
+
+                    // 3. Load Inventory Data to Preload
+                    const inventoryPromise = (async () => {
+                        try {
+                            const playerItems = await getSessionItems(Number(sessionId));
+                            const items = await Promise.all(playerItems.map(async (pi) => {
+                                if (pi.item_id >= 1000) {
+                                    const charmId = pi.item_id - 1000;
+                                    // Use dynamic import to avoid circular dependency issues if any, or just consistent with existing code
+                                    const charmInfo = await getCharmInfo(charmId);
+                                    if (!charmInfo) return null;
+
+                                    const packedEffect = `${charmInfo.rarity}|||${charmInfo.effect}`;
+
+                                    return {
+                                        item_id: pi.item_id,
+                                        name: charmInfo.name,
+                                        description: charmInfo.description,
+                                        price: charmInfo.shop_cost,
+                                        sell_price: Math.floor(charmInfo.shop_cost / 2),
+                                        effect_type: 7 as ItemEffectType,
+                                        effect_value: charmInfo.luck,
+                                        target_symbol: packedEffect,
+                                        image: charmInfo.image
+                                    } as ContractItem;
+                                } else {
+                                    return getItemInfo(pi.item_id);
+                                }
+                            }));
+                            const validItems = items.filter((i): i is ContractItem => i !== null);
+                            setInitialInventoryItems(validItems);
+                            return validItems;
+                        } catch (e) {
+                            console.error("Failed to preload inventory:", e);
+                            return [];
+                        }
+                    })();
+
+                    await Promise.all([sessionPromise, bonusPromise, relicPromise, marketPromise, inventoryPromise]);
+                } catch (e) {
+                    console.error("Initialization failed", e);
                 } finally {
                     setIsInitialLoading(false);
                 }
@@ -243,6 +358,14 @@ function GameContent() {
         try {
             const data = await getSessionData(Number(sessionId));
             if (data) {
+                setSymbolScores(data.symbolScores);
+                setBlocked666(data.blocked666);
+
+                setBlocked666(data.blocked666);
+                if (data.relicPendingEffect !== undefined) {
+                    setPendingRelicEffect(data.relicPendingEffect);
+                }
+
                 // Check for level up
                 if (data.level > previousLevelRef.current && previousLevelRef.current > 0) {
                     setShowLevelUp(true);
@@ -606,28 +729,32 @@ function GameContent() {
             </div>
         );
     }
+
+    // Asset Preloading & Chain Sync
+    const { loaded: assetsLoaded, progress: loadProgress } = useAssetPreloader(PRELOAD_IMAGES, PRELOAD_AUDIO);
+
+    // Block UI until BOTH assets are loaded AND initial chain data is synced
+    const isLoading = !assetsLoaded || isInitialLoading;
+
+    if (isLoading) {
+        let statusText = "Entering the Abyss...";
+        let progress = 0;
+
+        if (!assetsLoaded) {
+            statusText = "Loading Assets...";
+            progress = loadProgress;
+        } else if (isInitialLoading) {
+            statusText = "Syncing with Chain...";
+            progress = 100;
+        }
+
+        return <PreloadingScreen progress={progress} statusText={statusText} />;
+    }
+
     return (
-        <div className="game-container">
+        <div className="game-container game-page-bg">
             {/* Level Up Animation */}
             <LevelUpAnimation isVisible={showLevelUp} />
-
-            {/* Initial Loading State */}
-            {isInitialLoading && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.95)',
-                    zIndex: 9999,
-                    fontFamily: "'PressStart2P', monospace",
-                    fontSize: '16px',
-                    color: '#FF841C',
-                }}>
-                    Loading...
-                </div>
-            )}
 
             {/* Activating Relic Overlay */}
             {isActivatingRelic && (
@@ -686,6 +813,9 @@ function GameContent() {
                         onPurchaseSuccess={(item) => {
                             setOptimisticItems(prev => [...prev, item]);
                         }}
+                        initialItems={initialMarketItems}
+                        refreshTrigger={marketRefreshTrigger}
+                        externalRefreshEvent={lastMarketEvent}
                     />
                 </div>
                 <div style={{ display: activeMobileTab === 'inventory' ? 'contents' : 'none' }}>
@@ -703,6 +833,7 @@ function GameContent() {
                         sellingItemId={isSelling && itemToSell ? itemToSell.item_id : undefined}
                         hiddenItemIds={hiddenItems}
                         bibliaBroken={bibliaBroken}
+                        initialInventory={initialInventoryItems}
                     />
                 </div>
                 <div style={{ display: activeMobileTab === 'info' ? 'contents' : 'none' }}>
@@ -719,6 +850,7 @@ function GameContent() {
                         optimisticItems={optimisticItems}
                         hiddenItemIds={hiddenItems}
                         symbolScores={symbolScores}
+                        blocked666={blocked666}
                     />
                 </div>
             </div>
@@ -742,6 +874,9 @@ function GameContent() {
                         onPurchaseSuccess={(item) => {
                             setOptimisticItems(prev => [...prev, item]);
                         }}
+                        initialItems={initialMarketItems}
+                        refreshTrigger={inventoryRefreshTrigger}
+                        externalRefreshEvent={lastMarketEvent}
                     />
                     <InlineInventoryPanel
                         sessionId={Number(sessionId)}
@@ -756,6 +891,7 @@ function GameContent() {
                         sellingItemId={isSelling && itemToSell ? itemToSell.item_id : undefined}
                         hiddenItemIds={hiddenItems}
                         bibliaBroken={bibliaBroken}
+                        initialInventory={initialInventoryItems}
                     />
                 </div>
 
@@ -794,7 +930,9 @@ function GameContent() {
                             {/* Tap to Spin indicator */}
                             {!isSpinning && spinsRemaining > 0 && !showLevelUp && !showBibliaAnimation && !showCharmAnimation && !showRelicActivation && !showingPatterns && (
                                 <div className="tap-to-spin">
-                                    TAP TO SPIN
+                                    {pendingRelicEffect === 0 ? "JACKPOT FORCE" :
+                                        pendingRelicEffect === 2 ? "5X NEXT SPIN" :
+                                            "TAP TO SPIN"}
                                 </div>
                             )}
                         </div>
@@ -820,10 +958,44 @@ function GameContent() {
                                         if (relicCooldownRemaining > 0) return;
                                         if (!isActivatingRelic && sessionId) {
                                             setIsActivatingRelic(true);
-                                            activateRelic(Number(sessionId))
-                                                .then(async () => {
+                                            activateRelic(Number(sessionId), equippedRelic.relicId)
+                                                .then(async (events) => {
                                                     setShowRelicActivation(true);
                                                     setRelicCooldownRemaining(equippedRelic.cooldown);
+
+                                                    // Scorcher (Relic ID 4 or Effect Type 2) Event Check
+                                                    if (events && events.relicActivated) {
+                                                        const { relicActivated } = events;
+                                                        // Effect type 2 is Trigger666 (Scorcher), or check ID 4
+                                                        // @ts-ignore
+                                                        const rId = relicActivated.relicId || relicActivated.relic_id;
+                                                        // @ts-ignore
+                                                        const eType = relicActivated.effectType || relicActivated.effect_type;
+
+                                                        if (rId === 4 || eType === 2) {
+                                                            console.log('[Debug] Triggering Scorcher Game Over via Event (Mobile)');
+                                                            setGameOverReason('scorched');
+                                                            setIsSessionActive(false);
+                                                            setShowGameOver(true); // Immediate trigger
+                                                            return; // no need to fetch session data if game over
+                                                        }
+                                                    }
+
+                                                    // Immediate updates
+                                                    const updatedSession = await getSessionData(Number(sessionId));
+                                                    if (updatedSession) {
+                                                        // Phantom (Relic ID 2) or others affecting spins
+                                                        setSpinsRemaining(updatedSession.spinsRemaining);
+                                                        setIsSessionActive(updatedSession.isActive);
+                                                        setPendingRelicEffect(updatedSession.relicPendingEffect);
+                                                    }
+
+                                                    // Market Refreshed Event Check (e.g. Inferno)
+                                                    if (events && events.marketRefreshed) {
+                                                        console.log('[Debug] Triggering Market Refresh via Event (Mobile)');
+                                                        setLastMarketEvent(events.marketRefreshed);
+                                                    }
+
                                                     const spinResult = await getLastSpinResult(Number(sessionId));
                                                     if (spinResult && spinResult.grid.length === 15) {
                                                         setGrid(spinResult.grid);
@@ -873,6 +1045,7 @@ function GameContent() {
                         optimisticItems={optimisticItems}
                         hiddenItemIds={hiddenItems}
                         symbolScores={symbolScores}
+                        blocked666={blocked666}
                     />
 
                     {/* Action Buttons - Below stats panel */}
@@ -889,10 +1062,43 @@ function GameContent() {
                                     }
                                     if (!isActivatingRelic && sessionId) {
                                         setIsActivatingRelic(true);
-                                        activateRelic(Number(sessionId))
-                                            .then(async () => {
+                                        activateRelic(Number(sessionId), equippedRelic.relicId)
+                                            .then(async (events) => {
                                                 setShowRelicActivation(true);
                                                 setRelicCooldownRemaining(equippedRelic.cooldown);
+
+                                                // Scorcher (Relic ID 4 or Effect Type 2) Event Check
+                                                if (events && events.relicActivated) {
+                                                    const { relicActivated } = events;
+                                                    // Effect type 2 is Trigger666 (Scorcher), or check ID 4
+                                                    // Check both snake_case (contract) and camelCase (parsed) just in case, but TS says camelCase
+                                                    // @ts-ignore
+                                                    const rId = relicActivated.relicId || relicActivated.relic_id;
+                                                    // @ts-ignore
+                                                    const eType = relicActivated.effectType || relicActivated.effect_type;
+
+                                                    if (rId === 4 || eType === 2) {
+                                                        console.log('[Debug] Triggering Scorcher Game Over via Event');
+                                                        setGameOverReason('scorched');
+                                                        setIsSessionActive(false);
+                                                        setShowGameOver(true); // Immediate trigger
+                                                        return; // no need to fetch session data if game over
+                                                    }
+                                                }
+
+                                                // Immediate updates
+                                                const updatedSession = await getSessionData(Number(sessionId));
+                                                if (updatedSession) {
+                                                    setSpinsRemaining(updatedSession.spinsRemaining);
+                                                    setIsSessionActive(updatedSession.isActive);
+                                                }
+
+                                                // Market Refreshed Event Check (e.g. Inferno)
+                                                if (events && events.marketRefreshed) {
+                                                    console.log('[Debug] Triggering Market Refresh via Event');
+                                                    setLastMarketEvent(events.marketRefreshed);
+                                                }
+
                                                 // Update grid with jackpot result from relics like Mortis
                                                 const spinResult = await getLastSpinResult(Number(sessionId));
                                                 if (spinResult && spinResult.grid.length === 15) {

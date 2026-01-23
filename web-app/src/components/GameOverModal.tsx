@@ -6,7 +6,7 @@ import { getCharmDropChance } from '@/utils/abyssContract';
 
 interface GameOverModalProps {
     isVisible: boolean;
-    reason: '666' | 'no_spins' | null;
+    reason: '666' | 'no_spins' | 'scorched' | null;
     finalScore: number;
     totalScore?: number;
     sessionId?: number;
@@ -91,7 +91,8 @@ export default function GameOverModal({
                             marginTop: '-16px'
                         }}>
                             {reason === '666' ? "THE BEAST HAS AWAKENED (666)" :
-                                reason === 'no_spins' ? "OUT OF SPINS" : ""}
+                                reason === 'no_spins' ? "OUT OF SPINS" :
+                                    reason === 'scorched' ? "SESSION ENDED BY RELIC" : ""}
                         </div>
 
                         {/* Stats Display */}

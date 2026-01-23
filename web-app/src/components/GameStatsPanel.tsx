@@ -18,6 +18,7 @@ interface GameStatsPanelProps {
     optimisticItems?: ContractItem[];
     hiddenItemIds?: number[];
     symbolScores?: number[];
+    blocked666?: boolean;
 }
 
 // Map target_symbol strings to SymbolType
@@ -43,7 +44,8 @@ export default function GameStatsPanel({
     lastSpinPatternCount = 0,
     optimisticItems = EMPTY_ARRAY,
     hiddenItemIds = EMPTY_ARRAY,
-    symbolScores = [7, 5, 4, 3, 2] // Default scores if not provided
+    symbolScores = [7, 5, 4, 3, 2],
+    blocked666 = false
 }: GameStatsPanelProps) {
     const [fetchedItems, setFetchedItems] = useState<ContractItem[]>([]);
     const [items, setItems] = useState<ContractItem[]>([]);
@@ -66,6 +68,86 @@ export default function GameStatsPanel({
             loadLuck();
         }
     }, [currentLuck, sessionId, refreshTrigger, lastSpinPatternCount, items]);
+
+    useEffect(() => {
+        if (sessionId) {
+            loadItems();
+        }
+    }, [sessionId, refreshTrigger]);
+
+    // Calculate detailed luck breakdown for debug tooltip
+    function getLuckBreakdown(): { sources: string[], total: number } {
+        const sources: string[] = [];
+        let total = 0;
+
+        items.forEach(item => {
+            const charmId = isCharmItem(item.item_id) ? getCharmIdFromItemId(item.item_id) : 0;
+            const name = item.name;
+            let val = 0;
+
+            // Manual replication of contract logic for display
+            if (charmId === 13) { // Void Compass (Fixed: Type 9, Val 15)
+                val = 15;
+            } else if (charmId === 19) { // Soul of Abyss
+                val = 30;
+            } else if (charmId === 20) { // Void Heart
+                val = 75; // 25 base + 50 extra
+            } else if (charmId === 15) { // Abyssal Eye
+                val = 20;
+            } else if (charmId === 9) { // Soul Fragment
+                val = 10;
+            } else if (charmId === 7) { // Moth Wing
+                val = 6;
+            } else if (charmId === 5) { // Cracked Skull
+                val = 5;
+            } else if (charmId === 1) { // Whisper Stone
+                val = 3;
+            } else if (charmId === 2) { // Faded Coin
+                val = 4;
+            }
+
+            // Conditional Charms
+            else if (charmId === 12) { // Ethereal Chain
+                if (lastSpinPatternCount > 0) {
+                    val = lastSpinPatternCount * 6;
+                    sources.push(`${name}: +${val} (Last Spin Patterns)`);
+                    total += val;
+                    return;
+                }
+            } else if (charmId === 18) { // Chaos Orb
+                if (blocked666) {
+                    val = 30;
+                    sources.push(`${name}: +${val} (666 Blocked)`);
+                    total += val;
+                    return;
+                }
+            } else if (charmId === 4) { // Dusty Hourglass
+                if (spinsRemaining <= 2) {
+                    val = 4;
+                    sources.push(`${name}: +${val} (Low Spins)`);
+                    total += val;
+                    return;
+                }
+            } else if (charmId === 6) { // Rusty Key
+                // Inventory count approximation
+                const count = items.length; // Approximate
+                val = count * 3;
+                sources.push(`${name}: +${val} (Items)`);
+                total += val;
+                return;
+            }
+
+            if (val > 0) {
+                sources.push(`${name}: +${val}`);
+                total += val;
+            }
+        });
+
+        return { sources, total };
+    }
+
+    const luckBreakdown = getLuckBreakdown();
+
 
     useEffect(() => {
         if (sessionId) {
@@ -263,7 +345,7 @@ export default function GameStatsPanel({
 
             {/* Luck Row (Conditional) */}
             {luck > 0 && (
-                <div className="stats-section luck-section">
+                <div className="stats-section luck-section" title={luckBreakdown.sources.join('\n')}>
                     <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -272,6 +354,7 @@ export default function GameStatsPanel({
                         borderRadius: '6px',
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
+                        cursor: 'help'
                     }}>
                         <div style={{
                             fontFamily: "'PressStart2P', monospace",

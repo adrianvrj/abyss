@@ -96,12 +96,13 @@ const styles = {
     newSessionButton: {
         background: "transparent",
         border: "none",
-        fontFamily: "'PressStart2P', monospace",
-        fontSize: "18px",
+        fontFamily: "var(--font-title)",
+        fontSize: "32px",
         color: "#FFFFFF",
         cursor: "pointer",
         padding: "8px",
         marginBottom: "32px",
+        letterSpacing: "2px",
     },
 
     noSessions: {
@@ -272,12 +273,12 @@ export default function SessionsPage() {
                     }}
                     onClick={handleCreateSessionClick}
                     disabled={isCreating}
-                    whileHover={{ scale: 1.05, color: "#FF841C" }}
+                    whileHover={{ color: "#FF841C" }}
                     whileTap={{ scale: 0.95 }}
                 >
                     {isCreating ? (
                         <span>
-                            &gt; creating...{" "}
+                            &gt; CREATING...{" "}
                             <motion.span
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 0.5, repeat: Infinity, ease: "linear" }}
@@ -287,7 +288,7 @@ export default function SessionsPage() {
                             </motion.span>
                         </span>
                     ) : (
-                        <span>&gt; new run</span>
+                        <span>&gt; NEW RUN</span>
                     )}
                 </motion.button>
 
