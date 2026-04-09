@@ -2,7 +2,7 @@
   "world": {
     "class_hash": "0x381899226c066a0262f45d6ab815f89818e0874ec3e66cdf72b5e92d8db4680",
     "address": "0x45c88210fae27826b690e08e18df299a08dbdbc66e38d7b6c01796724ff9b9b",
-    "seed": "abyss-v0.1.3",
+    "seed": "abyss-v0.1.4",
     "name": "Abyss",
     "entrypoints": [
       "uuid",
@@ -34,12 +34,13 @@
   "contracts": [
     {
       "address": "0x4b675d088d6c6bed7889f0d62fce7bc8e25610e828fe849a5eccab95e793a2f",
-      "class_hash": "0x6a1fb836d581a5d6d97b7e4d33e5253feb3d7dcb86832bf73979a2163da8ad7",
+      "class_hash": "0x5c4f6231f3cd0e47ec4b83c9ea57b3db53ccf1bfe6a98f8b960e1d02b895b0c",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
       "systems": [
         "dojo_init",
+        "set_base_uri",
         "mint_random_charm_of_rarity",
         "mint_charm",
         "upgrade",
@@ -70,7 +71,7 @@
     },
     {
       "address": "0x3444957a2d4b241f864319ca59cd9aa65ad3a9702314b08223a2cfc48872359",
-      "class_hash": "0x56753feddf6ea7ea977199e2141d6be4c214af3f633895ddf69c75485ec9e5e",
+      "class_hash": "0x336fe3108a34df79b93290bea8bf75a560f70e52897031d0525716e5ff0c9a6",
       "init_calldata": [],
       "tag": "ABYSS-Collection",
       "selector": "0x48dc5cab3bba1cdf905e5fb31643b635e3109c2acacc65b4a5f18a3e2a48e82",
@@ -106,7 +107,7 @@
     },
     {
       "address": "0x48991ba159feae3874e04745cf5e05357c90ac41f9d2866c7c9eaf1edadf09a",
-      "class_hash": "0x29f3ed0ea95a887365ba4a89238b66cc49269fb98b5fc249333607af19bfca4",
+      "class_hash": "0xf42602baf6ac581b22c8f6ee931c8bf813d9cc4a7220336f9b1b3ce6a133a7",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -135,19 +136,23 @@
     },
     {
       "address": "0x2133e112c23ed82cccc06dc60828939d79d484926e8a2b61be926d5eceb6323",
-      "class_hash": "0x48c900c2e48b6f613d8d01ae61bbe0f89d634c0cfb9ae7d0f3f11b85a0dc07d",
+      "class_hash": "0x5948ef8e4d5f445904870788a9a123260a287b926030c14f64dfad5f88b076",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
       "systems": [
         "dojo_init",
         "mint_relic",
-        "upgrade"
+        "set_base_uri",
+        "upgrade",
+        "grant_role",
+        "revoke_role",
+        "renounce_role"
       ]
     },
     {
       "address": "0x7db99ce5fc6ab0897db2881b414af6f3f3be68dd7abcfb6df8b88b9bacd3180",
-      "class_hash": "0x67f771e034a964f1105bd841e28ed9f4ae363f3c0972bc94cad3901c32c02b9",
+      "class_hash": "0x6b1cc04844a789b8eaf6ca0dc8dc0e881b2c4850e80b6915083747ce71af14d",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
@@ -162,7 +167,9 @@
         "set_quote_token",
         "set_chip_token",
         "set_charm_nft",
+        "set_charm_base_uri",
         "set_relic_nft",
+        "set_relic_base_uri",
         "set_beast_nft",
         "set_pragma_oracle",
         "set_chip_emission_rate",
@@ -2361,6 +2368,29 @@
         },
         {
           "type": "function",
+          "name": "set_base_uri",
+          "inputs": [
+            {
+              "name": "base_uri",
+              "type": "core::byte_array::ByteArray"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "get_base_uri",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::byte_array::ByteArray"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
           "name": "mint_random_charm_of_rarity",
           "inputs": [
             {
@@ -2476,6 +2506,29 @@
           "outputs": [
             {
               "type": "abyss_game::interfaces::relic_nft::RelicMetadata"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "set_base_uri",
+          "inputs": [
+            {
+              "name": "base_uri",
+              "type": "core::byte_array::ByteArray"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "get_base_uri",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::byte_array::ByteArray"
             }
           ],
           "state_mutability": "view"
@@ -4605,6 +4658,11 @@
           "kind": "flat"
         },
         {
+          "name": "AccessControlEvent",
+          "type": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::Event",
+          "kind": "flat"
+        },
+        {
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
           "kind": "flat"
@@ -4665,11 +4723,35 @@
         },
         {
           "type": "function",
+          "name": "set_charm_base_uri",
+          "inputs": [
+            {
+              "name": "base_uri",
+              "type": "core::byte_array::ByteArray"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "set_relic_nft",
           "inputs": [
             {
               "name": "address",
               "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_relic_base_uri",
+          "inputs": [
+            {
+              "name": "base_uri",
+              "type": "core::byte_array::ByteArray"
             }
           ],
           "outputs": [],

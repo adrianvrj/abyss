@@ -1,6 +1,6 @@
 [world]
 name = "Abyss"
-seed = "abyss-v0.1.3"
+seed = "abyss-v0.1.4"
 
 [namespace]
 default = "ABYSS"

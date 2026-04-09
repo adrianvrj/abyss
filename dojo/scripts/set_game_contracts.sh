@@ -90,9 +90,9 @@ if [[ -n "${ENTRY_PRICE_USD:-}" ]]; then
 fi
 
 if [[ -n "${CHARM_BASE_URI:-}" ]]; then
-  invoke_setup "set_charm_base_uri" "${CHARM_BASE_URI}"
+  invoke_setup "set_charm_base_uri" "\"${CHARM_BASE_URI}\""
 fi
 
 if [[ -n "${RELIC_BASE_URI:-}" ]]; then
-  invoke_setup "set_relic_base_uri" "${RELIC_BASE_URI}"
+  invoke_setup "set_relic_base_uri" "\"${RELIC_BASE_URI}\""
 fi
