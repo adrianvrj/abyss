@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // Base URL for images - update this to your production domain
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://play.abyssgame.fun';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
 
 // Soul Charms metadata configuration
 // Matches the 20 charms defined in SOUL_CHARMS_IMPLEMENTATION.md

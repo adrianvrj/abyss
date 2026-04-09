@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import dynamic from "next/dynamic";
 
 // Loading component while the actual menu loads
@@ -12,26 +13,23 @@ function MenuLoading() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        background: "#000000",
       }}
     >
       <p
+        className="animate-pulse"
         style={{
           fontFamily: "'PressStart2P', monospace",
           fontSize: "14px",
           color: "#FFFFFF",
         }}
       >
-        Loading...
+        Initializing World...
       </p>
     </div>
   );
 }
 
-const MenuContent = dynamic(() => import("@/components/MenuContent"), {
-  ssr: false,
-  loading: () => <MenuLoading />,
-});
-
 export default function MenuPage() {
-  return <MenuContent />;
+  return <></>;
 }

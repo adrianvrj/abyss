@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // Base URL for images
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://play.abyssgame.fun';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
 
 // Relic metadata configuration
 const RELIC_METADATA: Record<string, {

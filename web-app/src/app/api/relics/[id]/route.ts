@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { RpcProvider, Contract } from 'starknet';
 import { CONTRACTS } from '@/lib/constants';
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
+
 // Configuration for Relic metadata
 const RELIC_METADATA: Record<string, any> = {
     "1": {
         name: "Mortis",
         description: "Gentleman of Death - Forces a random jackpot",
-        image: "https://abyss-game.xyz/images/relics/mortis.png", // Absolute URL required for marketplaces
+        image: `${BASE_URL}/images/relics/mortis.png`,
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Force Random Jackpot" },
@@ -19,7 +21,7 @@ const RELIC_METADATA: Record<string, any> = {
     "2": {
         name: "Phantom",
         description: "The Timeless Specter - Resets your spins to 5",
-        image: "https://abyss-game.xyz/images/relics/phantom.png",
+        image: `${BASE_URL}/images/relics/phantom.png`,
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Reset Spins" },
@@ -30,7 +32,7 @@ const RELIC_METADATA: Record<string, any> = {
     "3": {
         name: "Lucky the Dealer",
         description: "Doubles down on every bet - 2x next spin score",
-        image: "https://abyss-game.xyz/images/relics/lucky_the_dealer.png",
+        image: `${BASE_URL}/images/relics/lucky_the_dealer.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Double Next Spin" },
@@ -41,7 +43,7 @@ const RELIC_METADATA: Record<string, any> = {
     "4": {
         name: "Scorcher",
         description: "Master of the cursed 666 - Triggers 666 pattern",
-        image: "https://abyss-game.xyz/images/relics/scorcher.png",
+        image: `${BASE_URL}/images/relics/scorcher.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Trigger 666" },
@@ -52,7 +54,7 @@ const RELIC_METADATA: Record<string, any> = {
     "5": {
         name: "Inferno",
         description: "Hell's marketplace demon - Free market refresh",
-        image: "https://abyss-game.xyz/images/relics/inferno.png",
+        image: `${BASE_URL}/images/relics/inferno.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Free Market Refresh" },

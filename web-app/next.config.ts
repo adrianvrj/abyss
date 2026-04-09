@@ -6,10 +6,24 @@ const nextConfig: NextConfig = {
       protocol: 'https',
       hostname: 'play.abyssgame.fun',
     }],
-
   },
-  /* config options here */
   reactCompiler: true,
+  // Empty turbopack config to silence the webpack warning
+  turbopack: {},
+  webpack: (config, { isServer }) => {
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    };
+    config.output = {
+      ...config.output,
+      webassemblyModuleFilename: isServer
+        ? "./../static/wasm/[modulehash].wasm"
+        : "static/wasm/[modulehash].wasm",
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
