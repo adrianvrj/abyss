@@ -1,13 +1,13 @@
 [world]
 name = "Abyss"
-seed = "abyss-v0.1.4"
+seed = "abyss-v0.1.5"
 
 [namespace]
 default = "ABYSS"
 
 [env]
 rpc_url = "https://api.cartridge.gg/x/starknet/sepolia"
-# world_address = "0x065b67597a9d37e0ef55db352488e90235434db18dd01ad9daab59cd2d266e39"
+world_address = "0x010767a7837e1d4b2c8e499a87610d7b2f5f306f9a077b01bf2cded0b995cee0"
 account_address = "0x05CC7fe1BfAAf3e05DFe1FD67397CeB3570D8869ddF96c5b5bC911289EeBa706"
 
 [migration]

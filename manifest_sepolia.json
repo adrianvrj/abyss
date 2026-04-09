@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x381899226c066a0262f45d6ab815f89818e0874ec3e66cdf72b5e92d8db4680",
-    "address": "0x45c88210fae27826b690e08e18df299a08dbdbc66e38d7b6c01796724ff9b9b",
-    "seed": "abyss-v0.1.4",
+    "address": "0x10767a7837e1d4b2c8e499a87610d7b2f5f306f9a077b01bf2cded0b995cee0",
+    "seed": "abyss-v0.1.5",
     "name": "Abyss",
     "entrypoints": [
       "uuid",
@@ -33,7 +33,7 @@
   },
   "contracts": [
     {
-      "address": "0x4b675d088d6c6bed7889f0d62fce7bc8e25610e828fe849a5eccab95e793a2f",
+      "address": "0x757d673ad960ae8dd7932530e106f2bf0affdacf437c385206b8b090c5c1c48",
       "class_hash": "0x5c4f6231f3cd0e47ec4b83c9ea57b3db53ccf1bfe6a98f8b960e1d02b895b0c",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
@@ -50,7 +50,7 @@
       ]
     },
     {
-      "address": "0x238acfd4c54d00ec302c32db6ffd21d3f2e23328e6003d3b18936022b8dbdbf",
+      "address": "0x54a4cc6b8ea7683ad966b9d140db435dbba5fd4054c56da4da7762123b0b734",
       "class_hash": "0x445648572a0cf3206694ec1aaf29058753a94abe8834ac95f504b5e5a97ada1",
       "init_calldata": [],
       "tag": "ABYSS-Chip",
@@ -70,7 +70,7 @@
       ]
     },
     {
-      "address": "0x3444957a2d4b241f864319ca59cd9aa65ad3a9702314b08223a2cfc48872359",
+      "address": "0x45e1e4efea6af7fbc5b74fae37427abaa493ae32de6b0c5050054832a0a7fe0",
       "class_hash": "0x336fe3108a34df79b93290bea8bf75a560f70e52897031d0525716e5ff0c9a6",
       "init_calldata": [],
       "tag": "ABYSS-Collection",
@@ -92,7 +92,7 @@
       ]
     },
     {
-      "address": "0x160bc00ee5ecdd90fd96154c769445720ae5822a61c12bd84a62346c434c9f1",
+      "address": "0x680b1cfb8876ddc3b75f5bc88f7f1699366827d1756e9874e2536f2fb68704d",
       "class_hash": "0x7147bceb6409dd29f4e424cd7e1413b66240c5fa0d3fc4d19502c8f37fe9e10",
       "init_calldata": [],
       "tag": "ABYSS-Market",
@@ -106,7 +106,7 @@
       ]
     },
     {
-      "address": "0x48991ba159feae3874e04745cf5e05357c90ac41f9d2866c7c9eaf1edadf09a",
+      "address": "0x68352ad21e23327ec717de2a56c5dbc33fe3f672385c414e298417b2fa64c01",
       "class_hash": "0xf42602baf6ac581b22c8f6ee931c8bf813d9cc4a7220336f9b1b3ce6a133a7",
       "init_calldata": [],
       "tag": "ABYSS-Play",
@@ -122,7 +122,7 @@
       ]
     },
     {
-      "address": "0x334bee00b6b02a97574fed2bb734db2425081d4fc578a0e1c6440df585561b8",
+      "address": "0x65a27caaa6ae6076678e8c3b0d4648bbb67f94e09beff81dd01eb242f7c15ea",
       "class_hash": "0x1ac7d3df43cdd5febfac23a86a7b0d7b4f7f5abf40a88fe466a5f1615797958",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
@@ -135,7 +135,7 @@
       ]
     },
     {
-      "address": "0x2133e112c23ed82cccc06dc60828939d79d484926e8a2b61be926d5eceb6323",
+      "address": "0x361679a02cd3c085d2bc8c14a0f0e7accd299d26497ba84155f66a846735e2d",
       "class_hash": "0x5948ef8e4d5f445904870788a9a123260a287b926030c14f64dfad5f88b076",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
@@ -151,7 +151,7 @@
       ]
     },
     {
-      "address": "0x7db99ce5fc6ab0897db2881b414af6f3f3be68dd7abcfb6df8b88b9bacd3180",
+      "address": "0x37f667d2f7f74eb246b5f63212fadbfbc6c0e58e95de6f5b8ab8eeb9bdbb272",
       "class_hash": "0x6b1cc04844a789b8eaf6ca0dc8dc0e881b2c4850e80b6915083747ce71af14d",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
@@ -188,7 +188,7 @@
       ]
     },
     {
-      "address": "0x7076c9b068319a70e8c346f36e1c0dd59f31ae5afda5be8e6cb9326639e894a",
+      "address": "0x49082e84341a1c964af276b3cbd0ee1a00d2ac4e4a4664636cd3d3e7912066d",
       "class_hash": "0x4c9430c6dc8c85b819d98204700365350b1bfef4103d890659320a6c4a842b1",
       "init_calldata": [],
       "tag": "ABYSS-Treasury",
