@@ -26,6 +26,19 @@ function parseSession(result: string[]) {
     };
 }
 
+function normalizeAddress(value: string | null | undefined) {
+    if (!value) return null;
+    if (value.startsWith('0x') || value.startsWith('0X')) {
+        return value;
+    }
+
+    try {
+        return `0x${BigInt(value).toString(16)}`;
+    } catch {
+        return value;
+    }
+}
+
 function escapeXml(value: string) {
     return value
         .replaceAll('&', '&amp;')
@@ -41,7 +54,7 @@ export async function GET(
 ) {
     const { id } = await params;
     const url = new URL(request.url);
-    const playAddress = url.searchParams.get('play') || DEFAULT_PLAY_ADDRESS;
+    const playAddress = normalizeAddress(url.searchParams.get('play') || DEFAULT_PLAY_ADDRESS);
 
     if (!playAddress) {
         return new Response('Play contract not found', { status: 500 });

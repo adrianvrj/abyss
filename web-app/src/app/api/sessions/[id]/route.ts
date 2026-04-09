@@ -31,14 +31,27 @@ function parseSession(result: string[]) {
     };
 }
 
+function normalizeAddress(value: string | null | undefined) {
+    if (!value) return null;
+    if (value.startsWith('0x') || value.startsWith('0X')) {
+        return value;
+    }
+
+    try {
+        return `0x${BigInt(value).toString(16)}`;
+    } catch {
+        return value;
+    }
+}
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
     const url = new URL(request.url);
-    const playAddress = url.searchParams.get('play') || DEFAULT_PLAY_ADDRESS;
-    const collectionAddress = url.searchParams.get('collection');
+    const playAddress = normalizeAddress(url.searchParams.get('play') || DEFAULT_PLAY_ADDRESS);
+    const collectionAddress = normalizeAddress(url.searchParams.get('collection'));
 
     if (!playAddress) {
         return NextResponse.json({ error: 'Play contract not found' }, { status: 500 });
