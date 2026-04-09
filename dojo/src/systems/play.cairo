@@ -139,7 +139,7 @@ pub mod Play {
             // 3. MINT NFT & SYNC SESSION ID
             let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
             let collection = ICollectionDispatcher { contract_address: collection_address };
-            let session_id: u32 = collection.mint(player, true).try_into().expect('Invalid session ID');
+            let session_id: u32 = collection.mint(player, false).try_into().expect('Invalid session ID');
 
             config.total_competitive_sessions += 1;
             store.set_config(@config);
@@ -197,7 +197,7 @@ pub mod Play {
 
             let mut i: u32 = 0;
             while i < quantity {
-                let session_id: u32 = collection.mint(player, true).try_into().expect('Invalid session ID');
+                let session_id: u32 = collection.mint(player, false).try_into().expect('Invalid session ID');
                 config.total_competitive_sessions += 1;
 
                 let session = Session {
