@@ -7,7 +7,7 @@ const provider = new RpcProvider({
     nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/sepolia',
 });
 
-const PLAY_ADDRESS = manifest.contracts.find(
+const DEFAULT_PLAY_ADDRESS = manifest.contracts.find(
     (contract) => contract.tag === 'ABYSS-Play'
 )?.address;
 
@@ -36,18 +36,20 @@ function escapeXml(value: string) {
 }
 
 export async function GET(
-    _request: Request,
+    request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
+    const url = new URL(request.url);
+    const playAddress = url.searchParams.get('play') || DEFAULT_PLAY_ADDRESS;
 
-    if (!PLAY_ADDRESS) {
+    if (!playAddress) {
         return new Response('Play contract not found', { status: 500 });
     }
 
     try {
         const result = await provider.callContract({
-            contractAddress: PLAY_ADDRESS,
+            contractAddress: playAddress,
             entrypoint: 'get_session',
             calldata: [id],
         });

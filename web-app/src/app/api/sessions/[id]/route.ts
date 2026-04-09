@@ -10,7 +10,7 @@ const provider = new RpcProvider({
     nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/sepolia',
 });
 
-const PLAY_ADDRESS = manifest.contracts.find(
+const DEFAULT_PLAY_ADDRESS = manifest.contracts.find(
     (contract) => contract.tag === 'ABYSS-Play'
 )?.address;
 
@@ -32,18 +32,21 @@ function parseSession(result: string[]) {
 }
 
 export async function GET(
-    _request: Request,
+    request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
+    const url = new URL(request.url);
+    const playAddress = url.searchParams.get('play') || DEFAULT_PLAY_ADDRESS;
+    const collectionAddress = url.searchParams.get('collection');
 
-    if (!PLAY_ADDRESS) {
+    if (!playAddress) {
         return NextResponse.json({ error: 'Play contract not found' }, { status: 500 });
     }
 
     try {
         const result = await provider.callContract({
-            contractAddress: PLAY_ADDRESS,
+            contractAddress: playAddress,
             entrypoint: 'get_session',
             calldata: [id],
         });
@@ -53,9 +56,11 @@ export async function GET(
         return NextResponse.json({
             name: `Abyss Session #${session.sessionId}`,
             description: 'Abyss is a fully onchain slot machine game built on Starknet with Dojo Engine.',
-            image: `${BASE_URL}/api/sessions/${session.sessionId}/image`,
+            image: `${BASE_URL}/api/sessions/${session.sessionId}/image?play=${encodeURIComponent(playAddress)}${collectionAddress ? `&collection=${encodeURIComponent(collectionAddress)}` : ''}`,
             external_url: 'https://play.abyssgame.fun',
             attributes: [
+                ...(collectionAddress ? [{ trait_type: 'Collection', value: collectionAddress }] : []),
+                { trait_type: 'Play Contract', value: playAddress },
                 { trait_type: 'Session ID', value: session.sessionId },
                 { trait_type: 'Score', value: session.score, display_type: 'number' },
                 { trait_type: 'Total Score', value: session.totalScore, display_type: 'number' },

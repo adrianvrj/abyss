@@ -197,10 +197,12 @@ pub mod Collection {
             }
             let session_id: u32 = token_id.try_into().expect('Invalid token ID');
             let world = self.world(@NAMESPACE());
+            let play_address = world.dns_address(@PLAY_NAME()).expect('Play contract not found!');
             let store = StoreTrait::new(world);
             let session = store.session(session_id);
+            let collection_address = starknet::get_contract_address();
 
-            SessionMetadata::token_uri(session_id, @session)
+            SessionMetadata::token_uri(session_id, @session, play_address, collection_address)
         }
     }
 

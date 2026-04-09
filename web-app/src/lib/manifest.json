@@ -71,7 +71,7 @@
     },
     {
       "address": "0x45e1e4efea6af7fbc5b74fae37427abaa493ae32de6b0c5050054832a0a7fe0",
-      "class_hash": "0x336fe3108a34df79b93290bea8bf75a560f70e52897031d0525716e5ff0c9a6",
+      "class_hash": "0x36d91e686ebd134d2c9405ed8ae9d726f8915cf133fdf6b8ba84ba885eb2e2f",
       "init_calldata": [],
       "tag": "ABYSS-Collection",
       "selector": "0x48dc5cab3bba1cdf905e5fb31643b635e3109c2acacc65b4a5f18a3e2a48e82",
