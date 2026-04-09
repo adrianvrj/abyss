@@ -1,0 +1,11 @@
+world_address = "0x065b67597a9d37e0ef55db352488e90235434db18dd01ad9daab59cd2d266e39"
+rpc = "https://api.cartridge.gg/x/starknet/sepolia"
+
+[server]
+http_cors_origins = ["*"]
+
+[indexing]
+world_block = 0
+pending = true
+polling_interval = 1000
+contracts = []

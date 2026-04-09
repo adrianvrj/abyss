@@ -1,0 +1,666 @@
+use starknet::ContractAddress;
+use crate::models::index::{Config, Item, Session, SpinResult, SessionMarket};
+
+#[inline]
+pub fn NAME() -> ByteArray {
+    "Play"
+}
+
+#[starknet::interface]
+pub trait IPlay<T> {
+    fn create_session(ref self: T, player: ContractAddress, payment_token: ContractAddress) -> u32;
+    fn mint_session(ref self: T, player: ContractAddress, quantity: u32);
+    fn request_spin(ref self: T, session_id: u32);
+    fn end_session(ref self: T, session_id: u32);
+    fn claim_chips(ref self: T, session_id: u32);
+    // View Functions
+    fn get_config(self: @T) -> Config;
+    fn get_item_info(self: @T, item_id: u32) -> Item;
+    fn get_session(self: @T, session_id: u32) -> Session;
+    fn get_player_sessions(self: @T, player: ContractAddress) -> Span<u32>;
+    fn get_beast_sessions_used(self: @T, player: ContractAddress) -> u32;
+    fn get_available_beast_sessions(self: @T, player: ContractAddress) -> u32;
+    fn get_usd_cost_in_token(self: @T, payment_token: ContractAddress) -> u256;
+    fn get_session_luck(self: @T, session_id: u32) -> u32;
+    fn get_session_inventory_count(self: @T, session_id: u32) -> u32;
+    fn get_charm_drop_chance(self: @T, session_id: u32) -> u32;
+    fn get_chips_to_claim(self: @T, session_id: u32) -> u256;
+    fn get_session_items(self: @T, session_id: u32) -> Span<(u32, u32)>;
+    fn get_spin_result(self: @T, session_id: u32) -> SpinResult;
+    fn get_level_threshold(self: @T, level: u32) -> u32;
+    fn get_666_probability(self: @T, level: u32) -> u32;
+    fn get_session_market(self: @T, session_id: u32) -> SessionMarket;
+    fn is_market_slot_purchased(self: @T, session_id: u32, slot: u32) -> bool;
+}
+
+#[dojo::contract]
+pub mod Play {
+    use dojo::world::WorldStorageTrait;
+    use openzeppelin::access::accesscontrol::AccessControlComponent;
+    use openzeppelin::introspection::src5::SRC5Component;
+    use starknet::ContractAddress;
+    use starknet::get_caller_address;
+    use core::num::traits::Zero;
+    use core::poseidon::poseidon_hash_span;
+    use crate::constants::{
+        CHIP_SCORE_DIVISOR,
+        DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
+        DEFAULT_SCORE_SEVEN, DEFAULT_SPINS, DEFAULT_TICKETS, NAMESPACE,
+    };
+    use crate::interfaces::vrf::{IVrfProviderDispatcherTrait, Source};
+    use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::interfaces::relic_nft::{IRelicERC721Dispatcher, IRelicERC721DispatcherTrait};
+    use crate::interfaces::charm_nft::{ICharmDispatcherTrait};
+    use crate::systems::collection_system::{ICollectionDispatcher, ICollectionDispatcherTrait, NAME as COLLECTION_NAME};
+    use crate::models::index::{
+        Config, Item, PlayerSessionEntry, Session, SpinResult,
+    };
+    use crate::store::{Store, StoreTrait};
+    use crate::types::effect::RelicEffectType;
+    use crate::helpers::inventory::{InventoryImpl};
+    use crate::helpers::probability::get_666_probability as get_level_666_probability;
+    use crate::helpers::scoring::get_level_threshold;
+    use crate::helpers::pricing::{PricingImpl};
+    use crate::systems::setup::NAME as SETUP_NAME;
+    use super::*;
+
+    // Components
+    component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+
+    #[storage]
+    struct Storage {
+        #[substorage(v0)]
+        accesscontrol: AccessControlComponent::Storage,
+        #[substorage(v0)]
+        src5: SRC5Component::Storage,
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+    }
+
+    fn dojo_init(ref self: ContractState) {
+        let _world = self.world(@NAMESPACE());
+        self.accesscontrol.initializer();
+    }
+
+    #[abi(embed_v0)]
+    impl PlayImpl of IPlay<ContractState> {
+        fn create_session(
+            ref self: ContractState, player: ContractAddress, payment_token: ContractAddress
+        ) -> u32 {
+            let caller = get_caller_address();
+            assert(caller == player, 'Can only create own session');
+
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut config: Config = store.config();
+
+            // 1. FREE SESSION CHECK (BEAST NFT OWNER)
+            let mut is_free_session = false;
+            let zero_addr: ContractAddress = Zero::zero();
+            if config.beast_nft != zero_addr {
+                let beast_erc721 = IRelicERC721Dispatcher { contract_address: config.beast_nft };
+                if beast_erc721.balance_of(player) > 0 {
+                    let mut bsu = store.beast_sessions_used(player);
+                    if bsu.count < 1 { 
+                        is_free_session = true;
+                        bsu.count += 1;
+                        store.set_beast_sessions_used(@bsu);
+                    }
+                }
+            }
+
+            // 2. PAYMENT & REVENUE DISTRIBUTION
+            if !is_free_session {
+                let amount_required = PricingImpl::get_usd_cost_in_token(@store, payment_token);
+                if amount_required > 0 {
+                    let token_disp = IERC20Dispatcher { contract_address: payment_token };
+                    token_disp.transfer_from(player, starknet::get_contract_address(), amount_required);
+                    
+                    // Distribute revenue: 50% prize, 30% treasury, 20% team
+                    let prize_amount = (amount_required * 50) / 100;
+                    let team_amount = (amount_required * 20) / 100;
+                    let treasury_amount = amount_required - prize_amount - team_amount;
+
+                    token_disp.transfer(config.treasury, treasury_amount);
+                    token_disp.transfer(config.team, team_amount);
+                    // Prize pool stays in contract for now or is tracked in store
+                }
+            }
+
+            // 3. MINT NFT & SYNC SESSION ID
+            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
+            let collection = ICollectionDispatcher { contract_address: collection_address };
+            let session_id: u32 = collection.mint(player, true).try_into().expect('Invalid session ID');
+
+            config.total_competitive_sessions += 1;
+            store.set_config(@config);
+
+            let session = Session {
+                session_id,
+                player_address: player,
+                level: 1,
+                score: 0,
+                total_score: 0,
+                spins_remaining: DEFAULT_SPINS,
+                is_competitive: true,
+                is_active: true,
+                created_at: starknet::get_block_timestamp(),
+                chips_claimed: false,
+                equipped_relic: 0,
+                relic_last_used_spin: 0,
+                relic_pending_effect: RelicEffectType::NoEffect,
+                total_spins: 0,
+                luck: 0,
+                blocked_666_this_session: false,
+                tickets: DEFAULT_TICKETS,
+                score_seven: DEFAULT_SCORE_SEVEN,
+                score_diamond: DEFAULT_SCORE_DIAMOND,
+                score_cherry: DEFAULT_SCORE_CHERRY,
+                score_coin: DEFAULT_SCORE_COIN,
+                score_lemon: DEFAULT_SCORE_LEMON,
+            };
+            store.set_session(@session);
+
+            let mut ps = store.player_sessions(player);
+            let ps_idx = ps.count;
+            ps.count += 1;
+            store.set_player_sessions(@ps);
+            store.set_player_session_entry(
+                @PlayerSessionEntry { player, index: ps_idx, session_id },
+            );
+
+            crate::helpers::market::MarketImpl::refresh_market(ref store, session_id);
+            store.emit_session_created(session_id, player, true);
+            session_id
+        }
+
+        fn mint_session(ref self: ContractState, player: ContractAddress, quantity: u32) {
+            let world = self.world(@NAMESPACE());
+            let caller = get_caller_address();
+            let setup_address = world.dns_address(@SETUP_NAME()).expect('Setup not found!');
+            assert(caller == setup_address, 'Only setup can mint');
+
+            let mut store = StoreTrait::new(world);
+            let mut config = store.config();
+
+            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
+            let collection = ICollectionDispatcher { contract_address: collection_address };
+
+            let mut i: u32 = 0;
+            while i < quantity {
+                let session_id: u32 = collection.mint(player, true).try_into().expect('Invalid session ID');
+                config.total_competitive_sessions += 1;
+
+                let session = Session {
+                    session_id,
+                    player_address: player,
+                    level: 1,
+                    score: 0,
+                    total_score: 0,
+                    spins_remaining: DEFAULT_SPINS,
+                    is_competitive: true,
+                    is_active: true,
+                    created_at: starknet::get_block_timestamp(),
+                    chips_claimed: false,
+                    equipped_relic: 0,
+                    relic_last_used_spin: 0,
+                    relic_pending_effect: RelicEffectType::NoEffect,
+                    total_spins: 0,
+                    luck: 0,
+                    blocked_666_this_session: false,
+                    tickets: DEFAULT_TICKETS,
+                    score_seven: DEFAULT_SCORE_SEVEN,
+                    score_diamond: DEFAULT_SCORE_DIAMOND,
+                    score_cherry: DEFAULT_SCORE_CHERRY,
+                    score_coin: DEFAULT_SCORE_COIN,
+                    score_lemon: DEFAULT_SCORE_LEMON,
+                };
+                store.set_session(@session);
+
+                let mut ps = store.player_sessions(player);
+                let ps_idx = ps.count;
+                ps.count += 1;
+                store.set_player_sessions(@ps);
+                store.set_player_session_entry(
+                    @PlayerSessionEntry { player, index: ps_idx, session_id },
+                );
+
+                crate::helpers::market::MarketImpl::refresh_market(ref store, session_id);
+                store.emit_session_created(session_id, player, true);
+                
+                i += 1;
+            };
+            
+            store.set_config(@config);
+        }
+
+        fn request_spin(ref self: ContractState, session_id: u32) {
+            let caller = get_caller_address();
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+
+            let mut session = store.session(session_id);
+            assert(session.player_address == caller, 'Not session owner');
+            assert(session.is_active, 'Session not active');
+            assert(session.spins_remaining > 0, 'No spins remaining');
+
+            let mut force_jackpot = false;
+            if session.relic_pending_effect == RelicEffectType::RandomJackpot {
+                force_jackpot = true;
+                session.relic_pending_effect = RelicEffectType::NoEffect;
+            }
+
+            let vrf = store.vrf_disp();
+            let random_word = vrf.consume_random(Source::Nonce(caller));
+
+            let luck = InventoryImpl::calculate_effective_luck(@store, session_id);
+            let prob_bonuses = InventoryImpl::get_inventory_probability_bonuses(@store, session_id);
+            let retrigger_bonuses = InventoryImpl::get_charm_retrigger_bonuses(@store, session_id);
+            let pattern_bonuses = InventoryImpl::get_inventory_pattern_bonuses(@store, session_id);
+            let symbol_scores = InventoryImpl::get_effective_symbol_scores(@store, session_id);
+            let (score_seven, score_diamond, score_cherry, score_coin, score_lemon) = symbol_scores;
+            session.score_seven = score_seven;
+            session.score_diamond = score_diamond;
+            session.score_cherry = score_cherry;
+            session.score_coin = score_coin;
+            session.score_lemon = score_lemon;
+            let probability_666 = get_level_666_probability(session.level);
+
+            let (score_gained, pats_count, mut is_666, is_jackpot, grid, _) =
+                crate::components::spinnable::SpinnableImpl::execute_spin(
+                random_word,
+                luck,
+                prob_bonuses,
+                probability_666,
+                retrigger_bonuses,
+                pattern_bonuses,
+                symbol_scores,
+                force_jackpot,
+            );
+
+            let mut final_score = score_gained;
+            if session.relic_pending_effect == RelicEffectType::DoubleNextSpin {
+                final_score *= 5;
+                session.relic_pending_effect = RelicEffectType::NoEffect;
+            }
+
+            let mut biblia_used = false;
+            if is_666 && InventoryImpl::has_item_in_inventory(@store, session_id, 40) {
+                InventoryImpl::remove_item_from_inventory(ref store, session_id, 40);
+                let updated_symbol_scores = InventoryImpl::get_effective_symbol_scores(@store, session_id);
+                let (updated_seven, updated_diamond, updated_cherry, updated_coin, updated_lemon) = updated_symbol_scores;
+                session.score_seven = updated_seven;
+                session.score_diamond = updated_diamond;
+                session.score_cherry = updated_cherry;
+                session.score_coin = updated_coin;
+                session.score_lemon = updated_lemon;
+                is_666 = false;
+                biblia_used = true;
+            }
+
+            session.total_spins += 1;
+            session.spins_remaining -= 1;
+            session.luck = luck;
+
+            if is_666 {
+                session.score = 0;
+                session.total_score = 0;
+                session.blocked_666_this_session = true;
+            } else {
+                session.score += final_score;
+                session.total_score += final_score;
+            }
+
+            loop {
+                let threshold = get_level_threshold(session.level);
+                if session.score < threshold { break; }
+                session.level += 1;
+                session.tickets += 1;
+                let spin_bonus = InventoryImpl::get_inventory_spin_bonus(@store, session_id);
+                session.spins_remaining = 5 + spin_bonus; 
+            };
+
+            if session.is_active && session.spins_remaining == 0 {
+                session.is_active = false;
+            }
+
+            if !session.is_active {
+                InternalImpl::process_end_session_rewards(ref store, ref session, session_id, random_word);
+            }
+
+            store.set_session(@session);
+            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
+            let collection = ICollectionDispatcher { contract_address: collection_address };
+            collection.update(session_id.into());
+            let spin_result = SpinResult {
+                session_id,
+                cell_0: *grid.at(0), cell_1: *grid.at(1), cell_2: *grid.at(2),
+                cell_3: *grid.at(3), cell_4: *grid.at(4), cell_5: *grid.at(5),
+                cell_6: *grid.at(6), cell_7: *grid.at(7), cell_8: *grid.at(8),
+                cell_9: *grid.at(9), cell_10: *grid.at(10), cell_11: *grid.at(11),
+                cell_12: *grid.at(12), cell_13: *grid.at(13), cell_14: *grid.at(14),
+                score: final_score,
+                patterns_count: pats_count,
+                is_666,
+                is_jackpot,
+                is_pending: false,
+                biblia_used,
+            };
+            store.set_spin_result(@spin_result);
+
+            // SYNC LEADERBOARD (Will be done via Torii indexing Session model)
+
+            store.emit_spin_completed(
+                @crate::events::index::SpinCompleted {
+                    session_id,
+                    player: caller,
+                    cell_0: spin_result.cell_0, cell_1: spin_result.cell_1, cell_2: spin_result.cell_2,
+                    cell_3: spin_result.cell_3, cell_4: spin_result.cell_4, cell_5: spin_result.cell_5,
+                    cell_6: spin_result.cell_6, cell_7: spin_result.cell_7, cell_8: spin_result.cell_8,
+                    cell_9: spin_result.cell_9, cell_10: spin_result.cell_10, cell_11: spin_result.cell_11,
+                    cell_12: spin_result.cell_12, cell_13: spin_result.cell_13, cell_14: spin_result.cell_14,
+                    score_gained: final_score,
+                    new_total_score: session.total_score,
+                    new_level: session.level,
+                    spins_remaining: session.spins_remaining,
+                    is_active: session.is_active,
+                    is_666,
+                    is_jackpot,
+                    biblia_used,
+                    current_luck: session.luck,
+                    score_seven: session.score_seven,
+                    score_diamond: session.score_diamond,
+                    score_cherry: session.score_cherry,
+                    score_coin: session.score_coin,
+                    score_lemon: session.score_lemon,
+                },
+            );
+        }
+
+        fn end_session(ref self: ContractState, session_id: u32) {
+            let caller = get_caller_address();
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+
+            let mut session = store.session(session_id);
+            assert(session.player_address == caller, 'Not session owner');
+            assert(session.is_active, 'Session already ended');
+
+            session.is_active = false;
+            InternalImpl::process_end_session_rewards(ref store, ref session, session_id, 0);
+            store.set_session(@session);
+            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
+            let collection = ICollectionDispatcher { contract_address: collection_address };
+            collection.update(session_id.into());
+
+            store.emit_session_ended(session_id, caller, session.total_score, session.level);
+        }
+
+        fn claim_chips(ref self: ContractState, session_id: u32) {
+            let caller = get_caller_address();
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+
+            let mut session = store.session(session_id);
+            assert(session.player_address == caller, 'Not session owner');
+            assert(!session.is_active, 'Session still active');
+            assert(!session.chips_claimed, 'Chips already claimed');
+
+            InternalImpl::process_end_session_rewards(ref store, ref session, session_id, 0);
+            store.set_session(@session);
+            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
+            let collection = ICollectionDispatcher { contract_address: collection_address };
+            collection.update(session_id.into());
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // View Functions Implementation
+        // ═══════════════════════════════════════════════════════════════════
+
+        fn get_config(self: @ContractState) -> Config {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            store.config()
+        }
+
+        fn get_item_info(self: @ContractState, item_id: u32) -> Item {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            store.item(item_id)
+        }
+
+        fn get_session(self: @ContractState, session_id: u32) -> Session {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            store.session(session_id)
+        }
+
+        fn get_player_sessions(self: @ContractState, player: ContractAddress) -> Span<u32> {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+
+            let sessions = store.player_sessions(player);
+            let mut session_ids: Array<u32> = array![];
+            let mut i: u32 = 0;
+            while i < sessions.count {
+                let entry = store.player_session_entry(player, i);
+                session_ids.append(entry.session_id);
+                i += 1;
+            };
+
+            session_ids.span()
+        }
+
+        fn get_beast_sessions_used(self: @ContractState, player: ContractAddress) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let usage = store.beast_sessions_used(player);
+            usage.count
+        }
+
+        fn get_available_beast_sessions(self: @ContractState, player: ContractAddress) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let config = store.config();
+            let usage = store.beast_sessions_used(player);
+            let zero_addr: ContractAddress = Zero::zero();
+
+            if config.beast_nft == zero_addr {
+                return 0;
+            }
+
+            let beast_erc721 = IRelicERC721Dispatcher { contract_address: config.beast_nft };
+            let balance_u256 = beast_erc721.balance_of(player);
+            let balance: u32 = match balance_u256.try_into() {
+                Option::Some(value) => value,
+                Option::None => 4_294_967_295,
+            };
+
+            if balance <= usage.count {
+                0
+            } else {
+                balance - usage.count
+            }
+        }
+
+        fn get_usd_cost_in_token(self: @ContractState, payment_token: ContractAddress) -> u256 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            PricingImpl::get_usd_cost_in_token(@store, payment_token)
+        }
+
+        fn get_session_luck(self: @ContractState, session_id: u32) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            InventoryImpl::calculate_effective_luck(@store, session_id)
+        }
+
+        fn get_session_inventory_count(self: @ContractState, session_id: u32) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let item_idx = store.session_item_index(session_id);
+            let mut count: u32 = 0;
+            let mut i: u32 = 0;
+            while i < item_idx.count {
+                let entry = store.session_item_entry(session_id, i);
+                if entry.item_id < 1000 {
+                    let inv = store.inventory(session_id, entry.item_id);
+                    if inv.quantity > 0 {
+                        count += 1;
+                    }
+                }
+                i += 1;
+            };
+            count
+        }
+
+        fn get_charm_drop_chance(self: @ContractState, session_id: u32) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let session = store.session(session_id);
+            let effective_luck = InventoryImpl::calculate_effective_luck(@store, session_id);
+            let mut total_chance = (session.score / 125) + effective_luck;
+            if total_chance > 50 {
+                total_chance = 50;
+            }
+            total_chance
+        }
+
+        fn get_chips_to_claim(self: @ContractState, session_id: u32) -> u256 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let session = store.session(session_id);
+
+            if session.is_active || session.chips_claimed {
+                return 0.into();
+            }
+
+            let config = store.config();
+            let base_chips = session.score / CHIP_SCORE_DIVISOR;
+            (base_chips.into() * config.chip_emission_rate.into() * config.chip_boost_multiplier.into()) * 1_000_000_000_000_000_000
+        }
+
+        fn get_session_items(self: @ContractState, session_id: u32) -> Span<(u32, u32)> {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            
+            let item_idx = store.session_item_index(session_id);
+            let mut items_out: Array<(u32, u32)> = array![];
+            let mut i: u32 = 0;
+            while i < item_idx.count {
+                let entry = store.session_item_entry(session_id, i);
+                let inv = store.inventory(session_id, entry.item_id);
+                items_out.append((entry.item_id, inv.quantity));
+                i += 1;
+            };
+
+            let charm_idx = store.session_charms(session_id);
+            let mut j: u32 = 0;
+            while j < charm_idx.count {
+                let entry = store.session_charm_entry(session_id, j);
+                if entry.charm_id > 0 {
+                    items_out.append((entry.charm_id + 1000, 1));
+                }
+                j += 1;
+            };
+
+            items_out.span()
+        }
+
+        fn get_spin_result(self: @ContractState, session_id: u32) -> SpinResult {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            store.spin_result(session_id)
+        }
+
+        fn get_level_threshold(self: @ContractState, level: u32) -> u32 {
+            get_level_threshold(level)
+        }
+
+        fn get_666_probability(self: @ContractState, level: u32) -> u32 {
+            get_level_666_probability(level)
+        }
+
+        fn get_session_market(self: @ContractState, session_id: u32) -> SessionMarket {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            store.session_market(session_id)
+        }
+
+        fn is_market_slot_purchased(self: @ContractState, session_id: u32, slot: u32) -> bool {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let msp = store.market_slot_purchased(session_id, slot);
+            msp.purchased
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn process_end_session_rewards(
+            ref store: Store,
+            ref session: Session,
+            session_id: u32,
+            random_word: felt252,
+        ) {
+            if !session.is_active && !session.chips_claimed {
+                let config = store.config();
+                
+                let base_chips = session.score / CHIP_SCORE_DIVISOR;
+                let chip_amount: u256 = (base_chips.into() * config.chip_emission_rate.into() * config.chip_boost_multiplier.into()) * 1_000_000_000_000_000_000;
+                
+                let zero_addr: ContractAddress = Zero::zero();
+                if chip_amount > 0 && config.chip_token != zero_addr {
+                    let chip_disp = store.chip_disp();
+                    chip_disp.mint(session.player_address, chip_amount);
+                }
+
+                if config.charm_nft != zero_addr {
+                    let effective_luck = InventoryImpl::calculate_effective_luck(@store, session_id);
+                    let mut total_chance = (session.score / 125) + effective_luck;
+                    if total_chance > 50 { total_chance = 50; }
+
+                    let charm_seed = poseidon_hash_span(array![session_id.into(), random_word, session.player_address.into()].span());
+                    let charm_roll_u256: u256 = charm_seed.into();
+                    let charm_roll: u32 = (charm_roll_u256 % 100).try_into().unwrap();
+
+                    if charm_roll < total_chance {
+                        let rarity_roll: u32 = ((charm_roll_u256 / 100) % 100).try_into().unwrap();
+                        let rarity: u8 = if rarity_roll < 3 { 2 } else if rarity_roll < 15 { 1 } else { 0 };
+
+                        let charm_disp = store.charm_disp();
+                        let token_id = charm_disp.mint_random_charm_of_rarity(
+                            session.player_address,
+                            rarity,
+                            charm_seed,
+                        );
+                        let charm_meta = charm_disp.get_charm_metadata(token_id);
+                        store.emit_charm_minted(
+                            @crate::events::index::CharmMinted {
+                                session_id,
+                                player: session.player_address,
+                                charm_id: charm_meta.charm_id,
+                                rarity,
+                                token_id,
+                            }
+                        );
+                    }
+                }
+
+                // This field effectively guards all end-of-session rewards, not only chips.
+                // Marking it after processing prevents repeated claim attempts from minting
+                // duplicate charms when the chip payout is zero.
+                session.chips_claimed = true;
+            }
+        }
+    }
+}

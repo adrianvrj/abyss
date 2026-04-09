@@ -1,0 +1,27 @@
+[world]
+name = "Abyss"
+seed = "abyss-v1.0.1"
+description = "On chain version of the Abyss game."
+website = "https://play.abyssgame.fun/"
+
+[namespace]
+default = "ABYSS"
+
+[env]
+rpc_url = "https://api.cartridge.gg/x/starknet/mainnet"
+# world_address = "0x06bba2fea5c315483d0a698e21c29aa2c305e53aae4da39f16e8215845dc0848"
+account_address = "0x39ca42b918d701ed01c50d2d5bebef9be78f80fe8d92170963523f8e0b532d9"
+
+[migration]
+order_inits = [
+  "ABYSS-Token",
+  "ABYSS-Setup",
+  "ABYSS-Play",
+  "ABYSS-Market",
+  "ABYSS-Relic",
+  "ABYSS-Treasury",
+]
+disable_multicall = true
+
+[writers]
+"ABYSS" = ["ABYSS-Setup", "ABYSS-Play", "ABYSS-Market", "ABYSS-Relic", "ABYSS-Treasury"]

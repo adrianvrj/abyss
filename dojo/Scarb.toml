@@ -1,0 +1,32 @@
+[package]
+name = "abyss_game"
+version = "0.1.0"
+cairo-version = "2.15.0"
+edition = "2024_07"
+
+[scripts]
+
+[[target.starknet-contract]]
+allowed-libfuncs-list.name = "experimental"
+sierra = true
+casm = true
+build-external-contracts = [
+  "dojo::world::world_contract::world",
+  "openzeppelin::presets::account::AccountUpgradeable",
+]
+
+[dependencies]
+collection.workspace = true
+bundle.workspace = true
+openzeppelin.workspace = true
+graffiti.workspace = true
+dojo.workspace = true
+dojo_cairo_macros.workspace = true
+starknet.workspace = true
+
+[dev-dependencies]
+dojo_cairo_test.workspace = true
+cairo_test.workspace = true
+
+[features]
+default = []

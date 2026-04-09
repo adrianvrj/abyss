@@ -1,0 +1,12 @@
+[2m2026-04-05T21:59:50.545117Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Relay peer id. [3mpeer_id[0m[2m=[0m12D3KooWANXaGPpXw9TTowwbSToWCUs1V9a8RLD4VVLS8BgdW2Qb
+[2m2026-04-05T21:59:50.547381Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Starting torii endpoint. [3mendpoint[0m[2m=[0m127.0.0.1:8080 [3mprotocol[0m[2m=[0mhttp
+[2m2026-04-05T21:59:50.547393Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Serving gRPC endpoint. [3mendpoint[0m[2m=[0m127.0.0.1:50051
+[2m2026-04-05T21:59:50.547395Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Serving Graphql playground. [3mendpoint[0m[2m=[0mhttp://127.0.0.1:8080/graphql
+[2m2026-04-05T21:59:50.547399Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Serving SQL playground. [3mendpoint[0m[2m=[0mhttp://127.0.0.1:8080/sql
+[2m2026-04-05T21:59:50.547402Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Serving MCP endpoint. [3mendpoint[0m[2m=[0mhttp://127.0.0.1:8080/mcp
+[2m2026-04-05T21:59:50.547404Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Serving World Explorer. [3murl[0m[2m=[0mhttps://worlds.dev/torii?url=http%3A%2F%2F127.0.0.1%3A8080%2Fgraphql
+[2m2026-04-05T21:59:50.547406Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Serving ERC artifacts at path [3mpath[0m[2m=[0m/var/folders/gk/0l6dpb511vn2fynz3mn1f5rh0000gn/T/.tmpZY1gXk
+[2m2026-04-05T21:59:50.547601Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Serving libp2p Relay. [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/9090
+[2m2026-04-05T21:59:50.547640Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Serving libp2p Relay. [3maddress[0m[2m=[0m/ip4/127.0.0.1/udp/9090/quic-v1
+[2m2026-04-05T21:59:50.547653Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Serving libp2p Relay. [3maddress[0m[2m=[0m/ip4/127.0.0.1/udp/9091/webrtc-direct/certhash/uEiCf6tuLcfRUeAcxtjaKgAGrdGX7Ptt2R1YF9eoORoAQHw
+[2m2026-04-05T21:59:50.547669Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Serving libp2p Relay. [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/9092/ws

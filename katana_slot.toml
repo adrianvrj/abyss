@@ -1,0 +1,6 @@
+[forking]
+fork_provider = "https://api.cartridge.gg/x/starknet/sepolia"
+
+[dev]
+no_fee = true
+total_accounts = 2
