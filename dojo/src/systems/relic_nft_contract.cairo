@@ -162,7 +162,17 @@ pub mod RelicNFT {
             }
 
             let token_id_u64: u64 = token_id.try_into().expect('Invalid token ID');
-            base_uri + format!("{}", token_id_u64)
+            let relic_id = self.token_relic_id.entry(token_id).read();
+            let contract_felt: felt252 = starknet::get_contract_address().into();
+
+            base_uri
+                + format!("{}", token_id_u64)
+                + "?relicId="
+                + format!("{}", relic_id)
+                + "&tokenId="
+                + format!("{}", token_id_u64)
+                + "&contract="
+                + format!("{}", contract_felt)
         }
     }
 

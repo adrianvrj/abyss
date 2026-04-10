@@ -143,8 +143,8 @@ export function SessionsContent() {
     const navigate = useNavigate();
     const { chain } = useNetwork();
     const { account, connector, isConnected, disconnect } = useController();
-    const { getPlayerSessions, getSessionData, createSession, isReady } = useAbyssGame(account);
-    const { bundles, status: bundlesStatus } = useBundles();
+    const { getPlayerSessions, getSessionData, isReady } = useAbyssGame(account);
+    const { bundles, status: bundlesStatus, refresh: refreshBundles } = useBundles();
 
     const [sessions, setSessions] = useState<SessionInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -211,60 +211,76 @@ export function SessionsContent() {
             return;
         }
 
-        const sessionBundle =
-            bundles.find((bundle) => bundle.id === CONTRACTS.SESSION_BUNDLE_ID) ??
-            bundles.find((bundle) => bundle.price > 0n) ??
-            bundles.find((bundle) => bundle.price === 0n) ??
-            bundles[0];
         setIsCreating(true);
         try {
+            let availableBundles = bundles;
+            let sessionBundle =
+                availableBundles.find((bundle) => bundle.id === CONTRACTS.SESSION_BUNDLE_ID) ??
+                availableBundles.find((bundle) => bundle.price === 0n) ??
+                availableBundles[0];
+
+            if (!sessionBundle) {
+                const refreshed = await refreshBundles();
+                availableBundles = refreshed ?? availableBundles;
+                sessionBundle =
+                    availableBundles.find((bundle) => bundle.id === CONTRACTS.SESSION_BUNDLE_ID) ??
+                    availableBundles.find((bundle) => bundle.price === 0n) ??
+                    availableBundles[0];
+            }
+
             console.log("Opening session flow for:", account.address);
             console.log("Session bundle selection:", {
                 configuredBundleId: CONTRACTS.SESSION_BUNDLE_ID,
                 selectedBundleId: sessionBundle?.id,
                 selectedBundlePrice: sessionBundle?.price?.toString(),
-                allBundles: bundles.map((bundle) => ({
+                allBundles: availableBundles.map((bundle) => ({
                     id: bundle.id,
                     price: bundle.price.toString(),
                     paymentToken: bundle.paymentToken,
                 })),
             });
 
-            if (sessionBundle && connector) {
-                const controller = connector as ControllerConnector;
-                const registry = getSetupAddress(chain?.id);
-                const previousSessionIds = await getPlayerSessions(account.address);
+            if (!sessionBundle) {
+                console.error("No session bundle found; refusing to fallback to paid create_session.");
+                await loadSessions();
+                return;
+            }
 
-                await controller.controller.openBundle(sessionBundle.id, registry, {
-                    onPurchaseComplete: async () => {
-                        for (let attempt = 0; attempt < 10; attempt++) {
-                            const nextSessionIds = await getPlayerSessions(account.address);
-                            const createdSessionId = nextSessionIds.find(
-                                (sessionId) => !previousSessionIds.includes(sessionId),
-                            );
+            if (!connector) {
+                console.error("No controller connector available for openBundle.");
+                return;
+            }
 
-                            if (createdSessionId !== undefined) {
-                                await loadSessions();
-                                navigate(`/game?sessionId=${createdSessionId}`);
-                                return;
-                            }
+            const controller = connector as ControllerConnector;
+            const registry = getSetupAddress(chain?.id);
+            const previousSessionIds = await getPlayerSessions(account.address);
 
-                            await new Promise((resolve) => setTimeout(resolve, 400));
+            await controller.controller.openBundle(sessionBundle.id, registry, {
+                onPurchaseComplete: async () => {
+                    for (let attempt = 0; attempt < 10; attempt++) {
+                        const nextSessionIds = await getPlayerSessions(account.address);
+                        const createdSessionId = nextSessionIds.find(
+                            (sessionId) => !previousSessionIds.includes(sessionId),
+                        );
+
+                        if (createdSessionId !== undefined) {
+                            await loadSessions();
+                            navigate(`/game?sessionId=${createdSessionId}`);
+                            return;
                         }
 
-                        await loadSessions();
-                    },
-                });
-            } else {
-                await createSession();
-                await loadSessions();
-            }
+                        await new Promise((resolve) => setTimeout(resolve, 400));
+                    }
+
+                    await loadSessions();
+                },
+            });
         } catch (error: any) {
             console.error("Failed to create session:", error);
         } finally {
             setIsCreating(false);
         }
-    }, [account, bundles, chain?.id, connector, createSession, getPlayerSessions, loadSessions, navigate]);
+    }, [account, bundles, chain?.id, connector, getPlayerSessions, loadSessions, navigate, refreshBundles]);
 
     const handleBack = useCallback(() => {
         navigate("/");

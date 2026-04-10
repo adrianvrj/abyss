@@ -1,14 +1,19 @@
 import { shortString } from "starknet";
+import manifest from "./manifest.json";
 
 // Contract constants for Abyss Game
 // Update these addresses when deploying to different networks
 
+function contractAddress(tag: string, fallback: string) {
+    return manifest.contracts.find((contract) => contract.tag === tag)?.address ?? fallback;
+}
+
 // Sepolia addresses
 export const CONTRACTS = {
-    ABYSS_GAME: process.env.NEXT_PUBLIC_WORLD_ADDRESS || "0x05b38052dcad094f11f71c78b0c1b84a001616f7f04619502b73a359d8b7e4ae",
-    CHIP_TOKEN: "0x05f0d54994c424cb7d509787d405655cf60f6221f257a2b7b2cdf865d16e6d0e",
-    RELIC_NFT: "0x0629007964504df95d64b88806e43ac5d9aa5e2e7583b5c360f4b603a565e0b5",
-    CHARM_NFT: "0x076dc33ef7e8efbbd6f513f35a47bb94df3a57ab3c66e5985d316d435b70d745",
+    ABYSS_GAME: process.env.NEXT_PUBLIC_WORLD_ADDRESS || manifest.world.address,
+    CHIP_TOKEN: contractAddress("ABYSS-Chip", "0x05f0d54994c424cb7d509787d405655cf60f6221f257a2b7b2cdf865d16e6d0e"),
+    RELIC_NFT: contractAddress("ABYSS-RelicNFT", "0x0629007964504df95d64b88806e43ac5d9aa5e2e7583b5c360f4b603a565e0b5"),
+    CHARM_NFT: contractAddress("ABYSS-Charm", "0x076dc33ef7e8efbbd6f513f35a47bb94df3a57ab3c66e5985d316d435b70d745"),
     ETH_TOKEN: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
     STRK_TOKEN: "0x04718f5a0Fc34cC1AF16A1cdee98fFB20C31f5cD61D6Ab07201858f4287c938D",
     CARTRIDGE_VRF: "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",

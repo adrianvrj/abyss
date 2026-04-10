@@ -20,7 +20,7 @@ type BundlesProviderProps = {
 type BundlesProviderState = {
   bundles: Bundle[];
   status: "loading" | "error" | "success";
-  refresh: () => Promise<void>;
+  refresh: () => Promise<Bundle[]>;
 };
 
 const BundlesProviderContext = createContext<
@@ -105,7 +105,8 @@ export function BundlesProvider({ children }: BundlesProviderProps) {
   }, [client, handleUpdate]);
 
   const refresh = useCallback(async () => {
-    await refetch();
+    const result = await refetch();
+    return result.data ?? [];
   }, [refetch]);
 
   const value: BundlesProviderState = {

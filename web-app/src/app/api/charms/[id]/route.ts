@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
+import manifest from '@/lib/manifest.json';
+import { RpcProvider } from 'starknet';
+
+export const dynamic = 'force-dynamic';
 
 // Base URL for images - update this to your production domain
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
+const provider = new RpcProvider({
+    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/sepolia',
+});
+
+const DEFAULT_CHARM_ADDRESS = manifest.contracts.find(
+    (contract) => contract.tag === 'ABYSS-Charm'
+)?.address;
 
 // Soul Charms metadata configuration
 // Matches the 20 charms defined in SOUL_CHARMS_IMPLEMENTATION.md
@@ -240,29 +251,73 @@ const RARITY_COLORS: Record<string, string> = {
     "Legendary": "#F59E0B"
 };
 
+function normalizeAddress(value: string | null | undefined) {
+    if (!value) return null;
+    if (value.startsWith('0x') || value.startsWith('0X')) {
+        return value;
+    }
+
+    try {
+        return `0x${BigInt(value).toString(16)}`;
+    } catch {
+        return value;
+    }
+}
+
+function parseCharmId(value: string | null | undefined) {
+    if (!value) return null;
+    const charmId = Number.parseInt(value, 10);
+    if (!Number.isFinite(charmId) || charmId < 1 || charmId > 20) {
+        return null;
+    }
+    return charmId;
+}
+
+async function getOnchainCharmId(tokenId: string, contractAddress: string | null) {
+    if (!contractAddress) return null;
+
+    const tokenIdBigInt = BigInt(tokenId);
+    const low = tokenIdBigInt & ((BigInt(1) << BigInt(128)) - BigInt(1));
+    const high = tokenIdBigInt >> BigInt(128);
+
+    const result = await provider.callContract({
+        contractAddress,
+        entrypoint: 'get_charm_metadata',
+        calldata: [low.toString(), high.toString()],
+    });
+
+    return parseCharmId(BigInt(result[0] || '0').toString());
+}
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const tokenId = (await params).id;
+    const url = new URL(request.url);
 
     try {
-        // For Soul Charms, the token ID maps directly to charm type for simplicity
-        // In production, you might want to fetch the charm_id from the contract
-        // based on the token_id -> charm_id mapping
-
-        // For now, we'll use a simple modulo approach:
-        // token_id % 20 + 1 = charm_id (1-20)
-        // This assumes charms are minted in a round-robin fashion by type
-
         const tokenIdNum = parseInt(tokenId);
         if (isNaN(tokenIdNum) || tokenIdNum < 1) {
             return NextResponse.json({ error: "Invalid token ID" }, { status: 400 });
         }
 
-        // Calculate charm_id from token_id
-        // In production, this should be fetched from the contract
-        const charmId = ((tokenIdNum - 1) % 20) + 1;
+        const contractAddress = normalizeAddress(url.searchParams.get('contract') || DEFAULT_CHARM_ADDRESS);
+        const explicitCharmId = parseCharmId(url.searchParams.get('charmId'));
+        const onchainCharmId = explicitCharmId
+            ? null
+            : await getOnchainCharmId(tokenId, contractAddress).catch((error) => {
+                console.warn('Unable to resolve charm metadata onchain:', error);
+                return null;
+            });
+
+        // `/api/charms/:id` is also used by the client as a charm type catalog endpoint.
+        // Prefer the explicit/onchain mapping for NFT metadata, then fall back to the id as a type id.
+        const charmId = explicitCharmId ?? onchainCharmId ?? parseCharmId(tokenId);
+        if (!charmId) {
+            return NextResponse.json({ error: "Charm not found" }, { status: 404 });
+        }
+
         const charmIdStr = charmId.toString();
 
         const metadata = CHARM_METADATA[charmIdStr];
