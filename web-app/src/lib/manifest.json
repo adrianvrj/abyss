@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x757d673ad960ae8dd7932530e106f2bf0affdacf437c385206b8b090c5c1c48",
-      "class_hash": "0x5c4f6231f3cd0e47ec4b83c9ea57b3db53ccf1bfe6a98f8b960e1d02b895b0c",
+      "class_hash": "0x531144714931ac638fd0cfc101a603485e0f7372ec0a381d797c0dcdfb0e718",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -136,7 +136,7 @@
     },
     {
       "address": "0x361679a02cd3c085d2bc8c14a0f0e7accd299d26497ba84155f66a846735e2d",
-      "class_hash": "0x5948ef8e4d5f445904870788a9a123260a287b926030c14f64dfad5f88b076",
+      "class_hash": "0x11141be94cea0dfe5a1d706a4935723bc0aa58ce031fcd4a75a61e14aa819a5",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
