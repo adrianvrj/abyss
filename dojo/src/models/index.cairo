@@ -283,21 +283,6 @@ pub struct PrizeClaimed {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LEADERBOARD ENTRY
-// ═══════════════════════════════════════════════════════════════════════════
-
-#[dojo::model]
-#[derive(Copy, Drop, Serde)]
-pub struct LeaderboardEntry {
-    #[key]
-    pub rank: u32,
-    pub player_address: ContractAddress,
-    pub session_id: u32,
-    pub level: u32,
-    pub total_score: u32,
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // TOKEN PAIR IDS - Oracle price feed mapping
 // ═══════════════════════════════════════════════════════════════════════════
 

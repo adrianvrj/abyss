@@ -10,7 +10,6 @@ import {
 export const PRIZE_POOL_MODEL_NAME = "PrizePool";
 export const PRIZE_TOKEN_MODEL_NAME = "PrizeToken";
 export const PRIZE_CLAIMED_MODEL_NAME = "PrizeClaimed";
-export const LEADERBOARD_ENTRY_MODEL_NAME = "LeaderboardEntry";
 
 export interface RawPrizePool {
   world_resource: PrimitiveValue<string>;
@@ -44,22 +43,6 @@ export interface RawPrizeClaimed {
 export interface PrizeClaimed {
   player: string;
   claimed: boolean;
-}
-
-export interface RawLeaderboardEntry {
-  rank: PrimitiveValue<string>;
-  player_address: PrimitiveValue<string>;
-  session_id: PrimitiveValue<string>;
-  level: PrimitiveValue<string>;
-  total_score: PrimitiveValue<string>;
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  playerAddress: string;
-  sessionId: number;
-  level: number;
-  totalScore: number;
 }
 
 export interface PrizeTokenBalance {
@@ -122,30 +105,3 @@ export const PrizeClaimedModel = {
     };
   },
 };
-
-export const LeaderboardEntryModel = {
-  getModelName() {
-    return LEADERBOARD_ENTRY_MODEL_NAME;
-  },
-  parse(
-    data: RawLeaderboardEntry | undefined | null,
-  ): LeaderboardEntry | undefined {
-    if (!data) {
-      return undefined;
-    }
-
-    return {
-      rank: toNumber(data.rank),
-      playerAddress: toAddress(data.player_address),
-      sessionId: toNumber(data.session_id),
-      level: toNumber(data.level),
-      totalScore: toNumber(data.total_score),
-    };
-  },
-  dedupe(items: LeaderboardEntry[]) {
-    return dedupeBy(items, (item) => item.rank).sort(
-      (left, right) => left.rank - right.rank,
-    );
-  },
-};
-

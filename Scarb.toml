@@ -11,6 +11,7 @@ edition = "2024_07"
 achievement = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
 collection = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
 bundle = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+leaderboard = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
 merkledrop = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
 quest = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
 starterpack = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }

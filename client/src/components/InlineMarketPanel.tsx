@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
 import {
     getItemInfo,
@@ -40,6 +40,7 @@ interface InlineMarketPanelProps {
     initialItems?: ContractItem[];
     refreshTrigger?: number;
     externalRefreshEvent?: import('@/utils/gameEvents').MarketRefreshedEvent | null;
+    hiddenItemIds?: number[];
 }
 
 export default function InlineMarketPanel({
@@ -56,7 +57,8 @@ export default function InlineMarketPanel({
     onPurchaseSuccess,
     initialItems = [],
     refreshTrigger = 0,
-    externalRefreshEvent = null
+    externalRefreshEvent = null,
+    hiddenItemIds = [],
 }: InlineMarketPanelProps) {
     const { account } = useAccount();
     const [loading, setLoading] = useState(!initialItems.length);
@@ -64,17 +66,16 @@ export default function InlineMarketPanel({
     const [marketItems, setMarketItems] = useState<ContractItem[]>(initialItems);
     const [charmInfoMap, setCharmInfoMap] = useState<Map<number, CharmInfo>>(new Map());
     const [ownedItemIds, setOwnedItemIds] = useState<Set<number>>(new Set());
-    const [inventoryCount, setInventoryCount] = useState(0);
     const [purchasedInCurrentMarket, setPurchasedInCurrentMarket] = useState<Set<number>>(new Set());
     const [refreshing, setRefreshing] = useState(false);
     const [purchasingSlot, setPurchasingSlot] = useState<number | null>(null);
     const [currentItemIndex, setCurrentItemIndex] = useState(0);
+    const latestMarketRequestRef = useRef(0);
 
     const {
         getSessionData,
         getSessionMarket,
         getSessionItems,
-        getSessionInventoryCount,
         isMarketSlotPurchased,
         buyItem,
         refreshMarket
@@ -118,7 +119,8 @@ export default function InlineMarketPanel({
                 effect_type: 7 as ItemEffectType,
                 effect_value: charmInfo.luck,
                 target_symbol: charmInfo.rarity,
-                image: charmInfo.image
+                image: charmInfo.image,
+                charmInfo,
             };
         }
 
@@ -165,11 +167,10 @@ export default function InlineMarketPanel({
     }
 
     async function loadMarketData() {
+        const requestId = ++latestMarketRequestRef.current;
         try {
             if (marketItems.length === 0) setLoading(true);
             const market = await getSessionMarket(sessionId);
-            setMarketData(market);
-
             if (!market) return;
 
             const itemIds = [
@@ -197,20 +198,25 @@ export default function InlineMarketPanel({
                 items.push(item);
             }
 
-            setMarketItems(items);
-            setCharmInfoMap(charmMap);
-
-            const invCount = await getSessionInventoryCount(sessionId);
-            setInventoryCount(invCount);
-
             const playerItems = await getSessionItems(sessionId);
-            setOwnedItemIds(new Set(playerItems.map(pi => pi.item_id)));
+            const visiblePlayerItems = playerItems.filter(
+                (playerItem) => !hiddenItemIds.includes(playerItem.item_id),
+            );
 
             const purchasedSlots = new Set<number>();
             for (let slot = 0; slot < 6; slot++) {
                 const isPurchased = await isMarketSlotPurchased(sessionId, slot);
                 if (isPurchased) purchasedSlots.add(slot);
             }
+
+            if (requestId !== latestMarketRequestRef.current) {
+                return;
+            }
+
+            setMarketData(market);
+            setMarketItems(items);
+            setCharmInfoMap(charmMap);
+            setOwnedItemIds(new Set(visiblePlayerItems.map((playerItem) => playerItem.item_id)));
             setPurchasedInCurrentMarket(prev => {
                 if (isSameMarketSnapshot(market)) {
                     return new Set([...prev, ...purchasedSlots]);
@@ -347,7 +353,6 @@ export default function InlineMarketPanel({
             }
 
             setOwnedItemIds(prev => new Set(prev).add(purchasedItemId));
-            setInventoryCount(prev => prev + 1);
             onInventoryChange?.();
             if (purchasedItem) {
                 onPurchaseSuccess?.(purchasedItem);
@@ -377,9 +382,12 @@ export default function InlineMarketPanel({
     const currentItem = marketItems[currentItemIndex];
     const currentSlotLabel = currentItemIndex + 1;
     const isCurrentCharm = currentItem ? isCharmItem(currentItem.item_id) : false;
-    const isOwned = currentItem ? ownedItemIds.has(currentItem.item_id) : false;
+    const visibleInventoryCount = Array.from(ownedItemIds).filter((itemId) => itemId < 1000).length;
+    const isOwned = currentItem
+        ? ownedItemIds.has(currentItem.item_id) && !hiddenItemIds.includes(currentItem.item_id)
+        : false;
     const wasPurchased = purchasedInCurrentMarket.has(currentItemIndex);
-    const isInventoryFull = inventoryCount >= 7 && !isOwned && !isCurrentCharm;
+    const isInventoryFull = visibleInventoryCount >= 7 && !isOwned && !isCurrentCharm;
     const canAfford = currentItem ? currentTickets >= currentItem.price : false;
     const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && !purchasingSlot;
 

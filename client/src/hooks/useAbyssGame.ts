@@ -76,8 +76,9 @@ export interface SessionMarket {
 
 export interface LeaderboardEntry {
   player_address: string;
-  session_id: number;
-  level: number;
+  username: string;
+  games_played: number;
+  best_score: number;
   total_score: number;
 }
 
@@ -424,35 +425,23 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
         throw new Error("Not connected");
       }
 
-      const calls: ExecuteCall[] = [];
-
-      if (relicId === 4) {
-        const config = await getGameConfig(chainId).catch((error) => {
-          console.warn("Failed to fetch config before relic activation, using fallback VRF:", error);
-          return null;
-        });
-
-        const vrfAddress = config?.vrf || CONTRACTS.CARTRIDGE_VRF;
-
-        calls.push({
-          contractAddress: vrfAddress,
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: relicAddress,
-            source: { type: 0, address: account.address },
-          }),
-        });
-      }
-
-      calls.push({
+      const calls: ExecuteCall[] = [{
         contractAddress: relicAddress,
         entrypoint: "activate_relic",
         calldata: [sessionId.toString()],
-      });
+      }];
+
+      if (relicId === 4) {
+        calls.push({
+          contractAddress: playAddress,
+          entrypoint: "end_session",
+          calldata: [sessionId.toString()],
+        });
+      }
 
       return executeAndParse(calls);
     },
-    [account, chainId, executeAndParse, relicAddress],
+    [account, executeAndParse, playAddress, relicAddress],
   );
 
   const endSession = useCallback(
@@ -662,8 +651,8 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
   );
 
   const getLeaderboard = useCallback(
-    async (_limit: number = 10): Promise<LeaderboardEntry[]> => readLeaderboard(),
-    [],
+    async (_limit: number = 10): Promise<LeaderboardEntry[]> => readLeaderboard(chainId),
+    [chainId],
   );
 
   const getUnclaimedPrize = useCallback(

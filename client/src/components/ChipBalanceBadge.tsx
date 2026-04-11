@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNetwork } from "@starknet-react/core";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
-import { DEFAULT_CHAIN_ID } from "@/config";
+import { DEFAULT_CHAIN_ID, getChipAddress } from "@/config";
 import { readTokenSymbol, readUint256Balance } from "@/api/rpc/token";
 import { useController } from "@/hooks/useController";
-import { CONTRACTS } from "@/lib/constants";
 
 const DECIMALS = 10n ** 18n;
 
@@ -22,8 +22,11 @@ function formatChipBalance(balance: bigint) {
 
 export function ChipBalanceBadge() {
   const { isConnected, address } = useController();
+  const { chain } = useNetwork();
   const { pathname } = useLocation();
   const [isMobile, setIsMobile] = useState(false);
+  const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
+  const chipAddress = getChipAddress(chainId);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -36,7 +39,7 @@ export function ChipBalanceBadge() {
   }, []);
 
   const { data } = useQuery({
-    queryKey: ["chip-balance", DEFAULT_CHAIN_ID, CONTRACTS.CHIP_TOKEN, address],
+    queryKey: ["chip-balance", chainId.toString(), chipAddress, address],
     enabled: Boolean(isConnected && address),
     queryFn: async () => {
       if (!address) {
@@ -44,8 +47,8 @@ export function ChipBalanceBadge() {
       }
 
       const [balance, symbol] = await Promise.all([
-        readUint256Balance(DEFAULT_CHAIN_ID, CONTRACTS.CHIP_TOKEN, address),
-        readTokenSymbol(DEFAULT_CHAIN_ID, CONTRACTS.CHIP_TOKEN),
+        readUint256Balance(chainId, chipAddress, address),
+        readTokenSymbol(chainId, chipAddress),
       ]);
 
       return { balance, symbol };
@@ -116,7 +119,7 @@ export function ChipBalanceBadge() {
               lineHeight: 1.2,
             }}
           >
-            ABYSS CHIPS
+            CHIP
           </span>
           <span
             style={{

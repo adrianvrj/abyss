@@ -39,15 +39,15 @@ pub fn get_symbol_upgrade(
 
 /// Get level threshold for a given level.
 pub fn get_level_threshold(level: u32) -> u32 {
-    if level == 1 { 100 }
-    else if level == 2 { 400 }
-    else if level == 3 { 1000 }
-    else if level == 4 { 2000 }
-    else if level == 5 { 4000 }
-    else if level == 6 { 7000 }
-    else if level == 7 { 11000 }
-    else if level == 8 { 16000 }
-    else if level == 9 { 22000 }
-    else if level == 10 { 30000 }
+    if level == 1 { 66 }
+    else if level == 2 { 222 }
+    else if level == 3 { 333 }
+    else if level == 4 { 666 }
+    else if level == 5 { 1000 }
+    else if level == 6 { 2000 }
+    else if level == 7 { 4000 }
+    else if level == 8 { 6000 }
+    else if level == 9 { 8000 }
+    else if level == 10 { 10000 }
     else { 30000 + ((level - 10) * 10000) }
 }

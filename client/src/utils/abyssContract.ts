@@ -13,14 +13,21 @@ import { RewardsApi } from "@/api/torii/rewards";
 import { initToriiClient } from "@/api/torii/client";
 import {
   DEFAULT_CHAIN_ID,
+  getCharmAddress,
   getMarketAddress,
   getPlayAddress,
   getTreasuryAddress,
 } from "@/config";
 import { STATIC_ITEM_DEFINITIONS } from "@/lib/itemCatalog";
 import { getStaticCharmDefinition } from "@/lib/charmCatalog";
+import {
+  mergeCharmDisplayData,
+  type CharmApiMetadata,
+  type CharmContractMetadata,
+} from "@/lib/charmRules";
 import type { PrizeTokenBalance } from "@/models";
 import { getRpcProvider } from "@/api/rpc/provider";
+import { getCharmTypeInfo } from "@/api/rpc/relic";
 
 const provider = getRpcProvider(DEFAULT_CHAIN_ID);
 
@@ -59,6 +66,7 @@ export interface ContractItem {
   effect_value: number;
   target_symbol: string;
   image?: string;
+  charmInfo?: CharmInfo;
 }
 
 export interface CharmInfo {
@@ -71,10 +79,33 @@ export interface CharmInfo {
   shop_cost: number;
   image: string;
   background_color: string;
+  metadata?: CharmContractMetadata | null;
 }
 
 export function isCharmItem(itemId: number): boolean {
   return itemId >= 1000;
+}
+
+function normalizeItemTargetSymbol(value: string | undefined | null) {
+  if (!value) {
+    return "";
+  }
+
+  const normalized = value
+    .replace(/\u0000/g, "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    normalized.length === 0 ||
+    normalized === "0" ||
+    normalized === "all" ||
+    normalized === "any"
+  ) {
+    return "";
+  }
+
+  return normalized;
 }
 
 export function getCharmIdFromItemId(itemId: number): number {
@@ -88,48 +119,85 @@ async function getClient() {
   return initToriiClient(DEFAULT_CHAIN_ID);
 }
 
+async function fetchCharmApiMetadata(charmId: number): Promise<CharmApiMetadata | null> {
+  const response = await fetch(`/api/charms/${charmId}`);
+  if (!response.ok) {
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return null;
+  }
+
+  const data = await response.json();
+  const getAttribute = (trait: string) =>
+    data.attributes?.find((attribute: { trait_type?: string; value?: unknown }) => attribute.trait_type === trait)
+      ?.value;
+
+  const backgroundColor =
+    typeof data.background_color === "string" && data.background_color.length > 0
+      ? (data.background_color.startsWith("#")
+          ? data.background_color
+          : `#${data.background_color}`)
+      : undefined;
+
+  return {
+    name: typeof data.name === "string" ? data.name : undefined,
+    description: typeof data.description === "string" ? data.description : undefined,
+    image: typeof data.image === "string" ? data.image : undefined,
+    background_color: backgroundColor,
+    effect: typeof getAttribute("Effect") === "string" ? String(getAttribute("Effect")) : undefined,
+    luck:
+      typeof getAttribute("Luck Value") !== "undefined"
+        ? Number(getAttribute("Luck Value"))
+        : undefined,
+    shopCost:
+      typeof getAttribute("Shop Cost") !== "undefined"
+        ? Number(getAttribute("Shop Cost"))
+        : undefined,
+    rarity: typeof getAttribute("Rarity") === "string" ? String(getAttribute("Rarity")) : undefined,
+  };
+}
+
 export async function getCharmInfo(charmId: number): Promise<CharmInfo | null> {
   if (charmInfoCache.has(charmId)) {
     return charmInfoCache.get(charmId) ?? null;
   }
 
   const staticDefinition = getStaticCharmDefinition(charmId);
+  const charmAddress = getCharmAddress(DEFAULT_CHAIN_ID);
 
   try {
-    const response = await fetch(`/api/charms/${charmId}`);
-    if (!response.ok) {
-      if (staticDefinition) {
-        charmInfoCache.set(charmId, staticDefinition);
-        return staticDefinition;
-      }
+    const [metadata, apiMetadata] = await Promise.all([
+      charmAddress && charmAddress !== "0x0"
+        ? getCharmTypeInfo(DEFAULT_CHAIN_ID, charmAddress, charmId).catch(() => null)
+        : Promise.resolve(null),
+      fetchCharmApiMetadata(charmId).catch(() => null),
+    ]);
+
+    const info = mergeCharmDisplayData({
+      charmId,
+      staticDefinition,
+      apiMetadata,
+      metadata,
+    });
+
+    if (!info) {
       return null;
     }
-
-    const data = await response.json();
-    const getAttribute = (trait: string) =>
-      data.attributes?.find((attribute: any) => attribute.trait_type === trait)?.value;
-
-    const info: CharmInfo = {
-      charm_id: staticDefinition?.charm_id ?? Number(getAttribute("Charm ID") || charmId),
-      name: staticDefinition?.name ?? data.name,
-      description: staticDefinition?.description ?? data.description,
-      rarity: staticDefinition?.rarity ?? (getAttribute("Rarity") || "Common"),
-      effect: staticDefinition?.effect ?? (getAttribute("Effect") || ""),
-      luck: staticDefinition?.luck ?? Number(getAttribute("Luck Value") || 0),
-      shop_cost: staticDefinition?.shop_cost ?? Number(getAttribute("Shop Cost") || 0),
-      image: staticDefinition?.image ?? data.image,
-      background_color:
-        staticDefinition?.background_color ??
-        (data.background_color ? `#${data.background_color}` : ""),
-    };
 
     charmInfoCache.set(charmId, info);
     return info;
   } catch (error) {
     console.error("Failed to fetch charm info:", error);
     if (staticDefinition) {
-      charmInfoCache.set(charmId, staticDefinition);
-      return staticDefinition;
+      const info = {
+        ...staticDefinition,
+        metadata: null,
+      };
+      charmInfoCache.set(charmId, info);
+      return info;
     }
     return null;
   }
@@ -211,7 +279,9 @@ export async function getItemInfo(itemId: number): Promise<ContractItem> {
     item && item.sellPrice > 0 ? item.sellPrice : (fallback?.sell_price ?? 0);
   const resolvedEffectValue =
     item && item.effectValue > 0 ? item.effectValue : (fallback?.effect_value ?? 0);
-  const resolvedTargetSymbol = item?.targetSymbol || fallback?.target_symbol || "";
+  const resolvedTargetSymbol = normalizeItemTargetSymbol(
+    item?.targetSymbol || fallback?.target_symbol || "",
+  );
   const resolvedEffectType =
     item && (item.effectType > 0 || resolvedEffectValue > 0 || resolvedTargetSymbol.length > 0)
       ? item.effectType
@@ -309,18 +379,21 @@ export async function refreshMarket(sessionId: number, executor: any): Promise<s
 
 export interface LeaderboardEntry {
   player_address: string;
-  session_id: number;
-  level: number;
+  username: string;
+  games_played: number;
+  best_score: number;
   total_score: number;
 }
 
-export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  const client = await getClient();
-  const entries = await LeaderboardApi.fetchAll(client);
+export async function getLeaderboard(
+  chainId: bigint | string = DEFAULT_CHAIN_ID,
+): Promise<LeaderboardEntry[]> {
+  const entries = await LeaderboardApi.fetchAll(chainId);
   return entries.map((entry) => ({
-    player_address: entry.playerAddress,
-    session_id: entry.sessionId,
-    level: entry.level,
+    player_address: entry.player,
+    username: entry.username,
+    games_played: entry.gamesPlayed,
+    best_score: entry.bestScore,
     total_score: entry.totalScore,
   }));
 }

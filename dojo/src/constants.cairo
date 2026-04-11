@@ -98,13 +98,13 @@ pub const REVENUE_TEAM_PCT: u32 = 20;
 pub const LEADERBOARD_SIZE: u32 = 10;
 
 // Level thresholds
-pub const LEVEL_1_THRESHOLD: u32 = 100;
-pub const LEVEL_2_THRESHOLD: u32 = 400;
-pub const LEVEL_3_THRESHOLD: u32 = 1000;
-pub const LEVEL_4_THRESHOLD: u32 = 2000;
-pub const LEVEL_5_THRESHOLD: u32 = 4000;
-pub const LEVEL_6_THRESHOLD: u32 = 7000;
-pub const LEVEL_7_THRESHOLD: u32 = 11000;
-pub const LEVEL_8_THRESHOLD: u32 = 16000;
-pub const LEVEL_9_THRESHOLD: u32 = 22000;
-pub const LEVEL_10_THRESHOLD: u32 = 30000;
+pub const LEVEL_1_THRESHOLD: u32 = 66;
+pub const LEVEL_2_THRESHOLD: u32 = 222;
+pub const LEVEL_3_THRESHOLD: u32 = 333;
+pub const LEVEL_4_THRESHOLD: u32 = 666;
+pub const LEVEL_5_THRESHOLD: u32 = 1000;
+pub const LEVEL_6_THRESHOLD: u32 = 2000;
+pub const LEVEL_7_THRESHOLD: u32 = 4000;
+pub const LEVEL_8_THRESHOLD: u32 = 6000;
+pub const LEVEL_9_THRESHOLD: u32 = 8000;
+pub const LEVEL_10_THRESHOLD: u32 = 10000;

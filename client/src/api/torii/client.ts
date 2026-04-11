@@ -1,9 +1,11 @@
 import type * as torii from "@dojoengine/torii-wasm";
+import { ToriiGrpcClient } from "@dojoengine/grpc";
 import { DEFAULT_CHAIN_ID, getToriiUrl, getWorldAddress } from "@/config";
 
 type ChainLike = bigint | string | undefined | null;
 
 const clientPromises = new Map<string, Promise<torii.ToriiClient>>();
+const grpcClients = new Map<string, ToriiGrpcClient>();
 
 function toChainIdHex(chainId: ChainLike) {
   if (typeof chainId === "bigint") {
@@ -34,3 +36,18 @@ export async function initToriiClient(chainId?: ChainLike) {
   return promise;
 }
 
+export function initGrpcClient(chainId?: ChainLike) {
+  const chainIdHex = toChainIdHex(chainId);
+  const existing = grpcClients.get(chainIdHex);
+  if (existing) {
+    return existing;
+  }
+
+  const client = new ToriiGrpcClient({
+    toriiUrl: getToriiUrl(chainIdHex),
+    worldAddress: getWorldAddress(chainIdHex),
+  });
+
+  grpcClients.set(chainIdHex, client);
+  return client;
+}

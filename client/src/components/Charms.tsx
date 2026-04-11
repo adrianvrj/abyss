@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNetwork } from "@starknet-react/core";
 import { useController } from "@/hooks/useController";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { CONTRACTS } from "@/lib/constants";
-import { RpcProvider } from "starknet";
+import { DEFAULT_CHAIN_ID, getCharmAddress } from "@/config";
+import { getCharmMetadata, getPlayerCharms } from "@/api/rpc/relic";
 import { ArrowLeft } from "lucide-react";
 import { STATIC_CHARM_DEFINITIONS } from "@/lib/charmCatalog";
 
@@ -27,38 +28,35 @@ const RARITY_COLORS: Record<string, string> = {
 
 export function Charms() {
     const navigate = useNavigate();
+    const { chain } = useNetwork();
     const { account } = useController();
     const [ownedCharmIds, setOwnedCharmIds] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
+    const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
+    const charmAddress = getCharmAddress(chainId);
 
     const loadData = useCallback(async () => {
-        if (!account) {
+        if (!account || !charmAddress || charmAddress === "0x0") {
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
 
-        const provider = new RpcProvider({ nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/sepolia" });
-
         try {
-            const result = await provider.callContract({
-                contractAddress: CONTRACTS.CHARM_NFT || "0x0",
-                entrypoint: "get_player_charms",
-                calldata: [account.address],
-            });
-
-            const length = Number(result[0]);
+            const tokenIds = await getPlayerCharms(
+                chainId,
+                charmAddress,
+                account.address,
+            );
             const ownedIds = new Set<number>();
-            for (let i = 0; i < length; i++) {
-                const tokenIdLow = BigInt(result[1 + i * 2]);
-                const tokenIdHigh = BigInt(result[1 + i * 2 + 1]);
+            for (const tokenId of tokenIds) {
                 try {
-                    const metaResult = await provider.callContract({
-                        contractAddress: CONTRACTS.CHARM_NFT || "0x0",
-                        entrypoint: "get_charm_metadata",
-                        calldata: [tokenIdLow.toString(), tokenIdHigh.toString()]
-                    });
-                    const charmId = Number(metaResult[0]);
+                    const metadata = await getCharmMetadata(
+                        chainId,
+                        charmAddress,
+                        tokenId,
+                    );
+                    const charmId = Number(metadata?.charmId ?? 0);
                     if (charmId > 0) ownedIds.add(charmId);
                 } catch (e) { /* ignore */ }
             }
@@ -68,7 +66,7 @@ export function Charms() {
         } finally {
             setIsLoading(false);
         }
-    }, [account]);
+    }, [account, chainId, charmAddress]);
 
     useEffect(() => {
         loadData();

@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNetwork } from "@starknet-react/core";
 import { useController } from "@/hooks/useController";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { CONTRACTS } from "@/lib/constants";
-import { RpcProvider } from "starknet";
+import {
+    DEFAULT_CHAIN_ID,
+    getChipAddress,
+    getRelicNftAddress,
+} from "@/config";
+import { getRpcProvider } from "@/api/rpc/provider";
 import { ArrowLeft } from "lucide-react";
 
 // Relic data matching the contract configuration
@@ -17,7 +22,7 @@ const RELICS = [
         maxSupply: 5,
         rarity: "Mythic",
         image: "/images/relics/mortis.png",
-        cooldown: 5,
+        cooldown: 8,
         stats: { luck: 1, vitality: 1 },
     },
     {
@@ -29,7 +34,7 @@ const RELICS = [
         maxSupply: 7,
         rarity: "Mythic",
         image: "/images/relics/phantom.png",
-        cooldown: 5,
+        cooldown: 8,
         stats: { wisdom: 1 },
     },
     {
@@ -41,7 +46,7 @@ const RELICS = [
         maxSupply: 10,
         rarity: "Legendary",
         image: "/images/relics/lucky_the_dealer.png",
-        cooldown: 3,
+        cooldown: 5,
         stats: { charisma: 1 },
     },
     {
@@ -65,7 +70,7 @@ const RELICS = [
         maxSupply: 10,
         rarity: "Legendary",
         image: "/images/relics/inferno.png",
-        cooldown: 3,
+        cooldown: 5,
         stats: { dexterity: 1 },
     },
 ];
@@ -81,26 +86,29 @@ function formatChipPrice(price: number) {
 
 export function Relics() {
     const navigate = useNavigate();
+    const { chain } = useNetwork();
     const { account } = useController();
     const [ownedRelics, setOwnedRelics] = useState<number[]>([]);
     const [supplyData, setSupplyData] = useState<Record<number, { current: number; max: number }>>({});
     const [chipBalance, setChipBalance] = useState<bigint>(BigInt(0));
     const [minting, setMinting] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
+    const chipAddress = getChipAddress(chainId);
+    const relicNftAddress = getRelicNftAddress(chainId);
+    const provider = getRpcProvider(chainId);
 
     const loadData = useCallback(async () => {
-        if (!account) {
+        if (!account || !chipAddress || !relicNftAddress) {
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
 
-        const provider = new RpcProvider({ nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/sepolia" });
-
         try {
             // Load CHIP balance
             const result = await provider.callContract({
-                contractAddress: CONTRACTS.CHIP_TOKEN,
+                contractAddress: chipAddress,
                 entrypoint: "balance_of",
                 calldata: [account.address],
             });
@@ -114,7 +122,7 @@ export function Relics() {
             for (const relic of RELICS) {
                 try {
                     const res = await provider.callContract({
-                        contractAddress: CONTRACTS.RELIC_NFT,
+                        contractAddress: relicNftAddress,
                         entrypoint: "get_supply_info",
                         calldata: [relic.id.toString()],
                     });
@@ -130,7 +138,7 @@ export function Relics() {
 
             // Load owned
             const ownedTokensResult = await provider.callContract({
-                contractAddress: CONTRACTS.RELIC_NFT,
+                contractAddress: relicNftAddress,
                 entrypoint: "get_player_relics",
                 calldata: [account.address],
             });
@@ -142,7 +150,7 @@ export function Relics() {
                 const rHigh = BigInt(ownedTokensResult[1 + i * 2 + 1]);
                 try {
                     const metaResult = await provider.callContract({
-                        contractAddress: CONTRACTS.RELIC_NFT,
+                        contractAddress: relicNftAddress,
                         entrypoint: "get_relic_metadata",
                         calldata: [rLow.toString(), rHigh.toString()]
                     });
@@ -156,7 +164,7 @@ export function Relics() {
         } finally {
             setIsLoading(false);
         }
-    }, [account]);
+    }, [account, chipAddress, provider, relicNftAddress]);
 
     useEffect(() => {
         loadData();
@@ -166,24 +174,23 @@ export function Relics() {
         if (!account) return;
         setMinting(relicId);
         try {
-            const priceWei = BigInt(price) * BigInt(10 ** 18);
-            const low = priceWei & ((BigInt(1) << BigInt(128)) - BigInt(1));
-            const high = priceWei >> BigInt(128);
+            const priceWei = BigInt(price) * (10n ** 18n);
+            const low = priceWei & ((1n << 128n) - 1n);
+            const high = priceWei >> 128n;
 
             const tx = await account.execute([
                 {
-                    contractAddress: CONTRACTS.CHIP_TOKEN,
+                    contractAddress: chipAddress,
                     entrypoint: "approve",
-                    calldata: [CONTRACTS.RELIC_NFT, low.toString(), high.toString()],
+                    calldata: [relicNftAddress, low.toString(), high.toString()],
                 },
                 {
-                    contractAddress: CONTRACTS.RELIC_NFT,
+                    contractAddress: relicNftAddress,
                     entrypoint: "mint_relic",
                     calldata: [relicId.toString()],
-                }
+                },
             ]);
 
-            const provider = new RpcProvider({ nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/sepolia" });
             await provider.waitForTransaction(tx.transaction_hash);
             loadData();
         } catch (e) {
@@ -191,7 +198,7 @@ export function Relics() {
         } finally {
             setMinting(null);
         }
-    }, [account, loadData]);
+    }, [account, chipAddress, loadData, provider, relicNftAddress]);
 
     return (
         <div style={{

@@ -4,9 +4,14 @@ rpc = "https://api.cartridge.gg/x/starknet/sepolia"
 [server]
 http_cors_origins = ["*"]
 
+[grpc]
+optimistic = true
+
 [indexing]
 world_block = 0
+controllers = true
 pending = true
+pre_confirmed = true
 polling_interval = 1000
 contracts = [
   "erc721:0x45e1e4efea6af7fbc5b74fae37427abaa493ae32de6b0c5050054832a0a7fe0",

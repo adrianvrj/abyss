@@ -19,8 +19,10 @@ pub mod Relic {
     use crate::store::{StoreTrait};
     use crate::interfaces::relic_nft::{IRelicERC721DispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicDispatcherTrait};
+    use crate::helpers::inventory::InventoryImpl;
+    use crate::helpers::market::MarketImpl;
     use crate::types::effect::RelicEffectType;
-    use crate::events::index::RelicActivated;
+    use crate::events::index::{MarketRefreshed, RelicActivated};
     use super::*;
 
     #[storage]
@@ -42,6 +44,7 @@ pub mod Relic {
             let mut session = store.session(session_id);
             assert(session.player_address == caller, 'Not session owner');
             assert(session.is_active, 'Session not active');
+            assert(session.equipped_relic == 0, 'Relic already equipped');
 
             // 1. Ownership Check
             let relic_erc721 = store.relic_erc721_disp();
@@ -63,7 +66,7 @@ pub mod Relic {
                     player: caller,
                     relic_token_id,
                     relic_id: metadata.relic_id,
-                    current_luck: session.luck,
+                    current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
                 },
             );
         }
@@ -83,9 +86,12 @@ pub mod Relic {
             let metadata = relic_disp.get_relic_metadata(session.equipped_relic);
 
             // 2. Cooldown Check
-            // last_used_spin is spin count where it was last active
+            // relic_last_used_spin uses 0 as "never used" and stores activations as
+            // total_spins + 1 so activating before the first spin can still enter cooldown.
+            let current_spin_marker = session.total_spins + 1;
             assert(
-                session.total_spins >= session.relic_last_used_spin + metadata.cooldown_spins,
+                session.relic_last_used_spin == 0
+                    || current_spin_marker >= session.relic_last_used_spin + metadata.cooldown_spins,
                 'Relic on cooldown'
             );
 
@@ -98,17 +104,33 @@ pub mod Relic {
             } else if effect == RelicEffectType::ResetSpins {
                 session.spins_remaining = 5; // Reset to base 5
             } else if effect == RelicEffectType::FreeMarketRefresh {
-                // Handled in Market system or simply set a flag? 
-                // For now, let's say it gives one free refresh by setting refresh_count back
                 let mut sm = store.session_market(session_id);
-                if sm.refresh_count > 0 { sm.refresh_count -= 1; }
+                sm.refresh_count += 1;
                 store.set_session_market(@sm);
+
+                MarketImpl::refresh_market(ref store, session_id);
+
+                let refreshed_market = store.session_market(session_id);
+                store.emit_market_refreshed(
+                    @MarketRefreshed {
+                        session_id,
+                        player: caller,
+                        new_score: session.score,
+                        slot_1: refreshed_market.item_slot_1,
+                        slot_2: refreshed_market.item_slot_2,
+                        slot_3: refreshed_market.item_slot_3,
+                        slot_4: refreshed_market.item_slot_4,
+                        slot_5: refreshed_market.item_slot_5,
+                        slot_6: refreshed_market.item_slot_6,
+                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                    }
+                );
             } else if effect == RelicEffectType::Trigger666 {
                 session.relic_pending_effect = RelicEffectType::Trigger666;
             }
 
             // 4. Update Cooldown
-            session.relic_last_used_spin = session.total_spins;
+            session.relic_last_used_spin = current_spin_marker;
             store.set_session(@session);
 
             // 5. Event
@@ -118,8 +140,8 @@ pub mod Relic {
                     player: caller,
                     relic_id: metadata.relic_id,
                     effect_type: effect,
-                    cooldown_until_spin: session.total_spins + metadata.cooldown_spins,
-                    current_luck: session.luck,
+                    cooldown_until_spin: session.relic_last_used_spin + metadata.cooldown_spins - 1,
+                    current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
                 }
             );
         }

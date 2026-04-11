@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "cairo-testing": {
+      "source": "keep-starknet-strange/starknet-agentic",
+      "sourceType": "github",
+      "computedHash": "ef6dece58ceefb239ee943b706e37d5404721e2afe239edfaa6aa67bcf606224"
+    }
+  }
+}

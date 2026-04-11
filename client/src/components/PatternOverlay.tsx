@@ -120,6 +120,9 @@ export default function PatternOverlay({ patterns, onPatternShow, onComplete }: 
 
     const pattern = patterns[currentIndex];
     const animKey = `${currentIndex}`;
+    const scoreToDisplay = pattern.displayScore ?? pattern.score;
+    const showRetriggerTotal =
+        (pattern.retriggerMultiplier || 1) > 1 && pattern.score > scoreToDisplay;
 
     return (
         <>
@@ -189,8 +192,22 @@ export default function PatternOverlay({ patterns, onPatternShow, onComplete }: 
                                 fontSize: '3vmin',
                                 textShadow: '2px 2px 0px #000'
                             }}>
-                                +{(pattern.score / (pattern.retriggerMultiplier || 1)).toFixed(0)}
+                                +{scoreToDisplay.toFixed(0)}
                             </span>
+                            {showRetriggerTotal && (
+                                <div style={{
+                                    marginTop: '8px',
+                                    fontFamily: "'PressStart2P', monospace",
+                                    color: '#FF841C',
+                                    fontSize: '1.2vmin',
+                                    textShadow: '2px 2px 0px #000',
+                                    whiteSpace: 'nowrap',
+                                    textAlign: 'center',
+                                    lineHeight: 1.6,
+                                }}>
+                                    x{pattern.retriggerMultiplier} = +{pattern.score.toFixed(0)}
+                                </div>
+                            )}
                         </div>
                     )}
 

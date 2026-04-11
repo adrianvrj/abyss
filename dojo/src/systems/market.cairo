@@ -72,16 +72,12 @@ pub mod Market {
                 assert(session.tickets >= purchase_price, 'Not enough tickets');
 
                 session.tickets -= purchase_price;
-                if charm_meta.effect_type == 7 {
-                    session.luck += charm_meta.effect_value;
-                } else if charm_meta.effect_type == 9 {
+                if charm_meta.effect_type == 9 {
                     session.spins_remaining += charm_meta.effect_value;
-                    if charm_meta.effect_value_2 > 0 {
-                        session.luck += charm_meta.effect_value_2;
-                    }
                 }
 
                 InventoryImpl::add_charm_to_session(ref store, session_id, charm_id);
+                session.luck = InventoryImpl::calculate_base_luck(@store, session_id);
                 store.set_session(@session);
             } else {
                 let item = store.item(item_id);
@@ -149,22 +145,12 @@ pub mod Market {
                 if charm_meta.effect_type == 9 {
                     assert(session.spins_remaining >= charm_meta.effect_value, 'Cannot sell: spins used');
                     session.spins_remaining -= charm_meta.effect_value;
-                    if session.luck >= charm_meta.effect_value_2 {
-                        session.luck -= charm_meta.effect_value_2;
-                    } else {
-                        session.luck = 0;
-                    }
-                } else if charm_meta.effect_type == 7 {
-                    if session.luck >= charm_meta.effect_value {
-                        session.luck -= charm_meta.effect_value;
-                    } else {
-                        session.luck = 0;
-                    }
                 }
 
                 sell_price = charm_meta.shop_cost / 2;
                 session.tickets += sell_price;
                 InventoryImpl::remove_charm_from_session(ref store, session_id, charm_id);
+                session.luck = InventoryImpl::calculate_base_luck(@store, session_id);
                 store.set_session(@session);
             } else {
                 let item = store.item(item_id);

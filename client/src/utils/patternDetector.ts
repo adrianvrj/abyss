@@ -7,6 +7,7 @@ export interface Pattern {
     symbolId: number;
     multiplier: number;
     score: number;
+    displayScore?: number;
     retriggerMultiplier?: number;
 }
 

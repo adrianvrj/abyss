@@ -40,20 +40,16 @@ export {
   PRIZE_POOL_MODEL_NAME,
   PRIZE_TOKEN_MODEL_NAME,
   PRIZE_CLAIMED_MODEL_NAME,
-  LEADERBOARD_ENTRY_MODEL_NAME,
   PrizePoolModel,
   PrizeTokenModel,
   PrizeClaimedModel,
-  LeaderboardEntryModel,
   type PrizePool,
   type PrizeToken,
   type PrizeClaimed,
   type PrizeTokenBalance,
-  type LeaderboardEntry,
   type RawPrizePool,
   type RawPrizeToken,
   type RawPrizeClaimed,
-  type RawLeaderboardEntry,
 } from "@/models/rewards";
 export {
   type SpinCompletedEvent,
@@ -66,4 +62,3 @@ export {
   type BibliaDiscardedEvent,
   type ParsedGameEvents,
 } from "@/models/game-events";
-

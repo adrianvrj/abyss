@@ -1,5 +1,6 @@
 import { shortString } from "starknet";
 import { getRpcProvider } from "@/api/rpc/provider";
+import type { CharmContractMetadata } from "@/lib/charmRules";
 
 type ChainLike = bigint | string | undefined | null;
 
@@ -17,6 +18,20 @@ function decodeFeltString(value: string | undefined) {
   } catch {
     return "";
   }
+}
+
+export function parseCharmMetadataResult(result: string[]): CharmContractMetadata {
+  return {
+    charmId: Number(result[0] ?? 0),
+    name: decodeFeltString(result[1]),
+    description: decodeFeltString(result[2]),
+    effectType: Number(result[3] ?? 0),
+    effectValue: Number(result[4] ?? 0),
+    effectValue2: Number(result[5] ?? 0),
+    conditionType: Number(result[6] ?? 0),
+    rarity: Number(result[7] ?? 0),
+    shopCost: Number(result[8] ?? 0),
+  };
 }
 
 export async function getPlayerRelics(
@@ -117,12 +132,22 @@ export async function getCharmMetadata(
     calldata: [low.toString(), high.toString()],
   });
 
-  return {
-    charmId: Number(result[0] ?? 0),
-    rarity: Number(result[1] ?? 0),
-    effectType: Number(result[2] ?? 0),
-    effectValue: Number(result[3] ?? 0),
-  };
+  return parseCharmMetadataResult(result);
+}
+
+export async function getCharmTypeInfo(
+  chainId: ChainLike,
+  charmContractAddress: string,
+  charmId: number,
+) {
+  const provider = getRpcProvider(chainId);
+  const result = await provider.callContract({
+    contractAddress: charmContractAddress,
+    entrypoint: "get_charm_type_info",
+    calldata: [charmId.toString()],
+  });
+
+  return parseCharmMetadataResult(result);
 }
 
 export async function getNftBalance(

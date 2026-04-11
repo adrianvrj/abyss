@@ -12,8 +12,8 @@ use crate::interfaces::erc20::{IERC20Dispatcher};
 use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::vrf::{IVrfProviderDispatcher};
 use crate::models::index::{
-    BeastSessionsUsed, Config, Item, LeaderboardEntry, MarketSlotPurchased, PlayerSessionEntry,
-    PlayerSessions, PrizeClaimed, PrizePool, PrizeToken, Session, SessionCharmEntry, SessionCharms,
+    BeastSessionsUsed, Config, Item, MarketSlotPurchased, PlayerSessionEntry, PlayerSessions,
+    PrizeClaimed, PrizePool, PrizeToken, Session, SessionCharmEntry, SessionCharms,
     SessionInventory, SessionItemEntry, SessionItemIndex, SessionMarket, SpinResult, TokenPairId,
 };
 
@@ -200,18 +200,6 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn set_session_charm_entry(mut self: Store, entry: @SessionCharmEntry) {
-        self.world.write_model(entry)
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // Leaderboard
-    // ═══════════════════════════════════════════════════════════════════
-
-    fn leaderboard_entry(self: @Store, rank: u32) -> LeaderboardEntry {
-        self.world.read_model(rank)
-    }
-
-    fn set_leaderboard_entry(mut self: Store, entry: @LeaderboardEntry) {
         self.world.write_model(entry)
     }
 

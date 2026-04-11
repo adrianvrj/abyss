@@ -75,7 +75,8 @@ export default function InlineInventoryPanel({
                         effect_type: 7,
                         effect_value: charmInfo.luck,
                         target_symbol: packedEffect,
-                        image: charmInfo.image
+                        image: charmInfo.image,
+                        charmInfo,
                     } as ContractItem;
                 } else {
                     return getItemInfo(pi.item_id);

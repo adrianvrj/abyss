@@ -35,6 +35,8 @@ export default function RelicModal({
 
     const currentRelic = ownedRelics[relicIndex];
     const isEquipped = equippedRelic?.tokenId === currentRelic?.tokenId;
+    const isRelicSlotLocked = Boolean(equippedRelic);
+    const isEquipDisabled = isEquipped || isRelicSlotLocked || isEquippingRelic;
 
     return (
         <ModalWrapper onClose={onClose} title="RELICS">
@@ -75,17 +77,17 @@ export default function RelicModal({
                                     </p>
                                     <button
                                         onClick={() => onEquipRelic(currentRelic)}
-                                        disabled={isEquipped || isEquippingRelic}
+                                        disabled={isEquipDisabled}
                                         style={{
                                             width: '100%', padding: '12px',
-                                            background: isEquipped ? '#333' : '#FF841C',
-                                            border: isEquipped ? '1px solid #555' : 'none',
-                                            color: isEquipped ? '#888' : '#000',
+                                            background: isEquipDisabled ? '#333' : '#FF841C',
+                                            border: isEquipDisabled ? '1px solid #555' : 'none',
+                                            color: isEquipDisabled ? '#888' : '#000',
                                             borderRadius: '8px', fontFamily: "'PressStart2P', monospace",
-                                            cursor: isEquipped ? 'default' : 'pointer', fontSize: '12px',
+                                            cursor: isEquipDisabled ? 'default' : 'pointer', fontSize: '12px',
                                         }}
                                     >
-                                        {isEquippingRelic ? '...' : isEquipped ? 'EQUIPPED' : 'EQUIP'}
+                                        {isEquippingRelic ? '...' : isEquipped ? 'EQUIPPED' : isRelicSlotLocked ? 'LOCKED' : 'EQUIP'}
                                     </button>
                                 </>
                             )}

@@ -11,6 +11,7 @@ dependencies = [
  "dojo_cairo_macros",
  "dojo_cairo_test",
  "graffiti",
+ "leaderboard",
  "openzeppelin",
 ]
 
@@ -61,6 +62,15 @@ dependencies = [
 name = "graffiti"
 version = "0.1.0"
 source = "git+https://github.com/bal7hazar/graffiti.git?rev=e8b0854#e8b0854798ebbcebde504ea299ed556900564ff2"
+
+[[package]]
+name = "leaderboard"
+version = "0.0.0"
+source = "git+https://github.com/cartridge-gg/arcade?rev=fc2e81c#fc2e81c8d4cee706bb26cb2396d941fd0657c277"
+dependencies = [
+ "dojo",
+ "graffiti",
+]
 
 [[package]]
 name = "openzeppelin"

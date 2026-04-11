@@ -1,7 +1,9 @@
 use crate::store::{Store, StoreTrait};
 // No imports from index needed currently as reported by compiler.
-use crate::interfaces::charm_nft::{ICharmDispatcherTrait};
-use crate::types::effect::CharmConditionType;
+use crate::helpers::charm_types::{
+    calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
+    get_charm_retrigger_bonuses_for_ids,
+};
 use crate::constants::{
     DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
     DEFAULT_SCORE_SEVEN,
@@ -86,10 +88,11 @@ pub impl InventoryImpl of InventoryTrait {
     }
 
     /// Get pattern multiplier bonuses from inventory
-    fn get_inventory_pattern_bonuses(store: @Store, session_id: u32) -> (u32, u32, u32, u32, u32) {
+    fn get_inventory_pattern_bonuses(store: @Store, session_id: u32) -> (u32, u32, u32, u32, u32, u32) {
         let mut h3: u32 = 0;
         let mut h4: u32 = 0;
         let mut h5: u32 = 0;
+        let mut vert: u32 = 0;
         let mut diag: u32 = 0;
         let mut jp: u32 = 0;
 
@@ -104,6 +107,7 @@ pub impl InventoryImpl of InventoryTrait {
                     h3 += item.effect_value;
                     h4 += item.effect_value;
                     h5 += item.effect_value;
+                    vert += item.effect_value;
                     diag += item.effect_value;
                     jp += item.effect_value;
                 } else if item.target_symbol == 'horizontal-3' {
@@ -112,7 +116,9 @@ pub impl InventoryImpl of InventoryTrait {
                     h4 += item.effect_value;
                 } else if item.target_symbol == 'horizontal-5' {
                     h5 += item.effect_value;
-                } else if item.target_symbol == 'diagonal' {
+                } else if item.target_symbol == 'vertical' || item.target_symbol == 'vertical-3' {
+                    vert += item.effect_value;
+                } else if item.target_symbol == 'diagonal' || item.target_symbol == 'diagonal-3' {
                     diag += item.effect_value;
                 } else if item.target_symbol == 'jackpot' {
                     jp += item.effect_value;
@@ -120,7 +126,7 @@ pub impl InventoryImpl of InventoryTrait {
             }
             i += 1;
         };
-        (h3, h4, h5, diag, jp)
+        (h3, h4, h5, vert, diag, jp)
     }
 
     /// Get cumulative spin bonus from inventory
@@ -139,106 +145,51 @@ pub impl InventoryImpl of InventoryTrait {
         bonus
     }
 
-    /// Get retrigger bonuses from charms
-    fn get_charm_retrigger_bonuses(store: @Store, session_id: u32) -> (u32, u32, u32, u32) {
-        let mut h3_retrigger: u32 = 1;
-        let mut diag_retrigger: u32 = 1;
-        let mut all_retrigger: u32 = 1;
-        let mut jackpot_retrigger: u32 = 1;
-
+    fn collect_session_charm_ids(store: @Store, session_id: u32) -> Array<u32> {
         let charm_idx = store.session_charms(session_id);
-        let charm_disp = store.charm_disp();
-
+        let mut charm_ids: Array<u32> = array![];
         let mut i: u32 = 0;
+
         while i < charm_idx.count {
             let entry = store.session_charm_entry(session_id, i);
-            let charm_id = entry.charm_id;
-            let charm_meta = charm_disp.get_charm_type_info(charm_id);
-
-            if charm_id == 19 {
-                jackpot_retrigger = 2;
-            }
-
-            if charm_meta.effect_type == 8 { // PatternRetrigger
-                let retrigger_val = charm_meta.effect_value;
-                let pattern_type = charm_meta.effect_value_2;
-
-                if pattern_type == 0 { // All patterns
-                    all_retrigger = retrigger_val;
-                } else if pattern_type == 1 { // H3
-                    h3_retrigger = retrigger_val;
-                } else if pattern_type == 3 { // Diagonal
-                    diag_retrigger = retrigger_val;
-                } else if pattern_type == 5 { // Jackpot
-                    jackpot_retrigger = retrigger_val;
-                }
-            }
+            charm_ids.append(entry.charm_id);
             i += 1;
         };
 
-        if all_retrigger > 1 {
-            if h3_retrigger < all_retrigger { h3_retrigger = all_retrigger; }
-            if diag_retrigger < all_retrigger { diag_retrigger = all_retrigger; }
-            if jackpot_retrigger < all_retrigger { jackpot_retrigger = all_retrigger; }
-        }
+        charm_ids
+    }
 
-        (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger)
+    /// Get retrigger bonuses from charms
+    fn get_charm_retrigger_bonuses(store: @Store, session_id: u32) -> (u32, u32, u32, u32) {
+        let charm_ids = Self::collect_session_charm_ids(store, session_id);
+        get_charm_retrigger_bonuses_for_ids(charm_ids.span())
+    }
+
+    /// Calculate the persistent/base luck from active charms.
+    ///
+    /// Conditional luck is intentionally excluded here so it cannot compound
+    /// when a spin stores a session snapshot.
+    fn calculate_base_luck(store: @Store, session_id: u32) -> u32 {
+        let charm_ids = Self::collect_session_charm_ids(store, session_id);
+        calculate_base_luck_from_charm_ids(charm_ids.span())
     }
 
     /// Calculate effective luck for the next spin
     fn calculate_effective_luck(store: @Store, session_id: u32) -> u32 {
         let session = store.session(session_id);
-        let mut luck = session.luck;
+        let last_spin = store.spin_result(session_id);
+        let items = store.session_item_index(session_id);
+        let charm_ids = Self::collect_session_charm_ids(store, session_id);
 
-        let charm_idx = store.session_charms(session_id);
-        let charm_disp = store.charm_disp();
-
-        let mut k: u32 = 0;
-        while k < charm_idx.count {
-            let entry = store.session_charm_entry(session_id, k);
-            let charm_id = entry.charm_id;
-            let charm_meta = charm_disp.get_charm_type_info(charm_id);
-
-            if charm_id == 12 {
-                let last_spin = store.spin_result(session_id);
-                luck += (last_spin.patterns_count.into() * 6);
-            }
-
-            let condition = charm_meta.condition_type;
-            let val = charm_meta.effect_value;
-
-            if condition == CharmConditionType::NoPatternLastSpin {
-                let last_spin = store.spin_result(session_id);
-                if last_spin.patterns_count == 0 {
-                    luck += val;
-                }
-            } else if condition == CharmConditionType::LowSpinsRemaining {
-                if session.spins_remaining <= 2 {
-                    luck += val;
-                }
-            } else if condition == CharmConditionType::PerItemInInventory {
-                let items = store.session_item_index(session_id);
-                luck += (items.count * val);
-            } else if condition == CharmConditionType::LowScore {
-                if session.score < 100 {
-                    luck += val;
-                }
-            } else if condition == CharmConditionType::HighLevel {
-                if session.level >= 5 {
-                    if charm_meta.effect_value_2 > 0 {
-                        luck += charm_meta.effect_value_2;
-                    } else {
-                        luck += val;
-                    }
-                }
-            } else if condition == CharmConditionType::Blocked666 {
-                if session.blocked_666_this_session {
-                    luck += val;
-                }
-            }
-            k += 1;
-        };
-        luck
+        calculate_effective_luck_from_charm_ids(
+            charm_ids.span(),
+            last_spin.patterns_count,
+            session.spins_remaining,
+            items.count,
+            session.score,
+            session.level,
+            session.blocked_666_this_session,
+        )
     }
 
     /// Check if player has item in session inventory

@@ -63,7 +63,7 @@ pub mod Chip {
 
     fn dojo_init(ref self: ContractState) {
         let world = self.world(@NAMESPACE());
-        self.erc20.initializer("Abyss Chips", "CHIP");
+        self.erc20.initializer("CHIP", "CHIP");
         self.accesscontrol.initializer();
 
         let treasury_address = world
@@ -92,7 +92,7 @@ pub mod Chip {
     #[abi(embed_v0)]
     impl ERC20MetadataImpl of IERC20Metadata<ContractState> {
         fn name(self: @ContractState) -> felt252 {
-            'Abyss Chips'
+            'CHIP'
         }
 
         fn symbol(self: @ContractState) -> felt252 {

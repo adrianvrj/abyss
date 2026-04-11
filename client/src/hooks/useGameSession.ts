@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAccount } from '@starknet-react/core';
+import { useAccount, useNetwork } from '@starknet-react/core';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
 import { Pattern, detectPatterns, ScoreBonuses } from '@/utils/patternDetector';
+import { applyPatternModifiers } from '@/lib/patternMath';
 import {
     getSessionItems, getItemInfo, ItemEffectType, ContractItem,
-    getCharmInfo, CharmInfo, getSessionMarket, isCharmItem, getCharmIdFromItemId
+    getCharmInfo, CharmInfo, getSessionMarket, getSessionLuck, isCharmItem, getCharmIdFromItemId
 } from '@/utils/abyssContract';
 import { CONTRACTS, DEFAULT_CHAIN_ID } from '@/lib/constants';
 import { getCharmMetadata, getPlayerCharms } from '@/api/rpc/relic';
-import { RpcProvider } from 'starknet';
+import { getRpcProvider } from '@/api/rpc/provider';
 
 const DEBUG_SPIN_SYNC =
     import.meta.env.DEV || import.meta.env.VITE_ABYSS_DEBUG_SPIN === 'true';
@@ -79,6 +80,23 @@ function summarizeSpinResultSnapshot(spinResult: {
     };
 }
 
+function getTicketsAwardedForLevelTransition(previousLevel: number, nextLevel: number) {
+    if (nextLevel <= previousLevel) {
+        return 0;
+    }
+
+    let awardedTickets = 0;
+
+    for (let level = previousLevel + 1; level <= nextLevel; level += 1) {
+        awardedTickets += 1;
+        if (level === 6) {
+            awardedTickets += 4;
+        }
+    }
+
+    return awardedTickets;
+}
+
 const RELIC_NAMES: Record<number, string> = {
     1: 'Mortis',
     2: 'Phantom',
@@ -96,6 +114,7 @@ export interface OwnedRelic {
 
 export function useGameSession(sessionId: string | null) {
     const { account } = useAccount();
+    const { chain } = useNetwork();
     const {
         isReady,
         requestSpin,
@@ -107,6 +126,8 @@ export function useGameSession(sessionId: string | null) {
         activateRelic,
         sellItem: sellItemHook,
     } = useAbyssGame(account);
+    const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
+    const rpcProvider = getRpcProvider(chainId);
 
     // Game State
     const [level, setLevel] = useState(1);
@@ -148,6 +169,11 @@ export function useGameSession(sessionId: string | null) {
     const [showCharmAnimation, setShowCharmAnimation] = useState(false);
     const [mintedCharmInfo, setMintedCharmInfo] = useState<CharmInfo | null>(null);
     const [showRelicActivation, setShowRelicActivation] = useState(false);
+    const [showScoreResetAnimation, setShowScoreResetAnimation] = useState(false);
+    const [scoreResetPreviousScore, setScoreResetPreviousScore] = useState(0);
+    const [showLuckyScoreBoostAnimation, setShowLuckyScoreBoostAnimation] = useState(false);
+    const [luckyScoreBoostTotal, setLuckyScoreBoostTotal] = useState(0);
+    const [luckyScoreBoostBonus, setLuckyScoreBoostBonus] = useState(0);
 
     // Relic State
     const [equippedRelic, setEquippedRelic] = useState<OwnedRelic | null>(null);
@@ -176,6 +202,7 @@ export function useGameSession(sessionId: string | null) {
     const previousLevelRef = useRef<number>(1);
     const lastKnownTotalSpinsRef = useRef<number>(0);
     const knownCharmTokenIdsRef = useRef<Set<string>>(new Set());
+    const latestScoreBonusRequestRef = useRef(0);
 
     // Audio
     const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -194,10 +221,6 @@ export function useGameSession(sessionId: string | null) {
             setShowGameOver(true);
         }
     }, [gameOverReason, showRelicActivation, mintedCharmInfo, showGameOver]);
-
-    useEffect(() => {
-        loadScoreBonuses();
-    }, [optimisticItems, inventoryRefreshTrigger]);
 
     const getCachedAudio = (soundName: string): HTMLAudioElement => {
         if (!audioCacheRef.current.has(soundName)) {
@@ -228,12 +251,28 @@ export function useGameSession(sessionId: string | null) {
     };
 
     const loadScoreBonuses = async () => {
-        if (!sessionId) return;
+        const requestId = ++latestScoreBonusRequestRef.current;
         try {
-            const items = await getSessionItems(Number(sessionId));
-            const ownedIds = new Set(items.map(i => i.item_id));
-            const uniqueOptimistic = optimisticItems.filter(i => !ownedIds.has(i.item_id));
-            const allItems = [...items, ...uniqueOptimistic];
+            const hidden = new Set(hiddenItems);
+            const seen = new Set<number>();
+            let allItems = [...initialInventoryItems, ...optimisticItems].filter((item) => {
+                if (!item || hidden.has(item.item_id) || seen.has(item.item_id)) {
+                    return false;
+                }
+
+                seen.add(item.item_id);
+                return true;
+            });
+
+            if (allItems.length === 0 && sessionId) {
+                allItems = (await resolveInventoryItems(Number(sessionId))).filter(
+                    (item) => !hidden.has(item.item_id),
+                );
+            }
+
+            if (requestId !== latestScoreBonusRequestRef.current) {
+                return;
+            }
 
             const bonuses: ScoreBonuses = { seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 };
             for (const item of allItems) {
@@ -252,6 +291,10 @@ export function useGameSession(sessionId: string | null) {
         }
     };
 
+    useEffect(() => {
+        void loadScoreBonuses();
+    }, [optimisticItems, inventoryRefreshTrigger, hiddenItems, initialInventoryItems, sessionId]);
+
     const resolveInventoryItems = useCallback(async (targetSessionId: number) => {
         const playerItems = await getSessionItems(targetSessionId);
         const items = await Promise.all(playerItems.map(async (pi) => {
@@ -268,6 +311,7 @@ export function useGameSession(sessionId: string | null) {
                     effect_value: charmInfo.luck,
                     target_symbol: `${charmInfo.rarity}|||${charmInfo.effect}`,
                     image: charmInfo.image,
+                    charmInfo,
                 } as ContractItem;
             }
             return getItemInfo(pi.item_id);
@@ -319,14 +363,14 @@ export function useGameSession(sessionId: string | null) {
         }
 
         const tokenIds = await getPlayerCharms(
-            DEFAULT_CHAIN_ID,
+            chainId,
             CONTRACTS.CHARM_NFT,
             account.address,
         );
 
         knownCharmTokenIdsRef.current = new Set(tokenIds.map((tokenId) => tokenId.toString()));
         return tokenIds;
-    }, [account]);
+    }, [account, chainId]);
 
     const resolveMintedCharmInfo = useCallback(async (eventCharm?: { charmId?: number } | null) => {
         if (eventCharm?.charmId) {
@@ -346,7 +390,7 @@ export function useGameSession(sessionId: string | null) {
         try {
             const previousTokenIds = knownCharmTokenIdsRef.current;
             const tokenIds = await getPlayerCharms(
-                DEFAULT_CHAIN_ID,
+                chainId,
                 CONTRACTS.CHARM_NFT,
                 account.address,
             );
@@ -361,7 +405,7 @@ export function useGameSession(sessionId: string | null) {
             newTokenIds.sort((a, b) => (a > b ? 1 : a < b ? -1 : 0));
             const newestTokenId = newTokenIds[newTokenIds.length - 1];
             const metadata = await getCharmMetadata(
-                DEFAULT_CHAIN_ID,
+                chainId,
                 CONTRACTS.CHARM_NFT,
                 newestTokenId,
             );
@@ -375,7 +419,7 @@ export function useGameSession(sessionId: string | null) {
             console.warn('Failed to resolve minted charm from ownership diff', error);
             return null;
         }
-    }, [account, syncOwnedCharmSnapshot]);
+    }, [account, chainId, syncOwnedCharmSnapshot]);
 
     useEffect(() => {
         if (!account) {
@@ -389,7 +433,6 @@ export function useGameSession(sessionId: string | null) {
     const loadOwnedRelics = async () => {
         if (!account) return;
         try {
-            const rpcProvider = new RpcProvider({ nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/sepolia" });
             const result = await rpcProvider.callContract({
                 contractAddress: CONTRACTS.RELIC_NFT,
                 entrypoint: "get_player_relics",
@@ -441,7 +484,8 @@ export function useGameSession(sessionId: string | null) {
             setScore(data.score);
             setLevel(data.level);
             setTickets(data.tickets);
-            setCurrentLuck(data.luck);
+            const effectiveLuck = await getSessionLuck(Number(sessionId)).catch(() => data.luck);
+            setCurrentLuck(effectiveLuck);
 
             if (data.totalSpins >= lastKnownTotalSpinsRef.current) {
                 setSpinsRemaining(data.spinsRemaining);
@@ -456,9 +500,9 @@ export function useGameSession(sessionId: string | null) {
             const prob = await get666Probability(data.level);
             setRisk(prob / 10);
 
-            if (data.relicPendingEffect === 3) {
-                setScoreMultiplier(2);
-                scoreMultiplierRef.current = 2;
+            if (data.relicPendingEffect === 2) {
+                setScoreMultiplier(5);
+                scoreMultiplierRef.current = 5;
             } else {
                 setScoreMultiplier(1);
                 scoreMultiplierRef.current = 1;
@@ -467,7 +511,6 @@ export function useGameSession(sessionId: string | null) {
             // Sync equipped relic
             if (data.equippedRelic > BigInt(0)) {
                 try {
-                    const rpcProvider = new RpcProvider({ nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/sepolia" });
                     const tokenId = data.equippedRelic;
                     const mask128 = (BigInt(1) << BigInt(128)) - BigInt(1);
                     const low = tokenId & mask128;
@@ -487,7 +530,9 @@ export function useGameSession(sessionId: string | null) {
                     if (data.relicLastUsedSpin === 0) {
                         setRelicCooldownRemaining(0);
                     } else {
-                        setRelicCooldownRemaining(Math.max(0, cooldown - (data.totalSpins - data.relicLastUsedSpin)));
+                        setRelicCooldownRemaining(
+                            Math.max(0, cooldown - (data.totalSpins + 1 - data.relicLastUsedSpin)),
+                        );
                     }
                 } catch (relicErr) {
                     console.error("Failed to fetch equipped relic metadata:", relicErr);
@@ -592,11 +637,18 @@ export function useGameSession(sessionId: string | null) {
         setPatterns([]);
         setShowingPatterns(false);
         setGameOverReason(null);
+        setShowLuckyScoreBoostAnimation(false);
+        setLuckyScoreBoostTotal(0);
+        setLuckyScoreBoostBonus(0);
         setHiddenItems([]);
         setBibliaBroken(false);
         spinSoundRef.current = playSound('spin');
 
         try {
+            const luckyWasActive = pendingRelicEffect === 2;
+            const consumableRelicEffect =
+                pendingRelicEffect === 0 || pendingRelicEffect === 2 ? pendingRelicEffect : null;
+
             logSpinDebug('spin:start', {
                 sessionId: Number(sessionId),
                 uiBefore: {
@@ -636,12 +688,28 @@ export function useGameSession(sessionId: string | null) {
                 if (spin.symbolScores?.length === 5) setSymbolScores(spin.symbolScores);
                 setSpinsRemaining(spin.spinsRemaining);
                 setIsSessionActive(spin.isActive);
+                setBlocked666(spin.is666);
                 if (spin.currentLuck !== undefined) setCurrentLuck(spin.currentLuck);
+
+                if (spin.is666) {
+                    setScoreResetPreviousScore(score);
+                    setShowScoreResetAnimation(true);
+                    setPatterns([]);
+                    setShowingPatterns(false);
+                    playSound('game-over');
+                }
 
                 if (spin.newLevel > previousLevelRef.current && previousLevelRef.current > 0) {
                     setShowLevelUp(true);
                     setTimeout(() => setShowLevelUp(false), 1600);
-                    setTickets(prev => prev + 1);
+                    const awardedTickets = getTicketsAwardedForLevelTransition(
+                        previousLevelRef.current,
+                        spin.newLevel,
+                    );
+                    setTickets(prev => prev + awardedTickets);
+                }
+                if (consumableRelicEffect !== null) {
+                    setPendingRelicEffect(null);
                 }
                 previousLevelRef.current = spin.newLevel;
                 setRelicCooldownRemaining(prev => Math.max(0, prev - 1));
@@ -658,32 +726,23 @@ export function useGameSession(sessionId: string | null) {
                     });
                 }
 
-                let detectedPatterns = detectPatterns(spin.grid, undefined, scoreBonusesRef.current, spin.symbolScores);
+                let detectedPatterns: Pattern[] = [];
 
-                // Charm retrigger visuals
-                try {
-                    const sessionItems = await getSessionItems(Number(sessionId));
-                    const ownedItemIds = new Set(sessionItems.map(i => i.item_id));
-                    const hasCursedPendant = ownedItemIds.has(1010);
-                    const hasDemonsTooth = ownedItemIds.has(1014);
-                    const hasReapersMark = ownedItemIds.has(1017);
-                    const hasSoulOfTheAbyss = ownedItemIds.has(1019);
+                if (!spin.is666) {
+                    detectedPatterns = detectPatterns(spin.grid, undefined, scoreBonusesRef.current, spin.symbolScores);
 
-                    if (hasCursedPendant || hasDemonsTooth || hasReapersMark || hasSoulOfTheAbyss) {
-                        detectedPatterns = detectedPatterns.map(p => {
-                            let mult = 1;
-                            if (hasReapersMark) mult *= 2;
-                            if (hasSoulOfTheAbyss && p.type === 'jackpot') mult *= 2;
-                            if (hasCursedPendant && p.type === 'horizontal-3') mult *= 2;
-                            if (hasDemonsTooth && p.type.startsWith('diagonal')) mult *= 2;
-                            if (mult > 1) return { ...p, retriggerMultiplier: mult, score: p.score * mult };
-                            return p;
-                        });
+                    try {
+                        const sessionItems = await resolveInventoryItems(Number(sessionId));
+                        detectedPatterns = applyPatternModifiers(detectedPatterns, sessionItems);
+                    } catch {
+                        /* ignore */
                     }
-                } catch { /* ignore */ }
 
-                setPatterns(detectedPatterns);
-                if (detectedPatterns.length > 0) setShowingPatterns(true);
+                    setPatterns(detectedPatterns);
+                    if (detectedPatterns.length > 0) {
+                        setShowingPatterns(true);
+                    }
+                }
 
                 if (spin.bibliaUsed) {
                     const discarded = events.bibliaDiscarded?.discarded ?? true;
@@ -696,8 +755,26 @@ export function useGameSession(sessionId: string | null) {
 
                 if (spin.isJackpot) playSound('jackpot');
 
-                const patternDuration = detectedPatterns.length * 600;
-                const sequenceDelay = Math.max(1000, patternDuration + 800);
+                const patternDuration = spin.is666 ? 1400 : detectedPatterns.length * 600;
+                const shouldRevealLuckyBoost = luckyWasActive && !spin.is666 && spin.scoreGained > 0;
+                const luckyRevealDelay = shouldRevealLuckyBoost
+                    ? (detectedPatterns.length > 0 ? patternDuration + 120 : 420)
+                    : 0;
+                const luckyRevealDuration = shouldRevealLuckyBoost ? 1300 : 0;
+                const sequenceDelay = spin.is666
+                    ? 1900
+                    : Math.max(1000, patternDuration + 800) + luckyRevealDuration;
+
+                if (shouldRevealLuckyBoost) {
+                    const baseScore = Math.floor(spin.scoreGained / 5);
+                    const luckyBonus = Math.max(0, spin.scoreGained - baseScore);
+
+                    window.setTimeout(() => {
+                        setLuckyScoreBoostTotal(spin.scoreGained);
+                        setLuckyScoreBoostBonus(luckyBonus);
+                        setShowLuckyScoreBoostAnimation(true);
+                    }, luckyRevealDelay);
+                }
 
                 setTimeout(async () => {
                     let hasCharm = false;
@@ -764,17 +841,45 @@ export function useGameSession(sessionId: string | null) {
                     } else {
                         setScore(spinResult.is666 ? 0 : score);
                     }
+                    if (consumableRelicEffect !== null) {
+                        setPendingRelicEffect(null);
+                    }
                     setIsSpinning(false);
 
-                    const detectedPatterns = detectPatterns(
-                        spinResult.grid,
-                        undefined,
-                        scoreBonusesRef.current,
-                        symbolScoresRef.current,
-                    );
+                    if (spinResult.is666) {
+                        setScoreResetPreviousScore(score);
+                        setShowScoreResetAnimation(true);
+                        setPatterns([]);
+                        setShowingPatterns(false);
+                        playSound('game-over');
+                    } else {
+                        const basePatterns = detectPatterns(
+                            spinResult.grid,
+                            undefined,
+                            scoreBonusesRef.current,
+                            symbolScoresRef.current,
+                        );
+                        let detectedPatterns = basePatterns;
 
-                    setPatterns(detectedPatterns);
-                    setShowingPatterns(detectedPatterns.length > 0);
+                        try {
+                            const sessionItems = await resolveInventoryItems(Number(sessionId));
+                            detectedPatterns = applyPatternModifiers(basePatterns, sessionItems);
+                        } catch {
+                            /* ignore */
+                        }
+
+                        setPatterns(detectedPatterns);
+                        setShowingPatterns(detectedPatterns.length > 0);
+                    }
+
+                    if (luckyWasActive && !spinResult.is666 && spinResult.score > 0) {
+                        const luckyBonus = Math.max(0, spinResult.score - Math.floor(spinResult.score / 5));
+                        window.setTimeout(() => {
+                            setLuckyScoreBoostTotal(spinResult.score);
+                            setLuckyScoreBoostBonus(luckyBonus);
+                            setShowLuckyScoreBoostAnimation(true);
+                        }, 420);
+                    }
 
                     if (spinResult.bibliaUsed) {
                         setBibliaDiscarded(true);
@@ -834,15 +939,16 @@ export function useGameSession(sessionId: string | null) {
             }
             await loadSessionData('spin:catch');
         }
-    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild]);
+    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild]);
 
     const handleActivateRelic = useCallback(async () => {
         if (!equippedRelic || !sessionId || isActivatingRelic || relicCooldownRemaining > 0) return;
         setIsActivatingRelic(true);
         try {
+            const shouldEndSession = equippedRelic.relicId === 4;
             const events = await activateRelic(Number(sessionId), equippedRelic.relicId);
             const mintedCharm = await resolveMintedCharmInfo(events?.charmMinted);
-            setShowRelicActivation(true);
+            setShowRelicActivation(!shouldEndSession);
             setRelicCooldownRemaining(equippedRelic.cooldown);
 
             if (events?.relicActivated) {
@@ -852,7 +958,9 @@ export function useGameSession(sessionId: string | null) {
                 if (relicActivated.currentLuck !== undefined) {
                     setCurrentLuck(relicActivated.currentLuck);
                 }
-                if (eType === 0 || eType === 1 || eType === 2) {
+                const isScorcher = rId === 4;
+
+                if (!isScorcher && (eType === 0 || eType === 1 || eType === 2)) {
                     setPendingRelicEffect(eType);
                 } else if (eType === 3) {
                     setSpinsRemaining(5);
@@ -863,17 +971,18 @@ export function useGameSession(sessionId: string | null) {
                 } else {
                     setPendingRelicEffect(null);
                 }
-                if (rId === 4 || eType === 2) {
-                    const updatedSession = await getSessionData(Number(sessionId));
+
+                if (isScorcher) {
+                    setShowRelicActivation(false);
                     await captureGameOverBuild();
-                    setFinalScore(updatedSession?.score ?? score);
-                    setFinalTotalScore(updatedSession?.totalScore ?? score);
-                    setChipsEarned(calculateChipPayout(updatedSession?.score ?? score));
-                    if (updatedSession) {
-                        setChipsClaimed(updatedSession.chipsClaimed);
-                    }
+                    setFinalScore(score);
+                    setFinalTotalScore(score);
+                    setChipsEarned(calculateChipPayout(score));
+                    setChipsClaimed(false);
                     setGameOverReason('scorched');
                     setIsSessionActive(false);
+                    setSpinsRemaining(0);
+                    setPendingRelicEffect(null);
                     if (mintedCharm) {
                         setMintedCharmInfo(mintedCharm);
                         setShowCharmAnimation(true);
@@ -899,10 +1008,10 @@ export function useGameSession(sessionId: string | null) {
         } finally {
             setIsActivatingRelic(false);
         }
-    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, activateRelic, getSessionData, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo]);
+    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, activateRelic, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo]);
 
     const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {
-        if (!sessionId) return;
+        if (!sessionId || equippedRelic) return;
         setIsEquippingRelic(true);
         try {
             await equipRelic(Number(sessionId), relic.tokenId);
@@ -913,13 +1022,14 @@ export function useGameSession(sessionId: string | null) {
         } finally {
             setIsEquippingRelic(false);
         }
-    }, [sessionId, equipRelic]);
+    }, [sessionId, equippedRelic, equipRelic]);
 
     const handleSellConfirm = useCallback(async () => {
         if (!itemToSell || !sessionId || !account) return;
         setIsSelling(true);
         try {
             const events = await sellItemHook(Number(sessionId), itemToSell.item_id);
+            const soldItemId = itemToSell.item_id;
             const soldEvent = events.itemsSold[0];
             if (soldEvent) {
                 setScore(soldEvent.newScore);
@@ -940,9 +1050,12 @@ export function useGameSession(sessionId: string | null) {
             } else {
                 await loadSessionData('sell:fallback');
             }
+            setInitialInventoryItems(prev => prev.filter(item => item.item_id !== soldItemId));
+            setOptimisticItems(prev => prev.filter(item => item.item_id !== soldItemId));
             setInventoryRefreshTrigger(prev => prev + 1);
-            setHiddenItems(prev => [...prev, itemToSell.item_id]);
-            loadScoreBonuses();
+            setHiddenItems(prev => (
+                prev.includes(soldItemId) ? prev : [...prev, soldItemId]
+            ));
             setItemToSell(null);
         } catch (e) {
             console.error("Sell failed", e);
@@ -969,9 +1082,10 @@ export function useGameSession(sessionId: string | null) {
         // Animations
         showBibliaAnimation, bibliaDiscarded, bibliaBroken,
         showCharmAnimation, mintedCharmInfo,
-        showRelicActivation,
+        showRelicActivation, showScoreResetAnimation, scoreResetPreviousScore,
+        showLuckyScoreBoostAnimation, luckyScoreBoostTotal, luckyScoreBoostBonus,
         setShowBibliaAnimation, setShowCharmAnimation, setMintedCharmInfo,
-        setShowRelicActivation, setGameOverReason,
+        setShowRelicActivation, setShowScoreResetAnimation, setShowLuckyScoreBoostAnimation, setGameOverReason,
 
         // Relics
         equippedRelic, ownedRelics, isActivatingRelic, isEquippingRelic,

@@ -228,6 +228,22 @@ export function SessionsContent() {
                     availableBundles[0];
             }
 
+            if (!sessionBundle && Number.isFinite(CONTRACTS.SESSION_BUNDLE_ID)) {
+                sessionBundle = {
+                    id: CONTRACTS.SESSION_BUNDLE_ID,
+                    referralPercentage: 0,
+                    reissuable: false,
+                    price: 0n,
+                    paymentToken: "0x0",
+                    paymentReceiver: "0x0",
+                    totalIssued: 0n,
+                    createdAt: 0,
+                    metadata: "",
+                    contract: "0x0",
+                    allower: "0x0",
+                };
+            }
+
             console.log("Opening session flow for:", account.address);
             console.log("Session bundle selection:", {
                 configuredBundleId: CONTRACTS.SESSION_BUNDLE_ID,
@@ -318,10 +334,10 @@ export function SessionsContent() {
                 <motion.button
                     style={{
                         ...styles.newSessionButton,
-                        opacity: isCreating || bundlesStatus === "loading" ? 0.6 : 1,
+                        opacity: isCreating ? 0.6 : 1,
                     }}
                     onClick={handleCreateSessionClick}
-                    disabled={isCreating || bundlesStatus === "loading"}
+                    disabled={isCreating}
                     whileHover={{ color: "#FF841C" }}
                     whileTap={{ scale: 0.95 }}
                 >

@@ -594,7 +594,10 @@ function parseNormalizedEvents(
                     parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.ItemSold);
                     result.itemsSold.push(parsed);
                 }
-            } else if (emitterAddress === marketAddress && dojoEvent.fieldValues.length === 8) {
+            } else if (
+                (emitterAddress === marketAddress || emitterAddress === relicAddress) &&
+                dojoEvent.fieldValues.length === 8
+            ) {
                 const parsed = parseMarketRefreshedEvent(dojoEvent.fieldValues);
                 if (parsed) {
                     parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.MarketRefreshed);

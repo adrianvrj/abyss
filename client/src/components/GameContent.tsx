@@ -10,6 +10,8 @@ import InlineInventoryPanel from "@/components/InlineInventoryPanel";
 import GameStatsPanel from "@/components/GameStatsPanel";
 import SellConfirmModal from "@/components/SellConfirmModal";
 import BibliaSaveAnimation from "@/components/BibliaSaveAnimation";
+import DemonicScoreResetAnimation from "@/components/DemonicScoreResetAnimation";
+import LuckyScoreBoostAnimation from "@/components/LuckyScoreBoostAnimation";
 import RelicActivationAnimation from "@/components/RelicActivationAnimation";
 import CharmMintAnimation from "@/components/CharmMintAnimation";
 import RelicModal from "@/components/modals/RelicModal";
@@ -47,6 +49,8 @@ export function GameContent() {
     const [activeMobileTab, setActiveMobileTab] = useState<'home' | 'market' | 'inventory' | 'info'>('home');
     const [activeModal, setActiveModal] = useState<'info' | null>(null);
     const [showRelicModal, setShowRelicModal] = useState(false);
+    const [showBibliaPreview, setShowBibliaPreview] = useState(false);
+    const [showScoreResetPreview, setShowScoreResetPreview] = useState(false);
 
     const { loaded: assetsLoaded, progress: loadProgress } = useAssetPreloader(PRELOAD_IMAGES, PRELOAD_AUDIO);
 
@@ -69,10 +73,85 @@ export function GameContent() {
     }
 
     const numericSessionId = Number(sessionId);
+    const shouldShowBibliaAnimation = game.showBibliaAnimation || showBibliaPreview;
+    const shouldShowScoreResetAnimation = game.showScoreResetAnimation || showScoreResetPreview;
+    const handleBibliaAnimationComplete = () => {
+        if (showBibliaPreview) {
+            setShowBibliaPreview(false);
+        }
+
+        if (game.showBibliaAnimation) {
+            game.setShowBibliaAnimation(false);
+        }
+    };
+    const handleScoreResetAnimationComplete = () => {
+        if (showScoreResetPreview) {
+            setShowScoreResetPreview(false);
+        }
+
+        if (game.showScoreResetAnimation) {
+            game.setShowScoreResetAnimation(false);
+        }
+    };
 
     return (
         <div className="game-container game-page-bg">
             <LevelUpAnimation isVisible={game.showLevelUp} />
+
+            {import.meta.env.DEV && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: '92px',
+                        left: '18px',
+                        zIndex: 100006,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                    }}
+                >
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowBibliaPreview(true);
+                        }}
+                        style={{
+                            border: '2px solid #FFD36B',
+                            background: 'rgba(17, 8, 0, 0.92)',
+                            color: '#FFF4C2',
+                            borderRadius: '10px',
+                            padding: '10px 12px',
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: '10px',
+                            letterSpacing: '0.06em',
+                            boxShadow: '0 0 16px rgba(255, 211, 107, 0.25)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        TEST BIBLIA
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowScoreResetPreview(true);
+                        }}
+                        style={{
+                            border: '2px solid #FF841C',
+                            background: 'rgba(20, 0, 0, 0.92)',
+                            color: '#FFB16A',
+                            borderRadius: '10px',
+                            padding: '10px 12px',
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: '10px',
+                            letterSpacing: '0.06em',
+                            boxShadow: '0 0 16px rgba(255, 90, 0, 0.25)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        TEST 666
+                    </button>
+                </div>
+            )}
 
             {game.isActivatingRelic && (
                 <div style={{
@@ -112,6 +191,7 @@ export function GameContent() {
                         initialItems={game.initialMarketItems}
                         refreshTrigger={game.marketRefreshTrigger}
                         externalRefreshEvent={game.lastMarketEvent}
+                        hiddenItemIds={game.hiddenItems}
                     />
                 </div>
                 <div style={{ display: activeMobileTab === 'inventory' ? 'contents' : 'none' }}>
@@ -168,6 +248,7 @@ export function GameContent() {
                         initialItems={game.initialMarketItems}
                         refreshTrigger={game.marketRefreshTrigger}
                         externalRefreshEvent={game.lastMarketEvent}
+                        hiddenItemIds={game.hiddenItems}
                     />
                     <InlineInventoryPanel
                         sessionId={numericSessionId}
@@ -201,12 +282,14 @@ export function GameContent() {
 
                         <div className="grid-area">
                             <SlotGrid grid={game.grid} isSpinning={game.isSpinning} />
-                            <PatternOverlay
-                                patterns={game.patterns}
-                                onPatternShow={() => game.playSound('win', 300)}
-                                onComplete={() => game.setShowingPatterns(false)}
-                            />
-                            {!game.isSpinning && game.spinsRemaining > 0 && !game.showLevelUp && !game.showBibliaAnimation && !game.showCharmAnimation && !game.showRelicActivation && !game.showingPatterns && (
+                            {!game.showScoreResetAnimation && (
+                                <PatternOverlay
+                                    patterns={game.patterns}
+                                    onPatternShow={() => game.playSound('win', 300)}
+                                    onComplete={() => game.setShowingPatterns(false)}
+                                />
+                            )}
+                            {!game.isSpinning && game.spinsRemaining > 0 && !game.showLevelUp && !game.showBibliaAnimation && !game.showScoreResetAnimation && !game.showCharmAnimation && !game.showRelicActivation && !game.showingPatterns && (
                                 <div className="tap-to-spin">
                                     {game.pendingRelicEffect === 0 ? "JACKPOT FORCE" :
                                         game.pendingRelicEffect === 2 ? "5X NEXT SPIN" :
@@ -341,8 +424,24 @@ export function GameContent() {
 
             {/* Animations */}
             <AnimatePresence>
-                {game.showBibliaAnimation && (
-                    <BibliaSaveAnimation discarded={game.bibliaDiscarded} onComplete={() => game.setShowBibliaAnimation(false)} />
+                {shouldShowScoreResetAnimation && (
+                    <DemonicScoreResetAnimation
+                        previousScore={showScoreResetPreview ? 666 : game.scoreResetPreviousScore}
+                        onComplete={handleScoreResetAnimationComplete}
+                    />
+                )}
+                {game.showLuckyScoreBoostAnimation && (
+                    <LuckyScoreBoostAnimation
+                        totalScore={game.luckyScoreBoostTotal}
+                        luckyBonus={game.luckyScoreBoostBonus}
+                        onComplete={() => game.setShowLuckyScoreBoostAnimation(false)}
+                    />
+                )}
+                {shouldShowBibliaAnimation && (
+                    <BibliaSaveAnimation
+                        discarded={game.showBibliaAnimation ? game.bibliaDiscarded : true}
+                        onComplete={handleBibliaAnimationComplete}
+                    />
                 )}
             </AnimatePresence>
 

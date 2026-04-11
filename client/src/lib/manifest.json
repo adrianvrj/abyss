@@ -93,7 +93,7 @@
     },
     {
       "address": "0x680b1cfb8876ddc3b75f5bc88f7f1699366827d1756e9874e2536f2fb68704d",
-      "class_hash": "0x7147bceb6409dd29f4e424cd7e1413b66240c5fa0d3fc4d19502c8f37fe9e10",
+      "class_hash": "0x5022f89f10063566f686e1118914500e65c5236c87ec5b8cc3d27166c01f00c",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -107,7 +107,7 @@
     },
     {
       "address": "0x68352ad21e23327ec717de2a56c5dbc33fe3f672385c414e298417b2fa64c01",
-      "class_hash": "0x73e034f31fadfe2170c77e8100c7fdd2daa4a011b6bf059249690795ba78a0",
+      "class_hash": "0x775ac04139c306c9eb8dc13dddaf0790374e8d0928b1ccae5712944c4ab7616",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -123,7 +123,7 @@
     },
     {
       "address": "0x65a27caaa6ae6076678e8c3b0d4648bbb67f94e09beff81dd01eb242f7c15ea",
-      "class_hash": "0x1ac7d3df43cdd5febfac23a86a7b0d7b4f7f5abf40a88fe466a5f1615797958",
+      "class_hash": "0x431084141a4c98911e7dc8fce682ec0b33c83b1216f73b8dfc6125005183934",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -136,7 +136,7 @@
     },
     {
       "address": "0x361679a02cd3c085d2bc8c14a0f0e7accd299d26497ba84155f66a846735e2d",
-      "class_hash": "0x11141be94cea0dfe5a1d706a4935723bc0aa58ce031fcd4a75a61e14aa819a5",
+      "class_hash": "0x2a4ca5e969f20f086ad1e04fd527cd9337cee33b57c9f159c9741d70f67ba00",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
@@ -452,38 +452,6 @@
       "class_hash": "0x150e0f147e320fa546ae08b90fb2fd803c75235b15c45ae6e615053bf983875",
       "tag": "ABYSS-Item",
       "selector": "0x48ae4b237977971e2c1b5b4c13a760ffd0a0a42823059ae40fb7b0505418434"
-    },
-    {
-      "members": [
-        {
-          "name": "rank",
-          "type": "core::integer::u32",
-          "key": true
-        },
-        {
-          "name": "player_address",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": false
-        },
-        {
-          "name": "session_id",
-          "type": "core::integer::u32",
-          "key": false
-        },
-        {
-          "name": "level",
-          "type": "core::integer::u32",
-          "key": false
-        },
-        {
-          "name": "total_score",
-          "type": "core::integer::u32",
-          "key": false
-        }
-      ],
-      "class_hash": "0x44fa00044f08981d3107f82a574a63eb0d554a0ed98483ea0d1535631351be2",
-      "tag": "ABYSS-LeaderboardEntry",
-      "selector": "0x6d48747de4991563784e4bacc68f6ef88807969f19cb23f41633c4db51ef7a4"
     },
     {
       "members": [
@@ -1154,6 +1122,38 @@
       "class_hash": "0x285436dbea348a93f911359a6cb3967ca962693c6c71c6161e930a84f773b2c",
       "tag": "ABYSS-ItemSold",
       "selector": "0x78dce1ee7d77a61dfed460322b949c6da6b013fd606e42ef2d5759c82f15e41"
+    },
+    {
+      "members": [
+        {
+          "name": "leaderboard_id",
+          "type": "core::felt252",
+          "key": true
+        },
+        {
+          "name": "game_id",
+          "type": "core::felt252",
+          "key": true
+        },
+        {
+          "name": "player",
+          "type": "core::felt252",
+          "key": false
+        },
+        {
+          "name": "score",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "timestamp",
+          "type": "core::integer::u64",
+          "key": false
+        }
+      ],
+      "class_hash": "0x425a7800058def76a1983cad6bc647b055e7e4835d3307bd06e795adca1cb25",
+      "tag": "ABYSS-LeaderboardScore",
+      "selector": "0xf16fabae2c71e0987950a00ef1aec5d4a4dd08f88c259153dda8fdd1ac0433"
     },
     {
       "members": [
@@ -3021,54 +3021,6 @@
     },
     {
       "type": "struct",
-      "name": "abyss_game::models::index::LeaderboardEntry",
-      "members": [
-        {
-          "name": "rank",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "player_address",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "session_id",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "level",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "total_score",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::LeaderboardEntryValue",
-      "members": [
-        {
-          "name": "player_address",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "session_id",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "level",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "total_score",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
       "name": "abyss_game::models::index::MarketSlotPurchased",
       "members": [
         {
@@ -3851,12 +3803,6 @@
     },
     {
       "type": "event",
-      "name": "abyss_game::models::index::m_LeaderboardEntry::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
       "name": "abyss_game::models::index::m_MarketSlotPurchased::Event",
       "kind": "enum",
       "variants": []
@@ -4528,6 +4474,11 @@
         {
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
+          "kind": "flat"
+        },
+        {
+          "name": "RankableEvent",
+          "type": "leaderboard::components::rankable::RankableComponent::Event",
           "kind": "flat"
         }
       ]
@@ -7283,6 +7234,62 @@
       ],
       "outputs": [],
       "state_mutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "leaderboard::components::rankable::RankableComponent::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "struct",
+      "name": "leaderboard::events::index::LeaderboardScore",
+      "members": [
+        {
+          "name": "leaderboard_id",
+          "type": "core::felt252"
+        },
+        {
+          "name": "game_id",
+          "type": "core::felt252"
+        },
+        {
+          "name": "player",
+          "type": "core::felt252"
+        },
+        {
+          "name": "score",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "core::integer::u64"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "leaderboard::events::index::LeaderboardScoreValue",
+      "members": [
+        {
+          "name": "player",
+          "type": "core::felt252"
+        },
+        {
+          "name": "score",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "core::integer::u64"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "leaderboard::events::index::e_LeaderboardScore::Event",
+      "kind": "enum",
+      "variants": []
     },
     {
       "type": "event",

@@ -1,6 +1,18 @@
 use crate::helpers::scoring::get_score_from_snapshot;
 use crate::types::symbol::SymbolType;
 
+pub fn apply_percentage_bonus(score: u32, bonus: u32) -> u32 {
+    score * (100 + bonus) / 100
+}
+
+pub fn apply_jackpot_bonus(total_score: u32, is_jackpot: bool, jp_bonus: u32) -> u32 {
+    if is_jackpot && jp_bonus > 0 {
+        apply_percentage_bonus(total_score, jp_bonus)
+    } else {
+        total_score
+    }
+}
+
 /// Check horizontal line (5 cells starting at `start`) for 3/4/5-in-a-row patterns.
 /// Returns (score, patterns_count).
 pub fn check_horizontal_line(
@@ -21,7 +33,7 @@ pub fn check_horizontal_line(
         && *g.at(start + 2) == *g.at(start + 3)
         && *g.at(start + 3) == *g.at(start + 4) {
         let base = get_score_from_snapshot(*g.at(start), symbol_scores) * 30;
-        score += base * (100 + h5_bonus) / 100;
+        score += apply_percentage_bonus(base, h5_bonus);
         patterns += 1;
         matched_symbol = *g.at(start);
     } // Check for 4 in a row (left-aligned): points * 4 * 3 = points * 12
@@ -29,30 +41,30 @@ pub fn check_horizontal_line(
         && *g.at(start + 1) == *g.at(start + 2)
         && *g.at(start + 2) == *g.at(start + 3) {
         let base = get_score_from_snapshot(*g.at(start), symbol_scores) * 12;
-        score += base * (100 + h4_bonus) / 100;
+        score += apply_percentage_bonus(base, h4_bonus);
         patterns += 1;
         matched_symbol = *g.at(start);
     } else if *g.at(start + 1) == *g.at(start + 2)
         && *g.at(start + 2) == *g.at(start + 3)
         && *g.at(start + 3) == *g.at(start + 4) {
         let base = get_score_from_snapshot(*g.at(start + 1), symbol_scores) * 12;
-        score += base * (100 + h4_bonus) / 100;
+        score += apply_percentage_bonus(base, h4_bonus);
         patterns += 1;
         matched_symbol = *g.at(start + 1);
     } // Check for 3 in a row: (points * 3 * 3) / 2 = (points * 9) / 2
     else if *g.at(start) == *g.at(start + 1) && *g.at(start + 1) == *g.at(start + 2) {
         let base = (get_score_from_snapshot(*g.at(start), symbol_scores) * 9) / 2;
-        score += base * (100 + h3_bonus) / 100;
+        score += apply_percentage_bonus(base, h3_bonus);
         patterns += 1;
         matched_symbol = *g.at(start);
     } else if *g.at(start + 1) == *g.at(start + 2) && *g.at(start + 2) == *g.at(start + 3) {
         let base = (get_score_from_snapshot(*g.at(start + 1), symbol_scores) * 9) / 2;
-        score += base * (100 + h3_bonus) / 100;
+        score += apply_percentage_bonus(base, h3_bonus);
         patterns += 1;
         matched_symbol = *g.at(start + 1);
     } else if *g.at(start + 2) == *g.at(start + 3) && *g.at(start + 3) == *g.at(start + 4) {
         let base = (get_score_from_snapshot(*g.at(start + 2), symbol_scores) * 9) / 2;
-        score += base * (100 + h3_bonus) / 100;
+        score += apply_percentage_bonus(base, h3_bonus);
         patterns += 1;
         matched_symbol = *g.at(start + 2);
     }
@@ -62,7 +74,7 @@ pub fn check_horizontal_line(
 
 /// Check all vertical patterns and track match counts.
 pub fn check_vertical_patterns_with_matches(
-    g: Span<u8>, symbol_scores: (u32, u32, u32, u32, u32),
+    g: Span<u8>, symbol_scores: (u32, u32, u32, u32, u32), vert_bonus: u32,
 ) -> (u32, u8, u32, u32, u32, u32, u32) {
     let mut total_score: u32 = 0;
     let mut patterns_count: u8 = 0;
@@ -72,7 +84,8 @@ pub fn check_vertical_patterns_with_matches(
     while i < 5 {
         if *g.at(i) == *g.at(i + 5) && *g.at(i + 5) == *g.at(i + 10) {
             let symbol = *g.at(i);
-            total_score += get_score_from_snapshot(symbol, symbol_scores) * 6;
+            let base = get_score_from_snapshot(symbol, symbol_scores) * 6;
+            total_score += apply_percentage_bonus(base, vert_bonus);
             patterns_count += 1;
             
             if symbol == SymbolType::SEVEN { m7 += 1; }
@@ -101,7 +114,7 @@ pub fn check_diagonal_patterns_with_matches(
         if *g.at(j) == *g.at(j + 6) && *g.at(j + 6) == *g.at(j + 12) {
             let symbol = *g.at(j);
             let base = (get_score_from_snapshot(symbol, symbol_scores) * 15) / 2;
-            total_score += base * (100 + diag_bonus) / 100;
+            total_score += apply_percentage_bonus(base, diag_bonus);
             patterns_count += 1;
 
             if symbol == SymbolType::SEVEN { m7 += 1; }
@@ -119,7 +132,7 @@ pub fn check_diagonal_patterns_with_matches(
         if *g.at(k) == *g.at(k + 4) && *g.at(k + 4) == *g.at(k + 8) {
             let symbol = *g.at(k);
             let base = (get_score_from_snapshot(symbol, symbol_scores) * 15) / 2;
-            total_score += base * (100 + diag_bonus) / 100;
+            total_score += apply_percentage_bonus(base, diag_bonus);
             patterns_count += 1;
 
             if symbol == SymbolType::SEVEN { m7 += 1; }

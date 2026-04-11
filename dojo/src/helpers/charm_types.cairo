@@ -139,3 +139,124 @@ pub fn get_charm_ids_by_rarity(rarity: u8) -> Array<u32> {
 
     array![]
 }
+
+pub fn get_charm_retrigger_bonuses_for_ids(charm_ids: Span<u32>) -> (u32, u32, u32, u32) {
+    let mut h3_retrigger: u32 = 1;
+    let mut diag_retrigger: u32 = 1;
+    let mut all_retrigger: u32 = 1;
+    let mut jackpot_retrigger: u32 = 1;
+
+    let mut i: u32 = 0;
+    while i < charm_ids.len().try_into().unwrap() {
+        let charm_id = *charm_ids.at(i);
+        let charm_meta = get_charm_type_info(charm_id);
+
+        if charm_id == 19 {
+            jackpot_retrigger = 2;
+        }
+
+        if charm_meta.effect_type == CharmEffectType::PatternRetrigger {
+            let retrigger_val = charm_meta.effect_value;
+            let pattern_type = charm_meta.effect_value_2;
+
+            if pattern_type == 0 {
+                all_retrigger = retrigger_val;
+            } else if pattern_type == 1 {
+                h3_retrigger = retrigger_val;
+            } else if pattern_type == 3 {
+                diag_retrigger = retrigger_val;
+            } else if pattern_type == 5 {
+                jackpot_retrigger = retrigger_val;
+            }
+        }
+
+        i += 1;
+    };
+
+    if all_retrigger > 1 {
+        if h3_retrigger < all_retrigger {
+            h3_retrigger = all_retrigger;
+        }
+        if diag_retrigger < all_retrigger {
+            diag_retrigger = all_retrigger;
+        }
+        if jackpot_retrigger < all_retrigger {
+            jackpot_retrigger = all_retrigger;
+        }
+    }
+
+    (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger)
+}
+
+pub fn calculate_base_luck_from_charm_ids(charm_ids: Span<u32>) -> u32 {
+    let mut luck: u32 = 0;
+    let mut i: u32 = 0;
+
+    while i < charm_ids.len().try_into().unwrap() {
+        let charm_meta = get_charm_type_info(*charm_ids.at(i));
+        if charm_meta.effect_type == CharmEffectType::LuckBoost {
+            luck += charm_meta.effect_value;
+        } else if charm_meta.effect_type == CharmEffectType::ExtraSpinWithLuck {
+            luck += charm_meta.effect_value_2;
+        }
+
+        i += 1;
+    };
+
+    luck
+}
+
+pub fn calculate_effective_luck_from_charm_ids(
+    charm_ids: Span<u32>,
+    last_spin_patterns: u8,
+    spins_remaining: u32,
+    inventory_count: u32,
+    score: u32,
+    level: u32,
+    blocked_666_this_session: bool,
+) -> u32 {
+    let mut luck = calculate_base_luck_from_charm_ids(charm_ids);
+    let mut i: u32 = 0;
+
+    while i < charm_ids.len().try_into().unwrap() {
+        let charm_id = *charm_ids.at(i);
+        let charm_meta = get_charm_type_info(charm_id);
+        let val = charm_meta.effect_value;
+
+        if charm_id == 12 {
+            luck += last_spin_patterns.into() * 6;
+        }
+
+        if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
+            if last_spin_patterns == 0 {
+                luck += val;
+            }
+        } else if charm_meta.condition_type == CharmConditionType::LowSpinsRemaining {
+            if spins_remaining <= 2 {
+                luck += val;
+            }
+        } else if charm_meta.condition_type == CharmConditionType::PerItemInInventory {
+            luck += inventory_count * val;
+        } else if charm_meta.condition_type == CharmConditionType::LowScore {
+            if score < 100 {
+                luck += val;
+            }
+        } else if charm_meta.condition_type == CharmConditionType::HighLevel {
+            if level >= 5 {
+                if charm_meta.effect_value_2 > 0 {
+                    luck += charm_meta.effect_value_2;
+                } else {
+                    luck += val;
+                }
+            }
+        } else if charm_meta.condition_type == CharmConditionType::Blocked666 {
+            if blocked_666_this_session {
+                luck += val;
+            }
+        }
+
+        i += 1;
+    };
+
+    luck
+}

@@ -129,9 +129,9 @@ export default function InfoModal({ sessionId, onClose, optimisticItems = [] }: 
                         </p>
                         <ul style={{ marginBottom: 15, paddingLeft: 20 }}>
                             <li><strong>Mortis</strong> - Force a Random Jackpot on next spin</li>
-                            <li><strong>Phantom</strong> - Double your score on next spin</li>
-                            <li><strong>Lucky the Dealer</strong> - Trigger 666 (risky!)</li>
-                            <li><strong>Scorcher</strong> - Reset spins to 5</li>
+                            <li><strong>Phantom</strong> - Reset spins to 5</li>
+                            <li><strong>Lucky the Dealer</strong> - 5x next spin score</li>
+                            <li><strong>Scorcher</strong> - End the session and secure your score</li>
                             <li><strong>Inferno</strong> - Free market refresh</li>
                         </ul>
                         <p style={{ marginBottom: 15, color: '#888' }}>

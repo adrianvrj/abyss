@@ -62,12 +62,17 @@ pub mod Play {
     use crate::helpers::scoring::get_level_threshold;
     use crate::helpers::pricing::{PricingImpl};
     use crate::systems::setup::NAME as SETUP_NAME;
+    use leaderboard::components::rankable::RankableComponent;
     use super::*;
+
+    const LEADERBOARD_ID: felt252 = 1;
 
     // Components
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: RankableComponent, storage: rankable, event: RankableEvent);
+    impl RankableInternalImpl = RankableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
@@ -75,6 +80,8 @@ pub mod Play {
         accesscontrol: AccessControlComponent::Storage,
         #[substorage(v0)]
         src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        rankable: RankableComponent::Storage,
     }
 
     #[event]
@@ -84,6 +91,8 @@ pub mod Play {
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
         SRC5Event: SRC5Component::Event,
+        #[flat]
+        RankableEvent: RankableComponent::Event,
     }
 
     fn dojo_init(ref self: ContractState) {
@@ -309,7 +318,7 @@ pub mod Play {
 
             session.total_spins += 1;
             session.spins_remaining -= 1;
-            session.luck = luck;
+            session.luck = InventoryImpl::calculate_base_luck(@store, session_id);
 
             if is_666 {
                 session.score = 0;
@@ -325,15 +334,26 @@ pub mod Play {
                 if session.score < threshold { break; }
                 session.level += 1;
                 session.tickets += 1;
+                if session.level == 6 {
+                    session.tickets += 4;
+                }
                 let spin_bonus = InventoryImpl::get_inventory_spin_bonus(@store, session_id);
                 session.spins_remaining = 5 + spin_bonus; 
             };
 
             if session.is_active && session.spins_remaining == 0 {
                 session.is_active = false;
+                InternalImpl::submit_leaderboard_score(
+                    ref self,
+                    world,
+                    session_id,
+                    session.player_address,
+                    session.total_score,
+                );
             }
 
             if !session.is_active {
+                store.set_session(@session);
                 InternalImpl::process_end_session_rewards(ref store, ref session, session_id, random_word);
             }
 
@@ -376,7 +396,7 @@ pub mod Play {
                     is_666,
                     is_jackpot,
                     biblia_used,
-                    current_luck: session.luck,
+                    current_luck: luck,
                     score_seven: session.score_seven,
                     score_diamond: session.score_diamond,
                     score_cherry: session.score_cherry,
@@ -397,6 +417,13 @@ pub mod Play {
 
             session.is_active = false;
             InternalImpl::process_end_session_rewards(ref store, ref session, session_id, 0);
+            InternalImpl::submit_leaderboard_score(
+                ref self,
+                world,
+                session_id,
+                session.player_address,
+                session.total_score,
+            );
             store.set_session(@session);
             let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
             let collection = ICollectionDispatcher { contract_address: collection_address };
@@ -606,6 +633,26 @@ pub mod Play {
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
+        fn submit_leaderboard_score(
+            ref self: ContractState,
+            world: dojo::world::WorldStorage,
+            session_id: u32,
+            player: ContractAddress,
+            score: u32,
+        ) {
+            self
+                .rankable
+                .submit(
+                    world: world,
+                    leaderboard_id: LEADERBOARD_ID,
+                    game_id: session_id.into(),
+                    player_id: player.into(),
+                    score: score.into(),
+                    time: starknet::get_block_timestamp(),
+                    to_store: true,
+                );
+        }
+
         fn process_end_session_rewards(
             ref store: Store,
             ref session: Session,

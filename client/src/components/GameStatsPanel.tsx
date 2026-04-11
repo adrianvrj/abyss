@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { DEFAULT_GAME_CONFIG, SYMBOL_INFO, SymbolType, SymbolConfig, PatternMultiplier } from '@/utils/GameConfig';
 import { getSessionItems, getItemInfo, getSessionLuck, ContractItem, ItemEffectType, isCharmItem, getCharmIdFromItemId, getCharmInfo } from '@/utils/abyssContract';
+import {
+    getCharmLuckEntries,
+} from '@/lib/charmRules';
+import {
+    getBoostedPatternMultiplier,
+    getPatternBonusMap,
+    getPatternRetriggerMap,
+} from '@/lib/patternMath';
 
 interface GameStatsPanelProps {
     level: number;
@@ -75,79 +83,35 @@ export default function GameStatsPanel({
     function getLuckBreakdown(): { sources: string[], total: number } {
         const sources: string[] = [];
         let total = 0;
+        const inventoryCount = items.length;
 
         items.forEach(item => {
-            const charmId = isCharmItem(item.item_id) ? getCharmIdFromItemId(item.item_id) : 0;
-            const name = item.name;
-            let val = 0;
+            const entries = getCharmLuckEntries(item.charmInfo?.metadata ?? null, {
+                level,
+                score,
+                spinsRemaining,
+                lastSpinPatternCount,
+                inventoryCount,
+                blocked666,
+            });
 
-            if (charmId === 11) {
-                val = 8;
-                if (level >= 5) {
-                    sources.push(`${name}: +8 (Base)`);
-                    sources.push(`${name}: +4 (Level 5+)`);
-                    total += 12;
-                    return;
-                }
-            }
-            if (charmId === 13) { val = 15; }
-            else if (charmId === 19) { val = 30; }
-            else if (charmId === 20) { val = 50; }
-            else if (charmId === 15) { val = 20; }
-            else if (charmId === 9) { val = 10; }
-            else if (charmId === 7) { val = 6; }
-            else if (charmId === 5) { val = 5; }
-            else if (charmId === 1) { val = 3; }
-            else if (charmId === 2) { val = 4; }
-            else if (charmId === 3) {
-                if (lastSpinPatternCount === 0) {
-                    val = 5;
-                    sources.push(`${name}: +${val} (No Pattern Last Spin)`);
-                    total += val;
-                    return;
-                }
-            }
-            else if (charmId === 12) {
-                if (lastSpinPatternCount > 0) {
-                    val = lastSpinPatternCount * 6;
-                    sources.push(`${name}: +${val} (Last Spin Patterns)`);
-                    total += val;
-                    return;
-                }
-            } else if (charmId === 18) {
-                if (blocked666) {
-                    val = 15;
-                    sources.push(`${name}: +${val} (666 Blocked)`);
-                    total += val;
-                    return;
-                }
-            } else if (charmId === 4) {
-                if (spinsRemaining <= 2) {
-                    val = 4;
-                    sources.push(`${name}: +${val} (Low Spins)`);
-                    total += val;
-                    return;
-                }
-            } else if (charmId === 6) {
-                const count = items.filter((ownedItem) => !isCharmItem(ownedItem.item_id)).length;
-                val = count * 3;
-                sources.push(`${name}: +${val} (Items)`);
-                total += val;
-                return;
-            } else if (charmId === 8) {
-                if (score < 100) {
-                    val = 8;
-                    sources.push(`${name}: +${val} (Low Score)`);
-                    total += val;
-                    return;
-                }
-            }
-
-            if (val > 0) {
-                sources.push(`${name}: +${val}`);
-                total += val;
-            }
+            entries.forEach((entry) => {
+                const label = entry.label ? ` (${entry.label})` : '';
+                sources.push(`${item.name}: +${entry.value}${label}`);
+                total += entry.value;
+            });
         });
+
+        if (sources.length === 0) {
+            items.forEach(item => {
+                if (!isCharmItem(item.item_id) || !item.effect_value) {
+                    return;
+                }
+
+                sources.push(`${item.name}: +${item.effect_value}`);
+                total += item.effect_value;
+            });
+        }
 
         return { sources, total };
     }
@@ -172,7 +136,8 @@ export default function GameStatsPanel({
                                 sell_price: 0,
                                 effect_type: 7 as ItemEffectType,
                                 effect_value: charmInfo.luck,
-                                target_symbol: ''
+                                target_symbol: '',
+                                charmInfo,
                             } as ContractItem;
                         }
                     }
@@ -247,22 +212,21 @@ export default function GameStatsPanel({
             });
     }
 
-    function getModifiedPatterns(): (PatternMultiplier & { bonus: number })[] {
-        let totalPatternBoost = 0;
-        items.forEach(item => {
-            if (item.effect_type === ItemEffectType.PatternMultiplierBoost) {
-                totalPatternBoost += item.effect_value;
-            }
-        });
+    function getModifiedPatterns(): (PatternMultiplier & { bonus: number; retrigger: number })[] {
+        const bonuses = getPatternBonusMap(items);
+        const retriggers = getPatternRetriggerMap(items);
 
         return DEFAULT_GAME_CONFIG.patternMultipliers.map(pm => ({
             ...pm,
-            bonus: totalPatternBoost,
+            bonus: bonuses[pm.type],
+            retrigger: retriggers[pm.type],
         }));
     }
 
     const modifiedSymbols = getModifiedSymbols();
     const modifiedPatterns = getModifiedPatterns();
+    const patternBonuses = getPatternBonusMap(items);
+    const patternRetriggers = getPatternRetriggerMap(items);
 
     return (
         <div className="game-stats-panel">
@@ -429,8 +393,12 @@ export default function GameStatsPanel({
                     fontFamily: "'PressStart2P', monospace",
                 }}>
                     {modifiedPatterns.map(pm => {
-                        const boostedMultiplier = pm.multiplier * (1 + pm.bonus / 100);
-                        const hasBoost = pm.bonus > 0;
+                        const boostedMultiplier = getBoostedPatternMultiplier(
+                            pm,
+                            patternBonuses,
+                            patternRetriggers,
+                        );
+                        const hasBoost = pm.bonus > 0 || pm.retrigger > 1;
                         return (
                             <div
                                 key={pm.type}

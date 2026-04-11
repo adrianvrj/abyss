@@ -175,8 +175,8 @@ export function Leaderboard() {
                         }}>
                             <span style={{ ...headerStyle, width: "40px" }}>#</span>
                             <span style={{ ...headerStyle, flex: 1 }}>Player</span>
-                            <span style={{ ...headerStyle, width: "50px", textAlign: "center" }}>Lvl</span>
-                            <span style={{ ...headerStyle, width: "80px", textAlign: "right" }}>Score</span>
+                            <span style={{ ...headerStyle, width: "60px", textAlign: "center" }}>Runs</span>
+                            <span style={{ ...headerStyle, width: "80px", textAlign: "right" }}>Best</span>
                         </div>
 
                         <AnimatePresence>
@@ -249,17 +249,17 @@ export function Leaderboard() {
                                                 fontSize: "10px",
                                                 color: isCurrent ? "#FF841C" : "#fff",
                                             }}>
-                                                {formatAddress(entry.player_address)}
+                                                {entry.username || formatAddress(entry.player_address)}
                                             </span>
 
                                             <span style={{
-                                                width: "50px",
+                                                width: "60px",
                                                 textAlign: "center",
                                                 fontFamily: "'PressStart2P', monospace",
                                                 fontSize: "10px",
                                                 color: isPodium ? "#FFD700" : "#fff",
                                             }}>
-                                                {entry.level}
+                                                {entry.games_played}
                                             </span>
 
                                             <span style={{
@@ -270,7 +270,7 @@ export function Leaderboard() {
                                                 color: isPodium ? "#FFD700" : "#fff",
                                                 fontWeight: isPodium ? "bold" : "normal",
                                             }}>
-                                                {entry.total_score}
+                                                {entry.best_score}
                                             </span>
                                         </motion.div>
                                     );

@@ -251,34 +251,25 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         throw new Error("Wallet not connected");
       }
 
-      const calls: ExecuteCall[] = [];
+      const calls: ExecuteCall[] = [
+        {
+          contractAddress: relicAddress,
+          entrypoint: "activate_relic",
+          calldata: CallData.compile([sessionId]),
+        },
+      ];
 
       if (relicId === 4) {
-        const config = await getGameConfig(chainId).catch((error) => {
-          console.warn("failed to fetch game config before relic activation, using fallback vrf", error);
-          return null;
-        });
-        const vrfAddress = config?.vrf || CONTRACTS.CARTRIDGE_VRF;
-
         calls.push({
-          contractAddress: vrfAddress,
-          entrypoint: "request_random",
-          calldata: CallData.compile({
-            caller: relicAddress,
-            source: { type: 0, address: account.address },
-          }),
+          contractAddress: playAddress,
+          entrypoint: "end_session",
+          calldata: CallData.compile([sessionId]),
         });
       }
 
-      calls.push({
-        contractAddress: relicAddress,
-        entrypoint: "activate_relic",
-        calldata: CallData.compile([sessionId]),
-      });
-
       return executeCalls(calls);
     },
-    [account, chainId, executeCalls, relicAddress],
+    [account, executeCalls, playAddress, relicAddress],
   );
 
   const endSession = useCallback(

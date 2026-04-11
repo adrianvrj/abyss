@@ -13,11 +13,13 @@ casm = true
 build-external-contracts = [
   "dojo::world::world_contract::world",
   "openzeppelin::presets::account::AccountUpgradeable",
+  "leaderboard::events::index::e_LeaderboardScore",
 ]
 
 [dependencies]
 collection.workspace = true
 bundle.workspace = true
+leaderboard.workspace = true
 openzeppelin.workspace = true
 graffiti.workspace = true
 dojo.workspace = true

@@ -9,12 +9,12 @@ pub impl SpinnableImpl of SpinnableTrait {
         probability_bonuses: (u32, u32, u32, u32, u32),
         probability_666: u32,
         retrigger_bonuses: (u32, u32, u32, u32),
-        pattern_bonuses: (u32, u32, u32, u32, u32),
+        pattern_bonuses: (u32, u32, u32, u32, u32, u32),
         symbol_scores: (u32, u32, u32, u32, u32),
         force_jackpot: bool,
     ) -> (u32, u8, bool, bool, Array<u8>, (u32, u32, u32, u32, u32)) {
         // Generate grid
-        let (grid, mut is_666, is_jackpot) = if force_jackpot {
+        let (mut grid, is_666, is_jackpot) = if force_jackpot {
             crate::helpers::grid::generate_jackpot_grid(random_word)
         } else {
             crate::helpers::grid::generate_grid_from_random(
@@ -22,9 +22,13 @@ pub impl SpinnableImpl of SpinnableTrait {
             )
         };
 
+        if is_666 {
+            grid = crate::helpers::grid::force_666_pattern(@grid);
+        }
+
         // Calculate score from patterns
         let g = grid.span();
-        let (h3_bonus, h4_bonus, h5_bonus, diag_bonus, _jp_bonus) = pattern_bonuses;
+        let (h3_bonus, h4_bonus, h5_bonus, vert_bonus, diag_bonus, jp_bonus) = pattern_bonuses;
         let (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger) = retrigger_bonuses;
         let vert_retrigger = all_retrigger;
 
@@ -58,7 +62,9 @@ pub impl SpinnableImpl of SpinnableTrait {
         };
 
         // Vertical patterns
-        let (v_score, v_pats, vm7, vmd, vmc, vm_coin, vml) = crate::helpers::patterns::check_vertical_patterns_with_matches(g, symbol_scores);
+        let (v_score, v_pats, vm7, vmd, vmc, vm_coin, vml) = crate::helpers::patterns::check_vertical_patterns_with_matches(
+            g, symbol_scores, vert_bonus,
+        );
         total_score += v_score * vert_retrigger;
         total_patterns += v_pats * vert_retrigger.try_into().unwrap();
         m7 += vm7; md += vmd; mc += vmc; m_coin += vm_coin; ml += vml;
@@ -70,6 +76,8 @@ pub impl SpinnableImpl of SpinnableTrait {
         total_score += d_score * diag_retrigger;
         total_patterns += d_pats * diag_retrigger.try_into().unwrap();
         m7 += dm7; md += dmd; mc += dmc; m_coin += dm_coin; ml += dml;
+
+        total_score = crate::helpers::patterns::apply_jackpot_bonus(total_score, is_jackpot, jp_bonus);
 
         // Jackpot retrigger (multiplayer only apply if jackpot)
         if jackpot_retrigger > 1 && is_jackpot {
