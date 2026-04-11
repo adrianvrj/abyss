@@ -8,6 +8,7 @@ import {
     getChipAddress,
     getRelicNftAddress,
 } from "@/config";
+import { CHIP_TOKEN_IMAGE_URL } from "@/lib/constants";
 import { getRpcProvider } from "@/api/rpc/provider";
 import { ArrowLeft } from "lucide-react";
 
@@ -361,11 +362,11 @@ export function Relics() {
                                         textAlign: "center",
                                     }}>
                                         <img
-                                            src="/images/coin.png"
+                                            src={CHIP_TOKEN_IMAGE_URL}
                                             alt="CHIP"
                                             width={14}
                                             height={14}
-                                            style={{ imageRendering: "pixelated" }}
+                                            style={{ objectFit: "contain" }}
                                         />
                                         <span>{formatChipPrice(relic.price)} CHIP</span>
                                     </div>

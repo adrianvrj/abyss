@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import { DEFAULT_CHAIN_ID, getChipAddress } from "@/config";
 import { readTokenSymbol, readUint256Balance } from "@/api/rpc/token";
 import { useController } from "@/hooks/useController";
+import { CHIP_TOKEN_IMAGE_URL } from "@/lib/constants";
 
 const DECIMALS = 10n ** 18n;
 
@@ -103,11 +104,11 @@ export function ChipBalanceBadge() {
         }}
       >
         <img
-          src="/images/coin.png"
+          src={CHIP_TOKEN_IMAGE_URL}
           alt="CHIP"
           width={isMobile ? 18 : 22}
           height={isMobile ? 18 : 22}
-          style={{ imageRendering: "pixelated", flexShrink: 0 }}
+          style={{ flexShrink: 0, objectFit: "contain" }}
         />
         <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
           <span

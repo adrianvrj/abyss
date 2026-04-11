@@ -40,6 +40,10 @@ export const CONTRACTS = {
     "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
 } as const;
 
+export const CHIP_TOKEN_IMAGE_URL =
+  import.meta.env.VITE_CHIP_TOKEN_IMAGE_URL ??
+  "https://abyssgame.fun/chip-token.svg";
+
 export const SymbolType = {
   SEVEN: 1,
   DIAMOND: 2,

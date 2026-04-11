@@ -19,3 +19,6 @@ contracts = [
   "erc721:0x757d673ad960ae8dd7932530e106f2bf0affdacf437c385206b8b090c5c1c48",
   "erc721:0x361679a02cd3c085d2bc8c14a0f0e7accd299d26497ba84155f66a846735e2d",
 ]
+
+[erc]
+metadata_updates = true
