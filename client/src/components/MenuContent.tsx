@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useController } from "@/hooks/useController";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { usePractice } from "@/context/practice";
 
 const styles = {
     container: {
@@ -50,8 +51,20 @@ const styles = {
 export function MenuContent() {
     const navigate = useNavigate();
     const { isConnecting, isConnected, connect, disconnect } = useController();
+    const { startPractice } = usePractice();
+    const [isMobile, setIsMobile] = useState(false);
 
     const [activeSessionId] = useState<number | null>(null);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     const handlePlay = useCallback(async () => {
         if (isConnected) {
@@ -76,6 +89,11 @@ export function MenuContent() {
         navigate("/leaderboard");
     }, [navigate]);
 
+    const handlePractice = useCallback(() => {
+        startPractice();
+        navigate("/practice");
+    }, [navigate, startPractice]);
+
     const handleTelegram = useCallback(() => {
         window.open("https://t.me/+JB4RkO3eZrFhNjYx", "_blank");
     }, []);
@@ -86,7 +104,13 @@ export function MenuContent() {
     }, [disconnect, navigate]);
 
     return (
-        <div style={styles.container}>
+        <div
+            style={{
+                ...styles.container,
+                width: "100%",
+                background: isMobile ? "#000000" : "transparent",
+            }}
+        >
             {/* App Icon at Top */}
             <div style={styles.topSection}>
                 <img
@@ -134,6 +158,15 @@ export function MenuContent() {
                         ) : (
                             <span>play</span>
                         )}
+                    </motion.button>
+
+                    <motion.button
+                        style={styles.menuOption}
+                        onClick={handlePractice}
+                        whileHover={{ color: "#FF841C" }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <span>practice</span>
                     </motion.button>
 
                     {/* Relics */}

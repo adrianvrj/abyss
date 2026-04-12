@@ -41,6 +41,13 @@ interface InlineMarketPanelProps {
     refreshTrigger?: number;
     externalRefreshEvent?: import('@/utils/gameEvents').MarketRefreshedEvent | null;
     hiddenItemIds?: number[];
+    practiceMode?: boolean;
+    practiceMarketItems?: ContractItem[];
+    practiceOwnedItems?: ContractItem[];
+    practicePurchasedSlots?: number[];
+    practiceRefreshCount?: number;
+    onPracticeRefresh?: () => Promise<void> | void;
+    onPracticeBuy?: (slotIndex: number, item: ContractItem) => Promise<void> | void;
 }
 
 export default function InlineMarketPanel({
@@ -59,6 +66,13 @@ export default function InlineMarketPanel({
     refreshTrigger = 0,
     externalRefreshEvent = null,
     hiddenItemIds = [],
+    practiceMode = false,
+    practiceMarketItems = [],
+    practiceOwnedItems = [],
+    practicePurchasedSlots = [],
+    practiceRefreshCount = 0,
+    onPracticeRefresh,
+    onPracticeBuy,
 }: InlineMarketPanelProps) {
     const { account } = useAccount();
     const [loading, setLoading] = useState(!initialItems.length);
@@ -141,14 +155,38 @@ export default function InlineMarketPanel({
     }
 
     useEffect(() => {
+        if (practiceMode) {
+            setLoading(false);
+            setMarketData({
+                refresh_count: practiceRefreshCount,
+                item_slot_1: practiceMarketItems[0]?.item_id ?? 0,
+                item_slot_2: practiceMarketItems[1]?.item_id ?? 0,
+                item_slot_3: practiceMarketItems[2]?.item_id ?? 0,
+                item_slot_4: practiceMarketItems[3]?.item_id ?? 0,
+                item_slot_5: practiceMarketItems[4]?.item_id ?? 0,
+                item_slot_6: practiceMarketItems[5]?.item_id ?? 0,
+            });
+            setMarketItems(practiceMarketItems);
+            setOwnedItemIds(new Set(practiceOwnedItems.map((item) => item.item_id)));
+            setPurchasedInCurrentMarket(new Set(practicePurchasedSlots));
+            setCurrentItemIndex((prev) =>
+                practiceMarketItems.length === 0 ? 0 : Math.min(prev, practiceMarketItems.length - 1),
+            );
+            return;
+        }
+
         if (externalRefreshEvent) {
             processMarketRefreshedEvent(externalRefreshEvent);
         }
-    }, [externalRefreshEvent]);
+    }, [externalRefreshEvent, practiceMode, practiceMarketItems, practiceOwnedItems, practicePurchasedSlots, practiceRefreshCount]);
 
     useEffect(() => {
+        if (practiceMode) {
+            return;
+        }
+
         if (sessionId) loadMarketData();
-    }, [sessionId, refreshTrigger]);
+    }, [practiceMode, sessionId, refreshTrigger]);
 
     function isSameMarketSnapshot(nextMarket: SessionMarket) {
         if (!marketData) {
@@ -236,7 +274,9 @@ export default function InlineMarketPanel({
         return 2 + Math.floor((count * (count + 3)) / 2);
     }
 
-    const refreshCost = marketData ? calculateRefreshCost(marketData.refresh_count) : 2;
+    const refreshCost = practiceMode
+        ? calculateRefreshCost(practiceRefreshCount)
+        : (marketData ? calculateRefreshCost(marketData.refresh_count) : 2);
 
     async function processMarketRefreshedEvent(refreshEvent: import('@/utils/gameEvents').MarketRefreshedEvent) {
         if (!refreshEvent) return;
@@ -284,6 +324,19 @@ export default function InlineMarketPanel({
     }
 
     async function handleRefresh() {
+        if (practiceMode) {
+            if (currentScore < refreshCost || refreshing) return;
+            setRefreshing(true);
+            try {
+                await onPracticeRefresh?.();
+            } catch (e) {
+                console.error("Practice refresh failed", e);
+            } finally {
+                setRefreshing(false);
+            }
+            return;
+        }
+
         if (!marketData || currentScore < refreshCost) return;
         setRefreshing(true);
         onUpdateScore(currentScore - refreshCost);
@@ -309,6 +362,19 @@ export default function InlineMarketPanel({
     }
 
     async function handleBuy(slotIndex: number, item: ContractItem) {
+        if (practiceMode) {
+            if (!onPracticeBuy || currentTickets < item.price) return;
+            setPurchasingSlot(slotIndex);
+            try {
+                await onPracticeBuy(slotIndex, item);
+            } catch (e) {
+                console.error("Practice purchase failed", e);
+            } finally {
+                setPurchasingSlot(null);
+            }
+            return;
+        }
+
         if (currentTickets < item.price) return;
         setPurchasingSlot(slotIndex);
         setPurchasedInCurrentMarket(prev => new Set(prev).add(slotIndex));

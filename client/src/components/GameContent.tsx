@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import SlotGrid from "@/components/SlotGrid";
 import PatternOverlay from "@/components/PatternOverlay";
@@ -19,6 +19,7 @@ import InfoModal from "@/components/modals/InfoModal";
 import PreloadingScreen from "@/components/PreloadingScreen";
 import { useAssetPreloader } from "@/hooks/useAssetPreloader";
 import { useGameSession } from "@/hooks/useGameSession";
+import { usePracticeSession } from "@/hooks/usePracticeSession";
 import { SYMBOL_INFO } from "@/utils/GameConfig";
 import { AnimatePresence } from "framer-motion";
 import { Store, Package, HelpCircle, Home, Gem } from "lucide-react";
@@ -40,19 +41,19 @@ const PRELOAD_AUDIO = [
 ];
 
 export function GameContent() {
+    const location = useLocation();
+
+    if (location.pathname === "/practice") {
+        return <PracticeGameContent />;
+    }
+
+    return <SessionGameContent />;
+}
+
+function SessionGameContent() {
     const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
     const sessionId = searchParams.get("sessionId");
-
     const game = useGameSession(sessionId);
-
-    const [activeMobileTab, setActiveMobileTab] = useState<'home' | 'market' | 'inventory' | 'info'>('home');
-    const [activeModal, setActiveModal] = useState<'info' | null>(null);
-    const [showRelicModal, setShowRelicModal] = useState(false);
-    const [showBibliaPreview, setShowBibliaPreview] = useState(false);
-    const [showScoreResetPreview, setShowScoreResetPreview] = useState(false);
-
-    const { loaded: assetsLoaded, progress: loadProgress } = useAssetPreloader(PRELOAD_IMAGES, PRELOAD_AUDIO);
 
     if (!sessionId) {
         return (
@@ -61,6 +62,46 @@ export function GameContent() {
             </div>
         );
     }
+
+    return (
+        <GameStage
+            game={game}
+            numericSessionId={Number(sessionId)}
+            practiceMode={false}
+        />
+    );
+}
+
+function PracticeGameContent() {
+    const game = usePracticeSession();
+
+    return (
+        <GameStage
+            game={game}
+            numericSessionId={0}
+            practiceMode
+        />
+    );
+}
+
+function GameStage({
+    game,
+    numericSessionId,
+    practiceMode,
+}: {
+    game: ReturnType<typeof useGameSession> | ReturnType<typeof usePracticeSession>;
+    numericSessionId: number;
+    practiceMode: boolean;
+}) {
+    const navigate = useNavigate();
+    const [activeMobileTab, setActiveMobileTab] = useState<'home' | 'market' | 'inventory' | 'info'>('home');
+    const [activeModal, setActiveModal] = useState<'info' | null>(null);
+    const [showRelicModal, setShowRelicModal] = useState(false);
+    const [showBibliaPreview, setShowBibliaPreview] = useState(false);
+    const [showScoreResetPreview, setShowScoreResetPreview] = useState(false);
+    const practiceGame = practiceMode ? (game as ReturnType<typeof usePracticeSession>) : null;
+
+    const { loaded: assetsLoaded, progress: loadProgress } = useAssetPreloader(PRELOAD_IMAGES, PRELOAD_AUDIO);
 
     const isLoading = !assetsLoaded || game.isInitialLoading;
 
@@ -71,8 +112,6 @@ export function GameContent() {
         else if (game.isInitialLoading) { statusText = "Syncing with Chain..."; progress = 100; }
         return <PreloadingScreen progress={progress} statusText={statusText} />;
     }
-
-    const numericSessionId = Number(sessionId);
     const shouldShowBibliaAnimation = game.showBibliaAnimation || showBibliaPreview;
     const shouldShowScoreResetAnimation = game.showScoreResetAnimation || showScoreResetPreview;
     const handleBibliaAnimationComplete = () => {
@@ -98,61 +137,6 @@ export function GameContent() {
         <div className="game-container game-page-bg">
             <LevelUpAnimation isVisible={game.showLevelUp} />
 
-            {import.meta.env.DEV && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        top: '92px',
-                        left: '18px',
-                        zIndex: 100006,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                    }}
-                >
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowBibliaPreview(true);
-                        }}
-                        style={{
-                            border: '2px solid #FFD36B',
-                            background: 'rgba(17, 8, 0, 0.92)',
-                            color: '#FFF4C2',
-                            borderRadius: '10px',
-                            padding: '10px 12px',
-                            fontFamily: "'PressStart2P', monospace",
-                            fontSize: '10px',
-                            letterSpacing: '0.06em',
-                            boxShadow: '0 0 16px rgba(255, 211, 107, 0.25)',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        TEST BIBLIA
-                    </button>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowScoreResetPreview(true);
-                        }}
-                        style={{
-                            border: '2px solid #FF841C',
-                            background: 'rgba(20, 0, 0, 0.92)',
-                            color: '#FFB16A',
-                            borderRadius: '10px',
-                            padding: '10px 12px',
-                            fontFamily: "'PressStart2P', monospace",
-                            fontSize: '10px',
-                            letterSpacing: '0.06em',
-                            boxShadow: '0 0 16px rgba(255, 90, 0, 0.25)',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        TEST 666
-                    </button>
-                </div>
-            )}
-
             {game.isActivatingRelic && (
                 <div style={{
                     position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
@@ -173,6 +157,28 @@ export function GameContent() {
                 onExit={() => navigate("/")}
             />
 
+            {practiceMode && (
+                <div style={{
+                    position: 'fixed',
+                    top: 62,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 1100,
+                    padding: '8px 14px',
+                    borderRadius: '999px',
+                    border: '2px solid #FF841C',
+                    background: 'rgba(0, 0, 0, 0.88)',
+                    fontFamily: "'PressStart2P', monospace",
+                    fontSize: '9px',
+                    color: '#FF841C',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    textAlign: 'center',
+                }}>
+                    Practice Mode
+                </div>
+            )}
+
             {/* Mobile Tab Content Overlay */}
             <div className="mobile-content-overlay" style={{ display: (activeMobileTab !== 'home') ? 'flex' : 'none' }}>
                 <div style={{ display: activeMobileTab === 'market' ? 'contents' : 'none' }}>
@@ -192,6 +198,13 @@ export function GameContent() {
                         refreshTrigger={game.marketRefreshTrigger}
                         externalRefreshEvent={game.lastMarketEvent}
                         hiddenItemIds={game.hiddenItems}
+                        practiceMode={practiceMode}
+                        practiceMarketItems={game.initialMarketItems}
+                        practiceOwnedItems={game.initialInventoryItems}
+                        practicePurchasedSlots={practiceGame?.practicePurchasedSlots}
+                        practiceRefreshCount={practiceGame?.practiceRefreshCount}
+                        onPracticeRefresh={practiceGame?.handlePracticeRefresh}
+                        onPracticeBuy={practiceGame?.handlePracticeBuy}
                     />
                 </div>
                 <div style={{ display: activeMobileTab === 'inventory' ? 'contents' : 'none' }}>
@@ -204,11 +217,13 @@ export function GameContent() {
                         onItemClick={(item) => game.setItemToSell(item)}
                         refreshTrigger={game.marketRefreshTrigger}
                         optimisticItems={game.optimisticItems}
-                        onOpenRelics={() => setShowRelicModal(true)}
+                        onOpenRelics={practiceMode ? undefined : (() => setShowRelicModal(true))}
                         sellingItemId={game.isSelling && game.itemToSell ? game.itemToSell.item_id : undefined}
                         hiddenItemIds={game.hiddenItems}
                         bibliaBroken={game.bibliaBroken}
                         initialInventory={game.initialInventoryItems}
+                        practiceMode={practiceMode}
+                        practiceItems={game.initialInventoryItems}
                     />
                 </div>
                 <div style={{ display: activeMobileTab === 'info' ? 'contents' : 'none' }}>
@@ -226,6 +241,8 @@ export function GameContent() {
                         hiddenItemIds={game.hiddenItems}
                         symbolScores={game.symbolScores}
                         blocked666={game.blocked666}
+                        practiceMode={practiceMode}
+                        itemsOverride={game.initialInventoryItems}
                     />
                 </div>
             </div>
@@ -249,6 +266,13 @@ export function GameContent() {
                         refreshTrigger={game.marketRefreshTrigger}
                         externalRefreshEvent={game.lastMarketEvent}
                         hiddenItemIds={game.hiddenItems}
+                        practiceMode={practiceMode}
+                        practiceMarketItems={game.initialMarketItems}
+                        practiceOwnedItems={game.initialInventoryItems}
+                        practicePurchasedSlots={practiceGame?.practicePurchasedSlots}
+                        practiceRefreshCount={practiceGame?.practiceRefreshCount}
+                        onPracticeRefresh={practiceGame?.handlePracticeRefresh}
+                        onPracticeBuy={practiceGame?.handlePracticeBuy}
                     />
                     <InlineInventoryPanel
                         sessionId={numericSessionId}
@@ -263,6 +287,8 @@ export function GameContent() {
                         hiddenItemIds={game.hiddenItems}
                         bibliaBroken={game.bibliaBroken}
                         initialInventory={game.initialInventoryItems}
+                        practiceMode={practiceMode}
+                        practiceItems={game.initialInventoryItems}
                     />
                 </div>
 
@@ -299,31 +325,33 @@ export function GameContent() {
                         </div>
 
                         {/* Mobile Relic Controls */}
-                        <div className="mobile-floating-controls">
-                            <button
-                                className="mobile-relic-btn equip-btn"
-                                onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
-                            >
-                                <Gem size={24} color="#FF841C" />
-                            </button>
-                            {game.equippedRelic && (
+                        {!practiceMode && (
+                            <div className="mobile-floating-controls">
                                 <button
-                                    className="mobile-relic-btn activate-btn"
-                                    onClick={(e) => { e.stopPropagation(); game.handleActivateRelic(); }}
-                                    disabled={game.relicCooldownRemaining > 0}
+                                    className="mobile-relic-btn equip-btn"
+                                    onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
                                 >
-                                    <img
-                                        src={`/images/relics/${game.equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
-                                        alt={game.equippedRelic.name}
-                                        width={48} height={48}
-                                        style={{ objectFit: 'cover', borderRadius: '50%', border: '2px solid #FF841C', filter: game.relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none' }}
-                                    />
-                                    {game.relicCooldownRemaining > 0 && (
-                                        <div className="mobile-relic-cooldown">{game.relicCooldownRemaining}</div>
-                                    )}
+                                    <Gem size={24} color="#FF841C" />
                                 </button>
-                            )}
-                        </div>
+                                {game.equippedRelic && (
+                                    <button
+                                        className="mobile-relic-btn activate-btn"
+                                        onClick={(e) => { e.stopPropagation(); game.handleActivateRelic(); }}
+                                        disabled={game.relicCooldownRemaining > 0}
+                                    >
+                                        <img
+                                            src={`/images/relics/${game.equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
+                                            alt={game.equippedRelic.name}
+                                            width={48} height={48}
+                                            style={{ objectFit: 'cover', borderRadius: '50%', border: '2px solid #FF841C', filter: game.relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none' }}
+                                        />
+                                        {game.relicCooldownRemaining > 0 && (
+                                            <div className="mobile-relic-cooldown">{game.relicCooldownRemaining}</div>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -343,9 +371,11 @@ export function GameContent() {
                         hiddenItemIds={game.hiddenItems}
                         symbolScores={game.symbolScores}
                         blocked666={game.blocked666}
+                        practiceMode={practiceMode}
+                        itemsOverride={game.initialInventoryItems}
                     />
                     <div className="sidebar-buttons">
-                        {game.equippedRelic && (
+                        {!practiceMode && game.equippedRelic && (
                             <button
                                 className="sidebar-btn equipped-relic"
                                 onClick={(e) => { e.stopPropagation(); game.handleActivateRelic(); }}
@@ -366,9 +396,11 @@ export function GameContent() {
                                 )}
                             </button>
                         )}
-                        <button className="sidebar-btn" onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }} title="Relics" disabled={game.isSpinning}>
-                            <Gem size={20} color="#FF841C" />
-                        </button>
+                        {!practiceMode && (
+                            <button className="sidebar-btn" onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }} title="Relics" disabled={game.isSpinning}>
+                                <Gem size={20} color="#FF841C" />
+                            </button>
+                        )}
                         <button className="sidebar-btn" onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }} title="Info" disabled={game.isSpinning}>
                             <HelpCircle size={20} color="#FF841C" />
                         </button>
@@ -404,10 +436,12 @@ export function GameContent() {
                     sessionId={numericSessionId}
                     onClose={() => setActiveModal(null)}
                     optimisticItems={game.optimisticItems}
+                    practiceMode={practiceMode}
+                    practiceItems={game.initialInventoryItems}
                 />
             )}
 
-            {showRelicModal && (
+            {!practiceMode && showRelicModal && (
                 <RelicModal
                     ownedRelics={game.ownedRelics}
                     equippedRelic={game.equippedRelic}
@@ -478,6 +512,8 @@ export function GameContent() {
                 level={game.level}
                 chipsClaimed={game.chipsClaimed}
                 onBackToMenu={() => navigate("/")}
+                practiceMode={practiceMode}
+                onPlayAgain={practiceGame?.handlePlayAgain}
             />
 
             {/* Sell Confirmation */}

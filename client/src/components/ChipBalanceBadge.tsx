@@ -69,11 +69,11 @@ export function ChipBalanceBadge() {
   }
 
   const mobilePlacement = {
-    top: "84px",
-    right: "auto",
+    top: "16px",
+    right: "16px",
     bottom: "auto",
-    left: "50%",
-    transform: "translateX(-50%)",
+    left: "auto",
+    transform: "none",
   };
 
   return (
@@ -94,46 +94,63 @@ export function ChipBalanceBadge() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: isMobile ? "8px" : "10px",
-          padding: isMobile ? "8px 10px" : "10px 12px",
-          background: "rgba(0, 0, 0, 0.88)",
+          gap: isMobile ? "6px" : "10px",
+          padding: isMobile ? "7px 10px" : "10px 12px",
+          background: isMobile ? "rgba(0, 0, 0, 0.95)" : "rgba(0, 0, 0, 0.88)",
           border: "2px solid #FF841C",
-          borderRadius: isMobile ? "999px" : "10px",
-          boxShadow: "0 0 0 1px rgba(255, 132, 28, 0.12), 0 10px 24px rgba(0,0,0,0.35)",
+          borderRadius: isMobile ? "12px" : "10px",
+          boxShadow: isMobile
+            ? "0 6px 18px rgba(0,0,0,0.35)"
+            : "0 0 0 1px rgba(255, 132, 28, 0.12), 0 10px 24px rgba(0,0,0,0.35)",
           backdropFilter: "blur(6px)",
+          minWidth: isMobile ? "unset" : undefined,
         }}
       >
         <img
           src={CHIP_TOKEN_IMAGE_URL}
           alt="CHIP"
-          width={isMobile ? 18 : 22}
-          height={isMobile ? 18 : 22}
+          width={isMobile ? 16 : 22}
+          height={isMobile ? 16 : 22}
           style={{ flexShrink: 0, objectFit: "contain" }}
         />
-        <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+        {isMobile ? (
           <span
             style={{
               fontFamily: "'PressStart2P', monospace",
-              fontSize: isMobile ? "7px" : "8px",
-              color: "rgba(255,255,255,0.55)",
-              letterSpacing: "1px",
-              lineHeight: 1.2,
-            }}
-          >
-            CHIP
-          </span>
-          <span
-            style={{
-              fontFamily: "'PressStart2P', monospace",
-              fontSize: isMobile ? "10px" : "11px",
+              fontSize: "10px",
               color: "#FFB347",
-              lineHeight: 1.2,
+              lineHeight: 1,
               whiteSpace: "nowrap",
             }}
           >
             {formattedBalance} {data?.symbol ?? "CHIP"}
           </span>
-        </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <span
+              style={{
+                fontFamily: "'PressStart2P', monospace",
+                fontSize: "8px",
+                color: "rgba(255,255,255,0.55)",
+                letterSpacing: "1px",
+                lineHeight: 1.2,
+              }}
+            >
+              CHIP
+            </span>
+            <span
+              style={{
+                fontFamily: "'PressStart2P', monospace",
+                fontSize: "11px",
+                color: "#FFB347",
+                lineHeight: 1.2,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {formattedBalance} {data?.symbol ?? "CHIP"}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

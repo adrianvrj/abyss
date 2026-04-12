@@ -24,6 +24,8 @@ interface GameStatsPanelProps {
     hiddenItemIds?: number[];
     symbolScores?: number[];
     blocked666?: boolean;
+    itemsOverride?: ContractItem[];
+    practiceMode?: boolean;
 }
 
 const symbolNameToType: Record<string, SymbolType> = {
@@ -49,7 +51,9 @@ export default function GameStatsPanel({
     optimisticItems = EMPTY_ARRAY,
     hiddenItemIds = EMPTY_ARRAY,
     symbolScores = [7, 5, 4, 3, 2],
-    blocked666 = false
+    blocked666 = false,
+    itemsOverride = EMPTY_ARRAY,
+    practiceMode = false,
 }: GameStatsPanelProps) {
     const [fetchedItems, setFetchedItems] = useState<ContractItem[]>([]);
     const [items, setItems] = useState<ContractItem[]>([]);
@@ -69,16 +73,20 @@ export default function GameStatsPanel({
     useEffect(() => {
         if (typeof currentLuck !== 'undefined') {
             setLuck(currentLuck);
+        } else if (practiceMode) {
+            setLuck(0);
         } else if (sessionId) {
             loadLuck();
         }
-    }, [currentLuck, sessionId, refreshTrigger, lastSpinPatternCount, items]);
+    }, [currentLuck, practiceMode, sessionId, refreshTrigger, lastSpinPatternCount, items]);
 
     useEffect(() => {
-        if (sessionId) {
+        if (practiceMode) {
+            setFetchedItems(itemsOverride);
+        } else if (sessionId) {
             loadItems();
         }
-    }, [sessionId, refreshTrigger]);
+    }, [practiceMode, itemsOverride, sessionId, refreshTrigger]);
 
     function getLuckBreakdown(): { sources: string[], total: number } {
         const sources: string[] = [];

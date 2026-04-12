@@ -1,74 +1,131 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ModalWrapper from './ModalWrapper';
-import { DEFAULT_GAME_CONFIG, SYMBOL_INFO, GameConfig } from '@/utils/GameConfig';
-import { getSessionItems, getItemInfo, ContractItem } from '@/utils/abyssContract';
+import { DEFAULT_GAME_CONFIG, SYMBOL_INFO, GameConfig, PatternType } from '@/utils/GameConfig';
+import { ContractItem, getItemInfo, getSessionItems } from '@/utils/abyssContract';
 import { applyItemEffects } from '@/utils/itemEffects';
 
 interface InfoModalProps {
     sessionId: number;
     onClose: () => void;
     optimisticItems?: ContractItem[];
+    practiceMode?: boolean;
+    practiceItems?: ContractItem[];
 }
 
-export default function InfoModal({ sessionId, onClose, optimisticItems = [] }: InfoModalProps) {
-    const [activeTab, setActiveTab] = useState<'how' | 'symbols' | 'patterns'>('how');
+type InfoTab = 'how' | 'symbols' | 'patterns';
+
+const HOW_TO_PLAY_SECTIONS = [
+    {
+        title: 'OBJECTIVE',
+        body: 'Spin for score, climb levels, and survive long enough to lock in a big run. Every level demands a higher score threshold.',
+    },
+    {
+        title: 'SPINS',
+        body: 'You begin with 5 spins. When you clear a level threshold, the machine grants more spins and pushes the run deeper.',
+    },
+    {
+        title: '666 RISK',
+        body: 'If the machine resolves a 666 pattern, your score is wiped unless a Biblia blocks it. The odds get meaner as levels rise.',
+    },
+    {
+        title: 'MARKET',
+        body: 'Spend score during the run to buy items that change symbol values, pattern multipliers, luck, spins, or other run math.',
+    },
+    {
+        title: 'RELICS',
+        body: 'You can bind exactly one relic per session. Its effect can swing the run hard, but once the slot is sealed you cannot swap it.',
+    },
+    {
+        title: 'PRIZES',
+        body: 'Finished runs feed the leaderboard. The top 5 split the active prize pool: 40 / 25 / 18 / 10 / 7.',
+    },
+];
+
+const PATTERN_LABELS: Record<PatternType, string> = {
+    'horizontal-3': 'H3',
+    'horizontal-4': 'H4',
+    'horizontal-5': 'H5',
+    'vertical-3': 'V3',
+    'diagonal-3': 'D3',
+    jackpot: 'JP',
+};
+
+export default function InfoModal({
+    sessionId,
+    onClose,
+    optimisticItems = [],
+    practiceMode = false,
+    practiceItems = [],
+}: InfoModalProps) {
+    const [activeTab, setActiveTab] = useState<InfoTab>('how');
     const [loading, setLoading] = useState(true);
     const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
+    const [sessionItemCount, setSessionItemCount] = useState(0);
 
     useEffect(() => {
-        loadItemsAndApplyEffects();
-    }, [sessionId, optimisticItems]);
+        void loadItemsAndApplyEffects();
+    }, [practiceItems, practiceMode, sessionId, optimisticItems]);
 
     async function loadItemsAndApplyEffects() {
-        if (sessionId > 0) {
-            try {
-                setLoading(true);
+        try {
+            setLoading(true);
+            let items: ContractItem[] = [];
+
+            if (practiceMode) {
+                items = [...practiceItems];
+            } else if (sessionId > 0) {
                 const playerItems = await getSessionItems(sessionId);
-                let items = await Promise.all(playerItems.map(pi => getItemInfo(pi.item_id)));
-
-                const existingIds = new Set(items.map(i => i.item_id));
-                const uniqueOptimistic = optimisticItems.filter(i => !existingIds.has(i.item_id));
-                items = [...items, ...uniqueOptimistic];
-
-                const effects = applyItemEffects(DEFAULT_GAME_CONFIG, items);
-                setGameConfig(effects.modifiedConfig);
-            } catch (error) {
-                console.error('Failed to load items:', error);
-                setGameConfig(DEFAULT_GAME_CONFIG);
-            } finally {
-                setLoading(false);
+                items = await Promise.all(playerItems.map((playerItem) => getItemInfo(playerItem.item_id)));
             }
-        } else {
+
+            const existingIds = new Set(items.map((item) => item.item_id));
+            const uniqueOptimistic = optimisticItems.filter((item) => !existingIds.has(item.item_id));
+            items = [...items, ...uniqueOptimistic];
+
+            const effects = applyItemEffects(DEFAULT_GAME_CONFIG, items);
+            setGameConfig(effects.modifiedConfig);
+            setSessionItemCount(items.length);
+        } catch (error) {
+            console.error('Failed to load items:', error);
+            setGameConfig(DEFAULT_GAME_CONFIG);
+            setSessionItemCount(0);
+        } finally {
             setLoading(false);
         }
     }
 
     const wasModified = (current: number, original: number) => current !== original;
 
-    const renderPattern = (type: string) => {
+    const renderPattern = (type: PatternType) => {
         let cells = Array(15).fill(false);
-        if (type === 'horizontal-3') [0, 1, 2].forEach(i => cells[i] = true);
-        if (type === 'horizontal-4') [0, 1, 2, 3].forEach(i => cells[i] = true);
-        if (type === 'horizontal-5') [0, 1, 2, 3, 4].forEach(i => cells[i] = true);
-        if (type === 'vertical-3') [0, 5, 10].forEach(i => cells[i] = true);
-        if (type === 'diagonal-3') [0, 6, 12].forEach(i => cells[i] = true);
+        if (type === 'horizontal-3') [0, 1, 2].forEach((index) => { cells[index] = true; });
+        if (type === 'horizontal-4') [0, 1, 2, 3].forEach((index) => { cells[index] = true; });
+        if (type === 'horizontal-5') [0, 1, 2, 3, 4].forEach((index) => { cells[index] = true; });
+        if (type === 'vertical-3') [0, 5, 10].forEach((index) => { cells[index] = true; });
+        if (type === 'diagonal-3') [0, 6, 12].forEach((index) => { cells[index] = true; });
         if (type === 'jackpot') cells = Array(15).fill(true);
 
         return (
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(5, 8px)',
-                gridTemplateRows: 'repeat(3, 8px)',
-                gap: 2,
-            }}>
-                {cells.map((active, i) => (
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, 8px)',
+                    gridTemplateRows: 'repeat(3, 8px)',
+                    gap: 2,
+                    padding: 8,
+                    borderRadius: 6,
+                    background: 'rgba(0,0,0,0.45)',
+                    border: '1px solid rgba(255,132,28,0.18)',
+                }}
+            >
+                {cells.map((active, index) => (
                     <div
-                        key={i}
+                        key={index}
                         style={{
                             width: 8,
                             height: 8,
-                            background: active ? '#FFD700' : '#333',
                             borderRadius: 2,
+                            background: active ? '#FFD700' : '#333',
                         }}
                     />
                 ))}
@@ -78,214 +135,252 @@ export default function InfoModal({ sessionId, onClose, optimisticItems = [] }: 
 
     const tabStyle = (isActive: boolean) => ({
         flex: 1,
-        padding: '8px 4px',
-        background: isActive ? '#FF841C' : '#222',
+        padding: '10px 6px',
+        background: isActive ? '#FF841C' : '#171717',
         color: isActive ? '#000' : '#666',
-        border: 'none',
+        border: '1px solid rgba(255,132,28,0.35)',
+        borderRadius: 6,
         fontFamily: "'PressStart2P', monospace",
         fontSize: 8,
         cursor: 'pointer',
     });
 
     return (
-        <ModalWrapper onClose={onClose} title="INFO">
-            <div style={{ display: 'flex', marginBottom: 15, borderRadius: 4, overflow: 'hidden' }}>
-                <button style={tabStyle(activeTab === 'how')} onClick={() => setActiveTab('how')}>HOW TO PLAY</button>
-                <button style={tabStyle(activeTab === 'symbols')} onClick={() => setActiveTab('symbols')}>SYMBOLS</button>
-                <button style={tabStyle(activeTab === 'patterns')} onClick={() => setActiveTab('patterns')}>PATTERNS</button>
-            </div>
+        <ModalWrapper onClose={onClose} title="INFO" maxWidth={440} maxHeight="82vh">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div
+                    style={{
+                        background: 'rgba(0,0,0,0.6)',
+                        border: '2px solid #FF841C',
+                        borderRadius: 12,
+                        padding: 14,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                }}
+                >
+                    <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 8, color: '#666' }}>
+                        {practiceMode ? 'PRACTICE READOUT' : 'LIVE SESSION READOUT'}
+                    </div>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                            gap: 8,
+                        }}
+                    >
+                        <div style={{ background: '#111', borderRadius: 6, padding: 10, border: '1px solid rgba(255,132,28,0.2)' }}>
+                            <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 7, color: '#666', marginBottom: 8 }}>ITEMS</div>
+                            <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 12, color: '#FF841C' }}>{sessionItemCount}</div>
+                        </div>
+                        <div style={{ background: '#111', borderRadius: 6, padding: 10, border: '1px solid rgba(255,132,28,0.2)' }}>
+                            <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 7, color: '#666', marginBottom: 8 }}>666</div>
+                            <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 12, color: '#FF4444' }}>
+                                {gameConfig.probability666.toFixed(1)}%
+                            </div>
+                        </div>
+                        <div style={{ background: '#111', borderRadius: 6, padding: 10, border: '1px solid rgba(255,132,28,0.2)' }}>
+                            <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 7, color: '#666', marginBottom: 8 }}>BASE SPINS</div>
+                            <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 12, color: '#FFD700' }}>5</div>
+                        </div>
+                    </div>
+                </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                {activeTab === 'how' && (
-                    <div style={{ color: '#ccc', fontSize: 11, lineHeight: 1.6, fontFamily: 'sans-serif' }}>
-                        <h3 style={{ color: '#FF841C', fontSize: 12, marginBottom: 10, fontFamily: "'PressStart2P', monospace" }}>Objective</h3>
-                        <p style={{ marginBottom: 15 }}>
-                            Spin the slot machine to match symbols and score points. Reach the next level threshold to advance and earn more spins!
-                        </p>
-
-                        <h3 style={{ color: '#FF841C', fontSize: 12, marginBottom: 10, fontFamily: "'PressStart2P', monospace" }}>Spins</h3>
-                        <p style={{ marginBottom: 15 }}>
-                            You start with 5 spins per level. Tap the machine or lever to spin. When out of spins, if you reach the level threshold, you advance and get 5 more spins.
-                        </p>
-
-                        <h3 style={{ color: '#FF841C', fontSize: 12, marginBottom: 10, fontFamily: "'PressStart2P', monospace" }}>Patterns</h3>
-                        <p style={{ marginBottom: 15 }}>
-                            Match 3+ identical symbols in a row (horizontal, vertical, or diagonal) to trigger a pattern bonus. The more symbols matched, the higher the multiplier!
-                        </p>
-
-                        <h3 style={{ color: '#FF841C', fontSize: 12, marginBottom: 10, fontFamily: "'PressStart2P', monospace" }}>The 666 Risk</h3>
-                        <p style={{ marginBottom: 15 }}>
-                            The "6" symbol is dangerous. If you get 666 (three 6s in certain patterns), your session ends immediately and you lose all points! The risk increases with each level.
-                        </p>
-
-                        <h3 style={{ color: '#FF841C', fontSize: 12, marginBottom: 10, fontFamily: "'PressStart2P', monospace" }}>Market & Items</h3>
-                        <p style={{ marginBottom: 15 }}>
-                            Visit the Market to buy items using your points. Items can boost symbol points, increase pattern multipliers, give extra spins, and more. Build your strategy!
-                        </p>
-
-                        <h3 style={{ color: '#FF841C', fontSize: 12, marginBottom: 10, fontFamily: "'PressStart2P', monospace" }}>Relics</h3>
-                        <p style={{ marginBottom: 15 }}>
-                            Relics are powerful NFTs with unique abilities! Equip a relic to your session (once per session), then click it to activate:
-                        </p>
-                        <ul style={{ marginBottom: 15, paddingLeft: 20 }}>
-                            <li><strong>Mortis</strong> - Force a Random Jackpot on next spin</li>
-                            <li><strong>Phantom</strong> - Reset spins to 5</li>
-                            <li><strong>Lucky the Dealer</strong> - 5x next spin score</li>
-                            <li><strong>Scorcher</strong> - End the session and secure your score</li>
-                            <li><strong>Inferno</strong> - Free market refresh</li>
-                        </ul>
-                        <p style={{ marginBottom: 15, color: '#888' }}>
-                            Each relic has a cooldown (in spins) before it can be activated again.
-                        </p>
-
-                        <h3 style={{ color: '#FF841C', fontSize: 12, marginBottom: 10, fontFamily: "'PressStart2P', monospace" }}>Leaderboard & Prizes</h3>
-                        <p>
-                            Compete for the highest score! Top 5 players win prizes from the prize pool:
-                        </p>
-                        <ul style={{ marginBottom: 15, paddingLeft: 20 }}>
-                            <li>1st Place: 40%</li>
-                            <li>2nd Place: 25%</li>
-                            <li>3rd Place: 18%</li>
-                            <li>4th Place: 10%</li>
-                            <li>5th Place: 7%</li>
-                        </ul>
+                {practiceMode && (
+                    <div
+                        style={{
+                            background: 'rgba(255, 132, 28, 0.08)',
+                            border: '2px solid rgba(255, 132, 28, 0.45)',
+                            borderRadius: 10,
+                            padding: 12,
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: 8,
+                            lineHeight: 1.9,
+                            color: '#FFB874',
+                        }}
+                    >
+                        PRACTICE MODE RUNS COMPLETELY OFFCHAIN. NO SESSION NFTS, NO CHIPS, NO CHARMS, NO RELICS.
                     </div>
                 )}
 
-                {activeTab === 'symbols' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {loading ? (
-                            <p style={{ color: '#fff', textAlign: 'center' }}>Loading...</p>
-                        ) : (
-                            gameConfig.symbols
-                                .filter(s => s.type !== 'six')
-                                .map((symbol) => {
-                                    const original = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbol.type);
-                                    const pointsModified = original && wasModified(symbol.points, original.points);
-                                    const info = SYMBOL_INFO[symbol.type];
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <button style={tabStyle(activeTab === 'how')} onClick={() => setActiveTab('how')}>HOW</button>
+                    <button style={tabStyle(activeTab === 'symbols')} onClick={() => setActiveTab('symbols')}>SYMBOLS</button>
+                    <button style={tabStyle(activeTab === 'patterns')} onClick={() => setActiveTab('patterns')}>PATTERNS</button>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {activeTab === 'how' && (
+                        <>
+                            {HOW_TO_PLAY_SECTIONS.map((section) => (
+                                <div
+                                    key={section.title}
+                                    style={{
+                                        background: 'rgba(0,0,0,0.6)',
+                                        border: '2px solid #FF841C',
+                                        borderRadius: 10,
+                                        padding: 12,
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            fontFamily: "'PressStart2P', monospace",
+                                            fontSize: 9,
+                                            color: '#FF841C',
+                                            marginBottom: 10,
+                                        }}
+                                    >
+                                        {section.title}
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontFamily: "'PressStart2P', monospace",
+                                            fontSize: 8,
+                                            lineHeight: 1.9,
+                                            color: '#ccc',
+                                        }}
+                                    >
+                                        {section.body}
+                                    </div>
+                                </div>
+                            ))}
+                        </>
+                    )}
+
+                    {activeTab === 'symbols' && (
+                        <>
+                            {loading ? (
+                                <div style={{ color: '#fff', textAlign: 'center', fontFamily: "'PressStart2P', monospace", fontSize: 10 }}>LOADING...</div>
+                            ) : (
+                                gameConfig.symbols
+                                    .filter((symbol) => symbol.type !== 'six')
+                                    .map((symbol) => {
+                                        const original = DEFAULT_GAME_CONFIG.symbols.find((baseSymbol) => baseSymbol.type === symbol.type);
+                                        const pointsModified = original ? wasModified(symbol.points, original.points) : false;
+                                        const probabilityModified = original ? wasModified(symbol.probability, original.probability) : false;
+                                        const info = SYMBOL_INFO[symbol.type];
+
+                                        return (
+                                            <div
+                                                key={symbol.type}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 12,
+                                                    padding: 12,
+                                                    background: 'rgba(0,0,0,0.6)',
+                                                    border: '2px solid #FF841C',
+                                                    borderRadius: 10,
+                                                }}
+                                            >
+                                                <img
+                                                    src={info.image}
+                                                    alt={info.name}
+                                                    width={36}
+                                                    height={36}
+                                                    loading="lazy"
+                                                    style={{ objectFit: 'contain', flexShrink: 0 }}
+                                                />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 10, color: '#fff', marginBottom: 8 }}>
+                                                        {info.name.toUpperCase()}
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                                                        <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 8, color: pointsModified ? '#4ADE80' : '#FFD700' }}>
+                                                            {symbol.points} PTS
+                                                            {pointsModified && original && (
+                                                                <span style={{ color: '#666', marginLeft: 6, textDecoration: 'line-through' }}>
+                                                                    {original.points}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 8, color: probabilityModified ? '#4ADE80' : '#888' }}>
+                                                            {symbol.probability}%
+                                                            {probabilityModified && original && (
+                                                                <span style={{ color: '#666', marginLeft: 6, textDecoration: 'line-through' }}>
+                                                                    {original.probability}%
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                            )}
+
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                    padding: 12,
+                                    background: 'rgba(72,0,0,0.35)',
+                                    border: '2px solid #8B0000',
+                                    borderRadius: 10,
+                                }}
+                            >
+                                <img
+                                    src="/images/six.png"
+                                    alt="Six"
+                                    width={36}
+                                    height={36}
+                                    loading="lazy"
+                                    style={{ objectFit: 'contain', flexShrink: 0 }}
+                                />
+                                <div>
+                                    <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 10, color: '#FF4444', marginBottom: 8 }}>SIX</div>
+                                    <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 8, lineHeight: 1.9, color: '#FF6666' }}>
+                                        CURSED SYMBOL · IF IT RESOLVES INTO 666 YOU LOSE THE SCORE.
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'patterns' && (
+                        <>
+                            {loading ? (
+                                <div style={{ color: '#fff', textAlign: 'center', fontFamily: "'PressStart2P', monospace", fontSize: 10 }}>LOADING...</div>
+                            ) : (
+                                gameConfig.patternMultipliers.map((pattern) => {
+                                    const original = DEFAULT_GAME_CONFIG.patternMultipliers.find((basePattern) => basePattern.type === pattern.type);
+                                    const multiplierModified = original ? wasModified(pattern.multiplier, original.multiplier) : false;
 
                                     return (
-                                        <div key={symbol.type} style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 12,
-                                            padding: 8,
-                                            background: 'rgba(255,255,255,0.05)',
-                                            borderRadius: 6,
-                                        }}>
-                                            <img
-                                                src={info.image}
-                                                alt={info.name}
-                                                width={32}
-                                                height={32}
-                                                loading="lazy"
-                                                style={{ objectFit: 'contain' }}
-                                            />
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{
-                                                    color: '#fff',
-                                                    fontSize: 11,
-                                                    fontFamily: "'PressStart2P', monospace",
-                                                    marginBottom: 4,
-                                                }}>
-                                                    {info.name.toUpperCase()}
+                                        <div
+                                            key={pattern.type}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 12,
+                                                padding: 12,
+                                                background: 'rgba(0,0,0,0.6)',
+                                                border: '2px solid #FF841C',
+                                                borderRadius: 10,
+                                            }}
+                                        >
+                                            {renderPattern(pattern.type)}
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 9, color: '#fff', marginBottom: 8 }}>
+                                                    {PATTERN_LABELS[pattern.type]}
                                                 </div>
-                                                <div style={{
-                                                    color: pointsModified ? '#4CAF50' : '#FFD700',
-                                                    fontSize: 10,
-                                                    fontFamily: 'sans-serif',
-                                                }}>
-                                                    Points: {symbol.points}
-                                                    {pointsModified && original && (
-                                                        <span style={{ color: '#666', marginLeft: 5, textDecoration: 'line-through' }}>
-                                                            ({original.points})
+                                                <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 11, color: multiplierModified ? '#4ADE80' : '#FFD700' }}>
+                                                    {pattern.multiplier.toFixed(1)}x
+                                                    {multiplierModified && original && (
+                                                        <span style={{ color: '#666', marginLeft: 6, fontSize: 8, textDecoration: 'line-through' }}>
+                                                            {original.multiplier.toFixed(1)}x
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div style={{ color: '#888', fontSize: 9 }}>
-                                                {symbol.probability}%
-                                            </div>
                                         </div>
                                     );
                                 })
-                        )}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                            padding: 8,
-                            background: 'rgba(139, 0, 0, 0.3)',
-                            borderRadius: 6,
-                            border: '1px solid #8B0000',
-                        }}>
-                            <img
-                                src="/images/six.png"
-                                alt="Six"
-                                width={32}
-                                height={32}
-                                loading="lazy"
-                                style={{ objectFit: 'contain' }}
-                            />
-                            <div style={{ flex: 1 }}>
-                                <div style={{ color: '#FF4444', fontSize: 11, fontFamily: "'PressStart2P', monospace" }}>
-                                    SIX
-                                </div>
-                                <div style={{ color: '#FF6666', fontSize: 9, fontFamily: 'sans-serif' }}>
-                                    0 pts - 666 = GAME OVER
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'patterns' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {loading ? (
-                            <p style={{ color: '#fff', textAlign: 'center' }}>Loading...</p>
-                        ) : (
-                            gameConfig.patternMultipliers.map((pattern) => {
-                                const original = DEFAULT_GAME_CONFIG.patternMultipliers.find(p => p.type === pattern.type);
-                                const multiplierModified = original && wasModified(pattern.multiplier, original.multiplier);
-
-                                return (
-                                    <div key={pattern.type} style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 12,
-                                        padding: 8,
-                                        background: 'rgba(255,255,255,0.05)',
-                                        borderRadius: 6,
-                                    }}>
-                                        {renderPattern(pattern.type)}
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{
-                                                color: '#fff',
-                                                fontSize: 10,
-                                                fontFamily: "'PressStart2P', monospace",
-                                                textTransform: 'uppercase',
-                                            }}>
-                                                {pattern.type.replace(/-/g, ' ')}
-                                            </div>
-                                        </div>
-                                        <div style={{
-                                            color: multiplierModified ? '#4CAF50' : '#FFD700',
-                                            fontSize: 12,
-                                            fontFamily: "'PressStart2P', monospace",
-                                        }}>
-                                            {pattern.multiplier}x
-                                            {multiplierModified && original && (
-                                                <span style={{ color: '#666', marginLeft: 5, fontSize: 9, textDecoration: 'line-through' }}>
-                                                    ({original.multiplier}x)
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                )}
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
         </ModalWrapper>
     );

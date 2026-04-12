@@ -13,6 +13,8 @@ interface GameOverModalProps {
     level?: number;
     chipsClaimed?: boolean;
     onBackToMenu: () => void;
+    practiceMode?: boolean;
+    onPlayAgain?: () => void;
 }
 
 export default function GameOverModal({
@@ -21,7 +23,9 @@ export default function GameOverModal({
     totalScore,
     chipsEarned,
     buildItems = [],
-    onBackToMenu
+    onBackToMenu,
+    practiceMode = false,
+    onPlayAgain,
 }: GameOverModalProps) {
     const scoreForChips = totalScore ?? finalScore;
     const displayedChipsEarned = chipsEarned ?? Math.floor(scoreForChips / 20);
@@ -86,7 +90,7 @@ export default function GameOverModal({
                             textAlign: 'center',
                             letterSpacing: '0.1em',
                         }}>
-                            CHIPS EARNED: {displayedChipsEarned}
+                            {practiceMode ? 'NO ONCHAIN REWARDS IN PRACTICE' : `CHIPS EARNED: ${displayedChipsEarned}`}
                         </div>
 
                         {/* Items row */}
@@ -136,26 +140,50 @@ export default function GameOverModal({
                             </div>
                         )}
 
-                        {/* Back to menu */}
-                        <button
-                            onClick={onBackToMenu}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#FF841C',
-                                padding: '12px 24px',
-                                fontFamily: "'PressStart2P', monospace",
-                                fontSize: 'clamp(10px, 1.4vw, 13px)',
-                                cursor: 'pointer',
-                                letterSpacing: '0.1em',
-                                textDecoration: 'underline',
-                                textUnderlineOffset: '6px',
-                                textDecorationColor: 'rgba(255,132,28,0.4)',
-                                marginTop: '8px',
-                            }}
-                        >
-                            BACK TO MENU &gt;
-                        </button>
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '10px',
+                            marginTop: '8px',
+                        }}>
+                            {practiceMode && onPlayAgain && (
+                                <button
+                                    onClick={onPlayAgain}
+                                    style={{
+                                        background: '#FF841C',
+                                        border: '2px solid #FF841C',
+                                        color: '#000',
+                                        padding: '12px 24px',
+                                        fontFamily: "'PressStart2P', monospace",
+                                        fontSize: 'clamp(10px, 1.4vw, 13px)',
+                                        cursor: 'pointer',
+                                        letterSpacing: '0.1em',
+                                    }}
+                                >
+                                    PLAY AGAIN
+                                </button>
+                            )}
+
+                            <button
+                                onClick={onBackToMenu}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#FF841C',
+                                    padding: '12px 24px',
+                                    fontFamily: "'PressStart2P', monospace",
+                                    fontSize: 'clamp(10px, 1.4vw, 13px)',
+                                    cursor: 'pointer',
+                                    letterSpacing: '0.1em',
+                                    textDecoration: 'underline',
+                                    textUnderlineOffset: '6px',
+                                    textDecorationColor: 'rgba(255,132,28,0.4)',
+                                }}
+                            >
+                                BACK TO MENU &gt;
+                            </button>
+                        </div>
                     </div>
                 </motion.div>
             )}

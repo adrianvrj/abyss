@@ -5,9 +5,17 @@ interface ModalWrapperProps {
     children: ReactNode;
     onClose: () => void;
     title?: string;
+    maxWidth?: number | string;
+    maxHeight?: string;
 }
 
-export default function ModalWrapper({ children, onClose, title }: ModalWrapperProps) {
+export default function ModalWrapper({
+    children,
+    onClose,
+    title,
+    maxWidth = 400,
+    maxHeight = '80vh',
+}: ModalWrapperProps) {
     return (
         <div
             style={{
@@ -29,9 +37,9 @@ export default function ModalWrapper({ children, onClose, title }: ModalWrapperP
         >
             <div
                 style={{
-                    width: '90%',
-                    maxWidth: 400,
-                    maxHeight: '80vh',
+                    width: '92%',
+                    maxWidth,
+                    maxHeight,
                     display: 'flex',
                     flexDirection: 'column',
                     padding: 20,

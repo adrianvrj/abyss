@@ -23,6 +23,8 @@ interface InlineInventoryPanelProps {
     sellingItemId?: number;
     hiddenItemIds?: number[];
     bibliaBroken?: boolean;
+    practiceMode?: boolean;
+    practiceItems?: ContractItem[];
 }
 
 export default function InlineInventoryPanel({
@@ -35,6 +37,8 @@ export default function InlineInventoryPanel({
     sellingItemId,
     hiddenItemIds = [],
     bibliaBroken = false,
+    practiceMode = false,
+    practiceItems = [],
 }: InlineInventoryPanelProps) {
     const { account } = useAccount();
     const [, setLoading] = useState(!initialInventory.length);
@@ -49,8 +53,13 @@ export default function InlineInventoryPanel({
     const { getSessionItems } = useAbyssGame(account);
 
     useEffect(() => {
+        if (practiceMode) {
+            setOwnedItems(practiceItems);
+            return;
+        }
+
         if (sessionId) loadInventory();
-    }, [sessionId, refreshTrigger]);
+    }, [practiceItems, practiceMode, sessionId, refreshTrigger]);
 
     async function loadInventory() {
         const requestId = ++latestInventoryRequestRef.current;
