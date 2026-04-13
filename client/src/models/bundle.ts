@@ -55,3 +55,29 @@ export class Bundle {
     return dedupeBy(items, (item) => item.id);
   }
 }
+
+export interface RawBundleIssuance {
+  bundle_id: PrimitiveValue<string>;
+  recipient: PrimitiveValue<string>;
+  count: PrimitiveValue<string>;
+}
+
+export class BundleIssuance {
+  constructor(
+    public bundleId: number,
+    public recipient: string,
+    public count: number,
+  ) {}
+
+  static getModelName() {
+    return "BundleIssuance";
+  }
+
+  static parse(data: RawBundleIssuance): BundleIssuance {
+    return new BundleIssuance(
+      toNumber(data.bundle_id),
+      toAddress(data.recipient),
+      toNumber(data.count),
+    );
+  }
+}

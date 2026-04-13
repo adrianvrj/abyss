@@ -1,6 +1,7 @@
-import { useAccount, useNetwork } from "@starknet-react/core";
+import { useAccount, useNetwork, useConnect } from "@starknet-react/core";
 import { useCallback, useMemo } from "react";
 import { CallData } from "starknet";
+import ControllerConnector from "@cartridge/connector/controller";
 import { getRpcProvider } from "@/api/rpc/provider";
 import { getGameConfig, getUsdCostInToken } from "@/api/rpc/play";
 import {
@@ -9,6 +10,7 @@ import {
   getPlayAddress,
   getRelicAddress,
   getWorldAddress,
+  getSetupAddress,
 } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
 import { parseReceiptEvents } from "@/utils/gameEvents";
@@ -43,6 +45,7 @@ function toUint256(value: bigint) {
 
 export function useAbyssActions(accountOverride?: AccountLike | null) {
   const { account: connectedAccount } = useAccount();
+  const { connector } = useConnect();
   const { chain } = useNetwork();
   const account = (
     accountOverride ??
@@ -154,6 +157,45 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
       return executeCalls(calls);
     },
     [account, chainId, executeCalls, playAddress],
+  );
+
+  const claimFreeSessionBundle = useCallback(
+    async (
+      bundleId: number,
+      referralLink: string,
+      onComplete?: () => void
+    ) => {
+      const cartridgeConnector = connector as ControllerConnector;
+      if (!cartridgeConnector?.controller?.openBundle) {
+        console.warn("Cartridge controller not found");
+        return;
+      }
+
+      const registry = getSetupAddress(chainId);
+      const socialClaimOptions = {
+        shareMessage: `Minting my free @abyssdotfun session! ${referralLink}`,
+      };
+
+      console.log("[ABYSS_ACTIONS] claimsocial:start", {
+        bundleId,
+        registry,
+        socialClaimOptions,
+      });
+
+      try {
+        await cartridgeConnector.controller.openBundle(bundleId, registry, {
+          onPurchaseComplete: () => {
+            console.log("[ABYSS_ACTIONS] claimsocial:complete");
+            onComplete?.();
+          },
+          socialClaimOptions,
+        });
+      } catch (error) {
+        console.error("[ABYSS_ACTIONS] claimsocial:error", error);
+        throw error;
+      }
+    },
+    [connector, chainId]
   );
 
   const requestSpin = useCallback(
@@ -302,6 +344,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     marketAddress,
     relicAddress,
     createSession,
+    claimFreeSessionBundle,
     requestSpin,
     buyItem,
     sellItem,

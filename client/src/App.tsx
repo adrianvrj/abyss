@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Providers } from "@/components/providers";
 import { ControllerStyler } from "@/components/ControllerStyler";
 import ChipBalanceBadge from "@/components/ChipBalanceBadge";
+import { DEFAULT_CHAIN_ID, getToriiUrl, getWorldAddress } from "@/config";
+import { CONTROLLER_RPC_URL, cartridgeSlot } from "@/lib/controllerConfig";
 
 // Lazy load components
 const MenuContent = lazy(() => import("@/components/MenuContent").then(m => ({ default: m.MenuContent })));
@@ -50,6 +52,23 @@ function App() {
         // console.log("Dev: Local state cleared for clean initialization.");
       }
     }
+  }, []);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || typeof window === "undefined") {
+      return;
+    }
+
+    console.log("[ABYSS_BOOT] env", {
+      defaultChain: import.meta.env.VITE_DEFAULT_CHAIN,
+      chainId: DEFAULT_CHAIN_ID,
+      rpcUrl: import.meta.env.VITE_STARKNET_RPC_URL,
+      controllerRpcUrl: CONTROLLER_RPC_URL,
+      toriiUrl: getToriiUrl(DEFAULT_CHAIN_ID),
+      slot: cartridgeSlot,
+      worldAddress: getWorldAddress(DEFAULT_CHAIN_ID),
+      sessionBundleId: import.meta.env.VITE_SESSION_BUNDLE_ID,
+    });
   }, []);
 
   return (

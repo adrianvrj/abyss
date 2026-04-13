@@ -1,5 +1,5 @@
 import ControllerConnector from "@cartridge/connector/controller";
-import { mainnet, sepolia, type Chain } from "@starknet-react/chains";
+import { type Chain } from "@starknet-react/chains";
 import {
     type Connector,
     jsonRpcProvider,
@@ -14,10 +14,34 @@ import {
     ensureControllerSession,
     getControllerConnectorConfigKey,
 } from "@/lib/controllerConfig";
-import { DEFAULT_CHAIN_ID } from "@/config";
+import {
+    DEFAULT_CHAIN_ID,
+    DEFAULT_MAINNET_RPC_URL,
+    DEFAULT_SEPOLIA_RPC_URL,
+    chains,
+} from "@/config";
 
 const provider = jsonRpcProvider({
-    rpc: (_chain: Chain) => ({ nodeUrl: CONTROLLER_RPC_URL }),
+    rpc: (chain: Chain) => {
+        if (chain.id === chains[DEFAULT_CHAIN_ID].id) {
+            return { nodeUrl: CONTROLLER_RPC_URL };
+        }
+
+        if (chain.network === "mainnet") {
+            return {
+                nodeUrl:
+                    import.meta.env.VITE_SN_MAIN_RPC_URL ||
+                    import.meta.env.VITE_MAINNET_RPC_URL ||
+                    DEFAULT_MAINNET_RPC_URL,
+            };
+        }
+
+        return {
+            nodeUrl:
+                import.meta.env.VITE_SN_SEPOLIA_RPC_URL ||
+                DEFAULT_SEPOLIA_RPC_URL,
+        };
+    },
 });
 
 declare global {
@@ -42,6 +66,14 @@ function getConnector(): Connector[] {
     }
 
     const connectorConfigKey = getControllerConnectorConfigKey(DEFAULT_CHAIN_ID);
+
+    if (import.meta.env.DEV) {
+        console.log("[ABYSS_CONTROLLER] connector", {
+            defaultChainId: DEFAULT_CHAIN_ID,
+            controllerRpcUrl: CONTROLLER_RPC_URL,
+            connectorConfigKey,
+        });
+    }
 
     if (
         window.__cartridge_connector__ &&
@@ -95,7 +127,7 @@ export function StarknetProvider({ children }: PropsWithChildren) {
     return (
         <StarknetConfig
             autoConnect
-            chains={[sepolia, mainnet]}
+            chains={[chains[DEFAULT_CHAIN_ID]]}
             connectors={connectors}
             provider={provider}
         >

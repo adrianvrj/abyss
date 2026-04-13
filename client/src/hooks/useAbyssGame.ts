@@ -5,7 +5,6 @@ import { getRpcProvider } from "@/api/rpc/provider";
 import {
   get666Probability as read666Probability,
   getAvailableBeastSessions as readAvailableBeastSessions,
-  getAvailableXShareSessions as readAvailableXShareSessions,
   getGameConfig,
   getLevelThreshold as readLevelThreshold,
   getUsdCostInToken,
@@ -345,23 +344,6 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
     [account, playAddress, waitForPreConfirmation],
   );
 
-  const claimXShareSession = useCallback(
-    async (): Promise<number> => {
-      if (!account) {
-        throw new Error("Not connected");
-      }
-
-      const tx = await account.execute({
-        contractAddress: playAddress,
-        entrypoint: "claim_x_share_session",
-        calldata: [account.address],
-      });
-      await waitForPreConfirmation(tx.transaction_hash);
-      return 1;
-    },
-    [account, playAddress, waitForPreConfirmation],
-  );
-
   const requestSpin = useCallback(
     async (sessionId: number) => {
       if (!account) {
@@ -690,17 +672,11 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
     [chainId],
   );
 
-  const getAvailableXShareSessions = useCallback(
-    async (address: string): Promise<number> => readAvailableXShareSessions(chainId, address),
-    [chainId],
-  );
-
   return {
     provider,
     isReady: !!account,
     createSession,
     claimBeastSession,
-    claimXShareSession,
     requestSpin,
     buyItem,
     sellItem,
@@ -721,7 +697,6 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
     getSystemAddress,
     getLeaderboard,
     getAvailableBeastSessions,
-    getAvailableXShareSessions,
     toriiClient: null,
   };
 }

@@ -4,10 +4,13 @@ import { useNetwork } from "@starknet-react/core";
 import { useController } from "@/hooks/useController";
 import { useAbyssGame } from "@/hooks/useAbyssGame";
 import { useBundles } from "@/context/bundles";
+import { useAbyssActions } from "@/hooks/actions";
 import { getSetupAddress } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { BundleApi } from "@/api/torii/bundle";
+import { useEntities } from "@/context/entities";
 
 interface SessionInfo {
     sessionId: number;
@@ -218,21 +221,20 @@ export function SessionsContent() {
         getPlayerSessions,
         getSessionData,
         getAvailableBeastSessions,
-        getAvailableXShareSessions,
         claimBeastSession,
-        claimXShareSession,
         isReady,
     } = useAbyssGame(account);
+    const { claimFreeSessionBundle } = useAbyssActions();
     const { bundles, status: bundlesStatus, refresh: refreshBundles } = useBundles();
 
     const [sessions, setSessions] = useState<SessionInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
+    const [isClaimed, setIsClaimed] = useState(false);
+    const { client } = useEntities();
     const [beastSessions, setBeastSessions] = useState(0);
-    const [xShareSessions, setXShareSessions] = useState(0);
-    const shareIntentUrl = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(
-        "I survived the Abyss. Spin the cursed machine at https://play.abyssgame.fun",
-    );
+    const shareMessage =
+        "I'm minting my free Abyss game session!\n🎟️ @abyssdotfun\nhttps://play.abyssgame.fun";
 
     // Redirect to home if not connected
     useEffect(() => {
@@ -240,6 +242,42 @@ export function SessionsContent() {
             navigate("/");
         }
     }, [isConnected, navigate]);
+
+    useEffect(() => {
+        if (!account?.address || !client) {
+            return;
+        }
+
+        const checkIssuance = async () => {
+             const shareBundle = bundles.find((bundle) => 
+                bundle.price === 0n && 
+                (bundle.metadata.toLowerCase().includes("twitter") || bundle.metadata.toLowerCase().includes("share"))
+            ) || bundles.find(b => b.price === 0n);
+
+            console.log("[ABYSS_BUNDLE] checkIssuance:", {
+                foundShareBundle: !!shareBundle,
+                shareBundleId: shareBundle?.id,
+                accountAddress: account.address,
+            });
+
+            if (shareBundle) {
+                try {
+                    const issuance = await BundleApi.fetchIssuance(client, shareBundle.id, account.address);
+                    console.log("[ABYSS_BUNDLE] issuance result:", issuance);
+                    
+                    // If the record exists at all in BundleIssuance, it means it's been handled
+                    if (issuance) {
+                        console.log("[ABYSS_BUNDLE] Marking as claimed due to BundleIssuance existence");
+                        setIsClaimed(true);
+                    }
+                } catch (error) {
+                    console.warn("[ABYSS_BUNDLE] Failed to check issuance:", error);
+                }
+            }
+        };
+
+        checkIssuance();
+    }, [account?.address, client, bundles]);
 
     const loadSessions = useCallback(async () => {
         if (!isReady || !account) {
@@ -250,14 +288,12 @@ export function SessionsContent() {
         setIsLoading(true);
         try {
             console.log("Loading sessions for:", account.address);
-            const [sessionIds, availableBeastSessions, availableXShareSessions] = await Promise.all([
+            const [sessionIds, availableBeastSessions] = await Promise.all([
                 getPlayerSessions(account.address),
                 getAvailableBeastSessions(account.address),
-                getAvailableXShareSessions(account.address),
             ]);
             console.log("Session IDs found:", sessionIds);
             setBeastSessions(availableBeastSessions);
-            setXShareSessions(availableXShareSessions);
             const sessionPromises = sessionIds.map(async (id: number) => {
                 const data = await getSessionData(id);
                 console.log("Session data for", id, ":", data);
@@ -284,7 +320,6 @@ export function SessionsContent() {
         account,
         getPlayerSessions,
         getAvailableBeastSessions,
-        getAvailableXShareSessions,
         getSessionData,
     ]);
 
@@ -428,13 +463,109 @@ export function SessionsContent() {
         [account, getPlayerSessions, loadSessions, navigate],
     );
 
-    const handleShareOnX = useCallback(() => {
-        if (typeof window === "undefined") {
+    const handleShareOnX = useCallback(async () => {
+        if (typeof window === "undefined" || !account || !connector) {
             return;
         }
 
-        window.open(shareIntentUrl, "_blank", "noopener,noreferrer");
-    }, [shareIntentUrl]);
+        let availableBundles = bundles;
+        let shareBundle =
+            (CONTRACTS.X_SHARE_BUNDLE_ID !== null
+                ? availableBundles.find((bundle) => bundle.id === CONTRACTS.X_SHARE_BUNDLE_ID)
+                : undefined) ??
+            availableBundles.find((bundle) => 
+                bundle.price === 0n && 
+                (bundle.metadata.toLowerCase().includes("twitter") || bundle.metadata.toLowerCase().includes("share"))
+            ) ??
+            availableBundles.find((bundle) => bundle.price === 0n);
+
+        console.log("[ABYSS_BUNDLE] Initial search:", {
+            found: !!shareBundle,
+            shareBundleId: shareBundle?.id,
+            availableCount: availableBundles.length,
+        });
+
+        if (!shareBundle) {
+            console.log("[ABYSS_BUNDLE] Refreshing bundles...");
+            const refreshed = await refreshBundles();
+            availableBundles = refreshed ?? availableBundles;
+            shareBundle =
+                (CONTRACTS.X_SHARE_BUNDLE_ID !== null
+                    ? availableBundles.find((bundle) => bundle.id === CONTRACTS.X_SHARE_BUNDLE_ID)
+                    : undefined) ??
+                availableBundles.find((bundle) => 
+                    bundle.price === 0n && 
+                    (bundle.metadata.toLowerCase().includes("twitter") || bundle.metadata.toLowerCase().includes("share"))
+                ) ??
+                availableBundles.find((bundle) => bundle.price === 0n);
+
+            console.log("[ABYSS_BUNDLE] After refresh:", {
+                found: !!shareBundle,
+                shareBundleId: shareBundle?.id,
+            });
+        }
+
+        if (!shareBundle) {
+            window.open(
+                `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`,
+                "_blank",
+                "noopener,noreferrer",
+            );
+            return;
+        }
+
+        setIsCreating(true);
+        try {
+            console.log("[ABYSS_BUNDLE] Selected bundle for claim:", {
+                id: shareBundle.id,
+                price: shareBundle.price.toString(),
+                metadata: shareBundle.metadata, // This is the gold mine for debugging
+            });
+
+            const referralLink = `https://play.abyssgame.fun?ref=${account.address}`;
+            const previousSessionIds = await getPlayerSessions(account.address);
+            
+            console.log("[ABYSS_BUNDLE] Invoking claimFreeSessionBundle...");
+            await claimFreeSessionBundle(shareBundle.id, referralLink, async () => {
+                console.log("[ABYSS_BUNDLE] Social claim success! Starting session poll...");
+                for (let attempt = 1; attempt <= 20; attempt += 1) {
+                    console.log(`[ABYSS_BUNDLE] Polling for new session... attempt ${attempt}/20`);
+                    const nextSessionIds = await getPlayerSessions(account.address);
+                    const createdSessionId = nextSessionIds.find(
+                        (sessionId) => !previousSessionIds.includes(sessionId),
+                    );
+
+                    if (createdSessionId !== undefined) {
+                        console.log("[ABYSS_BUNDLE] New session found:", createdSessionId);
+                        await loadSessions();
+                        setIsCreating(false);
+                        navigate(`/game?sessionId=${createdSessionId}`);
+                        return;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                }
+                console.warn("[ABYSS_BUNDLE] Polling timed out. Try refreshing the page.");
+                await loadSessions();
+                setIsCreating(false);
+            });
+        } catch (error) {
+            console.error("Failed to open social claim bundle:", error);
+            setIsCreating(false);
+        } finally {
+            // Keep creating true until polling finishes or fails
+        }
+    }, [
+        account,
+        bundles,
+        chain?.id,
+        connector,
+        getPlayerSessions,
+        loadSessions,
+        navigate,
+        refreshBundles,
+        shareMessage,
+    ]);
 
     const handleClaimBeastSession = useCallback(async () => {
         setIsCreating(true);
@@ -446,17 +577,6 @@ export function SessionsContent() {
             setIsCreating(false);
         }
     }, [claimBeastSession, waitForClaimedSession]);
-
-    const handleClaimXShareSession = useCallback(async () => {
-        setIsCreating(true);
-        try {
-            await waitForClaimedSession(claimXShareSession);
-        } catch (error) {
-            console.error("Failed to claim X share session:", error);
-        } finally {
-            setIsCreating(false);
-        }
-    }, [claimXShareSession, waitForClaimedSession]);
 
     return (
         <div style={styles.container}>
@@ -544,33 +664,30 @@ export function SessionsContent() {
                         <div style={styles.perkCard}>
                             <div style={styles.perkTitleRow}>
                                 <span style={styles.perkTitle}>Whisper Abyss on X</span>
-                                <span style={styles.perkBadge}>
-                                    {xShareSessions > 0 ? "CLAIM READY" : "FREE MINT SIGNAL"}
-                                </span>
+                                <span style={{
+                                    ...styles.perkBadge,
+                                    background: isClaimed ? "#4ADE80" : styles.perkBadge.background,
+                                    color: isClaimed ? "#000" : styles.perkBadge.color,
+                                }}>{isClaimed ? "CLAIMED" : "SOCIAL CLAIM"}</span>
                             </div>
                             <div style={styles.perkBody}>
-                                Share the game on X and let players know the cursed machine is awake. Once your share is verified, one free session claim can be unlocked onchain.
+                                {isClaimed 
+                                    ? "You've successfully claimed your social run. Spread the word and keep surviving!"
+                                    : "Share the game on X through Cartridge's social claim flow to unlock a one-time free Abyss run."}
                             </div>
-                            {xShareSessions > 0 ? (
-                                <motion.button
-                                    style={styles.perkAction}
-                                    onClick={handleClaimXShareSession}
-                                    disabled={isCreating}
-                                    whileHover={{ scale: 1.03 }}
-                                    whileTap={{ scale: 0.97 }}
-                                >
-                                    Claim X Run
-                                </motion.button>
-                            ) : (
-                                <motion.button
-                                    style={styles.perkAction}
-                                    onClick={handleShareOnX}
-                                    whileHover={{ scale: 1.03 }}
-                                    whileTap={{ scale: 0.97 }}
-                                >
-                                    Share on X
-                                </motion.button>
-                            )}
+                            <motion.button
+                                style={{
+                                    ...styles.perkAction,
+                                    opacity: (isCreating || isClaimed) ? 0.6 : 1,
+                                    cursor: (isCreating || isClaimed) ? "default" : "pointer",
+                                }}
+                                onClick={handleShareOnX}
+                                disabled={isCreating || isClaimed}
+                                whileHover={!(isCreating || isClaimed) ? { scale: 1.03 } : {}}
+                                whileTap={!(isCreating || isClaimed) ? { scale: 0.97 } : {}}
+                            >
+                                {isClaimed ? "CLAIMED" : "Share on X"}
+                            </motion.button>
                         </div>
                     </div>
                 </motion.div>

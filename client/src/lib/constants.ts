@@ -36,6 +36,10 @@ export const CONTRACTS = {
     import.meta.env.VITE_USDC_TOKEN ??
     "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
   SESSION_BUNDLE_ID: Number(import.meta.env.VITE_SESSION_BUNDLE_ID ?? "0"),
+  X_SHARE_BUNDLE_ID:
+    import.meta.env.VITE_X_SHARE_BUNDLE_ID !== undefined
+      ? Number(import.meta.env.VITE_X_SHARE_BUNDLE_ID)
+      : null,
   CARTRIDGE_VRF:
     import.meta.env.VITE_CARTRIDGE_VRF ??
     "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",

@@ -10,7 +10,6 @@ pub fn NAME() -> ByteArray {
 pub trait IPlay<T> {
     fn create_session(ref self: T, player: ContractAddress, payment_token: ContractAddress) -> u32;
     fn claim_beast_session(ref self: T, player: ContractAddress) -> u32;
-    fn claim_x_share_session(ref self: T, player: ContractAddress) -> u32;
     fn mint_session(ref self: T, player: ContractAddress, quantity: u32);
     fn request_spin(ref self: T, session_id: u32);
     fn end_session(ref self: T, session_id: u32);
@@ -22,7 +21,6 @@ pub trait IPlay<T> {
     fn get_player_sessions(self: @T, player: ContractAddress) -> Span<u32>;
     fn get_beast_sessions_used(self: @T, player: ContractAddress) -> u32;
     fn get_available_beast_sessions(self: @T, player: ContractAddress) -> u32;
-    fn get_available_x_share_sessions(self: @T, player: ContractAddress) -> u32;
     fn get_usd_cost_in_token(self: @T, payment_token: ContractAddress) -> u256;
     fn get_session_luck(self: @T, session_id: u32) -> u32;
     fn get_session_inventory_count(self: @T, session_id: u32) -> u32;
@@ -151,25 +149,6 @@ pub mod Play {
             usage.player = player;
             usage.count = 1;
             store.set_beast_sessions_used(@usage);
-
-            let session_id = InternalImpl::mint_competitive_session(ref store, ref config, world, player);
-            store.set_config(@config);
-            session_id
-        }
-
-        fn claim_x_share_session(ref self: ContractState, player: ContractAddress) -> u32 {
-            let caller = get_caller_address();
-            assert(caller == player, 'Not owner');
-
-            let world = self.world(@NAMESPACE());
-            let mut store = StoreTrait::new(world);
-            let mut config: Config = store.config();
-            let mut claim = store.x_share_session_claim(player);
-            assert(claim.granted, 'No X share session available');
-            assert(!claim.used, 'X share session already claimed');
-            claim.player = player;
-            claim.used = true;
-            store.set_x_share_session_claim(@claim);
 
             let session_id = InternalImpl::mint_competitive_session(ref store, ref config, world, player);
             store.set_config(@config);
@@ -451,13 +430,6 @@ pub mod Play {
             let beast_erc721 = IRelicERC721Dispatcher { contract_address: config.beast_nft };
             let balance_u256 = beast_erc721.balance_of(player);
             if balance_u256 > 0 && usage.count < 1 { 1 } else { 0 }
-        }
-
-        fn get_available_x_share_sessions(self: @ContractState, player: ContractAddress) -> u32 {
-            let world = self.world(@NAMESPACE());
-            let store = StoreTrait::new(world);
-            let claim = store.x_share_session_claim(player);
-            if claim.granted && !claim.used { 1 } else { 0 }
         }
 
         fn get_usd_cost_in_token(self: @ContractState, payment_token: ContractAddress) -> u256 {

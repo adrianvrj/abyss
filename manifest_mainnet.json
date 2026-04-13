@@ -107,7 +107,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x17d2fa80801b7d239b0f3c35dcc3b94df6d5fe9f29b64230a813641894699ca",
+      "class_hash": "0x6d428e3941743013595cd7b667325996b948a3f275ef2a357e412d0c9610ee1",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -115,7 +115,6 @@
         "dojo_init",
         "create_session",
         "claim_beast_session",
-        "claim_x_share_session",
         "mint_session",
         "request_spin",
         "end_session",
@@ -154,7 +153,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x19f00dad2894361e1a83d4da0ec9caf54faccd591f93db7b41a089964b46b51",
+      "class_hash": "0xc2c4de687e35e2dd56ed1dac817159822be1ab49914a51df6504250086d83f",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -173,7 +172,7 @@
         "set_relic_nft",
         "set_relic_base_uri",
         "set_beast_nft",
-        "grant_x_share_session",
+        "register_free_social_bundle",
         "set_pragma_oracle",
         "set_chip_emission_rate",
         "set_chip_boost_multiplier",
@@ -4037,22 +4036,6 @@
         },
         {
           "type": "function",
-          "name": "claim_x_share_session",
-          "inputs": [
-            {
-              "name": "player",
-              "type": "core::starknet::contract_address::ContractAddress"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u32"
-            }
-          ],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
           "name": "mint_session",
           "inputs": [
             {
@@ -4181,22 +4164,6 @@
         {
           "type": "function",
           "name": "get_available_beast_sessions",
-          "inputs": [
-            {
-              "name": "player",
-              "type": "core::starknet::contract_address::ContractAddress"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u32"
-            }
-          ],
-          "state_mutability": "view"
-        },
-        {
-          "type": "function",
-          "name": "get_available_x_share_sessions",
           "inputs": [
             {
               "name": "player",
@@ -4663,14 +4630,38 @@
         },
         {
           "type": "function",
-          "name": "grant_x_share_session",
+          "name": "register_free_social_bundle",
           "inputs": [
             {
-              "name": "player",
+              "name": "referral_percentage",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "price",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "payment_token",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "payment_receiver",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "image_uri",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "allower",
               "type": "core::starknet::contract_address::ContractAddress"
             }
           ],
-          "outputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
           "state_mutability": "external"
         },
         {

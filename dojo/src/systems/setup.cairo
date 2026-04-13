@@ -15,7 +15,7 @@ pub trait ISetup<T> {
     fn set_relic_nft(ref self: T, address: ContractAddress);
     fn set_relic_base_uri(ref self: T, base_uri: ByteArray);
     fn set_beast_nft(ref self: T, address: ContractAddress);
-    fn grant_x_share_session(ref self: T, player: ContractAddress);
+
     fn set_pragma_oracle(ref self: T, oracle: ContractAddress);
     fn set_chip_emission_rate(ref self: T, rate: u32);
     fn set_chip_boost_multiplier(ref self: T, multiplier: u32);
@@ -42,6 +42,15 @@ pub trait ISetup<T> {
         image_uri: ByteArray,
         allower: ContractAddress,
     ) -> u32;
+    fn register_free_social_bundle(
+        ref self: T,
+        referral_percentage: u8,
+        price: u256,
+        payment_token: ContractAddress,
+        payment_receiver: ContractAddress,
+        image_uri: ByteArray,
+        allower: ContractAddress,
+    ) -> u32;
     fn update_bundle(
         ref self: T,
         bundle_id: u32,
@@ -62,6 +71,7 @@ pub mod Setup {
     use bundle::interface::IBundle;
     use bundle::types::item::ItemTrait as BundleItemTrait;
     use bundle::types::metadata::MetadataTrait as BundleMetadataTrait;
+    use bundle::types::condition::{ConditionTrait, Twitter};
     use dojo::world::WorldStorageTrait;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
@@ -165,6 +175,26 @@ pub mod Setup {
             items: array![item].span(),
             tokens: array![payment_token].span(),
             conditions: array![].span(),
+        )
+            .jsonify()
+    }
+
+    fn free_social_session_bundle_metadata(payment_token: ContractAddress, image_uri: ByteArray) -> ByteArray {
+        let item = BundleItemTrait::new(
+            name: "Free Abyss Session",
+            description: "Start a free run in Abyss by sharing on X",
+            image_uri: image_uri.clone(),
+        );
+
+        let conditions = Twitter::new("abyssdotfun", "1884657985219403776").span();
+
+        BundleMetadataTrait::new(
+            name: "Free Abyss Session Bundle",
+            description: "Claim a free Abyss session",
+            image_uri: image_uri,
+            items: array![item].span(),
+            tokens: array![payment_token].span(),
+            conditions: conditions,
         )
             .jsonify()
     }
@@ -422,17 +452,6 @@ pub mod Setup {
             store.set_config(@config);
         }
 
-        fn grant_x_share_session(ref self: ContractState, player: ContractAddress) {
-            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
-            let world = self.world(@NAMESPACE());
-            let mut store = StoreTrait::new(world);
-            let mut claim = store.x_share_session_claim(player);
-            assert(!claim.used, 'X share claim already consumed');
-            claim.player = player;
-            claim.granted = true;
-            store.set_x_share_session_claim(@claim);
-        }
-
         fn set_pragma_oracle(ref self: ContractState, oracle: ContractAddress) {
             self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
             let world = self.world(@NAMESPACE());
@@ -538,6 +557,29 @@ pub mod Setup {
                 payment_token,
                 payment_receiver,
                 session_bundle_metadata(payment_token, image_uri),
+                allower,
+            )
+        }
+
+        fn register_free_social_bundle(
+            ref self: ContractState,
+            referral_percentage: u8,
+            price: u256,
+            payment_token: ContractAddress,
+            payment_receiver: ContractAddress,
+            image_uri: ByteArray,
+            allower: ContractAddress,
+        ) -> u32 {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+
+            register_bundle_internal(
+                ref self,
+                referral_percentage,
+                false, // reissuable: false
+                price,
+                payment_token,
+                payment_receiver,
+                free_social_session_bundle_metadata(payment_token, image_uri),
                 allower,
             )
         }
