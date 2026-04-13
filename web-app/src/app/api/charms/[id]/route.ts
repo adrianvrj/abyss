@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 // Base URL for images - update this to your production domain
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
 const provider = new RpcProvider({
-    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/sepolia',
+    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/mainnet',
 });
 
 const DEFAULT_CHARM_ADDRESS = manifest.contracts.find(
@@ -65,8 +65,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/dusty_hourglass.png`,
         rarity: "Common",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+4 luck when ≤2 spins remaining",
-        luck_value: 4,
+        effect_description: "+8 luck when ≤2 spins remaining",
+        luck_value: 8,
         shop_cost: 1
     },
     "5": {
@@ -139,8 +139,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/shadow_lantern.png`,
         rarity: "Rare",
         effect_type: "LuckBoost",
-        effect_description: "+8 luck, +4 more at level 5+",
-        luck_value: 12,
+        effect_description: "+8 luck, +8 more at level 5+",
+        luck_value: 16,
         shop_cost: 2
     },
     "12": {
@@ -199,11 +199,11 @@ const CHARM_METADATA: Record<string, {
     },
     "17": {
         name: "Reaper's Mark",
-        description: "Death marks all patterns for a second harvest.",
+        description: "Death marks every pattern except jackpot for a second harvest.",
         image: `${BASE_URL}/images/charms/reapers_mark.png`,
         rarity: "Epic",
         effect_type: "PatternRetrigger",
-        effect_description: "ALL patterns trigger twice",
+        effect_description: "All non-jackpot patterns trigger twice",
         luck_value: 0,
         shop_cost: 5
     },
@@ -213,8 +213,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/chaos_orb.png`,
         rarity: "Epic",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+15 luck if 666 was blocked this session",
-        luck_value: 15,
+        effect_description: "+80 luck if 666 was blocked this session",
+        luck_value: 80,
         shop_cost: 5
     },
 

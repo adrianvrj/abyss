@@ -49,7 +49,7 @@ pub impl SpinnableImpl of SpinnableTrait {
                 g, start, symbol_scores, h_bonuses,
             );
             total_score += score * h3_retrigger;
-            total_patterns += pats * h3_retrigger.try_into().unwrap();
+            total_patterns += pats;
             
             // Track matches for upgrades
             if matched == crate::types::symbol::SymbolType::SEVEN { m7 += pats.into(); }
@@ -66,7 +66,7 @@ pub impl SpinnableImpl of SpinnableTrait {
             g, symbol_scores, vert_bonus,
         );
         total_score += v_score * vert_retrigger;
-        total_patterns += v_pats * vert_retrigger.try_into().unwrap();
+        total_patterns += v_pats;
         m7 += vm7; md += vmd; mc += vmc; m_coin += vm_coin; ml += vml;
 
         // Diagonal patterns
@@ -74,7 +74,7 @@ pub impl SpinnableImpl of SpinnableTrait {
             g, symbol_scores, diag_bonus,
         );
         total_score += d_score * diag_retrigger;
-        total_patterns += d_pats * diag_retrigger.try_into().unwrap();
+        total_patterns += d_pats;
         m7 += dm7; md += dmd; mc += dmc; m_coin += dm_coin; ml += dml;
 
         total_score = crate::helpers::patterns::apply_jackpot_bonus(total_score, is_jackpot, jp_bonus);

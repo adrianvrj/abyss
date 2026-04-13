@@ -7,7 +7,8 @@ PROFILE="${PROFILE:-sepolia}"
 MANIFEST_PATH="${MANIFEST_PATH:-${ROOT_DIR}/manifest_${PROFILE}.json}"
 ACCOUNT_NAME="${ACCOUNT_NAME:-abyss_admin}"
 ACCOUNTS_FILE="${ACCOUNTS_FILE:-/Users/adran/.starknet_accounts/starknet_open_zeppelin_accounts.json}"
-RPC_URL="${RPC_URL:-https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/dql5pMT88iueZWl7L0yzT56uVk0EBU4L}"
+DEFAULT_RPC_URL="https://api.cartridge.gg/x/starknet/${PROFILE}"
+RPC_URL="${RPC_URL:-${DEFAULT_RPC_URL}}"
 
 ABI_SOURCE="${ROOT_DIR}/target/${PROFILE}/abyss_game_Setup.contract_class.json"
 if [[ ! -f "${ABI_SOURCE}" ]]; then

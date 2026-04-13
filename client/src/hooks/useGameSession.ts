@@ -689,7 +689,8 @@ export function useGameSession(sessionId: string | null) {
                 setSpinsRemaining(spin.spinsRemaining);
                 setIsSessionActive(spin.isActive);
                 setBlocked666(spin.is666);
-                if (spin.currentLuck !== undefined) setCurrentLuck(spin.currentLuck);
+                const resolvedCurrentLuck = await getSessionLuck(Number(sessionId)).catch(() => spin.currentLuck);
+                if (resolvedCurrentLuck !== undefined) setCurrentLuck(resolvedCurrentLuck);
 
                 if (spin.is666) {
                     setScoreResetPreviousScore(score);
@@ -829,7 +830,6 @@ export function useGameSession(sessionId: string | null) {
                         setTickets(latestSession.tickets);
                         setSpinsRemaining(latestSession.spinsRemaining);
                         setIsSessionActive(latestSession.isActive);
-                        setCurrentLuck(latestSession.luck);
                         if (latestSession.symbolScores?.length === 5) {
                             setSymbolScores(latestSession.symbolScores);
                         }
@@ -963,8 +963,8 @@ export function useGameSession(sessionId: string | null) {
                 if (!isScorcher && (eType === 0 || eType === 1 || eType === 2)) {
                     setPendingRelicEffect(eType);
                 } else if (eType === 3) {
-                    setSpinsRemaining(5);
                     setPendingRelicEffect(null);
+                    await loadSessionData('relic:reset-spins');
                 } else if (eType === 4) {
                     setMarketRefreshTrigger(prev => prev + 1);
                     setPendingRelicEffect(null);
@@ -1008,7 +1008,7 @@ export function useGameSession(sessionId: string | null) {
         } finally {
             setIsActivatingRelic(false);
         }
-    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, activateRelic, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo]);
+    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, activateRelic, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo, loadSessionData]);
 
     const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {
         if (!sessionId || equippedRelic) return;

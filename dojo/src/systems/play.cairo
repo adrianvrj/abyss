@@ -9,6 +9,8 @@ pub fn NAME() -> ByteArray {
 #[starknet::interface]
 pub trait IPlay<T> {
     fn create_session(ref self: T, player: ContractAddress, payment_token: ContractAddress) -> u32;
+    fn claim_beast_session(ref self: T, player: ContractAddress) -> u32;
+    fn claim_x_share_session(ref self: T, player: ContractAddress) -> u32;
     fn mint_session(ref self: T, player: ContractAddress, quantity: u32);
     fn request_spin(ref self: T, session_id: u32);
     fn end_session(ref self: T, session_id: u32);
@@ -20,6 +22,7 @@ pub trait IPlay<T> {
     fn get_player_sessions(self: @T, player: ContractAddress) -> Span<u32>;
     fn get_beast_sessions_used(self: @T, player: ContractAddress) -> u32;
     fn get_available_beast_sessions(self: @T, player: ContractAddress) -> u32;
+    fn get_available_x_share_sessions(self: @T, player: ContractAddress) -> u32;
     fn get_usd_cost_in_token(self: @T, payment_token: ContractAddress) -> u256;
     fn get_session_luck(self: @T, session_id: u32) -> u32;
     fn get_session_inventory_count(self: @T, session_id: u32) -> u32;
@@ -112,83 +115,64 @@ pub mod Play {
             let mut store = StoreTrait::new(world);
             let mut config: Config = store.config();
 
-            // 1. FREE SESSION CHECK (BEAST NFT OWNER)
-            let mut is_free_session = false;
-            let zero_addr: ContractAddress = Zero::zero();
-            if config.beast_nft != zero_addr {
-                let beast_erc721 = IRelicERC721Dispatcher { contract_address: config.beast_nft };
-                if beast_erc721.balance_of(player) > 0 {
-                    let mut bsu = store.beast_sessions_used(player);
-                    if bsu.count < 1 { 
-                        is_free_session = true;
-                        bsu.count += 1;
-                        store.set_beast_sessions_used(@bsu);
-                    }
-                }
+            let amount_required = PricingImpl::get_usd_cost_in_token(@store, payment_token);
+            if amount_required > 0 {
+                let token_disp = IERC20Dispatcher { contract_address: payment_token };
+                token_disp.transfer_from(player, starknet::get_contract_address(), amount_required);
+                
+                // Distribute revenue: 80% treasury, 20% team
+                let team_amount = (amount_required * 20) / 100;
+                let treasury_amount = amount_required - team_amount;
+
+                token_disp.transfer(config.treasury, treasury_amount);
+                token_disp.transfer(config.team, team_amount);
             }
 
-            // 2. PAYMENT & REVENUE DISTRIBUTION
-            if !is_free_session {
-                let amount_required = PricingImpl::get_usd_cost_in_token(@store, payment_token);
-                if amount_required > 0 {
-                    let token_disp = IERC20Dispatcher { contract_address: payment_token };
-                    token_disp.transfer_from(player, starknet::get_contract_address(), amount_required);
-                    
-                    // Distribute revenue: 50% prize, 30% treasury, 20% team
-                    let prize_amount = (amount_required * 50) / 100;
-                    let team_amount = (amount_required * 20) / 100;
-                    let treasury_amount = amount_required - prize_amount - team_amount;
-
-                    token_disp.transfer(config.treasury, treasury_amount);
-                    token_disp.transfer(config.team, team_amount);
-                    // Prize pool stays in contract for now or is tracked in store
-                }
-            }
-
-            // 3. MINT NFT & SYNC SESSION ID
-            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
-            let collection = ICollectionDispatcher { contract_address: collection_address };
-            let session_id: u32 = collection.mint(player, false).try_into().expect('Invalid session ID');
-
-            config.total_competitive_sessions += 1;
+            let session_id = InternalImpl::mint_competitive_session(ref store, ref config, world, player);
             store.set_config(@config);
+            session_id
+        }
 
-            let session = Session {
-                session_id,
-                player_address: player,
-                level: 1,
-                score: 0,
-                total_score: 0,
-                spins_remaining: DEFAULT_SPINS,
-                is_competitive: true,
-                is_active: true,
-                created_at: starknet::get_block_timestamp(),
-                chips_claimed: false,
-                equipped_relic: 0,
-                relic_last_used_spin: 0,
-                relic_pending_effect: RelicEffectType::NoEffect,
-                total_spins: 0,
-                luck: 0,
-                blocked_666_this_session: false,
-                tickets: DEFAULT_TICKETS,
-                score_seven: DEFAULT_SCORE_SEVEN,
-                score_diamond: DEFAULT_SCORE_DIAMOND,
-                score_cherry: DEFAULT_SCORE_CHERRY,
-                score_coin: DEFAULT_SCORE_COIN,
-                score_lemon: DEFAULT_SCORE_LEMON,
-            };
-            store.set_session(@session);
+        fn claim_beast_session(ref self: ContractState, player: ContractAddress) -> u32 {
+            let caller = get_caller_address();
+            assert(caller == player, 'Not owner');
 
-            let mut ps = store.player_sessions(player);
-            let ps_idx = ps.count;
-            ps.count += 1;
-            store.set_player_sessions(@ps);
-            store.set_player_session_entry(
-                @PlayerSessionEntry { player, index: ps_idx, session_id },
-            );
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut config: Config = store.config();
+            let zero_addr: ContractAddress = Zero::zero();
+            assert(config.beast_nft != zero_addr, 'Beast collection not configured');
 
-            crate::helpers::market::MarketImpl::refresh_market(ref store, session_id);
-            store.emit_session_created(session_id, player, true);
+            let beast_erc721 = IRelicERC721Dispatcher { contract_address: config.beast_nft };
+            assert(beast_erc721.balance_of(player) > 0, 'No Beast NFT held');
+
+            let mut usage = store.beast_sessions_used(player);
+            assert(usage.count < 1, 'Beast session already claimed');
+            usage.player = player;
+            usage.count = 1;
+            store.set_beast_sessions_used(@usage);
+
+            let session_id = InternalImpl::mint_competitive_session(ref store, ref config, world, player);
+            store.set_config(@config);
+            session_id
+        }
+
+        fn claim_x_share_session(ref self: ContractState, player: ContractAddress) -> u32 {
+            let caller = get_caller_address();
+            assert(caller == player, 'Not owner');
+
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut config: Config = store.config();
+            let mut claim = store.x_share_session_claim(player);
+            assert(claim.granted, 'No X share session available');
+            assert(!claim.used, 'X share session already claimed');
+            claim.player = player;
+            claim.used = true;
+            store.set_x_share_session_claim(@claim);
+
+            let session_id = InternalImpl::mint_competitive_session(ref store, ref config, world, player);
+            store.set_config(@config);
             session_id
         }
 
@@ -201,51 +185,9 @@ pub mod Play {
             let mut store = StoreTrait::new(world);
             let mut config = store.config();
 
-            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
-            let collection = ICollectionDispatcher { contract_address: collection_address };
-
             let mut i: u32 = 0;
             while i < quantity {
-                let session_id: u32 = collection.mint(player, false).try_into().expect('Invalid session ID');
-                config.total_competitive_sessions += 1;
-
-                let session = Session {
-                    session_id,
-                    player_address: player,
-                    level: 1,
-                    score: 0,
-                    total_score: 0,
-                    spins_remaining: DEFAULT_SPINS,
-                    is_competitive: true,
-                    is_active: true,
-                    created_at: starknet::get_block_timestamp(),
-                    chips_claimed: false,
-                    equipped_relic: 0,
-                    relic_last_used_spin: 0,
-                    relic_pending_effect: RelicEffectType::NoEffect,
-                    total_spins: 0,
-                    luck: 0,
-                    blocked_666_this_session: false,
-                    tickets: DEFAULT_TICKETS,
-                    score_seven: DEFAULT_SCORE_SEVEN,
-                    score_diamond: DEFAULT_SCORE_DIAMOND,
-                    score_cherry: DEFAULT_SCORE_CHERRY,
-                    score_coin: DEFAULT_SCORE_COIN,
-                    score_lemon: DEFAULT_SCORE_LEMON,
-                };
-                store.set_session(@session);
-
-                let mut ps = store.player_sessions(player);
-                let ps_idx = ps.count;
-                ps.count += 1;
-                store.set_player_sessions(@ps);
-                store.set_player_session_entry(
-                    @PlayerSessionEntry { player, index: ps_idx, session_id },
-                );
-
-                crate::helpers::market::MarketImpl::refresh_market(ref store, session_id);
-                store.emit_session_created(session_id, player, true);
-                
+                InternalImpl::mint_competitive_session(ref store, ref config, world, player);
                 i += 1;
             };
             
@@ -376,6 +318,7 @@ pub mod Play {
                 biblia_used,
             };
             store.set_spin_result(@spin_result);
+            let next_effective_luck = InventoryImpl::calculate_effective_luck(@store, session_id);
 
             // SYNC LEADERBOARD (Will be done via Torii indexing Session model)
 
@@ -396,7 +339,7 @@ pub mod Play {
                     is_666,
                     is_jackpot,
                     biblia_used,
-                    current_luck: luck,
+                    current_luck: next_effective_luck,
                     score_seven: session.score_seven,
                     score_diamond: session.score_diamond,
                     score_cherry: session.score_cherry,
@@ -507,16 +450,14 @@ pub mod Play {
 
             let beast_erc721 = IRelicERC721Dispatcher { contract_address: config.beast_nft };
             let balance_u256 = beast_erc721.balance_of(player);
-            let balance: u32 = match balance_u256.try_into() {
-                Option::Some(value) => value,
-                Option::None => 4_294_967_295,
-            };
+            if balance_u256 > 0 && usage.count < 1 { 1 } else { 0 }
+        }
 
-            if balance <= usage.count {
-                0
-            } else {
-                balance - usage.count
-            }
+        fn get_available_x_share_sessions(self: @ContractState, player: ContractAddress) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let claim = store.x_share_session_claim(player);
+            if claim.granted && !claim.used { 1 } else { 0 }
         }
 
         fn get_usd_cost_in_token(self: @ContractState, payment_token: ContractAddress) -> u256 {
@@ -633,6 +574,57 @@ pub mod Play {
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
+        fn mint_competitive_session(
+            ref store: Store,
+            ref config: Config,
+            world: dojo::world::WorldStorage,
+            player: ContractAddress,
+        ) -> u32 {
+            let (collection_address, _) = world.dns(@COLLECTION_NAME()).expect('Collection not found!');
+            let collection = ICollectionDispatcher { contract_address: collection_address };
+            let session_id: u32 = collection.mint(player, false).try_into().expect('Invalid session ID');
+
+            config.total_competitive_sessions += 1;
+
+            let session = Session {
+                session_id,
+                player_address: player,
+                level: 1,
+                score: 0,
+                total_score: 0,
+                spins_remaining: DEFAULT_SPINS,
+                is_competitive: true,
+                is_active: true,
+                created_at: starknet::get_block_timestamp(),
+                chips_claimed: false,
+                equipped_relic: 0,
+                relic_last_used_spin: 0,
+                relic_pending_effect: RelicEffectType::NoEffect,
+                total_spins: 0,
+                luck: 0,
+                blocked_666_this_session: false,
+                tickets: DEFAULT_TICKETS,
+                score_seven: DEFAULT_SCORE_SEVEN,
+                score_diamond: DEFAULT_SCORE_DIAMOND,
+                score_cherry: DEFAULT_SCORE_CHERRY,
+                score_coin: DEFAULT_SCORE_COIN,
+                score_lemon: DEFAULT_SCORE_LEMON,
+            };
+            store.set_session(@session);
+
+            let mut ps = store.player_sessions(player);
+            let ps_idx = ps.count;
+            ps.count += 1;
+            store.set_player_sessions(@ps);
+            store.set_player_session_entry(
+                @PlayerSessionEntry { player, index: ps_idx, session_id },
+            );
+
+            crate::helpers::market::MarketImpl::refresh_market(ref store, session_id);
+            store.emit_session_created(session_id, player, true);
+            session_id
+        }
+
         fn submit_leaderboard_score(
             ref self: ContractState,
             world: dojo::world::WorldStorage,

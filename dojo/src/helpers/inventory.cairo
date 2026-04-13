@@ -2,12 +2,13 @@ use crate::store::{Store, StoreTrait};
 // No imports from index needed currently as reported by compiler.
 use crate::helpers::charm_types::{
     calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
-    get_charm_retrigger_bonuses_for_ids,
+    get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
 };
 use crate::constants::{
     DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
     DEFAULT_SCORE_SEVEN,
 };
+use crate::types::effect::CharmEffectType;
 
 #[generate_trait]
 pub impl InventoryImpl of InventoryTrait {
@@ -142,6 +143,17 @@ pub impl InventoryImpl of InventoryTrait {
             }
             i += 1;
         };
+
+        let charm_ids = Self::collect_session_charm_ids(store, session_id);
+        let mut j: u32 = 0;
+        while j < charm_ids.len().try_into().unwrap() {
+            let charm_meta = get_charm_type_info(*charm_ids.at(j));
+            if charm_meta.effect_type == CharmEffectType::ExtraSpinWithLuck {
+                bonus += charm_meta.effect_value;
+            }
+            j += 1;
+        };
+
         bonus
     }
 

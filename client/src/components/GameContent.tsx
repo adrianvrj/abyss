@@ -100,6 +100,21 @@ function GameStage({
     const [showBibliaPreview, setShowBibliaPreview] = useState(false);
     const [showScoreResetPreview, setShowScoreResetPreview] = useState(false);
     const practiceGame = practiceMode ? (game as ReturnType<typeof usePracticeSession>) : null;
+    const mobileTabMeta = {
+        market: {
+            title: 'Market',
+            subtitle: 'Spend tickets and sculpt the run',
+        },
+        inventory: {
+            title: 'Inventory',
+            subtitle: 'Sell or inspect your current build',
+        },
+        info: {
+            title: 'Run Data',
+            subtitle: 'Live stats, symbols and pattern odds',
+        },
+    } as const;
+    const activeMobileMeta = activeMobileTab === 'home' ? null : mobileTabMeta[activeMobileTab];
 
     const { loaded: assetsLoaded, progress: loadProgress } = useAssetPreloader(PRELOAD_IMAGES, PRELOAD_AUDIO);
 
@@ -148,102 +163,104 @@ function GameStage({
                 </div>
             )}
 
-            <GameHUD
-                level={game.level}
-                threshold={game.threshold}
-                spinsRemaining={game.spinsRemaining}
-                score={game.score}
-                tickets={game.tickets}
-                onExit={() => navigate("/")}
-            />
+            <div className={activeMobileTab !== 'home' ? 'mobile-hud-hidden' : ''}>
+                <GameHUD
+                    level={game.level}
+                    threshold={game.threshold}
+                    spinsRemaining={game.spinsRemaining}
+                    score={game.score}
+                    tickets={game.tickets}
+                    onExit={() => navigate("/")}
+                />
+            </div>
 
-            {practiceMode && (
-                <div style={{
-                    position: 'fixed',
-                    top: 62,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    zIndex: 1100,
-                    padding: '8px 14px',
-                    borderRadius: '999px',
-                    border: '2px solid #FF841C',
-                    background: 'rgba(0, 0, 0, 0.88)',
-                    fontFamily: "'PressStart2P', monospace",
-                    fontSize: '9px',
-                    color: '#FF841C',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    textAlign: 'center',
-                }}>
+            {practiceMode && activeMobileTab === 'home' && (
+                <div className="practice-mode-badge">
                     Practice Mode
                 </div>
             )}
 
             {/* Mobile Tab Content Overlay */}
             <div className="mobile-content-overlay" style={{ display: (activeMobileTab !== 'home') ? 'flex' : 'none' }}>
-                <div style={{ display: activeMobileTab === 'market' ? 'contents' : 'none' }}>
-                    <InlineMarketPanel
-                        sessionId={numericSessionId}
-                        currentScore={game.score}
-                        currentTickets={game.tickets}
-                        symbolScores={game.symbolScores}
-                        onUpdateScore={game.setScore}
-                        onUpdateTickets={game.setTickets}
-                        onUpdateSpins={(spins) => game.setSpinsRemaining(spins)}
-                        onUpdateLuck={(luck) => game.setCurrentLuck(luck)}
-                        onUpdateSymbolScores={game.setSymbolScores}
-                        onInventoryChange={() => game.setInventoryRefreshTrigger(prev => prev + 1)}
-                        onPurchaseSuccess={(item) => game.setOptimisticItems(prev => [...prev, item])}
-                        initialItems={game.initialMarketItems}
-                        refreshTrigger={game.marketRefreshTrigger}
-                        externalRefreshEvent={game.lastMarketEvent}
-                        hiddenItemIds={game.hiddenItems}
-                        practiceMode={practiceMode}
-                        practiceMarketItems={game.initialMarketItems}
-                        practiceOwnedItems={game.initialInventoryItems}
-                        practicePurchasedSlots={practiceGame?.practicePurchasedSlots}
-                        practiceRefreshCount={practiceGame?.practiceRefreshCount}
-                        onPracticeRefresh={practiceGame?.handlePracticeRefresh}
-                        onPracticeBuy={practiceGame?.handlePracticeBuy}
-                    />
-                </div>
-                <div style={{ display: activeMobileTab === 'inventory' ? 'contents' : 'none' }}>
-                    <InlineInventoryPanel
-                        sessionId={numericSessionId}
-                        currentScore={game.score}
-                        currentTickets={game.tickets}
-                        onUpdateScore={game.setScore}
-                        onUpdateTickets={game.setTickets}
-                        onItemClick={(item) => game.setItemToSell(item)}
-                        refreshTrigger={game.marketRefreshTrigger}
-                        optimisticItems={game.optimisticItems}
-                        onOpenRelics={practiceMode ? undefined : (() => setShowRelicModal(true))}
-                        sellingItemId={game.isSelling && game.itemToSell ? game.itemToSell.item_id : undefined}
-                        hiddenItemIds={game.hiddenItems}
-                        bibliaBroken={game.bibliaBroken}
-                        initialInventory={game.initialInventoryItems}
-                        practiceMode={practiceMode}
-                        practiceItems={game.initialInventoryItems}
-                    />
-                </div>
-                <div style={{ display: activeMobileTab === 'info' ? 'contents' : 'none' }}>
-                    <GameStatsPanel
-                        level={game.level}
-                        score={game.score}
-                        threshold={game.threshold}
-                        spinsRemaining={game.spinsRemaining}
-                        sessionId={numericSessionId}
-                        refreshTrigger={game.inventoryRefreshTrigger}
-                        currentLuck={game.currentLuck}
-                        currentTickets={game.tickets}
-                        lastSpinPatternCount={game.patterns.length}
-                        optimisticItems={game.optimisticItems}
-                        hiddenItemIds={game.hiddenItems}
-                        symbolScores={game.symbolScores}
-                        blocked666={game.blocked666}
-                        practiceMode={practiceMode}
-                        itemsOverride={game.initialInventoryItems}
-                    />
+                <div className="mobile-panel-shell">
+                    <div className="mobile-panel-header">
+                        <div className="mobile-panel-copy">
+                            <span className="mobile-panel-kicker">
+                                {practiceMode ? 'Practice' : `Session #${numericSessionId}`}
+                            </span>
+                            <span className="mobile-panel-title">{activeMobileMeta?.title}</span>
+                            <span className="mobile-panel-subtitle">{activeMobileMeta?.subtitle}</span>
+                        </div>
+                        <button className="mobile-panel-close" onClick={() => setActiveMobileTab('home')}>
+                            RETURN
+                        </button>
+                    </div>
+                    <div className="mobile-panel-body">
+                        <div style={{ display: activeMobileTab === 'market' ? 'contents' : 'none' }}>
+                            <InlineMarketPanel
+                                sessionId={numericSessionId}
+                                currentScore={game.score}
+                                currentTickets={game.tickets}
+                                symbolScores={game.symbolScores}
+                                onUpdateScore={game.setScore}
+                                onUpdateTickets={game.setTickets}
+                                onUpdateSpins={(spins) => game.setSpinsRemaining(spins)}
+                                onUpdateLuck={(luck) => game.setCurrentLuck(luck)}
+                                onUpdateSymbolScores={game.setSymbolScores}
+                                onInventoryChange={() => game.setInventoryRefreshTrigger(prev => prev + 1)}
+                                onPurchaseSuccess={(item) => game.setOptimisticItems(prev => [...prev, item])}
+                                initialItems={game.initialMarketItems}
+                                refreshTrigger={game.marketRefreshTrigger}
+                                externalRefreshEvent={game.lastMarketEvent}
+                                hiddenItemIds={game.hiddenItems}
+                                practiceMode={practiceMode}
+                                practiceMarketItems={game.initialMarketItems}
+                                practiceOwnedItems={game.initialInventoryItems}
+                                practicePurchasedSlots={practiceGame?.practicePurchasedSlots}
+                                practiceRefreshCount={practiceGame?.practiceRefreshCount}
+                                onPracticeRefresh={practiceGame?.handlePracticeRefresh}
+                                onPracticeBuy={practiceGame?.handlePracticeBuy}
+                            />
+                        </div>
+                        <div style={{ display: activeMobileTab === 'inventory' ? 'contents' : 'none' }}>
+                            <InlineInventoryPanel
+                                sessionId={numericSessionId}
+                                currentScore={game.score}
+                                currentTickets={game.tickets}
+                                onUpdateScore={game.setScore}
+                                onUpdateTickets={game.setTickets}
+                                onItemClick={(item) => game.setItemToSell(item)}
+                                refreshTrigger={game.marketRefreshTrigger}
+                                optimisticItems={game.optimisticItems}
+                                onOpenRelics={practiceMode ? undefined : (() => setShowRelicModal(true))}
+                                sellingItemId={game.isSelling && game.itemToSell ? game.itemToSell.item_id : undefined}
+                                hiddenItemIds={game.hiddenItems}
+                                bibliaBroken={game.bibliaBroken}
+                                initialInventory={game.initialInventoryItems}
+                                practiceMode={practiceMode}
+                                practiceItems={game.initialInventoryItems}
+                            />
+                        </div>
+                        <div style={{ display: activeMobileTab === 'info' ? 'contents' : 'none' }}>
+                            <GameStatsPanel
+                                level={game.level}
+                                score={game.score}
+                                threshold={game.threshold}
+                                spinsRemaining={game.spinsRemaining}
+                                sessionId={numericSessionId}
+                                refreshTrigger={game.inventoryRefreshTrigger}
+                                currentLuck={game.currentLuck}
+                                currentTickets={game.tickets}
+                                lastSpinPatternCount={game.patterns.length}
+                                optimisticItems={game.optimisticItems}
+                                hiddenItemIds={game.hiddenItems}
+                                symbolScores={game.symbolScores}
+                                blocked666={game.blocked666}
+                                practiceMode={practiceMode}
+                                itemsOverride={game.initialInventoryItems}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -325,7 +342,7 @@ function GameStage({
                         </div>
 
                         {/* Mobile Relic Controls */}
-                        {!practiceMode && (
+                        {!practiceMode && activeMobileTab === 'home' && (
                             <div className="mobile-floating-controls">
                                 <button
                                     className="mobile-relic-btn equip-btn"
@@ -413,16 +430,16 @@ function GameStage({
 
             {/* Mobile Bottom Nav */}
             <div className="mobile-nav">
-                <button className="nav-item" onClick={() => setActiveMobileTab('home')} style={{ color: activeMobileTab === 'home' ? '#FF841C' : '#fff' }}>
+                <button className={`nav-item ${activeMobileTab === 'home' ? 'active' : ''}`} onClick={() => setActiveMobileTab('home')}>
                     <Home size={20} /><span>HOME</span>
                 </button>
-                <button className="nav-item" onClick={() => setActiveMobileTab('market')} style={{ color: activeMobileTab === 'market' ? '#FF841C' : '#fff' }}>
+                <button className={`nav-item ${activeMobileTab === 'market' ? 'active' : ''}`} onClick={() => setActiveMobileTab('market')}>
                     <Store size={20} /><span>MARKET</span>
                 </button>
-                <button className="nav-item" onClick={() => setActiveMobileTab('inventory')} style={{ color: activeMobileTab === 'inventory' ? '#FF841C' : '#fff' }}>
+                <button className={`nav-item ${activeMobileTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveMobileTab('inventory')}>
                     <Package size={20} /><span>ITEMS</span>
                 </button>
-                <button className="nav-item" onClick={() => setActiveMobileTab('info')} style={{ color: activeMobileTab === 'info' ? '#FF841C' : '#fff' }}>
+                <button className={`nav-item ${activeMobileTab === 'info' ? 'active' : ''}`} onClick={() => setActiveMobileTab('info')}>
                     <Gem size={20} /><span>INFO</span>
                 </button>
             </div>
@@ -697,6 +714,24 @@ function GameStage({
                     justify-content: center;
                     background-size: cover;
                 }
+                .practice-mode-badge {
+                    position: fixed;
+                    top: 86px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 1100;
+                    padding: 8px 14px;
+                    border-radius: 999px;
+                    border: 2px solid #FF841C;
+                    background: #000;
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 9px;
+                    color: #FF841C;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    text-align: center;
+                    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+                }
                 @media (min-width: 1025px) {
                     .mobile-content-overlay { display: none !important; }
                 }
@@ -725,20 +760,32 @@ function GameStage({
                     .game-content-wrapper { margin-bottom: 60px; }
                 }
                 @media (max-width: 1024px) {
+                    .game-container {
+                        justify-content: flex-start;
+                        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+                    }
+                    .mobile-hud-hidden {
+                        display: none;
+                    }
                     .mobile-floating-controls {
-                        position: absolute;
-                        top: 10px;
-                        right: 10px;
+                        position: fixed;
+                        top: calc(env(safe-area-inset-top, 0px) + 138px);
+                        right: 14px;
                         display: flex;
                         flex-direction: column;
-                        gap: 12px;
-                        z-index: 100;
+                        gap: 8px;
+                        z-index: 1150;
+                        padding: 6px;
+                        border-radius: 16px;
+                        background: #000;
+                        border: 2px solid rgba(255, 132, 28, 0.34);
+                        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
                     }
                     .mobile-relic-btn {
                         display: block;
                         position: relative;
-                        width: 50px;
-                        height: 50px;
+                        width: 44px;
+                        height: 44px;
                         background: transparent;
                         border: none;
                         cursor: pointer;
@@ -766,11 +813,13 @@ function GameStage({
                     }
                     .game-content-wrapper {
                         height: auto;
-                        width: 95vw;
-                        margin-top: auto;
-                        margin-bottom: 60px;
+                        width: min(100vw, 560px);
+                        margin-top: calc(env(safe-area-inset-top, 0px) + 68px);
+                        margin-bottom: 0;
                         padding-bottom: 0;
-                        align-items: flex-end;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        align-items: flex-start;
                     }
                     .machine-wrapper {
                         width: 100%;
@@ -782,48 +831,156 @@ function GameStage({
                         width: 100%;
                         height: auto;
                         transform: none;
+                        filter: drop-shadow(0 22px 40px rgba(0, 0, 0, 0.5));
+                    }
+                    .score-display {
+                        top: 8%;
+                        width: 44%;
+                        gap: 6px !important;
+                    }
+                    .score-display img {
+                        width: 16px;
+                        height: 16px;
+                    }
+                    .score-value {
+                        font-size: clamp(10px, 2.8vw, 14px);
+                        text-shadow: 2px 2px 0 rgba(0,0,0,0.95);
+                    }
+                    .tap-to-spin {
+                        font-size: clamp(11px, 2.8vw, 15px);
+                        text-align: center;
+                        padding: 8px 10px;
+                        border-radius: 10px;
+                        background: rgba(0, 0, 0, 0.32);
+                        text-shadow: 0 2px 0 rgba(0,0,0,0.85);
                     }
                     .mobile-nav {
-                        position: absolute;
-                        bottom: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 85px;
-                        padding-bottom: 15px;
+                        position: fixed;
+                        bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+                        left: 50%;
+                        transform: translateX(-50%);
+                        width: calc(100% - 20px);
+                        max-width: 440px;
+                        height: 76px;
+                        padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 6px);
                         background: #000;
                         display: flex;
                         justify-content: space-around;
                         align-items: center;
-                        z-index: 200;
-                        border-top: 2px solid #333;
+                        z-index: 1200;
+                        border: 2px solid rgba(255, 132, 28, 0.42);
+                        border-radius: 20px;
+                        box-shadow: 0 18px 40px rgba(0,0,0,0.5);
                     }
                     .nav-item {
-                        background: transparent;
-                        border: none;
+                        background: #000;
+                        border: 1px solid transparent;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                         justify-content: center;
-                        color: #fff;
+                        color: rgba(255,255,255,0.74);
                         font-family: 'PressStart2P', monospace;
-                        font-size: 10px;
+                        font-size: 9px;
                         gap: 4px;
                         cursor: pointer;
+                        width: 25%;
+                        height: 100%;
+                        border-radius: 14px;
+                        transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+                    }
+                    .nav-item.active {
+                        color: #FF841C;
+                        background: #261205;
+                        border-color: #FF841C;
+                        box-shadow: inset 0 0 0 1px rgba(255, 132, 28, 0.08);
+                    }
+                    .nav-item.active svg {
+                        filter: drop-shadow(0 0 6px rgba(255, 132, 28, 0.18));
                     }
                     .hidden-on-mobile { display: none !important; }
                     .mobile-content-overlay {
                         position: fixed;
-                        top: 60px;
-                        bottom: 60px;
-                        left: 0;
-                        right: 0;
-                        background: rgba(0,0,0,0.9);
-                        z-index: 150;
-                        overflow-y: auto;
-                        padding: 20px;
+                        top: calc(env(safe-area-inset-top, 0px) + 10px);
+                        bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+                        left: 12px;
+                        right: 12px;
+                        background: transparent;
+                        z-index: 1180;
+                        overflow: hidden;
+                        padding: 0;
+                        display: flex;
+                    }
+                    .mobile-panel-shell {
+                        width: 100%;
+                        height: 100%;
                         display: flex;
                         flex-direction: column;
-                        align-items: center;
+                        border-radius: 22px;
+                        border: 2px solid rgba(255, 132, 28, 0.44);
+                        background: #000;
+                        box-shadow: 0 26px 54px rgba(0,0,0,0.56);
+                        overflow: hidden;
+                    }
+                    .mobile-panel-header {
+                        display: flex;
+                        align-items: flex-start;
+                        justify-content: space-between;
+                        gap: 12px;
+                        padding: 16px 16px 14px;
+                        border-bottom: 1px solid rgba(255, 132, 28, 0.16);
+                        background: #000;
+                    }
+                    .mobile-panel-copy {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 6px;
+                        min-width: 0;
+                    }
+                    .mobile-panel-kicker {
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 7px;
+                        color: rgba(255,255,255,0.45);
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                    }
+                    .mobile-panel-title {
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 14px;
+                        color: #FF841C;
+                        line-height: 1.4;
+                    }
+                    .mobile-panel-subtitle {
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 8px;
+                        color: rgba(255,255,255,0.42);
+                        line-height: 1.6;
+                    }
+                    .mobile-panel-close {
+                        border: 1px solid rgba(255, 132, 28, 0.34);
+                        background: #000;
+                        color: #FF841C;
+                        border-radius: 12px;
+                        padding: 10px 12px;
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 8px;
+                        cursor: pointer;
+                        flex-shrink: 0;
+                    }
+                    .mobile-panel-body {
+                        flex: 1;
+                        min-height: 0;
+                        overflow: auto;
+                        padding: 14px 14px 18px;
+                    }
+                    .practice-mode-badge {
+                        top: calc(env(safe-area-inset-top, 0px) + 124px);
+                        right: 14px;
+                        left: auto;
+                        transform: none;
+                        padding: 7px 10px;
+                        font-size: 8px;
+                        letter-spacing: 0.06em;
                     }
                 }
                 @keyframes spin {

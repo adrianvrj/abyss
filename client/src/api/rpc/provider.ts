@@ -1,8 +1,10 @@
 import { RpcProvider } from "starknet";
 import {
   DEFAULT_CHAIN_ID,
+  DEFAULT_MAINNET_RPC_URL,
   DEFAULT_SEPOLIA_RPC_URL,
   getRpcUrl,
+  MAINNET_CHAIN_ID,
 } from "@/config";
 
 type ChainLike = bigint | string | undefined | null;
@@ -29,11 +31,19 @@ function getProviderUrls(chainIdHex: string) {
   const configuredUrl = getRpcUrl(chainIdHex);
   const urls = [configuredUrl];
 
-  if (
-    chainIdHex === DEFAULT_CHAIN_ID &&
-    configuredUrl !== DEFAULT_SEPOLIA_RPC_URL
-  ) {
-    urls.push(DEFAULT_SEPOLIA_RPC_URL);
+  const defaultFallback =
+    chainIdHex === MAINNET_CHAIN_ID ? DEFAULT_MAINNET_RPC_URL : DEFAULT_SEPOLIA_RPC_URL;
+
+  if (configuredUrl !== defaultFallback) {
+    urls.push(defaultFallback);
+  }
+
+  if (chainIdHex === DEFAULT_CHAIN_ID) {
+    const crossNetworkFallback =
+      chainIdHex === MAINNET_CHAIN_ID ? DEFAULT_SEPOLIA_RPC_URL : DEFAULT_MAINNET_RPC_URL;
+    if (configuredUrl !== crossNetworkFallback) {
+      urls.push(crossNetworkFallback);
+    }
   }
 
   return [...new Set(urls.filter(Boolean))];

@@ -137,10 +137,10 @@ export function describeCharmEffect(metadata: CharmContractMetadata | null) {
     return formatPositiveLuck(metadata.effectValue);
   }
 
-  if (metadata.effectType === CharmEffectType.PatternRetrigger) {
-    if (metadata.effectValue2 === 0) {
-      return `All patterns trigger x${metadata.effectValue}`;
-    }
+    if (metadata.effectType === CharmEffectType.PatternRetrigger) {
+      if (metadata.effectValue2 === 0) {
+      return `All non-jackpot patterns trigger x${metadata.effectValue}`;
+      }
 
     if (metadata.effectValue2 === 1) {
       return `Horizontal patterns trigger x${metadata.effectValue}`;
@@ -288,7 +288,6 @@ export function getCharmPatternRetriggerBonuses(
   if (all > 1) {
     horizontal = Math.max(horizontal, all);
     diagonal = Math.max(diagonal, all);
-    jackpot = Math.max(jackpot, all);
   }
 
   return {

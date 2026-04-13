@@ -3,7 +3,6 @@ import type ControllerConnector from "@cartridge/connector/controller";
 import { useNetwork } from "@starknet-react/core";
 import { useController } from "@/hooks/useController";
 import { useAbyssGame } from "@/hooks/useAbyssGame";
-import { getAvailableBeastSessions } from "@/utils/abyssContract";
 import { useBundles } from "@/context/bundles";
 import { getSetupAddress } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
@@ -111,6 +110,78 @@ const styles = {
         textAlign: "center" as const,
         padding: "32px",
     },
+    perksPanel: {
+        border: "1px solid rgba(255, 132, 28, 0.35)",
+        borderRadius: "12px",
+        background: "#0a0402",
+        padding: "14px",
+        display: "flex",
+        flexDirection: "column" as const,
+        gap: "12px",
+        boxShadow: "0 0 0 1px rgba(255,132,28,0.08) inset",
+    },
+    perksHeader: {
+        fontFamily: "'PressStart2P', monospace",
+        fontSize: "10px",
+        color: "#FF841C",
+        opacity: 0.9,
+        textTransform: "uppercase" as const,
+        letterSpacing: "1px",
+    },
+    perksGrid: {
+        display: "grid",
+        gridTemplateColumns: "1fr",
+        gap: "10px",
+    },
+    perkCard: {
+        border: "1px solid rgba(255, 132, 28, 0.25)",
+        borderRadius: "10px",
+        background: "#000000",
+        padding: "12px 14px",
+        display: "flex",
+        flexDirection: "column" as const,
+        gap: "8px",
+    },
+    perkTitleRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "12px",
+    },
+    perkTitle: {
+        fontFamily: "'PressStart2P', monospace",
+        fontSize: "10px",
+        color: "#FFFFFF",
+        textTransform: "uppercase" as const,
+    },
+    perkBadge: {
+        fontFamily: "'PressStart2P', monospace",
+        fontSize: "8px",
+        color: "#FF841C",
+        border: "1px solid rgba(255, 132, 28, 0.5)",
+        borderRadius: "999px",
+        padding: "4px 8px",
+        background: "#120700",
+        whiteSpace: "nowrap" as const,
+    },
+    perkBody: {
+        fontFamily: "'PressStart2P', monospace",
+        fontSize: "10px",
+        lineHeight: 1.7,
+        color: "rgba(255,255,255,0.72)",
+    },
+    perkAction: {
+        alignSelf: "flex-start" as const,
+        background: "#160900",
+        border: "1px solid #FF841C",
+        borderRadius: "999px",
+        color: "#FF841C",
+        fontFamily: "'PressStart2P', monospace",
+        fontSize: "9px",
+        padding: "8px 12px",
+        cursor: "pointer",
+        textTransform: "uppercase" as const,
+    },
     loading: {
         fontFamily: "'PressStart2P', monospace",
         fontSize: "12px",
@@ -143,13 +214,25 @@ export function SessionsContent() {
     const navigate = useNavigate();
     const { chain } = useNetwork();
     const { account, connector, isConnected, disconnect } = useController();
-    const { getPlayerSessions, getSessionData, isReady } = useAbyssGame(account);
+    const {
+        getPlayerSessions,
+        getSessionData,
+        getAvailableBeastSessions,
+        getAvailableXShareSessions,
+        claimBeastSession,
+        claimXShareSession,
+        isReady,
+    } = useAbyssGame(account);
     const { bundles, status: bundlesStatus, refresh: refreshBundles } = useBundles();
 
     const [sessions, setSessions] = useState<SessionInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [beastSessions, setBeastSessions] = useState(0);
+    const [xShareSessions, setXShareSessions] = useState(0);
+    const shareIntentUrl = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(
+        "I survived the Abyss. Spin the cursed machine at https://play.abyssgame.fun",
+    );
 
     // Redirect to home if not connected
     useEffect(() => {
@@ -167,12 +250,14 @@ export function SessionsContent() {
         setIsLoading(true);
         try {
             console.log("Loading sessions for:", account.address);
-            const [sessionIds, availableBeastSessions] = await Promise.all([
+            const [sessionIds, availableBeastSessions, availableXShareSessions] = await Promise.all([
                 getPlayerSessions(account.address),
                 getAvailableBeastSessions(account.address),
+                getAvailableXShareSessions(account.address),
             ]);
             console.log("Session IDs found:", sessionIds);
             setBeastSessions(availableBeastSessions);
+            setXShareSessions(availableXShareSessions);
             const sessionPromises = sessionIds.map(async (id: number) => {
                 const data = await getSessionData(id);
                 console.log("Session data for", id, ":", data);
@@ -194,7 +279,14 @@ export function SessionsContent() {
         } finally {
             setIsLoading(false);
         }
-    }, [isReady, account, getPlayerSessions, getSessionData]);
+    }, [
+        isReady,
+        account,
+        getPlayerSessions,
+        getAvailableBeastSessions,
+        getAvailableXShareSessions,
+        getSessionData,
+    ]);
 
     // Load initial data
     useEffect(() => {
@@ -307,6 +399,65 @@ export function SessionsContent() {
         navigate("/");
     }, [disconnect, navigate]);
 
+    const waitForClaimedSession = useCallback(
+        async (claimFn: () => Promise<number>) => {
+            if (!account) {
+                return;
+            }
+
+            const previousSessionIds = await getPlayerSessions(account.address);
+            await claimFn();
+
+            for (let attempt = 0; attempt < 10; attempt += 1) {
+                const nextSessionIds = await getPlayerSessions(account.address);
+                const createdSessionId = nextSessionIds.find(
+                    (sessionId) => !previousSessionIds.includes(sessionId),
+                );
+
+                if (createdSessionId !== undefined) {
+                    await loadSessions();
+                    navigate(`/game?sessionId=${createdSessionId}`);
+                    return;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 400));
+            }
+
+            await loadSessions();
+        },
+        [account, getPlayerSessions, loadSessions, navigate],
+    );
+
+    const handleShareOnX = useCallback(() => {
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        window.open(shareIntentUrl, "_blank", "noopener,noreferrer");
+    }, [shareIntentUrl]);
+
+    const handleClaimBeastSession = useCallback(async () => {
+        setIsCreating(true);
+        try {
+            await waitForClaimedSession(claimBeastSession);
+        } catch (error) {
+            console.error("Failed to claim Beast session:", error);
+        } finally {
+            setIsCreating(false);
+        }
+    }, [claimBeastSession, waitForClaimedSession]);
+
+    const handleClaimXShareSession = useCallback(async () => {
+        setIsCreating(true);
+        try {
+            await waitForClaimedSession(claimXShareSession);
+        } catch (error) {
+            console.error("Failed to claim X share session:", error);
+        } finally {
+            setIsCreating(false);
+        }
+    }, [claimXShareSession, waitForClaimedSession]);
+
     return (
         <div style={styles.container}>
             {/* Navigation Row */}
@@ -359,38 +510,70 @@ export function SessionsContent() {
                     )}
                 </motion.button>
 
-                {/* Beast Free Sessions Badge */}
-                {beastSessions > 0 && (
-                    <div style={{
-                        background: "rgba(255, 215, 0, 0.15)",
-                        border: "1px solid #FFD700",
-                        borderRadius: "8px",
-                        padding: "12px 16px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                    }}>
-                        <div>
-                            <p style={{
-                                fontFamily: "'PressStart2P', monospace",
-                                fontSize: "10px",
-                                color: "#FFD700",
-                                margin: 0,
-                                marginBottom: '4px'
-                            }}>
-                                Beast Holder Bonus
-                            </p>
-                            <p style={{
-                                fontFamily: "'PressStart2P', monospace",
-                                fontSize: "12px",
-                                color: "#FFFFFF",
-                                margin: 0,
-                            }}>
-                                {beastSessions} free session{beastSessions !== 1 ? 's' : ''} available
-                            </p>
+                <motion.div
+                    style={styles.perksPanel}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                >
+                    <div style={styles.perksHeader}>Abyss Perks</div>
+                    <div style={styles.perksGrid}>
+                        {beastSessions > 0 && (
+                            <div style={styles.perkCard}>
+                                <div style={styles.perkTitleRow}>
+                                    <span style={styles.perkTitle}>Beast Holder Bonus</span>
+                                    <span style={styles.perkBadge}>
+                                        {beastSessions} FREE RUN{beastSessions !== 1 ? "S" : ""}
+                                    </span>
+                                </div>
+                                <div style={styles.perkBody}>
+                                    Your wallet holds a Beast. Claim your complimentary session directly onchain.
+                                </div>
+                                <motion.button
+                                    style={styles.perkAction}
+                                    onClick={handleClaimBeastSession}
+                                    disabled={isCreating}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                >
+                                    Claim Beast Run
+                                </motion.button>
+                            </div>
+                        )}
+
+                        <div style={styles.perkCard}>
+                            <div style={styles.perkTitleRow}>
+                                <span style={styles.perkTitle}>Whisper Abyss on X</span>
+                                <span style={styles.perkBadge}>
+                                    {xShareSessions > 0 ? "CLAIM READY" : "FREE MINT SIGNAL"}
+                                </span>
+                            </div>
+                            <div style={styles.perkBody}>
+                                Share the game on X and let players know the cursed machine is awake. Once your share is verified, one free session claim can be unlocked onchain.
+                            </div>
+                            {xShareSessions > 0 ? (
+                                <motion.button
+                                    style={styles.perkAction}
+                                    onClick={handleClaimXShareSession}
+                                    disabled={isCreating}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                >
+                                    Claim X Run
+                                </motion.button>
+                            ) : (
+                                <motion.button
+                                    style={styles.perkAction}
+                                    onClick={handleShareOnX}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                >
+                                    Share on X
+                                </motion.button>
+                            )}
                         </div>
                     </div>
-                )}
+                </motion.div>
 
                 {/* Active Sessions */}
                 <div>

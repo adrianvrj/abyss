@@ -4,7 +4,7 @@ import { RpcProvider } from 'starknet';
 export const dynamic = 'force-dynamic';
 
 const provider = new RpcProvider({
-    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/sepolia',
+    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/mainnet',
 });
 
 const DEFAULT_PLAY_ADDRESS = manifest.contracts.find(

@@ -10,3 +10,4 @@
 [2m2026-04-05T21:59:50.547640Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Serving libp2p Relay. [3maddress[0m[2m=[0m/ip4/127.0.0.1/udp/9090/quic-v1
 [2m2026-04-05T21:59:50.547653Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Serving libp2p Relay. [3maddress[0m[2m=[0m/ip4/127.0.0.1/udp/9091/webrtc-direct/certhash/uEiCf6tuLcfRUeAcxtjaKgAGrdGX7Ptt2R1YF9eoORoAQHw
 [2m2026-04-05T21:59:50.547669Z[0m [32m INFO[0m [2mtorii::relay::server[0m[2m:[0m Serving libp2p Relay. [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/9092/ws
+[2m2026-04-13T13:51:34.522754Z[0m [32m INFO[0m [2mtorii:runner[0m[2m:[0m Shutdown complete

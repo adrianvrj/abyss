@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x757d673ad960ae8dd7932530e106f2bf0affdacf437c385206b8b090c5c1c48",
-      "class_hash": "0x531144714931ac638fd0cfc101a603485e0f7372ec0a381d797c0dcdfb0e718",
+      "class_hash": "0x187fec1d2968863a4b5f80860ff4af24829f5bdbcbf601402a1bd2134bb961f",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -51,7 +51,7 @@
     },
     {
       "address": "0x54a4cc6b8ea7683ad966b9d140db435dbba5fd4054c56da4da7762123b0b734",
-      "class_hash": "0x445648572a0cf3206694ec1aaf29058753a94abe8834ac95f504b5e5a97ada1",
+      "class_hash": "0x5f57af75a89a3500f55d153fd390de5ec6bf5e52a38a22f6c8bf6ac53e6df5a",
       "init_calldata": [],
       "tag": "ABYSS-Chip",
       "selector": "0x7aa938b815b358aae8891407961f23cc654a6d85388cd04c053ffb58a1dfee9",
@@ -93,7 +93,7 @@
     },
     {
       "address": "0x680b1cfb8876ddc3b75f5bc88f7f1699366827d1756e9874e2536f2fb68704d",
-      "class_hash": "0x5022f89f10063566f686e1118914500e65c5236c87ec5b8cc3d27166c01f00c",
+      "class_hash": "0x7861e4bdb4505d4230707342821527243441b6172489a2b0c08659e326dca63",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -107,7 +107,7 @@
     },
     {
       "address": "0x68352ad21e23327ec717de2a56c5dbc33fe3f672385c414e298417b2fa64c01",
-      "class_hash": "0x775ac04139c306c9eb8dc13dddaf0790374e8d0928b1ccae5712944c4ab7616",
+      "class_hash": "0x50b0f087c3256550db8ff96580460b685a38e251cd1be32332b4316a5165e02",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -123,7 +123,7 @@
     },
     {
       "address": "0x65a27caaa6ae6076678e8c3b0d4648bbb67f94e09beff81dd01eb242f7c15ea",
-      "class_hash": "0x431084141a4c98911e7dc8fce682ec0b33c83b1216f73b8dfc6125005183934",
+      "class_hash": "0x132dc3d08924be1dea11a3ba3ea93d6cd2b35c285458f1c265a6aaf3463b760",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -189,15 +189,12 @@
     },
     {
       "address": "0x49082e84341a1c964af276b3cbd0ee1a00d2ac4e4a4664636cd3d3e7912066d",
-      "class_hash": "0x4c9430c6dc8c85b819d98204700365350b1bfef4103d890659320a6c4a842b1",
+      "class_hash": "0x5448a44cb48fab3e171377781ec7db9e82c39737ac0d79a17c0deac28f3d020",
       "init_calldata": [],
       "tag": "ABYSS-Treasury",
       "selector": "0x72689885a6f7a8f2db029679189ea00550d416058e3f0b0692e58417d2a8c19",
       "systems": [
         "dojo_init",
-        "claim_prize",
-        "add_prize_token",
-        "distribute_prizes",
         "upgrade",
         "grant_role",
         "revoke_role",
@@ -513,67 +510,6 @@
       "class_hash": "0x731b5c36d8c1fb3ddadc9c44933acc1f01fad3dbe731b3b5dfbb95834157b7f",
       "tag": "ABYSS-PlayerSessions",
       "selector": "0x78021b494e7b3094e231b9f1a04b33a9a7759095f68079bf17cce32525d3417"
-    },
-    {
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": true
-        },
-        {
-          "name": "claimed",
-          "type": "core::bool",
-          "key": false
-        }
-      ],
-      "class_hash": "0x6f85f769ecdabb2ec5c56525273ecd55031307a978f7421b3e7fcece91b752",
-      "tag": "ABYSS-PrizeClaimed",
-      "selector": "0xfbff358dcf5f37b7c76d1b11ec604aedb62c444e52b05d9f5fc42c58e3effe"
-    },
-    {
-      "members": [
-        {
-          "name": "world_resource",
-          "type": "core::felt252",
-          "key": true
-        },
-        {
-          "name": "pool_amount",
-          "type": "core::integer::u256",
-          "key": false
-        },
-        {
-          "name": "prizes_distributed",
-          "type": "core::bool",
-          "key": false
-        },
-        {
-          "name": "prize_tokens_count",
-          "type": "core::integer::u32",
-          "key": false
-        }
-      ],
-      "class_hash": "0xb64834cf294533ccdf5563bfc5dccb2761013d52f01f31560e86f243bb62aa",
-      "tag": "ABYSS-PrizePool",
-      "selector": "0x6eae7a42b45fcd9a8dda9aea066e73eb5b14ff4c604d4d2f14eb164b44358e0"
-    },
-    {
-      "members": [
-        {
-          "name": "index",
-          "type": "core::integer::u32",
-          "key": true
-        },
-        {
-          "name": "token_address",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": false
-        }
-      ],
-      "class_hash": "0x16a235e1f968cffd673a5c5cf788f520f94ac85dd9804d92d0b9e15c339ecbc",
-      "tag": "ABYSS-PrizeToken",
-      "selector": "0x78a37e7cb257d86c254fbfc899030aaf26886a62bd11ad31e6e0a3f05c7b386"
     },
     {
       "members": [
@@ -3101,94 +3037,6 @@
     },
     {
       "type": "struct",
-      "name": "abyss_game::models::index::PrizeClaimed",
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "claimed",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizeClaimedValue",
-      "members": [
-        {
-          "name": "claimed",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizePool",
-      "members": [
-        {
-          "name": "world_resource",
-          "type": "core::felt252"
-        },
-        {
-          "name": "pool_amount",
-          "type": "core::integer::u256"
-        },
-        {
-          "name": "prizes_distributed",
-          "type": "core::bool"
-        },
-        {
-          "name": "prize_tokens_count",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizePoolValue",
-      "members": [
-        {
-          "name": "pool_amount",
-          "type": "core::integer::u256"
-        },
-        {
-          "name": "prizes_distributed",
-          "type": "core::bool"
-        },
-        {
-          "name": "prize_tokens_count",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizeToken",
-      "members": [
-        {
-          "name": "index",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "token_address",
-          "type": "core::starknet::contract_address::ContractAddress"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizeTokenValue",
-      "members": [
-        {
-          "name": "token_address",
-          "type": "core::starknet::contract_address::ContractAddress"
-        }
-      ]
-    },
-    {
-      "type": "struct",
       "name": "abyss_game::models::index::Session",
       "members": [
         {
@@ -3816,24 +3664,6 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_PlayerSessions::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_PrizeClaimed::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_PrizePool::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_PrizeToken::Event",
       "kind": "enum",
       "variants": []
     },
@@ -5020,54 +4850,6 @@
           ],
           "outputs": [],
           "state_mutability": "external"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "abyss_game::systems::treasury::ITreasury",
-      "items": [
-        {
-          "type": "function",
-          "name": "claim_prize",
-          "inputs": [],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "add_prize_token",
-          "inputs": [
-            {
-              "name": "token",
-              "type": "core::starknet::contract_address::ContractAddress"
-            }
-          ],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "distribute_prizes",
-          "inputs": [],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "get_unclaimed_prize",
-          "inputs": [
-            {
-              "name": "address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u256"
-            }
-          ],
-          "state_mutability": "view"
         }
       ]
     },

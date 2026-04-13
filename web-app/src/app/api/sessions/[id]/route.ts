@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
 
 const provider = new RpcProvider({
-    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/sepolia',
+    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/mainnet',
 });
 
 const DEFAULT_PLAY_ADDRESS = manifest.contracts.find(
@@ -70,7 +70,7 @@ export async function GET(
             name: `Abyss Session #${session.sessionId}`,
             description: 'Abyss is a fully onchain slot machine game built on Starknet with Dojo Engine.',
             image: `${BASE_URL}/api/sessions/${session.sessionId}/image?play=${encodeURIComponent(playAddress)}${collectionAddress ? `&collection=${encodeURIComponent(collectionAddress)}` : ''}`,
-            external_url: 'https://play.abyssgame.fun',
+            external_url: process.env.NEXT_PUBLIC_CLIENT_URL || 'https://play.abyssgame.fun',
             attributes: [
                 ...(collectionAddress ? [{ trait_type: 'Collection', value: collectionAddress }] : []),
                 { trait_type: 'Play Contract', value: playAddress },
@@ -82,7 +82,7 @@ export async function GET(
                 { trait_type: 'Spins Remaining', value: session.spinsRemaining, display_type: 'number' },
                 { trait_type: 'Total Spins', value: session.totalSpins, display_type: 'number' },
                 { trait_type: 'Luck', value: session.luck, display_type: 'number' },
-                { trait_type: 'Mode', value: session.isCompetitive ? 'Competitive' : 'Practice' },
+                { trait_type: 'Mode', value: session.isCompetitive ? 'Competitive' : 'Standard' },
                 { trait_type: 'Status', value: session.isActive ? 'Active' : 'Game Over' },
                 { trait_type: 'Chips Claimed', value: session.chipsClaimed ? 'Yes' : 'No' },
                 { trait_type: 'Blocked 666', value: session.blocked666 ? 'Yes' : 'No' },

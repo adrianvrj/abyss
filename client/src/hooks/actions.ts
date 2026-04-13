@@ -8,7 +8,6 @@ import {
   getMarketAddress,
   getPlayAddress,
   getRelicAddress,
-  getTreasuryAddress,
   getWorldAddress,
 } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
@@ -56,7 +55,6 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
   const playAddress = useMemo(() => getPlayAddress(chainId), [chainId]);
   const marketAddress = useMemo(() => getMarketAddress(chainId), [chainId]);
   const relicAddress = useMemo(() => getRelicAddress(chainId), [chainId]);
-  const treasuryAddress = useMemo(() => getTreasuryAddress(chainId), [chainId]);
 
   const waitForReceipt = useCallback(
     async (transactionHash: string) => {
@@ -106,11 +104,10 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           playAddress,
           marketAddress,
           relicAddress,
-          treasuryAddress,
         ]),
       };
     },
-    [account, marketAddress, playAddress, relicAddress, treasuryAddress, waitForReceipt, worldAddress],
+    [account, marketAddress, playAddress, relicAddress, waitForReceipt, worldAddress],
   );
 
   const createSession = useCallback(
@@ -296,18 +293,6 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     [executeCalls, playAddress],
   );
 
-  const claimPrize = useCallback(
-    async () =>
-      executeCalls([
-        {
-          contractAddress: treasuryAddress,
-          entrypoint: "claim_prize",
-          calldata: CallData.compile([]),
-        },
-      ]),
-    [executeCalls, treasuryAddress],
-  );
-
   return {
     account,
     chainId,
@@ -316,7 +301,6 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     playAddress,
     marketAddress,
     relicAddress,
-    treasuryAddress,
     createSession,
     requestSpin,
     buyItem,
@@ -326,7 +310,6 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     activateRelic,
     endSession,
     claimChips,
-    claimPrize,
     waitForReceipt,
   };
 }

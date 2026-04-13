@@ -7,12 +7,18 @@ export const NAMESPACE = "ABYSS";
 
 export const SEPOLIA_CHAIN_ID = shortString.encodeShortString("SN_SEPOLIA");
 export const MAINNET_CHAIN_ID = shortString.encodeShortString("SN_MAIN");
-export const DEFAULT_CHAIN_ID = SEPOLIA_CHAIN_ID;
+const DEFAULT_NETWORK = (import.meta.env.VITE_DEFAULT_CHAIN || "sepolia").toLowerCase();
+export const DEFAULT_CHAIN_ID =
+  DEFAULT_NETWORK === "mainnet" ? MAINNET_CHAIN_ID : SEPOLIA_CHAIN_ID;
 
 export const DEFAULT_SEPOLIA_RPC_URL =
   "https://api.cartridge.gg/x/starknet/sepolia";
 export const DEFAULT_SEPOLIA_TORII_URL =
   "https://api.cartridge.gg/x/abyss/torii";
+export const DEFAULT_MAINNET_RPC_URL =
+  "https://api.cartridge.gg/x/starknet/mainnet";
+export const DEFAULT_MAINNET_TORII_URL =
+  "https://api.cartridge.gg/x/abyss-mainnet/torii";
 
 const dojoConfigSepolia = createDojoConfig({
   rpcUrl:
@@ -26,12 +32,28 @@ const dojoConfigSepolia = createDojoConfig({
   manifest: manifestSepolia,
 });
 
+const dojoConfigMainnet = createDojoConfig({
+  rpcUrl:
+    import.meta.env.VITE_SN_MAIN_RPC_URL ||
+    import.meta.env.VITE_MAINNET_RPC_URL ||
+    import.meta.env.VITE_STARKNET_RPC_URL ||
+    DEFAULT_MAINNET_RPC_URL,
+  toriiUrl:
+    import.meta.env.VITE_SN_MAIN_TORII_URL ||
+    import.meta.env.VITE_MAINNET_TORII_URL ||
+    import.meta.env.VITE_TORII_URL ||
+    DEFAULT_MAINNET_TORII_URL,
+  manifest: manifestSepolia,
+});
+
 export const manifests = {
   [SEPOLIA_CHAIN_ID]: manifestSepolia,
+  [MAINNET_CHAIN_ID]: manifestSepolia,
 } as const;
 
 export const dojoConfigs = {
   [SEPOLIA_CHAIN_ID]: dojoConfigSepolia,
+  [MAINNET_CHAIN_ID]: dojoConfigMainnet,
 } as const;
 
 export const chains = {
@@ -70,7 +92,7 @@ function requireManifest(chainId?: ChainLike) {
   const manifest = manifests[chainIdHex as keyof typeof manifests];
   if (!manifest) {
     throw new Error(
-      `Abyss manifest is not available for chain ${chainIdHex}. Add manifest_mainnet.json before enabling this network.`,
+      `Abyss manifest is not available for chain ${chainIdHex}. Sync the correct manifest into client/src/lib/manifest.json before using this network.`,
     );
   }
   return manifest;

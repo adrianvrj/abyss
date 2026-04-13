@@ -392,12 +392,52 @@ export default function InlineInventoryPanel({
                         padding: 0;
                         display: flex;
                         flex-direction: column;
+                        gap: 12px;
                     }
                     .desktop-view {
                         display: none;
                     }
                     .mobile-carousel-view {
                         display: flex;
+                    }
+                    .carousel-header {
+                        font-size: 11px;
+                        text-align: left;
+                        padding-bottom: 10px;
+                    }
+                    .carousel-display {
+                        flex: 1;
+                        min-height: 0;
+                        background: rgba(0, 0, 0, 0.36);
+                        border: 1px solid rgba(255, 132, 28, 0.16);
+                        padding: 18px 14px;
+                    }
+                    .carousel-image img {
+                        width: 120px;
+                        height: 120px;
+                    }
+                    .carousel-item-name {
+                        font-size: 12px;
+                        line-height: 1.5;
+                    }
+                    .carousel-item-effect {
+                        font-size: 8px;
+                        line-height: 1.6;
+                        padding: 8px 10px;
+                    }
+                    .carousel-nav button {
+                        min-width: 56px;
+                        min-height: 48px;
+                        border-radius: 12px;
+                        padding: 10px 14px;
+                    }
+                    .carousel-nav span {
+                        font-size: 9px;
+                    }
+                    .carousel-action-btn {
+                        min-height: 50px;
+                        font-size: 9px;
+                        border-radius: 12px;
                     }
                 }
                 .inv-slot {

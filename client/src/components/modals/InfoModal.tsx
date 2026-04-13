@@ -36,8 +36,8 @@ const HOW_TO_PLAY_SECTIONS = [
         body: 'You can bind exactly one relic per session. Its effect can swing the run hard, but once the slot is sealed you cannot swap it.',
     },
     {
-        title: 'PRIZES',
-        body: 'Finished runs feed the leaderboard. The top 5 split the active prize pool: 40 / 25 / 18 / 10 / 7.',
+        title: 'LEADERBOARD',
+        body: 'Finished runs feed the leaderboard. Push higher scores and cleaner runs to climb the ranking.',
     },
 ];
 

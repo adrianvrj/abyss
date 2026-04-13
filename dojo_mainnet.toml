@@ -9,13 +9,16 @@ default = "ABYSS"
 
 [env]
 rpc_url = "https://api.cartridge.gg/x/starknet/mainnet"
-# world_address = "0x06bba2fea5c315483d0a698e21c29aa2c305e53aae4da39f16e8215845dc0848"
+world_address = "0x019210e07e069cc67b17be1fbb2258411ddabf745ac32f22d0e547a61a8eceeb"
 account_address = "0x39ca42b918d701ed01c50d2d5bebef9be78f80fe8d92170963523f8e0b532d9"
 
 [migration]
 order_inits = [
-  "ABYSS-Token",
+  "ABYSS-Chip",
+  "ABYSS-Charm",
+  "ABYSS-RelicNFT",
   "ABYSS-Setup",
+  "ABYSS-Collection",
   "ABYSS-Play",
   "ABYSS-Market",
   "ABYSS-Relic",
@@ -24,4 +27,14 @@ order_inits = [
 disable_multicall = true
 
 [writers]
-"ABYSS" = ["ABYSS-Setup", "ABYSS-Play", "ABYSS-Market", "ABYSS-Relic", "ABYSS-Treasury"]
+"ABYSS" = ["ABYSS-Setup", "ABYSS-Collection", "ABYSS-Play", "ABYSS-Market", "ABYSS-Relic", "ABYSS-Treasury"]
+
+[owners]
+"ABYSS" = ["ABYSS-Collection", "ABYSS-Chip", "ABYSS-RelicNFT"]
+
+[init_call_args]
+"ABYSS-Setup" = [
+  "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f", # vrf_address
+  "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb", # quote_token
+  "0x07e89f628e2a133213443FE1b43dd0BB48ae3ab182f7B568A3fBDC6667041697", # team_address
+]

@@ -1,0 +1,24 @@
+world_address = "0x19210e07e069cc67b17be1fbb2258411ddabf745ac32f22d0e547a61a8eceeb"
+rpc = "https://api.cartridge.gg/x/starknet/mainnet"
+
+[server]
+http_cors_origins = ["*"]
+
+[grpc]
+optimistic = true
+
+[indexing]
+world_block = 0
+controllers = true
+pending = true
+pre_confirmed = true
+polling_interval = 1000
+contracts = [
+  "erc721:0x1f995659f54a1ef5ede1eb5b542a12bf51102948df68fa53de0fcb93ebffc50",
+  "erc20:0x51d8401eef82153d10179238f5221489d0b4faae88c8b0b071734f44e647dd8",
+  "erc721:0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
+  "erc721:0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
+]
+
+[erc]
+metadata_updates = true

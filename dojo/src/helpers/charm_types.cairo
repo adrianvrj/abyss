@@ -25,8 +25,8 @@ pub fn get_charm_type_info(charm_id: u32) -> CharmMetadata {
         };
     } else if charm_id == 4 {
         return CharmMetadata {
-            charm_id, name: 'Dusty Hourglass', description: 'Low spins +4',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 4, effect_value_2: 0,
+            charm_id, name: 'Dusty Hourglass', description: 'Low spins +8',
+            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 8, effect_value_2: 0,
             condition_type: CharmConditionType::LowSpinsRemaining, rarity: 0, shop_cost: 1,
         };
     } else if charm_id == 5 {
@@ -67,8 +67,8 @@ pub fn get_charm_type_info(charm_id: u32) -> CharmMetadata {
         };
     } else if charm_id == 11 {
         return CharmMetadata {
-            charm_id, name: 'Shadow Lantern', description: '+8 base, lvl5 +4',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 8, effect_value_2: 4,
+            charm_id, name: 'Shadow Lantern', description: '+8 base, lvl5 +8',
+            effect_type: CharmEffectType::LuckBoost, effect_value: 8, effect_value_2: 8,
             condition_type: CharmConditionType::HighLevel, rarity: 1, shop_cost: 2,
         };
     } else if charm_id == 12 {
@@ -103,14 +103,14 @@ pub fn get_charm_type_info(charm_id: u32) -> CharmMetadata {
         };
     } else if charm_id == 17 {
         return CharmMetadata {
-            charm_id, name: 'Reapers Mark', description: 'All x2',
+            charm_id, name: 'Reapers Mark', description: 'NoJP x2',
             effect_type: CharmEffectType::PatternRetrigger, effect_value: 2, effect_value_2: 0,
             condition_type: CharmConditionType::None, rarity: 2, shop_cost: 5,
         };
     } else if charm_id == 18 {
         return CharmMetadata {
-            charm_id, name: 'Chaos Orb', description: 'Block666 +15',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 15, effect_value_2: 0,
+            charm_id, name: 'Chaos Orb', description: 'Block666 +80',
+            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 80, effect_value_2: 0,
             condition_type: CharmConditionType::Blocked666, rarity: 2, shop_cost: 5,
         };
     } else if charm_id == 19 {
@@ -179,9 +179,6 @@ pub fn get_charm_retrigger_bonuses_for_ids(charm_ids: Span<u32>) -> (u32, u32, u
         }
         if diag_retrigger < all_retrigger {
             diag_retrigger = all_retrigger;
-        }
-        if jackpot_retrigger < all_retrigger {
-            jackpot_retrigger = all_retrigger;
         }
     }
 

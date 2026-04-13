@@ -5,7 +5,6 @@ import {
     getCharmLuckEntries,
 } from '@/lib/charmRules';
 import {
-    getBoostedPatternMultiplier,
     getPatternBonusMap,
     getPatternRetriggerMap,
 } from '@/lib/patternMath';
@@ -110,21 +109,16 @@ export default function GameStatsPanel({
             });
         });
 
-        if (sources.length === 0) {
-            items.forEach(item => {
-                if (!isCharmItem(item.item_id) || !item.effect_value) {
-                    return;
-                }
-
-                sources.push(`${item.name}: +${item.effect_value}`);
-                total += item.effect_value;
-            });
-        }
-
         return { sources, total };
     }
 
     const luckBreakdown = getLuckBreakdown();
+    const charmItems = items.filter(item => isCharmItem(item.item_id));
+    const canDeriveCharmLuck =
+        charmItems.length > 0 &&
+        charmItems.every(item => Boolean(item.charmInfo?.metadata));
+    const displayedLuck = canDeriveCharmLuck ? luckBreakdown.total : luck;
+    const luckTooltip = canDeriveCharmLuck ? luckBreakdown.sources.join('\n') : undefined;
 
     async function loadItems() {
         const requestId = ++latestItemsRequestRef.current;
@@ -234,7 +228,6 @@ export default function GameStatsPanel({
     const modifiedSymbols = getModifiedSymbols();
     const modifiedPatterns = getModifiedPatterns();
     const patternBonuses = getPatternBonusMap(items);
-    const patternRetriggers = getPatternRetriggerMap(items);
 
     return (
         <div className="game-stats-panel">
@@ -329,8 +322,8 @@ export default function GameStatsPanel({
             </div>
 
             {/* Luck Row */}
-            {luck > 0 && (
-                <div className="stats-section luck-section" title={luckBreakdown.sources.join('\n')}>
+            {displayedLuck > 0 && (
+                <div className="stats-section luck-section" title={luckTooltip}>
                     <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -356,7 +349,7 @@ export default function GameStatsPanel({
                             fontSize: '14px',
                             color: '#FFEA00',
                         }}>
-                            +{luck}
+                            +{displayedLuck}
                         </div>
                     </div>
                 </div>
@@ -401,11 +394,8 @@ export default function GameStatsPanel({
                     fontFamily: "'PressStart2P', monospace",
                 }}>
                     {modifiedPatterns.map(pm => {
-                        const boostedMultiplier = getBoostedPatternMultiplier(
-                            pm,
-                            patternBonuses,
-                            patternRetriggers,
-                        );
+                        const displayMultiplier =
+                            pm.multiplier * (1 + (patternBonuses[pm.type] ?? 0) / 100);
                         const hasBoost = pm.bonus > 0 || pm.retrigger > 1;
                         return (
                             <div
@@ -419,9 +409,25 @@ export default function GameStatsPanel({
                                 }}
                             >
                                 <span style={{ color: '#999' }}>{formatPatternName(pm.type)}</span>
-                                <span style={{ color: hasBoost ? '#00FF64' : '#FFD700' }}>
-                                    x{boostedMultiplier.toFixed(1)}
-                                </span>
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-end',
+                                    gap: '2px',
+                                }}>
+                                    <span style={{ color: hasBoost ? '#00FF64' : '#FFD700' }}>
+                                        x{displayMultiplier.toFixed(1)}
+                                    </span>
+                                    {pm.retrigger > 1 && (
+                                        <span style={{
+                                            color: '#FF841C',
+                                            fontSize: '8px',
+                                            lineHeight: 1,
+                                        }}>
+                                            TRG x{pm.retrigger}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
@@ -451,18 +457,19 @@ export default function GameStatsPanel({
                         flex: 1;
                         border: none;
                         background: transparent;
-                        padding: 10px 0;
-                        gap: 24px;
+                        padding: 6px 0 0;
+                        gap: 16px;
                     }
                     .stats-section {
                         width: 100%;
+                        gap: 10px;
                     }
                     .symbols-section, .patterns-section {
                         flex: 1;
                         justify-content: center;
                     }
                     .symbols-section > div, .patterns-section > div {
-                        gap: 12px !important;
+                        gap: 8px !important;
                         display: flex;
                         flex-direction: column;
                         justify-content: center;

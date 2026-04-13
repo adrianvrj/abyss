@@ -2,12 +2,13 @@ import ControllerConnector from "@cartridge/connector/controller";
 import type { ControllerOptions } from "@cartridge/controller";
 import {
   DEFAULT_CHAIN_ID,
+  DEFAULT_MAINNET_RPC_URL,
+  DEFAULT_SEPOLIA_RPC_URL,
   NAMESPACE,
   getMarketAddress,
   getPlayAddress,
   getRelicAddress,
   getToriiUrl,
-  getTreasuryAddress,
 } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
 
@@ -17,8 +18,9 @@ type SessionPolicies = {
 };
 
 export const CONTROLLER_PRESET = import.meta.env.VITE_CARTRIDGE_PRESET || "";
-export const DEFAULT_CARTRIDGE_CONTROLLER_RPC_URL =
-  "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_9";
+export const DEFAULT_CARTRIDGE_CONTROLLER_RPC_URL = DEFAULT_CHAIN_ID.includes("534e5f4d41494e")
+  ? `${DEFAULT_MAINNET_RPC_URL}/rpc/v0_9`
+  : `${DEFAULT_SEPOLIA_RPC_URL}/rpc/v0_9`;
 export const CONTROLLER_RPC_URL =
   import.meta.env.VITE_CONTROLLER_RPC_URL ||
   import.meta.env.VITE_CARTRIDGE_RPC_URL ||
@@ -26,7 +28,6 @@ export const CONTROLLER_RPC_URL =
 export const PLAY_ADDRESS = getPlayAddress(DEFAULT_CHAIN_ID);
 export const MARKET_ADDRESS = getMarketAddress(DEFAULT_CHAIN_ID);
 export const RELIC_ADDRESS = getRelicAddress(DEFAULT_CHAIN_ID);
-export const TREASURY_ADDRESS = getTreasuryAddress(DEFAULT_CHAIN_ID);
 export const VRF_ADDRESS = CONTRACTS.CARTRIDGE_VRF;
 
 const toriiUrl = getToriiUrl(DEFAULT_CHAIN_ID);
@@ -59,11 +60,6 @@ export const sessionPolicies: SessionPolicies = {
         { entrypoint: "activate_relic" },
       ],
     },
-    [TREASURY_ADDRESS]: {
-      methods: [
-        { entrypoint: "claim_prize" },
-      ],
-    },
     [VRF_ADDRESS]: {
       methods: [
         { entrypoint: "request_random" },
@@ -84,7 +80,6 @@ export const CONTROLLER_SESSION_VERSION = JSON.stringify({
   play: PLAY_ADDRESS,
   market: MARKET_ADDRESS,
   relic: RELIC_ADDRESS,
-  treasury: TREASURY_ADDRESS,
   vrf: VRF_ADDRESS,
   relicNft: CONTRACTS.RELIC_NFT,
 });

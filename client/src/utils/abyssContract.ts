@@ -1,5 +1,4 @@
 import { shortString } from "starknet";
-import { readTokenSymbol, readUint256Balance } from "@/api/rpc/token";
 import {
   getAvailableBeastSessions as readAvailableBeastSessions,
   getCharmDropChance as readCharmDropChance,
@@ -9,14 +8,11 @@ import {
   getSessionLuck as readSessionLuck,
 } from "@/api/rpc/play";
 import { LeaderboardApi } from "@/api/torii/leaderboard";
-import { RewardsApi } from "@/api/torii/rewards";
-import { initToriiClient } from "@/api/torii/client";
 import {
   DEFAULT_CHAIN_ID,
   getCharmAddress,
   getMarketAddress,
   getPlayAddress,
-  getTreasuryAddress,
 } from "@/config";
 import { STATIC_ITEM_DEFINITIONS } from "@/lib/itemCatalog";
 import { getStaticCharmDefinition } from "@/lib/charmCatalog";
@@ -25,7 +21,6 @@ import {
   type CharmApiMetadata,
   type CharmContractMetadata,
 } from "@/lib/charmRules";
-import type { PrizeTokenBalance } from "@/models";
 import { getRpcProvider } from "@/api/rpc/provider";
 import { getCharmTypeInfo } from "@/api/rpc/relic";
 
@@ -114,10 +109,6 @@ export function getCharmIdFromItemId(itemId: number): number {
 
 const charmInfoCache = new Map<number, CharmInfo>();
 const itemInfoCache = new Map<number, ContractItem>();
-
-async function getClient() {
-  return initToriiClient(DEFAULT_CHAIN_ID);
-}
 
 async function fetchCharmApiMetadata(charmId: number): Promise<CharmApiMetadata | null> {
   const response = await fetch(`/api/charms/${charmId}`);
@@ -396,32 +387,6 @@ export async function getLeaderboard(
     best_score: entry.bestScore,
     total_score: entry.totalScore,
   }));
-}
-
-export async function getPrizePool(): Promise<bigint> {
-  const client = await getClient();
-  const prizePool = await RewardsApi.fetchPrizePool(client);
-  return prizePool?.poolAmount ?? 0n;
-}
-
-export interface TokenBalance extends PrizeTokenBalance {}
-
-export async function getPrizeTokenBalances(): Promise<TokenBalance[]> {
-  const client = await getClient();
-  const prizeTokens = await RewardsApi.fetchPrizeTokens(client);
-  const treasuryAddress = getTreasuryAddress(DEFAULT_CHAIN_ID);
-
-  return Promise.all(
-    prizeTokens.map(async (token) => ({
-      tokenAddress: token.tokenAddress,
-      balance: await readUint256Balance(
-        DEFAULT_CHAIN_ID,
-        token.tokenAddress,
-        treasuryAddress,
-      ),
-      symbol: await readTokenSymbol(DEFAULT_CHAIN_ID, token.tokenAddress),
-    })),
-  );
 }
 
 export async function getAvailableBeastSessions(playerAddress: string): Promise<number> {

@@ -5,9 +5,9 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PROFILE="${PROFILE:-sepolia}"
+PROFILE="${PROFILE:-mainnet}"
 SCARB_VERSION="${SCARB_VERSION:-2.15.1}"
-RPC_URL="${RPC_URL:-https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/dql5pMT88iueZWl7L0yzT56uVk0EBU4L}"
+RPC_URL="${RPC_URL:-https://api.cartridge.gg/x/starknet/${PROFILE}}"
 ACCOUNT_NAME="${ACCOUNT_NAME:-abyss_admin}"
 ACCOUNTS_FILE="${ACCOUNTS_FILE:-/Users/adran/.starknet_accounts/starknet_open_zeppelin_accounts.json}"
 ARTIFACTS_FILE="${ARTIFACTS_FILE:-$ROOT/target/$PROFILE/abyss_game.starknet_artifacts.json}"

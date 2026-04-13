@@ -37,21 +37,6 @@ export {
   type RawBeastSessionsUsed,
 } from "@/models/session";
 export {
-  PRIZE_POOL_MODEL_NAME,
-  PRIZE_TOKEN_MODEL_NAME,
-  PRIZE_CLAIMED_MODEL_NAME,
-  PrizePoolModel,
-  PrizeTokenModel,
-  PrizeClaimedModel,
-  type PrizePool,
-  type PrizeToken,
-  type PrizeClaimed,
-  type PrizeTokenBalance,
-  type RawPrizePool,
-  type RawPrizeToken,
-  type RawPrizeClaimed,
-} from "@/models/rewards";
-export {
   type SpinCompletedEvent,
   type ItemPurchasedEvent,
   type ItemSoldEvent,

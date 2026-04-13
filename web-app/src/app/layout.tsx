@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "Abyss",
     template: "%s | Abyss"
   },
-  description: "Play a fully on-chain roguelike slot machine game on Starknet. Spin to win, compete for prizes, and collect powerful NFT relics. Provably fair with Cartridge VRF.",
+  description: "Play a fully on-chain roguelike slot machine game on Starknet. Spin to win, collect powerful relics, and survive the abyss.",
   keywords: [
     "Abyss",
     "roguelike",
@@ -36,17 +36,17 @@ export const metadata: Metadata = {
   authors: [{ name: "Abyss Team" }],
   creator: "Abyss",
   publisher: "Abyss",
-  metadataBase: new URL("https://play.abyssgame.fun"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://abyssgame.fun"),
   alternates: {
     canonical: "/"
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://play.abyssgame.fun",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "https://abyssgame.fun",
     siteName: "Abyss",
     title: "Abyss - On-Chain Roguelike Slot Machine on Starknet",
-    description: "Play a fully on-chain roguelike slot machine game. Spin to win, compete for real prizes, and collect powerful NFT relics. Provably fair with Cartridge VRF.",
+    description: "Play a fully on-chain roguelike slot machine game. Spin to win, collect relics, and survive the abyss.",
     images: [
       {
         url: "/og-image.png",
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
     site: "@abyssdotfun",
     creator: "@abyssdotfun",
     title: "Abyss - On-Chain Roguelike Slot Machine",
-    description: "Play a fully on-chain roguelike slot machine game on Starknet. Spin to win, compete for prizes!",
+    description: "Play a fully on-chain roguelike slot machine game on Starknet. Spin to win and survive the abyss.",
     images: ["/og-image.png"]
   },
   robots: {

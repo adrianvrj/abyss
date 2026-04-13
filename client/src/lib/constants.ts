@@ -2,6 +2,7 @@ import {
   getCharmAddress,
   getChipAddress,
   DEFAULT_CHAIN_ID,
+  MAINNET_CHAIN_ID,
   NAMESPACE,
   SEPOLIA_CHAIN_ID,
   getCollectionAddress,
@@ -63,9 +64,14 @@ export const SYMBOLS: Record<number, { name: string; emoji: string; color: strin
 };
 
 export const RPC_ENDPOINTS = {
-  SEPOLIA: import.meta.env.VITE_STARKNET_RPC_URL ?? import.meta.env.VITE_SN_SEPOLIA_RPC_URL,
-  MAINNET: import.meta.env.VITE_SN_MAIN_RPC_URL ?? "",
+  SEPOLIA:
+    import.meta.env.VITE_SN_SEPOLIA_RPC_URL ??
+    (DEFAULT_CHAIN_ID === SEPOLIA_CHAIN_ID ? import.meta.env.VITE_STARKNET_RPC_URL : ""),
+  MAINNET:
+    import.meta.env.VITE_SN_MAIN_RPC_URL ??
+    import.meta.env.VITE_MAINNET_RPC_URL ??
+    (DEFAULT_CHAIN_ID === MAINNET_CHAIN_ID ? import.meta.env.VITE_STARKNET_RPC_URL : ""),
   LOCAL: "http://localhost:5050",
 };
 
-export { DEFAULT_CHAIN_ID, NAMESPACE, SEPOLIA_CHAIN_ID };
+export { DEFAULT_CHAIN_ID, MAINNET_CHAIN_ID, NAMESPACE, SEPOLIA_CHAIN_ID };

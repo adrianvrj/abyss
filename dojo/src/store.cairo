@@ -13,8 +13,8 @@ use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::vrf::{IVrfProviderDispatcher};
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, MarketSlotPurchased, PlayerSessionEntry, PlayerSessions,
-    PrizeClaimed, PrizePool, PrizeToken, Session, SessionCharmEntry, SessionCharms,
-    SessionInventory, SessionItemEntry, SessionItemIndex, SessionMarket, SpinResult, TokenPairId,
+    Session, SessionCharmEntry, SessionCharms, SessionInventory, SessionItemEntry,
+    SessionItemIndex, SessionMarket, SpinResult, TokenPairId, XShareSessionClaim,
 };
 
 #[derive(Copy, Drop)]
@@ -204,34 +204,6 @@ pub impl StoreImpl of StoreTrait {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // Prize Pool
-    // ═══════════════════════════════════════════════════════════════════
-
-    fn prize_pool(self: @Store) -> PrizePool {
-        self.world.read_model(WORLD_RESOURCE)
-    }
-
-    fn set_prize_pool(mut self: Store, pool: @PrizePool) {
-        self.world.write_model(pool)
-    }
-
-    fn prize_token(self: @Store, index: u32) -> PrizeToken {
-        self.world.read_model(index)
-    }
-
-    fn set_prize_token(mut self: Store, pt: @PrizeToken) {
-        self.world.write_model(pt)
-    }
-
-    fn prize_claimed(self: @Store, player: ContractAddress) -> PrizeClaimed {
-        self.world.read_model(player)
-    }
-
-    fn set_prize_claimed(mut self: Store, pc: @PrizeClaimed) {
-        self.world.write_model(pc)
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
     // Token Pair IDs
     // ═══════════════════════════════════════════════════════════════════
 
@@ -253,6 +225,14 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_beast_sessions_used(mut self: Store, bsu: @BeastSessionsUsed) {
         self.world.write_model(bsu)
+    }
+
+    fn x_share_session_claim(self: @Store, player: ContractAddress) -> XShareSessionClaim {
+        self.world.read_model(player)
+    }
+
+    fn set_x_share_session_claim(mut self: Store, claim: @XShareSessionClaim) {
+        self.world.write_model(claim)
     }
 
     // ═══════════════════════════════════════════════════════════════════

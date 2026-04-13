@@ -70,7 +70,7 @@ const RELIC_METADATA: Record<string, any> = {
 };
 
 const provider = new RpcProvider({
-    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/sepolia",
+    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/mainnet",
 });
 
 function normalizeAddress(value: string | null | undefined) {

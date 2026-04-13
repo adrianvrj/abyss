@@ -253,36 +253,6 @@ pub struct SessionCharmEntry {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PRIZE POOL - Singleton prize pool state
-// ═══════════════════════════════════════════════════════════════════════════
-
-#[dojo::model]
-#[derive(Copy, Drop, Serde)]
-pub struct PrizePool {
-    #[key]
-    pub world_resource: felt252,
-    pub pool_amount: u256,
-    pub prizes_distributed: bool,
-    pub prize_tokens_count: u32,
-}
-
-#[dojo::model]
-#[derive(Copy, Drop, Serde)]
-pub struct PrizeToken {
-    #[key]
-    pub index: u32,
-    pub token_address: ContractAddress,
-}
-
-#[dojo::model]
-#[derive(Copy, Drop, Serde)]
-pub struct PrizeClaimed {
-    #[key]
-    pub player: ContractAddress,
-    pub claimed: bool,
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // TOKEN PAIR IDS - Oracle price feed mapping
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -304,4 +274,17 @@ pub struct BeastSessionsUsed {
     #[key]
     pub player: ContractAddress,
     pub count: u32,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// X SHARE SESSION CLAIM - Track a single externally granted free session
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct XShareSessionClaim {
+    #[key]
+    pub player: ContractAddress,
+    pub granted: bool,
+    pub used: bool,
 }

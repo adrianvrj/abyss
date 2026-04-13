@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x381899226c066a0262f45d6ab815f89818e0874ec3e66cdf72b5e92d8db4680",
-    "address": "0x10767a7837e1d4b2c8e499a87610d7b2f5f306f9a077b01bf2cded0b995cee0",
-    "seed": "abyss-v0.1.5",
+    "address": "0x19210e07e069cc67b17be1fbb2258411ddabf745ac32f22d0e547a61a8eceeb",
+    "seed": "abyss-v1.0.1",
     "name": "Abyss",
     "entrypoints": [
       "uuid",
@@ -33,8 +33,8 @@
   },
   "contracts": [
     {
-      "address": "0x757d673ad960ae8dd7932530e106f2bf0affdacf437c385206b8b090c5c1c48",
-      "class_hash": "0x531144714931ac638fd0cfc101a603485e0f7372ec0a381d797c0dcdfb0e718",
+      "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
+      "class_hash": "0x187fec1d2968863a4b5f80860ff4af24829f5bdbcbf601402a1bd2134bb961f",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -50,8 +50,8 @@
       ]
     },
     {
-      "address": "0x54a4cc6b8ea7683ad966b9d140db435dbba5fd4054c56da4da7762123b0b734",
-      "class_hash": "0x445648572a0cf3206694ec1aaf29058753a94abe8834ac95f504b5e5a97ada1",
+      "address": "0x51d8401eef82153d10179238f5221489d0b4faae88c8b0b071734f44e647dd8",
+      "class_hash": "0x5f57af75a89a3500f55d153fd390de5ec6bf5e52a38a22f6c8bf6ac53e6df5a",
       "init_calldata": [],
       "tag": "ABYSS-Chip",
       "selector": "0x7aa938b815b358aae8891407961f23cc654a6d85388cd04c053ffb58a1dfee9",
@@ -70,7 +70,7 @@
       ]
     },
     {
-      "address": "0x45e1e4efea6af7fbc5b74fae37427abaa493ae32de6b0c5050054832a0a7fe0",
+      "address": "0x1f995659f54a1ef5ede1eb5b542a12bf51102948df68fa53de0fcb93ebffc50",
       "class_hash": "0x36d91e686ebd134d2c9405ed8ae9d726f8915cf133fdf6b8ba84ba885eb2e2f",
       "init_calldata": [],
       "tag": "ABYSS-Collection",
@@ -92,8 +92,8 @@
       ]
     },
     {
-      "address": "0x680b1cfb8876ddc3b75f5bc88f7f1699366827d1756e9874e2536f2fb68704d",
-      "class_hash": "0x5022f89f10063566f686e1118914500e65c5236c87ec5b8cc3d27166c01f00c",
+      "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
+      "class_hash": "0x7861e4bdb4505d4230707342821527243441b6172489a2b0c08659e326dca63",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -106,14 +106,16 @@
       ]
     },
     {
-      "address": "0x68352ad21e23327ec717de2a56c5dbc33fe3f672385c414e298417b2fa64c01",
-      "class_hash": "0x775ac04139c306c9eb8dc13dddaf0790374e8d0928b1ccae5712944c4ab7616",
+      "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
+      "class_hash": "0x17d2fa80801b7d239b0f3c35dcc3b94df6d5fe9f29b64230a813641894699ca",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
       "systems": [
         "dojo_init",
         "create_session",
+        "claim_beast_session",
+        "claim_x_share_session",
         "mint_session",
         "request_spin",
         "end_session",
@@ -122,8 +124,8 @@
       ]
     },
     {
-      "address": "0x65a27caaa6ae6076678e8c3b0d4648bbb67f94e09beff81dd01eb242f7c15ea",
-      "class_hash": "0x431084141a4c98911e7dc8fce682ec0b33c83b1216f73b8dfc6125005183934",
+      "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
+      "class_hash": "0x132dc3d08924be1dea11a3ba3ea93d6cd2b35c285458f1c265a6aaf3463b760",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -135,7 +137,7 @@
       ]
     },
     {
-      "address": "0x361679a02cd3c085d2bc8c14a0f0e7accd299d26497ba84155f66a846735e2d",
+      "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
       "class_hash": "0x2a4ca5e969f20f086ad1e04fd527cd9337cee33b57c9f159c9741d70f67ba00",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
@@ -151,12 +153,12 @@
       ]
     },
     {
-      "address": "0x37f667d2f7f74eb246b5f63212fadbfbc6c0e58e95de6f5b8ab8eeb9bdbb272",
-      "class_hash": "0x6b1cc04844a789b8eaf6ca0dc8dc0e881b2c4850e80b6915083747ce71af14d",
+      "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
+      "class_hash": "0x19f00dad2894361e1a83d4da0ec9caf54faccd591f93db7b41a089964b46b51",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
-        "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-        "0x05CC7fe1BfAAf3e05DFe1FD67397CeB3570D8869ddF96c5b5bC911289EeBa706"
+        "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
+        "0x07e89f628e2a133213443FE1b43dd0BB48ae3ab182f7B568A3fBDC6667041697"
       ],
       "tag": "ABYSS-Setup",
       "selector": "0x2674d1df58dd895a5ffb63e5fa9d41f81f43f53d2abf2984f4502a6061a01a6",
@@ -171,6 +173,7 @@
         "set_relic_nft",
         "set_relic_base_uri",
         "set_beast_nft",
+        "grant_x_share_session",
         "set_pragma_oracle",
         "set_chip_emission_rate",
         "set_chip_boost_multiplier",
@@ -188,16 +191,13 @@
       ]
     },
     {
-      "address": "0x49082e84341a1c964af276b3cbd0ee1a00d2ac4e4a4664636cd3d3e7912066d",
-      "class_hash": "0x4c9430c6dc8c85b819d98204700365350b1bfef4103d890659320a6c4a842b1",
+      "address": "0xabacec30b172f0c17c1db76e0beec8a4ea39b3cf633406b25a09f75225cf07",
+      "class_hash": "0x5448a44cb48fab3e171377781ec7db9e82c39737ac0d79a17c0deac28f3d020",
       "init_calldata": [],
       "tag": "ABYSS-Treasury",
       "selector": "0x72689885a6f7a8f2db029679189ea00550d416058e3f0b0692e58417d2a8c19",
       "systems": [
         "dojo_init",
-        "claim_prize",
-        "add_prize_token",
-        "distribute_prizes",
         "upgrade",
         "grant_role",
         "revoke_role",
@@ -513,67 +513,6 @@
       "class_hash": "0x731b5c36d8c1fb3ddadc9c44933acc1f01fad3dbe731b3b5dfbb95834157b7f",
       "tag": "ABYSS-PlayerSessions",
       "selector": "0x78021b494e7b3094e231b9f1a04b33a9a7759095f68079bf17cce32525d3417"
-    },
-    {
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": true
-        },
-        {
-          "name": "claimed",
-          "type": "core::bool",
-          "key": false
-        }
-      ],
-      "class_hash": "0x6f85f769ecdabb2ec5c56525273ecd55031307a978f7421b3e7fcece91b752",
-      "tag": "ABYSS-PrizeClaimed",
-      "selector": "0xfbff358dcf5f37b7c76d1b11ec604aedb62c444e52b05d9f5fc42c58e3effe"
-    },
-    {
-      "members": [
-        {
-          "name": "world_resource",
-          "type": "core::felt252",
-          "key": true
-        },
-        {
-          "name": "pool_amount",
-          "type": "core::integer::u256",
-          "key": false
-        },
-        {
-          "name": "prizes_distributed",
-          "type": "core::bool",
-          "key": false
-        },
-        {
-          "name": "prize_tokens_count",
-          "type": "core::integer::u32",
-          "key": false
-        }
-      ],
-      "class_hash": "0xb64834cf294533ccdf5563bfc5dccb2761013d52f01f31560e86f243bb62aa",
-      "tag": "ABYSS-PrizePool",
-      "selector": "0x6eae7a42b45fcd9a8dda9aea066e73eb5b14ff4c604d4d2f14eb164b44358e0"
-    },
-    {
-      "members": [
-        {
-          "name": "index",
-          "type": "core::integer::u32",
-          "key": true
-        },
-        {
-          "name": "token_address",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": false
-        }
-      ],
-      "class_hash": "0x16a235e1f968cffd673a5c5cf788f520f94ac85dd9804d92d0b9e15c339ecbc",
-      "tag": "ABYSS-PrizeToken",
-      "selector": "0x78a37e7cb257d86c254fbfc899030aaf26886a62bd11ad31e6e0a3f05c7b386"
     },
     {
       "members": [
@@ -972,6 +911,28 @@
       "class_hash": "0x502051070b9858de98bc9f1dcea5a859e14412af559cc4388b3a9e8ecfa0c00",
       "tag": "ABYSS-TokenPairId",
       "selector": "0x2e580309384e6d2ed586f3fd845bd915285398a33c1ab0f4f702d54b9d8ddad"
+    },
+    {
+      "members": [
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "granted",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "used",
+          "type": "core::bool",
+          "key": false
+        }
+      ],
+      "class_hash": "0x4e3eef1a427993737510535d7ff32350a12042e5ec0455570e0f1596e108873",
+      "tag": "ABYSS-XShareSessionClaim",
+      "selector": "0x5cbd95e8f91262786c1d31ceb1143b62a7fc4622cf481ccebdc5648844738cd"
     }
   ],
   "events": [
@@ -3101,94 +3062,6 @@
     },
     {
       "type": "struct",
-      "name": "abyss_game::models::index::PrizeClaimed",
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "claimed",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizeClaimedValue",
-      "members": [
-        {
-          "name": "claimed",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizePool",
-      "members": [
-        {
-          "name": "world_resource",
-          "type": "core::felt252"
-        },
-        {
-          "name": "pool_amount",
-          "type": "core::integer::u256"
-        },
-        {
-          "name": "prizes_distributed",
-          "type": "core::bool"
-        },
-        {
-          "name": "prize_tokens_count",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizePoolValue",
-      "members": [
-        {
-          "name": "pool_amount",
-          "type": "core::integer::u256"
-        },
-        {
-          "name": "prizes_distributed",
-          "type": "core::bool"
-        },
-        {
-          "name": "prize_tokens_count",
-          "type": "core::integer::u32"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizeToken",
-      "members": [
-        {
-          "name": "index",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "token_address",
-          "type": "core::starknet::contract_address::ContractAddress"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::PrizeTokenValue",
-      "members": [
-        {
-          "name": "token_address",
-          "type": "core::starknet::contract_address::ContractAddress"
-        }
-      ]
-    },
-    {
-      "type": "struct",
       "name": "abyss_game::models::index::Session",
       "members": [
         {
@@ -3784,6 +3657,38 @@
       ]
     },
     {
+      "type": "struct",
+      "name": "abyss_game::models::index::XShareSessionClaim",
+      "members": [
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "granted",
+          "type": "core::bool"
+        },
+        {
+          "name": "used",
+          "type": "core::bool"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::XShareSessionClaimValue",
+      "members": [
+        {
+          "name": "granted",
+          "type": "core::bool"
+        },
+        {
+          "name": "used",
+          "type": "core::bool"
+        }
+      ]
+    },
+    {
       "type": "event",
       "name": "abyss_game::models::index::m_BeastSessionsUsed::Event",
       "kind": "enum",
@@ -3816,24 +3721,6 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_PlayerSessions::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_PrizeClaimed::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_PrizePool::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_PrizeToken::Event",
       "kind": "enum",
       "variants": []
     },
@@ -3888,6 +3775,12 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_TokenPairId::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::models::index::m_XShareSessionClaim::Event",
       "kind": "enum",
       "variants": []
     },
@@ -4128,6 +4021,38 @@
         },
         {
           "type": "function",
+          "name": "claim_beast_session",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "claim_x_share_session",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "mint_session",
           "inputs": [
             {
@@ -4256,6 +4181,22 @@
         {
           "type": "function",
           "name": "get_available_beast_sessions",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_available_x_share_sessions",
           "inputs": [
             {
               "name": "player",
@@ -4722,6 +4663,18 @@
         },
         {
           "type": "function",
+          "name": "grant_x_share_session",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "set_pragma_oracle",
           "inputs": [
             {
@@ -5020,54 +4973,6 @@
           ],
           "outputs": [],
           "state_mutability": "external"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "abyss_game::systems::treasury::ITreasury",
-      "items": [
-        {
-          "type": "function",
-          "name": "claim_prize",
-          "inputs": [],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "add_prize_token",
-          "inputs": [
-            {
-              "name": "token",
-              "type": "core::starknet::contract_address::ContractAddress"
-            }
-          ],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "distribute_prizes",
-          "inputs": [],
-          "outputs": [],
-          "state_mutability": "external"
-        },
-        {
-          "type": "function",
-          "name": "get_unclaimed_prize",
-          "inputs": [
-            {
-              "name": "address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u256"
-            }
-          ],
-          "state_mutability": "view"
         }
       ]
     },

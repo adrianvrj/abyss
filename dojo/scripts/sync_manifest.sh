@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PROFILE="${1:-sepolia}"
+PROFILE="${1:-mainnet}"
 SOURCE_MANIFEST="${ROOT_DIR}/manifest_${PROFILE}.json"
 
 if [[ ! -f "${SOURCE_MANIFEST}" ]]; then

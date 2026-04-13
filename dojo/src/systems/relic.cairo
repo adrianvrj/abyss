@@ -102,7 +102,8 @@ pub mod Relic {
             } else if effect == RelicEffectType::DoubleNextSpin {
                 session.relic_pending_effect = RelicEffectType::DoubleNextSpin;
             } else if effect == RelicEffectType::ResetSpins {
-                session.spins_remaining = 5; // Reset to base 5
+                let spin_bonus = InventoryImpl::get_inventory_spin_bonus(@store, session_id);
+                session.spins_remaining = 5 + spin_bonus;
             } else if effect == RelicEffectType::FreeMarketRefresh {
                 let mut sm = store.session_market(session_id);
                 sm.refresh_count += 1;

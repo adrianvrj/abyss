@@ -15,6 +15,7 @@ pub trait ISetup<T> {
     fn set_relic_nft(ref self: T, address: ContractAddress);
     fn set_relic_base_uri(ref self: T, base_uri: ByteArray);
     fn set_beast_nft(ref self: T, address: ContractAddress);
+    fn grant_x_share_session(ref self: T, player: ContractAddress);
     fn set_pragma_oracle(ref self: T, oracle: ContractAddress);
     fn set_chip_emission_rate(ref self: T, rate: u32);
     fn set_chip_boost_multiplier(ref self: T, multiplier: u32);
@@ -419,6 +420,17 @@ pub mod Setup {
             let mut config = store.config();
             config.beast_nft = address;
             store.set_config(@config);
+        }
+
+        fn grant_x_share_session(ref self: ContractState, player: ContractAddress) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut claim = store.x_share_session_claim(player);
+            assert(!claim.used, 'X share claim already consumed');
+            claim.player = player;
+            claim.granted = true;
+            store.set_x_share_session_claim(@claim);
         }
 
         fn set_pragma_oracle(ref self: ContractState, oracle: ContractAddress) {

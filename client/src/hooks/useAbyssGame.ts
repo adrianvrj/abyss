@@ -4,11 +4,12 @@ import { CallData } from "starknet";
 import { getRpcProvider } from "@/api/rpc/provider";
 import {
   get666Probability as read666Probability,
+  getAvailableBeastSessions as readAvailableBeastSessions,
+  getAvailableXShareSessions as readAvailableXShareSessions,
   getGameConfig,
   getLevelThreshold as readLevelThreshold,
   getUsdCostInToken,
 } from "@/api/rpc/play";
-import { getUnclaimedPrize as readUnclaimedPrize } from "@/api/rpc/treasury";
 import {
   DEFAULT_CHAIN_ID,
   NAMESPACE,
@@ -16,7 +17,6 @@ import {
   getMarketAddress,
   getPlayAddress,
   getRelicAddress,
-  getTreasuryAddress,
   getWorldAddress,
 } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
@@ -134,7 +134,6 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
   const playAddress = useMemo(() => getPlayAddress(chainId), [chainId]);
   const marketAddress = useMemo(() => getMarketAddress(chainId), [chainId]);
   const relicAddress = useMemo(() => getRelicAddress(chainId), [chainId]);
-  const treasuryAddress = useMemo(() => getTreasuryAddress(chainId), [chainId]);
 
   const getSystemAddress = useCallback(
     (contractName: string) => getContractAddress(chainId, NAMESPACE, contractName),
@@ -215,7 +214,6 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
         playAddress,
         marketAddress,
         relicAddress,
-        treasuryAddress,
       ]);
 
       logTxDebug(`${label}:parsed:waited`, parsed);
@@ -243,7 +241,6 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
               playAddress,
               marketAddress,
               relicAddress,
-              treasuryAddress,
             ]);
 
             logTxDebug(`${label}:receipt:raw`, {
@@ -279,7 +276,6 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
       playAddress,
       provider,
       relicAddress,
-      treasuryAddress,
       waitForPreConfirmation,
       worldAddress,
       chainId,
@@ -330,6 +326,40 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
       return 1;
     },
     [account, chainId, playAddress, waitForPreConfirmation],
+  );
+
+  const claimBeastSession = useCallback(
+    async (): Promise<number> => {
+      if (!account) {
+        throw new Error("Not connected");
+      }
+
+      const tx = await account.execute({
+        contractAddress: playAddress,
+        entrypoint: "claim_beast_session",
+        calldata: [account.address],
+      });
+      await waitForPreConfirmation(tx.transaction_hash);
+      return 1;
+    },
+    [account, playAddress, waitForPreConfirmation],
+  );
+
+  const claimXShareSession = useCallback(
+    async (): Promise<number> => {
+      if (!account) {
+        throw new Error("Not connected");
+      }
+
+      const tx = await account.execute({
+        contractAddress: playAddress,
+        entrypoint: "claim_x_share_session",
+        calldata: [account.address],
+      });
+      await waitForPreConfirmation(tx.transaction_hash);
+      return 1;
+    },
+    [account, playAddress, waitForPreConfirmation],
   );
 
   const requestSpin = useCallback(
@@ -655,30 +685,22 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
     [chainId],
   );
 
-  const getUnclaimedPrize = useCallback(
-    async (address: string) => readUnclaimedPrize(chainId, address),
+  const getAvailableBeastSessions = useCallback(
+    async (address: string): Promise<number> => readAvailableBeastSessions(chainId, address),
     [chainId],
   );
 
-  const claimPrize = useCallback(async () => {
-    if (!account) {
-      throw new Error("Not connected");
-    }
-
-    const tx = await account.execute({
-      contractAddress: treasuryAddress,
-      entrypoint: "claim_prize",
-      calldata: [],
-    });
-
-    await waitForPreConfirmation(tx.transaction_hash);
-    return tx.transaction_hash;
-  }, [account, treasuryAddress, waitForPreConfirmation]);
+  const getAvailableXShareSessions = useCallback(
+    async (address: string): Promise<number> => readAvailableXShareSessions(chainId, address),
+    [chainId],
+  );
 
   return {
     provider,
     isReady: !!account,
     createSession,
+    claimBeastSession,
+    claimXShareSession,
     requestSpin,
     buyItem,
     sellItem,
@@ -698,8 +720,8 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
     getPlayerItems,
     getSystemAddress,
     getLeaderboard,
-    getUnclaimedPrize,
-    claimPrize,
+    getAvailableBeastSessions,
+    getAvailableXShareSessions,
     toriiClient: null,
   };
 }

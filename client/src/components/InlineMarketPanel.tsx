@@ -798,26 +798,51 @@ const styles = `
             background: transparent;
             padding: 0;
             justify-content: space-between;
+            gap: 12px;
         }
         .panel-header {
-            font-size: 16px;
-            padding: 15px 0;
+            font-size: 11px;
+            padding: 0 0 10px;
         }
         .item-display {
             flex: 1;
             width: 100%;
             height: auto;
-            margin: 10px 0;
-            background: rgba(255, 132, 28, 0.05);
-            border: 1px solid #FF841C44;
+            min-height: 0;
+            margin: 0;
+            padding: 18px 14px;
+            background: rgba(0, 0, 0, 0.36);
+            border: 1px solid rgba(255, 132, 28, 0.16);
+        }
+        .item-image img, .charm-image img {
+            width: 120px;
+            height: 120px;
+        }
+        .item-name {
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .effect-badge, .charm-effect {
+            font-size: 8px;
+            line-height: 1.6;
+            padding: 8px 10px;
+            text-align: center;
         }
         .buy-btn, .refresh-btn {
-            padding: 15px;
-            font-size: 12px;
+            min-height: 50px;
+            padding: 14px 15px;
+            font-size: 9px;
+            border-radius: 12px;
         }
         .carousel-nav button {
-            padding: 10px 15px;
-            font-size: 20px;
+            min-width: 56px;
+            min-height: 48px;
+            padding: 10px 14px;
+            font-size: 18px;
+            border-radius: 12px;
+        }
+        .carousel-nav span {
+            font-size: 9px;
         }
     }
 `;

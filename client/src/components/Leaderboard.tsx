@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { getPrizeTokenBalances, LeaderboardEntry, TokenBalance } from "@/utils/abyssContract";
+import { LeaderboardEntry } from "@/utils/abyssContract";
 import { ArrowLeft, Trophy, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useController } from "@/hooks/useController";
 import { useAbyssGame } from "@/hooks/useAbyssGame";
-import { PrizePoolModal } from "./modals/PrizePoolModal";
 
 const headerStyle: React.CSSProperties = {
     fontFamily: "'PressStart2P', monospace",
@@ -19,18 +18,12 @@ export function Leaderboard() {
     const { getLeaderboard } = useAbyssGame(null);
     const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
-    const [showPrizeModal, setShowPrizeModal] = useState(false);
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [entries, balances] = await Promise.all([
-                getLeaderboard(),
-                getPrizeTokenBalances()
-            ]);
+            const entries = await getLeaderboard();
             setLeaderboardData(entries.slice(0, 10));
-            setTokenBalances(balances);
         } catch (err) {
             console.error("Failed to load leaderboard:", err);
         } finally {
@@ -109,18 +102,6 @@ export function Leaderboard() {
                     LEADERBOARD
                 </h1>
                 <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                        onClick={() => setShowPrizeModal(true)}
-                        style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "#FF841C",
-                            cursor: "pointer",
-                            padding: "8px",
-                        }}
-                    >
-                        <Trophy size={20} />
-                    </button>
                     <button
                         onClick={handleOpenProfile}
                         style={{
@@ -280,13 +261,6 @@ export function Leaderboard() {
                     </>
                 )}
             </div>
-
-            {showPrizeModal && (
-                <PrizePoolModal
-                    tokenBalances={tokenBalances}
-                    onClose={() => setShowPrizeModal(false)}
-                />
-            )}
         </div>
     );
 }

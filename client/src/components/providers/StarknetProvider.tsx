@@ -1,12 +1,11 @@
 import ControllerConnector from "@cartridge/connector/controller";
-import { sepolia, type Chain } from "@starknet-react/chains";
+import { mainnet, sepolia, type Chain } from "@starknet-react/chains";
 import {
     type Connector,
     jsonRpcProvider,
     StarknetConfig,
     useAccount,
 } from "@starknet-react/core";
-import { shortString } from "starknet";
 import { useEffect, useMemo, useRef, type PropsWithChildren } from "react";
 import {
     CONTROLLER_RPC_URL,
@@ -15,8 +14,7 @@ import {
     ensureControllerSession,
     getControllerConnectorConfigKey,
 } from "@/lib/controllerConfig";
-
-const SEPOLIA_CHAIN_ID = shortString.encodeShortString("SN_SEPOLIA");
+import { DEFAULT_CHAIN_ID } from "@/config";
 
 const provider = jsonRpcProvider({
     rpc: (_chain: Chain) => ({ nodeUrl: CONTROLLER_RPC_URL }),
@@ -43,7 +41,7 @@ function getConnector(): Connector[] {
         console.warn("failed to clear stale controller session state", error);
     }
 
-    const connectorConfigKey = getControllerConnectorConfigKey(SEPOLIA_CHAIN_ID);
+    const connectorConfigKey = getControllerConnectorConfigKey(DEFAULT_CHAIN_ID);
 
     if (
         window.__cartridge_connector__ &&
@@ -56,7 +54,7 @@ function getConnector(): Connector[] {
     delete window.starknet_controller;
 
     window.__cartridge_connector__ = new ControllerConnector(
-        buildControllerOptions(SEPOLIA_CHAIN_ID),
+        buildControllerOptions(DEFAULT_CHAIN_ID),
     ) as never as Connector;
     window.__cartridge_connector_config_key__ = connectorConfigKey;
     return [window.__cartridge_connector__];
@@ -97,7 +95,7 @@ export function StarknetProvider({ children }: PropsWithChildren) {
     return (
         <StarknetConfig
             autoConnect
-            chains={[sepolia]}
+            chains={[sepolia, mainnet]}
             connectors={connectors}
             provider={provider}
         >

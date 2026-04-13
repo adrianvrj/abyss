@@ -61,11 +61,11 @@ body {
 }
 
 /* Mobile background */
-@media (max-width: 768px) {
+/* @media (max-width: 768px) {
   body {
     background-image: url('/images/bg-mobile.png');
   }
-}
+} */
 
 a {
   color: var(--color-primary);

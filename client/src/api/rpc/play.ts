@@ -186,6 +186,18 @@ export async function getAvailableBeastSessions(chainId: ChainLike, playerAddres
   return Number(result[0] ?? 0);
 }
 
+export async function getAvailableXShareSessions(chainId: ChainLike, playerAddress: string) {
+  const provider = getRpcProvider(chainId);
+  const playAddress = getPlayAddress(chainId);
+  const result = await provider.callContract({
+    contractAddress: playAddress,
+    entrypoint: "get_available_x_share_sessions",
+    calldata: [playerAddress],
+  });
+
+  return Number(result[0] ?? 0);
+}
+
 export async function getChipsToClaim(chainId: ChainLike, sessionId: number) {
   const provider = getRpcProvider(chainId);
   const playAddress = getPlayAddress(chainId);
