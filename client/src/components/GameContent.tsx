@@ -17,28 +17,11 @@ import CharmMintAnimation from "@/components/CharmMintAnimation";
 import RelicModal from "@/components/modals/RelicModal";
 import InfoModal from "@/components/modals/InfoModal";
 import PreloadingScreen from "@/components/PreloadingScreen";
-import { useAssetPreloader } from "@/hooks/useAssetPreloader";
+import { useAssets } from "@/components/providers/AssetPreloaderProvider";
 import { useGameSession } from "@/hooks/useGameSession";
 import { usePracticeSession } from "@/hooks/usePracticeSession";
-import { SYMBOL_INFO } from "@/utils/GameConfig";
 import { AnimatePresence } from "framer-motion";
 import { Store, Package, HelpCircle, Home, Gem } from "lucide-react";
-
-const PRELOAD_IMAGES = [
-    '/images/bg-desktop.png',
-    '/images/bg-mobile.png',
-    '/images/abyss-logo.png',
-    '/images/slot_machine.png',
-    '/images/skull_danger.png',
-    ...Object.values(SYMBOL_INFO).map(s => s.image)
-];
-
-const PRELOAD_AUDIO = [
-    '/sounds/spin.mp3',
-    '/sounds/win.wav',
-    '/sounds/jackpot.mp3',
-    '/sounds/game-over.mp3',
-];
 
 export function GameContent() {
     const location = useLocation();
@@ -116,7 +99,7 @@ function GameStage({
     } as const;
     const activeMobileMeta = activeMobileTab === 'home' ? null : mobileTabMeta[activeMobileTab];
 
-    const { loaded: assetsLoaded, progress: loadProgress } = useAssetPreloader(PRELOAD_IMAGES, PRELOAD_AUDIO);
+    const { isLoaded: assetsLoaded, progress: loadProgress } = useAssets();
 
     const isLoading = !assetsLoaded || game.isInitialLoading;
 
