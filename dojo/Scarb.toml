@@ -5,6 +5,7 @@ cairo-version = "2.15.0"
 edition = "2024_07"
 
 [scripts]
+test = "snforge test"
 
 [[target.starknet-contract]]
 allowed-libfuncs-list.name = "experimental"
@@ -29,6 +30,7 @@ starknet.workspace = true
 [dev-dependencies]
 dojo_cairo_test.workspace = true
 cairo_test.workspace = true
+snforge_std = "0.56.0"
 
 [features]
 default = []

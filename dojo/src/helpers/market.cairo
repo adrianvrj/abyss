@@ -1,9 +1,9 @@
-use core::poseidon::poseidon_hash_span;
 use core::num::traits::Zero;
+use core::poseidon::poseidon_hash_span;
 use starknet::ContractAddress;
-use crate::constants::{TOTAL_ITEMS};
+use crate::constants::TOTAL_ITEMS;
+use crate::interfaces::charm_nft::ICharmDispatcherTrait;
 use crate::store::{Store, StoreTrait};
-use crate::interfaces::charm_nft::{ICharmDispatcherTrait};
 
 #[generate_trait]
 pub impl MarketImpl of MarketTrait {
@@ -14,7 +14,7 @@ pub impl MarketImpl of MarketTrait {
                 return true;
             }
             i += 1;
-        };
+        }
         false
     }
 
@@ -27,7 +27,7 @@ pub impl MarketImpl of MarketTrait {
                 return true;
             }
             i += 1;
-        };
+        }
         false
     }
 
@@ -52,16 +52,14 @@ pub impl MarketImpl of MarketTrait {
                 owned_charm_ids.append(charm_id);
             }
             i += 1;
-        };
+        }
 
         owned_charm_ids
     }
 
     /// Generate a random item ID for a market slot.
     fn generate_random_item_id(session_id: u32, slot: u32, nonce: u32) -> u32 {
-        let seed = poseidon_hash_span(
-            array![session_id.into(), slot.into(), nonce.into()].span(),
-        );
+        let seed = poseidon_hash_span(array![session_id.into(), slot.into(), nonce.into()].span());
         let roll: u256 = seed.into();
         let item_id: u32 = (roll % TOTAL_ITEMS.into()).try_into().unwrap() + 1;
         item_id
@@ -84,8 +82,9 @@ pub impl MarketImpl of MarketTrait {
         if owned_charm_ids.len() > 0 {
             let charm_roll: u32 = (roll % 100).try_into().unwrap();
             if charm_roll < 30 {
-                let charm_index: u32 =
-                    ((roll / 100) % owned_charm_ids.len().into()).try_into().unwrap();
+                let charm_index: u32 = ((roll / 100) % owned_charm_ids.len().into())
+                    .try_into()
+                    .unwrap();
                 let charm_id = *owned_charm_ids.at(charm_index);
                 if charm_id > 0 && !Self::has_session_charm(store, session_id, charm_id) {
                     return 1000 + charm_id;
@@ -109,33 +108,27 @@ pub impl MarketImpl of MarketTrait {
             let mut candidate: u32 = 0;
 
             while attempts < 5 {
-                candidate = Self::generate_market_slot_item(
-                    @store,
-                    session_id,
-                    session.player_address,
-                    slot,
-                    nonce + (attempts * 100),
-                );
+                candidate =
+                    Self::generate_market_slot_item(
+                        @store, session_id, session.player_address, slot, nonce + (attempts * 100),
+                    );
 
                 if !Self::has_value(generated_items.span(), candidate) {
                     break;
                 }
                 attempts += 1;
-            };
+            }
 
             if candidate == 0 || Self::has_value(generated_items.span(), candidate) {
-                candidate = Self::generate_market_slot_item(
-                    @store,
-                    session_id,
-                    session.player_address,
-                    slot,
-                    nonce + 500 + slot,
-                );
+                candidate =
+                    Self::generate_market_slot_item(
+                        @store, session_id, session.player_address, slot, nonce + 500 + slot,
+                    );
             }
 
             generated_items.append(candidate);
             slot += 1;
-        };
+        }
 
         sm.item_slot_1 = *generated_items.at(0);
         sm.item_slot_2 = *generated_items.at(1);
@@ -143,15 +136,18 @@ pub impl MarketImpl of MarketTrait {
         sm.item_slot_4 = *generated_items.at(3);
         sm.item_slot_5 = *generated_items.at(4);
         sm.item_slot_6 = *generated_items.at(5);
-        
+
         store.set_session_market(@sm);
 
         // Clear purchased flags
         let mut slot: u32 = 0;
         while slot < 6 {
-            store.set_market_slot_purchased(
-                @crate::models::index::MarketSlotPurchased { session_id, slot, purchased: false }
-            );
+            store
+                .set_market_slot_purchased(
+                    @crate::models::index::MarketSlotPurchased {
+                        session_id, slot, purchased: false,
+                    },
+                );
             slot += 1;
         };
     }

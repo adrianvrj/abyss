@@ -1,0 +1,74 @@
+[
+  {
+    "contractAddress": "0x0ba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
+    "entrypoint": "create_session"
+  },
+  {
+    "contractAddress": "0x0ba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
+    "entrypoint": "claim_beast_session"
+  },
+  {
+    "contractAddress": "0x0ba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
+    "entrypoint": "request_spin"
+  },
+  {
+    "contractAddress": "0x0ba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
+    "entrypoint": "end_session"
+  },
+  {
+    "contractAddress": "0x0ba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
+    "entrypoint": "claim_chips"
+  },
+  {
+    "contractAddress": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
+    "entrypoint": "buy_item"
+  },
+  {
+    "contractAddress": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
+    "entrypoint": "sell_item"
+  },
+  {
+    "contractAddress": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
+    "entrypoint": "refresh_market"
+  },
+  {
+    "contractAddress": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
+    "entrypoint": "equip_relic"
+  },
+  {
+    "contractAddress": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
+    "entrypoint": "activate_relic"
+  },
+  {
+    "contractAddress": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
+    "entrypoint": "issue"
+  },
+  {
+    "contractAddress": "0x051d8401eef82153d10179238f5221489d0b4faae88c8b0b071734f44e647dd8",
+    "entrypoint": "approve"
+  },
+  {
+    "contractAddress": "0x051d8401eef82153d10179238f5221489d0b4faae88c8b0b071734f44e647dd8",
+    "entrypoint": "transfer"
+  },
+  {
+    "contractAddress": "0x1f995659f54a1ef5ede1eb5b542a12bf51102948df68fa53de0fcb93ebffc50",
+    "entrypoint": "approve"
+  },
+  {
+    "contractAddress": "0x1f995659f54a1ef5ede1eb5b542a12bf51102948df68fa53de0fcb93ebffc50",
+    "entrypoint": "set_approval_for_all"
+  },
+  {
+    "contractAddress": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+    "entrypoint": "approve"
+  },
+  {
+    "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+    "entrypoint": "approve"
+  },
+  {
+    "contractAddress": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    "entrypoint": "approve"
+  }
+]

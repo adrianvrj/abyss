@@ -7,15 +7,15 @@ const MINTER_ROLE: felt252 = selector!("MINTER_ROLE");
 
 #[dojo::contract]
 pub mod Charm {
+    use dojo::world::WorldStorageTrait;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::interfaces::token::erc721::{IERC721, IERC721Metadata};
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
-    use dojo::world::WorldStorageTrait;
+    use starknet::ContractAddress;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::ContractAddress;
     use crate::constants::NAMESPACE;
     use crate::helpers::charm_types::{get_charm_ids_by_rarity, get_charm_type_info};
     use crate::interfaces::charm_nft::{CharmMetadata, ICharm};
@@ -82,9 +82,7 @@ pub mod Charm {
 
         let play_address = world.dns_address(@PLAY_NAME()).expect('Play not found!');
         let setup_address = world.dns_address(@SETUP_NAME()).expect('Setup not found!');
-        let treasury_address = world
-            .dns_address(@TREASURY_NAME())
-            .expect('Treasury not found!');
+        let treasury_address = world.dns_address(@TREASURY_NAME()).expect('Treasury not found!');
         self.accesscontrol._grant_role(MINTER_ROLE, play_address);
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, treasury_address);
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, setup_address);
@@ -148,7 +146,7 @@ pub mod Charm {
                     token_ids.append(token_id);
                 }
                 current += 1;
-            };
+            }
             token_ids
         }
 

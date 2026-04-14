@@ -50,34 +50,51 @@ pub impl SpinnableImpl of SpinnableTrait {
             );
             total_score += score * h3_retrigger;
             total_patterns += pats;
-            
+
             // Track matches for upgrades
-            if matched == crate::types::symbol::SymbolType::SEVEN { m7 += pats.into(); }
-            else if matched == crate::types::symbol::SymbolType::DIAMOND { md += pats.into(); }
-            else if matched == crate::types::symbol::SymbolType::CHERRY { mc += pats.into(); }
-            else if matched == crate::types::symbol::SymbolType::COIN { m_coin += pats.into(); }
-            else if matched == crate::types::symbol::SymbolType::LEMON { ml += pats.into(); }
-            
+            if matched == crate::types::symbol::SymbolType::SEVEN {
+                m7 += pats.into();
+            } else if matched == crate::types::symbol::SymbolType::DIAMOND {
+                md += pats.into();
+            } else if matched == crate::types::symbol::SymbolType::CHERRY {
+                mc += pats.into();
+            } else if matched == crate::types::symbol::SymbolType::COIN {
+                m_coin += pats.into();
+            } else if matched == crate::types::symbol::SymbolType::LEMON {
+                ml += pats.into();
+            }
+
             row += 1;
-        };
+        }
 
         // Vertical patterns
-        let (v_score, v_pats, vm7, vmd, vmc, vm_coin, vml) = crate::helpers::patterns::check_vertical_patterns_with_matches(
+        let (v_score, v_pats, vm7, vmd, vmc, vm_coin, vml) =
+            crate::helpers::patterns::check_vertical_patterns_with_matches(
             g, symbol_scores, vert_bonus,
         );
         total_score += v_score * vert_retrigger;
         total_patterns += v_pats;
-        m7 += vm7; md += vmd; mc += vmc; m_coin += vm_coin; ml += vml;
+        m7 += vm7;
+        md += vmd;
+        mc += vmc;
+        m_coin += vm_coin;
+        ml += vml;
 
         // Diagonal patterns
-        let (d_score, d_pats, dm7, dmd, dmc, dm_coin, dml) = crate::helpers::patterns::check_diagonal_patterns_with_matches(
+        let (d_score, d_pats, dm7, dmd, dmc, dm_coin, dml) =
+            crate::helpers::patterns::check_diagonal_patterns_with_matches(
             g, symbol_scores, diag_bonus,
         );
         total_score += d_score * diag_retrigger;
         total_patterns += d_pats;
-        m7 += dm7; md += dmd; mc += dmc; m_coin += dm_coin; ml += dml;
+        m7 += dm7;
+        md += dmd;
+        mc += dmc;
+        m_coin += dm_coin;
+        ml += dml;
 
-        total_score = crate::helpers::patterns::apply_jackpot_bonus(total_score, is_jackpot, jp_bonus);
+        total_score =
+            crate::helpers::patterns::apply_jackpot_bonus(total_score, is_jackpot, jp_bonus);
 
         // Jackpot retrigger (multiplayer only apply if jackpot)
         if jackpot_retrigger > 1 && is_jackpot {

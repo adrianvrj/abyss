@@ -1,20 +1,17 @@
-use crate::helpers::patterns::{
-    apply_jackpot_bonus, check_vertical_patterns_with_matches,
-};
+use crate::helpers::patterns::{apply_jackpot_bonus, check_vertical_patterns_with_matches};
 use crate::types::symbol::SymbolType;
 
 #[test]
 fn test_vertical_pattern_bonus_applies_percentage() {
     let grid = array![
-        SymbolType::SEVEN, SymbolType::DIAMOND, SymbolType::CHERRY, SymbolType::COIN, SymbolType::LEMON,
-        SymbolType::SEVEN, SymbolType::SEVEN, SymbolType::DIAMOND, SymbolType::CHERRY, SymbolType::COIN,
-        SymbolType::SEVEN, SymbolType::LEMON, SymbolType::COIN, SymbolType::DIAMOND, SymbolType::CHERRY,
+        SymbolType::SEVEN, SymbolType::DIAMOND, SymbolType::CHERRY, SymbolType::COIN,
+        SymbolType::LEMON, SymbolType::SEVEN, SymbolType::SEVEN, SymbolType::DIAMOND,
+        SymbolType::CHERRY, SymbolType::COIN, SymbolType::SEVEN, SymbolType::LEMON,
+        SymbolType::COIN, SymbolType::DIAMOND, SymbolType::CHERRY,
     ];
 
     let (score, patterns, m7, _, _, _, _) = check_vertical_patterns_with_matches(
-        grid.span(),
-        (7, 5, 4, 3, 2),
-        50,
+        grid.span(), (7, 5, 4, 3, 2), 50,
     );
 
     assert(score == 63, 'bad vertical bonus score');

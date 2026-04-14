@@ -69,21 +69,19 @@ pub mod Setup {
     use bundle::component::Component as BundleComponent;
     use bundle::component::Component::BundleTrait;
     use bundle::interface::IBundle;
+    use bundle::types::condition::{ConditionTrait, Twitter};
     use bundle::types::item::ItemTrait as BundleItemTrait;
     use bundle::types::metadata::MetadataTrait as BundleMetadataTrait;
-    use bundle::types::condition::{ConditionTrait, Twitter};
+    use core::num::traits::Zero;
     use dojo::world::WorldStorageTrait;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
-    use core::num::traits::Zero;
-    use starknet::ContractAddress;
-    use starknet::get_caller_address;
+    use starknet::{ContractAddress, get_caller_address};
     use crate::constants::{
-        CHARM_BASE_URI, RELIC_BASE_URI,
-        DEFAULT_CHIP_BOOST_MULTIPLIER, DEFAULT_CHIP_EMISSION_RATE, DEFAULT_SCORE_CHERRY,
-        DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON, DEFAULT_SCORE_SEVEN,
-        NAMESPACE, PATTERN_D3_MULT, PATTERN_H3_MULT, PATTERN_H4_MULT, PATTERN_H5_MULT,
-        PATTERN_V3_MULT, WORLD_RESOURCE,
+        CHARM_BASE_URI, DEFAULT_CHIP_BOOST_MULTIPLIER, DEFAULT_CHIP_EMISSION_RATE,
+        DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
+        DEFAULT_SCORE_SEVEN, NAMESPACE, PATTERN_D3_MULT, PATTERN_H3_MULT, PATTERN_H4_MULT,
+        PATTERN_H5_MULT, PATTERN_V3_MULT, RELIC_BASE_URI, WORLD_RESOURCE,
     };
     use crate::interfaces::charm_nft::{ICharmDispatcher, ICharmDispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicDispatcherTrait};
@@ -135,7 +133,7 @@ pub mod Setup {
         ) {
             let mut contract_state = self.get_contract_mut();
             let world = contract_state.world(@NAMESPACE());
-            
+
             let play_address = world.dns_address(@PLAY_NAME()).expect('Play contract not found!');
             let play = IPlayDispatcher { contract_address: play_address };
             play.mint_session(recipient, quantity);
@@ -179,7 +177,9 @@ pub mod Setup {
             .jsonify()
     }
 
-    fn free_social_session_bundle_metadata(payment_token: ContractAddress, image_uri: ByteArray) -> ByteArray {
+    fn free_social_session_bundle_metadata(
+        payment_token: ContractAddress, image_uri: ByteArray,
+    ) -> ByteArray {
         let item = BundleItemTrait::new(
             name: "Free Abyss Session",
             description: "Start a free run in Abyss by sharing on X",
@@ -273,7 +273,7 @@ pub mod Setup {
         while i < len {
             store.set_item(items.at(i));
             i += 1;
-        };
+        }
 
         // Initialize config with defaults
         let config = Config {
@@ -506,7 +506,7 @@ pub mod Setup {
             while i < len {
                 store.set_item(items.at(i));
                 i += 1;
-            };
+            }
 
             let mut config = store.config();
             config.total_items = len;

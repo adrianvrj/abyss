@@ -1,5 +1,11 @@
-use core::poseidon::poseidon_hash_span;
+use core::poseidon::hades_permutation;
 use crate::types::symbol::SymbolType;
+
+#[inline(always)]
+fn poseidon_hash_pair(x: felt252, y: felt252) -> felt252 {
+    let (s0, _, _) = hades_permutation(x, y, 2);
+    s0
+}
 
 /// Generate a slot grid from a VRF random word with luck bias and probability bonuses.
 ///
@@ -15,7 +21,11 @@ pub fn generate_grid_from_random(
     let mut first_symbol: u8 = 0;
 
     // Cap luck bias at 50% to prevent guaranteed patterns
-    let luck_bias_chance: u32 = if luck > 50 { 50 } else { luck };
+    let luck_bias_chance: u32 = if luck > 50 {
+        50
+    } else {
+        luck
+    };
 
     let (p7, pd, pc, p_coin, pl) = probability_bonuses;
     let prob_seven = 10 + p7;
@@ -31,7 +41,7 @@ pub fn generate_grid_from_random(
 
     let mut i: u32 = 0;
     while i < 15 {
-        let position_seed = poseidon_hash_span(array![random_word, i.into()].span());
+        let position_seed = poseidon_hash_pair(random_word, i.into());
         let seed_value: u256 = position_seed.into();
 
         // Luck bias: chance to copy symbol from adjacent cell
@@ -48,17 +58,18 @@ pub fn generate_grid_from_random(
         // If no luck bias applied, use normal random symbol
         if symbol == 0 {
             let symbol_roll: u32 = (seed_value % total_prob.into()).try_into().unwrap();
-            symbol = if symbol_roll < thresh_seven {
-                SymbolType::SEVEN
-            } else if symbol_roll < thresh_diamond {
-                SymbolType::DIAMOND
-            } else if symbol_roll < thresh_cherry {
-                SymbolType::CHERRY
-            } else if symbol_roll < thresh_coin {
-                SymbolType::COIN
-            } else {
-                SymbolType::LEMON
-            };
+            symbol =
+                if symbol_roll < thresh_seven {
+                    SymbolType::SEVEN
+                } else if symbol_roll < thresh_diamond {
+                    SymbolType::DIAMOND
+                } else if symbol_roll < thresh_cherry {
+                    SymbolType::CHERRY
+                } else if symbol_roll < thresh_coin {
+                    SymbolType::COIN
+                } else {
+                    SymbolType::LEMON
+                };
         }
 
         grid.append(symbol);
@@ -71,10 +82,10 @@ pub fn generate_grid_from_random(
         }
 
         i += 1;
-    };
+    }
 
     // Check for 666 based on level probability
-    let roll_666_seed = poseidon_hash_span(array![random_word, 999.into()].span());
+    let roll_666_seed = poseidon_hash_pair(random_word, 999.into());
     let roll_666: u256 = roll_666_seed.into();
     let is_666 = (roll_666 % 1000) < probability_666.into();
 
@@ -105,7 +116,7 @@ pub fn generate_jackpot_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
     while i < 15 {
         grid.append(symbol);
         i += 1;
-    };
+    }
     (grid, false, true)
 }
 
@@ -117,13 +128,13 @@ pub fn generate_666_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
         if i == 6 || i == 7 || i == 8 {
             grid.append(SymbolType::SIX);
         } else {
-            let symbol_seed = poseidon_hash_span(array![random_word, i.into()].span());
+            let symbol_seed = poseidon_hash_pair(random_word, i.into());
             let symbol_roll: u256 = symbol_seed.into();
             let symbol: u8 = ((symbol_roll % 8) + 1).try_into().unwrap();
             grid.append(symbol);
         }
         i += 1;
-    };
+    }
     (grid, true, false)
 }
 
@@ -138,6 +149,6 @@ pub fn force_666_pattern(grid: @Array<u8>) -> Array<u8> {
             result.append(*grid.at(i));
         }
         i += 1;
-    };
+    }
     result
 }

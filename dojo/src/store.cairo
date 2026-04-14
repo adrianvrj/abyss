@@ -1,20 +1,20 @@
 use dojo::event::EventStorage;
 use dojo::model::ModelStorage;
-use dojo::world::{WorldStorage};
+use dojo::world::WorldStorage;
 use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
     CharmMinted, ItemPurchased, ItemSold, MarketRefreshed, RelicActivated, RelicEquipped,
     SessionCreated, SessionEnded, SpinCompleted,
 };
-use crate::interfaces::charm_nft::{ICharmDispatcher};
-use crate::interfaces::erc20::{IERC20Dispatcher};
+use crate::interfaces::charm_nft::ICharmDispatcher;
+use crate::interfaces::erc20::IERC20Dispatcher;
 use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
-use crate::interfaces::vrf::{IVrfProviderDispatcher};
+use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, MarketSlotPurchased, PlayerSessionEntry, PlayerSessions,
-    Session, SessionCharmEntry, SessionCharms, SessionInventory, SessionItemEntry,
-    SessionItemIndex, SessionMarket, SpinResult, TokenPairId, XShareSessionClaim,
+    Session, SessionCharmEntry, SessionCharms, SessionInventory, SessionItemEntry, SessionItemIndex,
+    SessionMarket, SpinResult, TokenPairId, XShareSessionClaim,
 };
 
 #[derive(Copy, Drop)]
@@ -248,7 +248,11 @@ pub impl StoreImpl of StoreTrait {
     fn emit_session_ended(
         mut self: Store, session_id: u32, player: ContractAddress, total_score: u32, level: u32,
     ) {
-        self.world.emit_event(@SessionEnded { session_id, player, total_score, level, dummy_metadata: 0 });
+        self
+            .world
+            .emit_event(
+                @SessionEnded { session_id, player, total_score, level, dummy_metadata: 0 },
+            );
     }
 
     fn emit_spin_completed(mut self: Store, event: @SpinCompleted) {

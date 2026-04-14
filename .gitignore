@@ -8,3 +8,5 @@ nums
 .agents
 .scarb-cache
 dojo/scripts
+.snfoundry_cache
+cairo-optimization

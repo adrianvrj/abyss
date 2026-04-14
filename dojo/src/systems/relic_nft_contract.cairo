@@ -30,7 +30,7 @@ pub mod RelicNFT {
     use crate::systems::setup::NAME as SETUP_NAME;
     use crate::systems::token::NAME as TOKEN_NAME;
     use crate::systems::treasury::NAME as TREASURY_NAME;
-    use super::{IRelicCollection, IRelic, IRelicERC721, RelicMetadata};
+    use super::{IRelic, IRelicCollection, IRelicERC721, RelicMetadata};
 
     component!(path: ERC721Component, storage: erc721, event: ERC721Event);
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
@@ -73,9 +73,7 @@ pub mod RelicNFT {
         self.accesscontrol.initializer();
 
         let setup_address = world.dns_address(@SETUP_NAME()).expect('Setup not found!');
-        let treasury_address = world
-            .dns_address(@TREASURY_NAME())
-            .expect('Treasury not found!');
+        let treasury_address = world.dns_address(@TREASURY_NAME()).expect('Treasury not found!');
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, treasury_address);
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, setup_address);
         self.base_uri.write("");
@@ -130,7 +128,7 @@ pub mod RelicNFT {
                     token_ids.append(token_id);
                 }
                 current += 1;
-            };
+            }
             token_ids
         }
 

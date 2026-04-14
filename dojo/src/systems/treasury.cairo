@@ -5,7 +5,6 @@ pub fn NAME() -> ByteArray {
 
 #[dojo::contract]
 pub mod Treasury {
-
     use openzeppelin::access::accesscontrol::AccessControlComponent;
     use openzeppelin::introspection::src5::SRC5Component;
     use super::*;
@@ -37,5 +36,4 @@ pub mod Treasury {
     fn dojo_init(ref self: ContractState) {
         self.accesscontrol.initializer();
     }
-
 }

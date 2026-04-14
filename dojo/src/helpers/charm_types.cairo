@@ -7,123 +7,243 @@ pub fn get_charm_type_info(charm_id: u32) -> CharmMetadata {
 
     if charm_id == 1 {
         return CharmMetadata {
-            charm_id, name: 'Whisper Stone', description: 'Luck +3',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 3, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Whisper Stone',
+            description: 'Luck +3',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 3,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 2 {
         return CharmMetadata {
-            charm_id, name: 'Faded Coin', description: 'Luck +4',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 4, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Faded Coin',
+            description: 'Luck +4',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 4,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 3 {
         return CharmMetadata {
-            charm_id, name: 'Broken Mirror', description: 'No pat +5',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 5, effect_value_2: 0,
-            condition_type: CharmConditionType::NoPatternLastSpin, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Broken Mirror',
+            description: 'No pat +5',
+            effect_type: CharmEffectType::ConditionalLuckBoost,
+            effect_value: 5,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::NoPatternLastSpin,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 4 {
         return CharmMetadata {
-            charm_id, name: 'Dusty Hourglass', description: 'Low spins +8',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 8, effect_value_2: 0,
-            condition_type: CharmConditionType::LowSpinsRemaining, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Dusty Hourglass',
+            description: 'Low spins +8',
+            effect_type: CharmEffectType::ConditionalLuckBoost,
+            effect_value: 8,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::LowSpinsRemaining,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 5 {
         return CharmMetadata {
-            charm_id, name: 'Cracked Skull', description: 'Luck +5',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 5, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Cracked Skull',
+            description: 'Luck +5',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 5,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 6 {
         return CharmMetadata {
-            charm_id, name: 'Rusty Key', description: 'Per item +3',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 3, effect_value_2: 0,
-            condition_type: CharmConditionType::PerItemInInventory, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Rusty Key',
+            description: 'Per item +3',
+            effect_type: CharmEffectType::ConditionalLuckBoost,
+            effect_value: 3,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::PerItemInInventory,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 7 {
         return CharmMetadata {
-            charm_id, name: 'Moth Wing', description: 'Luck +6',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 6, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Moth Wing',
+            description: 'Luck +6',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 6,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 8 {
         return CharmMetadata {
-            charm_id, name: 'Bone Dice', description: 'Low score +8',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 8, effect_value_2: 0,
-            condition_type: CharmConditionType::LowScore, rarity: 0, shop_cost: 1,
+            charm_id,
+            name: 'Bone Dice',
+            description: 'Low score +8',
+            effect_type: CharmEffectType::ConditionalLuckBoost,
+            effect_value: 8,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::LowScore,
+            rarity: 0,
+            shop_cost: 1,
         };
     } else if charm_id == 9 {
         return CharmMetadata {
-            charm_id, name: 'Soul Fragment', description: 'Luck +10',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 10, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 1, shop_cost: 2,
+            charm_id,
+            name: 'Soul Fragment',
+            description: 'Luck +10',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 10,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 1,
+            shop_cost: 2,
         };
     } else if charm_id == 10 {
         return CharmMetadata {
-            charm_id, name: 'Cursed Pendant', description: 'H3 x2',
-            effect_type: CharmEffectType::PatternRetrigger, effect_value: 2, effect_value_2: 1,
-            condition_type: CharmConditionType::None, rarity: 1, shop_cost: 2,
+            charm_id,
+            name: 'Cursed Pendant',
+            description: 'H3 x2',
+            effect_type: CharmEffectType::PatternRetrigger,
+            effect_value: 2,
+            effect_value_2: 1,
+            condition_type: CharmConditionType::None,
+            rarity: 1,
+            shop_cost: 2,
         };
     } else if charm_id == 11 {
         return CharmMetadata {
-            charm_id, name: 'Shadow Lantern', description: '+8 base, lvl5 +8',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 8, effect_value_2: 8,
-            condition_type: CharmConditionType::HighLevel, rarity: 1, shop_cost: 2,
+            charm_id,
+            name: 'Shadow Lantern',
+            description: '+8 base, lvl5 +8',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 8,
+            effect_value_2: 8,
+            condition_type: CharmConditionType::HighLevel,
+            rarity: 1,
+            shop_cost: 2,
         };
     } else if charm_id == 12 {
         return CharmMetadata {
-            charm_id, name: 'Ethereal Chain', description: 'Pattern +6',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 6, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 1, shop_cost: 2,
+            charm_id,
+            name: 'Ethereal Chain',
+            description: 'Pattern +6',
+            effect_type: CharmEffectType::ConditionalLuckBoost,
+            effect_value: 6,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 1,
+            shop_cost: 2,
         };
     } else if charm_id == 13 {
         return CharmMetadata {
-            charm_id, name: 'Void Compass', description: '+1 spin +15',
-            effect_type: CharmEffectType::ExtraSpinWithLuck, effect_value: 1, effect_value_2: 15,
-            condition_type: CharmConditionType::None, rarity: 1, shop_cost: 3,
+            charm_id,
+            name: 'Void Compass',
+            description: '+1 spin +15',
+            effect_type: CharmEffectType::ExtraSpinWithLuck,
+            effect_value: 1,
+            effect_value_2: 15,
+            condition_type: CharmConditionType::None,
+            rarity: 1,
+            shop_cost: 3,
         };
     } else if charm_id == 14 {
         return CharmMetadata {
-            charm_id, name: 'Demons Tooth', description: 'Diag x2',
-            effect_type: CharmEffectType::PatternRetrigger, effect_value: 2, effect_value_2: 3,
-            condition_type: CharmConditionType::None, rarity: 1, shop_cost: 3,
+            charm_id,
+            name: 'Demons Tooth',
+            description: 'Diag x2',
+            effect_type: CharmEffectType::PatternRetrigger,
+            effect_value: 2,
+            effect_value_2: 3,
+            condition_type: CharmConditionType::None,
+            rarity: 1,
+            shop_cost: 3,
         };
     } else if charm_id == 15 {
         return CharmMetadata {
-            charm_id, name: 'Abyssal Eye', description: 'Luck +20',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 20, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 2, shop_cost: 4,
+            charm_id,
+            name: 'Abyssal Eye',
+            description: 'Luck +20',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 20,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 2,
+            shop_cost: 4,
         };
     } else if charm_id == 16 {
         return CharmMetadata {
-            charm_id, name: 'Phoenix Feather', description: '+2 spin +10',
-            effect_type: CharmEffectType::ExtraSpinWithLuck, effect_value: 2, effect_value_2: 10,
-            condition_type: CharmConditionType::None, rarity: 2, shop_cost: 4,
+            charm_id,
+            name: 'Phoenix Feather',
+            description: '+2 spin +10',
+            effect_type: CharmEffectType::ExtraSpinWithLuck,
+            effect_value: 2,
+            effect_value_2: 10,
+            condition_type: CharmConditionType::None,
+            rarity: 2,
+            shop_cost: 4,
         };
     } else if charm_id == 17 {
         return CharmMetadata {
-            charm_id, name: 'Reapers Mark', description: 'NoJP x2',
-            effect_type: CharmEffectType::PatternRetrigger, effect_value: 2, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 2, shop_cost: 5,
+            charm_id,
+            name: 'Reapers Mark',
+            description: 'NoJP x2',
+            effect_type: CharmEffectType::PatternRetrigger,
+            effect_value: 2,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 2,
+            shop_cost: 5,
         };
     } else if charm_id == 18 {
         return CharmMetadata {
-            charm_id, name: 'Chaos Orb', description: 'Block666 +80',
-            effect_type: CharmEffectType::ConditionalLuckBoost, effect_value: 80, effect_value_2: 0,
-            condition_type: CharmConditionType::Blocked666, rarity: 2, shop_cost: 5,
+            charm_id,
+            name: 'Chaos Orb',
+            description: 'Block666 +80',
+            effect_type: CharmEffectType::ConditionalLuckBoost,
+            effect_value: 80,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::Blocked666,
+            rarity: 2,
+            shop_cost: 5,
         };
     } else if charm_id == 19 {
         return CharmMetadata {
-            charm_id, name: 'Soul Abyss', description: 'Luck +30',
-            effect_type: CharmEffectType::LuckBoost, effect_value: 30, effect_value_2: 0,
-            condition_type: CharmConditionType::None, rarity: 2, shop_cost: 6,
+            charm_id,
+            name: 'Soul Abyss',
+            description: 'Luck +30',
+            effect_type: CharmEffectType::LuckBoost,
+            effect_value: 30,
+            effect_value_2: 0,
+            condition_type: CharmConditionType::None,
+            rarity: 2,
+            shop_cost: 6,
         };
     } else {
         return CharmMetadata {
-            charm_id, name: 'Void Heart', description: '+1 spin +50',
-            effect_type: CharmEffectType::ExtraSpinWithLuck, effect_value: 1, effect_value_2: 50,
-            condition_type: CharmConditionType::None, rarity: 2, shop_cost: 7,
+            charm_id,
+            name: 'Void Heart',
+            description: '+1 spin +50',
+            effect_type: CharmEffectType::ExtraSpinWithLuck,
+            effect_value: 1,
+            effect_value_2: 50,
+            condition_type: CharmConditionType::None,
+            rarity: 2,
+            shop_cost: 7,
         };
     }
 }
@@ -171,7 +291,7 @@ pub fn get_charm_retrigger_bonuses_for_ids(charm_ids: Span<u32>) -> (u32, u32, u
         }
 
         i += 1;
-    };
+    }
 
     if all_retrigger > 1 {
         if h3_retrigger < all_retrigger {
@@ -198,7 +318,7 @@ pub fn calculate_base_luck_from_charm_ids(charm_ids: Span<u32>) -> u32 {
         }
 
         i += 1;
-    };
+    }
 
     luck
 }
@@ -253,7 +373,7 @@ pub fn calculate_effective_luck_from_charm_ids(
         }
 
         i += 1;
-    };
+    }
 
     luck
 }

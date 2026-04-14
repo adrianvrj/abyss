@@ -97,7 +97,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x7861e4bdb4505d4230707342821527243441b6172489a2b0c08659e326dca63",
+      "class_hash": "0x62e6d360a722821a29686b5e2acf38eaff7d0fc6475907c1027daad8fd08ead",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x6d428e3941743013595cd7b667325996b948a3f275ef2a357e412d0c9610ee1",
+      "class_hash": "0x4317a24393b93fee7ce9973847fdb0ac3b404e3311f3a9700dc0d09d86c989",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -128,7 +128,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x132dc3d08924be1dea11a3ba3ea93d6cd2b35c285458f1c265a6aaf3463b760",
+      "class_hash": "0x2905fbc0ffa64c7f1d52238e46b2e8e5cdf968a54a1fce07f7db00b33c25e1",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",

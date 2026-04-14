@@ -26,7 +26,9 @@ pub mod Collection {
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use crate::constants::{BANNER, CLIENT_URL, DESCRIPTION, IMAGE, NAMESPACE, NAME as GAME_NAME, SYMBOL};
+    use crate::constants::{
+        BANNER, CLIENT_URL, DESCRIPTION, IMAGE, NAME as GAME_NAME, NAMESPACE, SYMBOL,
+    };
     use crate::store::StoreTrait;
     use crate::systems::play::NAME as PLAY_NAME;
     use crate::systems::treasury::NAME as TREASURY;

@@ -20,7 +20,7 @@ pub mod Chip {
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::token::erc20::{DefaultConfig, ERC20Component};
     use starknet::{ContractAddress, get_caller_address};
-    use crate::constants::{NAMESPACE, CHIP_TOTAL_SUPPLY};
+    use crate::constants::{CHIP_TOTAL_SUPPLY, NAMESPACE};
     use crate::interfaces::erc20::IERC20Metadata;
     use crate::systems::play::NAME as PLAY_NAME;
     use crate::systems::treasury::NAME as TREASURY_NAME;
@@ -66,9 +66,7 @@ pub mod Chip {
         self.erc20.initializer("CHIP", "CHIP");
         self.accesscontrol.initializer();
 
-        let treasury_address = world
-            .dns_address(@TREASURY_NAME())
-            .expect('Treasury not found!');
+        let treasury_address = world.dns_address(@TREASURY_NAME()).expect('Treasury not found!');
         let play_address = world.dns_address(@PLAY_NAME()).expect('Play not found!');
 
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, treasury_address);
@@ -108,7 +106,7 @@ pub mod Chip {
     impl ChipImpl of IChip<ContractState> {
         fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) {
             self.accesscontrol.assert_only_role(MINTER_ROLE);
-            
+
             // Enforce hard cap
             let total_supply = self.erc20.total_supply();
             assert(total_supply + amount <= CHIP_TOTAL_SUPPLY, 'CHIP: max supply exceeded');

@@ -8,8 +8,6 @@ pub enum Source {
 
 #[starknet::interface]
 pub trait IVrfProvider<TContractState> {
-    fn request_random(
-        ref self: TContractState, caller: ContractAddress, source: Source,
-    );
+    fn request_random(ref self: TContractState, caller: ContractAddress, source: Source);
     fn consume_random(ref self: TContractState, source: Source) -> felt252;
 }

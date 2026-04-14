@@ -1,5 +1,3 @@
-
-
 #[inline]
 pub fn NAME() -> ByteArray {
     "Relic"
@@ -13,16 +11,14 @@ pub trait IRelic<T> {
 
 #[dojo::contract]
 pub mod Relic {
-
     use starknet::get_caller_address;
     use crate::constants::NAMESPACE;
-    use crate::store::{StoreTrait};
-    use crate::interfaces::relic_nft::{IRelicERC721DispatcherTrait};
-    use crate::interfaces::relic_nft::{IRelicDispatcherTrait};
+    use crate::events::index::{MarketRefreshed, RelicActivated};
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::market::MarketImpl;
+    use crate::interfaces::relic_nft::{IRelicDispatcherTrait, IRelicERC721DispatcherTrait};
+    use crate::store::StoreTrait;
     use crate::types::effect::RelicEffectType;
-    use crate::events::index::{MarketRefreshed, RelicActivated};
     use super::*;
 
     #[storage]
@@ -60,15 +56,16 @@ pub mod Relic {
             // 3. Event
             let relic_disp = store.relic_disp();
             let metadata = relic_disp.get_relic_metadata(relic_token_id);
-            store.emit_relic_equipped(
-                @crate::events::index::RelicEquipped {
-                    session_id,
-                    player: caller,
-                    relic_token_id,
-                    relic_id: metadata.relic_id,
-                    current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
-                },
-            );
+            store
+                .emit_relic_equipped(
+                    @crate::events::index::RelicEquipped {
+                        session_id,
+                        player: caller,
+                        relic_token_id,
+                        relic_id: metadata.relic_id,
+                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                    },
+                );
         }
 
         fn activate_relic(ref self: ContractState, session_id: u32) {
@@ -91,8 +88,9 @@ pub mod Relic {
             let current_spin_marker = session.total_spins + 1;
             assert(
                 session.relic_last_used_spin == 0
-                    || current_spin_marker >= session.relic_last_used_spin + metadata.cooldown_spins,
-                'Relic on cooldown'
+                    || current_spin_marker >= session.relic_last_used_spin
+                    + metadata.cooldown_spins,
+                'Relic on cooldown',
             );
 
             // 3. Apply Effect
@@ -112,20 +110,23 @@ pub mod Relic {
                 MarketImpl::refresh_market(ref store, session_id);
 
                 let refreshed_market = store.session_market(session_id);
-                store.emit_market_refreshed(
-                    @MarketRefreshed {
-                        session_id,
-                        player: caller,
-                        new_score: session.score,
-                        slot_1: refreshed_market.item_slot_1,
-                        slot_2: refreshed_market.item_slot_2,
-                        slot_3: refreshed_market.item_slot_3,
-                        slot_4: refreshed_market.item_slot_4,
-                        slot_5: refreshed_market.item_slot_5,
-                        slot_6: refreshed_market.item_slot_6,
-                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
-                    }
-                );
+                store
+                    .emit_market_refreshed(
+                        @MarketRefreshed {
+                            session_id,
+                            player: caller,
+                            new_score: session.score,
+                            slot_1: refreshed_market.item_slot_1,
+                            slot_2: refreshed_market.item_slot_2,
+                            slot_3: refreshed_market.item_slot_3,
+                            slot_4: refreshed_market.item_slot_4,
+                            slot_5: refreshed_market.item_slot_5,
+                            slot_6: refreshed_market.item_slot_6,
+                            current_luck: InventoryImpl::calculate_effective_luck(
+                                @store, session_id,
+                            ),
+                        },
+                    );
             } else if effect == RelicEffectType::Trigger666 {
                 session.relic_pending_effect = RelicEffectType::Trigger666;
             }
@@ -135,16 +136,19 @@ pub mod Relic {
             store.set_session(@session);
 
             // 5. Event
-            store.emit_relic_activated(
-                @RelicActivated {
-                    session_id,
-                    player: caller,
-                    relic_id: metadata.relic_id,
-                    effect_type: effect,
-                    cooldown_until_spin: session.relic_last_used_spin + metadata.cooldown_spins - 1,
-                    current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
-                }
-            );
+            store
+                .emit_relic_activated(
+                    @RelicActivated {
+                        session_id,
+                        player: caller,
+                        relic_id: metadata.relic_id,
+                        effect_type: effect,
+                        cooldown_until_spin: session.relic_last_used_spin
+                            + metadata.cooldown_spins
+                            - 1,
+                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                    },
+                );
         }
     }
 }

@@ -4,15 +4,15 @@ pub mod store;
 pub use store::{Store, StoreImpl, StoreTrait};
 
 pub mod systems {
-    pub mod token;
     pub mod charm;
-    pub mod relic_nft_contract;
-    pub mod play;
-    pub mod market;
-    pub mod relic;
-    pub mod setup;
-    pub mod treasury;
     pub mod collection_system;
+    pub mod market;
+    pub mod play;
+    pub mod relic;
+    pub mod relic_nft_contract;
+    pub mod setup;
+    pub mod token;
+    pub mod treasury;
 }
 
 pub mod models {
@@ -24,10 +24,10 @@ pub mod events {
 }
 
 pub mod helpers {
+    pub mod charm_types;
     pub mod grid;
     pub mod inventory;
     pub mod items;
-    pub mod charm_types;
     pub mod market;
     pub mod patterns;
     pub mod pricing;
@@ -47,9 +47,9 @@ pub mod interfaces {
     pub mod charm_nft;
     pub mod erc20;
     pub mod erc721;
+    pub mod pragma;
     pub mod relic_nft;
     pub mod vrf;
-    pub mod pragma;
 }
 
 pub mod components {
@@ -61,4 +61,5 @@ pub mod tests {
     pub mod charm_logic;
     pub mod pattern_logic;
     pub mod setup;
+    pub mod spin_profile;
 }

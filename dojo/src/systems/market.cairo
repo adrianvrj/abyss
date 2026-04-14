@@ -1,5 +1,3 @@
-
-
 #[inline]
 pub fn NAME() -> ByteArray {
     "Market"
@@ -14,15 +12,14 @@ pub trait IMarket<T> {
 
 #[dojo::contract]
 pub mod Market {
-
     use starknet::get_caller_address;
     use crate::constants::NAMESPACE;
-    use crate::models::index::{MarketSlotPurchased};
-    use crate::store::{StoreTrait};
-    use crate::helpers::inventory::{InventoryImpl};
-    use crate::helpers::market::{MarketImpl};
+    use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshed};
+    use crate::helpers::inventory::InventoryImpl;
+    use crate::helpers::market::MarketImpl;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
-    use crate::events::index::{ItemPurchased, MarketRefreshed, ItemSold};
+    use crate::models::index::MarketSlotPurchased;
+    use crate::store::StoreTrait;
     use super::*;
 
     #[storage]
@@ -51,13 +48,22 @@ pub mod Market {
 
             // 2. Item Fetching
             let market = store.session_market(session_id);
-            let item_id = if market_slot == 0 { market.item_slot_1 }
-            else if market_slot == 1 { market.item_slot_2 }
-            else if market_slot == 2 { market.item_slot_3 }
-            else if market_slot == 3 { market.item_slot_4 }
-            else if market_slot == 4 { market.item_slot_5 }
-            else if market_slot == 5 { market.item_slot_6 }
-            else { assert(false, 'Invalid slot'); 0 };
+            let item_id = if market_slot == 0 {
+                market.item_slot_1
+            } else if market_slot == 1 {
+                market.item_slot_2
+            } else if market_slot == 2 {
+                market.item_slot_3
+            } else if market_slot == 3 {
+                market.item_slot_4
+            } else if market_slot == 4 {
+                market.item_slot_5
+            } else if market_slot == 5 {
+                market.item_slot_6
+            } else {
+                assert(false, 'Invalid slot');
+                0
+            };
 
             let mut purchase_price: u32 = 0;
             let mut is_charm = false;
@@ -65,7 +71,10 @@ pub mod Market {
             if item_id >= 1000 {
                 is_charm = true;
                 let charm_id = item_id - 1000;
-                assert(!InventoryImpl::has_charm_in_session(@store, session_id, charm_id), 'Charm already active');
+                assert(
+                    !InventoryImpl::has_charm_in_session(@store, session_id, charm_id),
+                    'Charm already active',
+                );
 
                 let charm_meta = store.charm_disp().get_charm_type_info(charm_id);
                 purchase_price = charm_meta.shop_cost;
@@ -96,7 +105,9 @@ pub mod Market {
                 InventoryImpl::add_item_to_inventory(ref store, session_id, item_id);
 
                 let (score_seven, score_diamond, score_cherry, score_coin, score_lemon) =
-                    InventoryImpl::get_effective_symbol_scores(@store, session_id);
+                    InventoryImpl::get_effective_symbol_scores(
+                    @store, session_id,
+                );
                 session.score_seven = score_seven;
                 session.score_diamond = score_diamond;
                 session.score_cherry = score_cherry;
@@ -106,24 +117,26 @@ pub mod Market {
             }
 
             // 5. State Persistence
-            store.set_market_slot_purchased(
-                @MarketSlotPurchased { session_id, slot: market_slot, purchased: true },
-            );
+            store
+                .set_market_slot_purchased(
+                    @MarketSlotPurchased { session_id, slot: market_slot, purchased: true },
+                );
 
             // 6. Event Emission
-            store.emit_item_purchased(
-                @ItemPurchased {
-                    session_id,
-                    player: caller,
-                    item_id,
-                    price: purchase_price,
-                    new_score: session.score,
-                    new_spins: session.spins_remaining,
-                    new_tickets: session.tickets,
-                    is_charm,
-                    current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
-                }
-            );
+            store
+                .emit_item_purchased(
+                    @ItemPurchased {
+                        session_id,
+                        player: caller,
+                        item_id,
+                        price: purchase_price,
+                        new_score: session.score,
+                        new_spins: session.spins_remaining,
+                        new_tickets: session.tickets,
+                        is_charm,
+                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                    },
+                );
         }
 
         fn sell_item(ref self: ContractState, session_id: u32, item_id: u32, quantity: u32) {
@@ -139,11 +152,17 @@ pub mod Market {
 
             if item_id >= 1000 {
                 let charm_id = item_id - 1000;
-                assert(InventoryImpl::has_charm_in_session(@store, session_id, charm_id), 'Charm not active');
+                assert(
+                    InventoryImpl::has_charm_in_session(@store, session_id, charm_id),
+                    'Charm not active',
+                );
 
                 let charm_meta = store.charm_disp().get_charm_type_info(charm_id);
                 if charm_meta.effect_type == 9 {
-                    assert(session.spins_remaining >= charm_meta.effect_value, 'Cannot sell: spins used');
+                    assert(
+                        session.spins_remaining >= charm_meta.effect_value,
+                        'Cannot sell: spins used',
+                    );
                     session.spins_remaining -= charm_meta.effect_value;
                 }
 
@@ -164,10 +183,12 @@ pub mod Market {
                     InventoryImpl::remove_item_from_inventory(ref store, session_id, item_id);
                     session.tickets += sell_price;
                     q -= 1;
-                };
+                }
 
                 let (score_seven, score_diamond, score_cherry, score_coin, score_lemon) =
-                    InventoryImpl::get_effective_symbol_scores(@store, session_id);
+                    InventoryImpl::get_effective_symbol_scores(
+                    @store, session_id,
+                );
                 session.score_seven = score_seven;
                 session.score_diamond = score_diamond;
                 session.score_cherry = score_cherry;
@@ -176,17 +197,18 @@ pub mod Market {
                 store.set_session(@session);
             }
 
-            store.emit_item_sold(
-                @ItemSold {
-                    session_id,
-                    player: caller,
-                    item_id,
-                    sell_price: sell_price * quantity,
-                    new_score: session.score,
-                    new_tickets: session.tickets,
-                    current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
-                }
-            );
+            store
+                .emit_item_sold(
+                    @ItemSold {
+                        session_id,
+                        player: caller,
+                        item_id,
+                        sell_price: sell_price * quantity,
+                        new_score: session.score,
+                        new_tickets: session.tickets,
+                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                    },
+                );
         }
 
         fn refresh_market(ref self: ContractState, session_id: u32) {
@@ -213,20 +235,21 @@ pub mod Market {
 
             // Emit refresh event
             let refreshed_market = store.session_market(session_id);
-            store.emit_market_refreshed(
-                @MarketRefreshed {
-                    session_id,
-                    player: caller,
-                    new_score: session.score,
-                    slot_1: refreshed_market.item_slot_1,
-                    slot_2: refreshed_market.item_slot_2,
-                    slot_3: refreshed_market.item_slot_3,
-                    slot_4: refreshed_market.item_slot_4,
-                    slot_5: refreshed_market.item_slot_5,
-                    slot_6: refreshed_market.item_slot_6,
-                    current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
-                }
-            );
+            store
+                .emit_market_refreshed(
+                    @MarketRefreshed {
+                        session_id,
+                        player: caller,
+                        new_score: session.score,
+                        slot_1: refreshed_market.item_slot_1,
+                        slot_2: refreshed_market.item_slot_2,
+                        slot_3: refreshed_market.item_slot_3,
+                        slot_4: refreshed_market.item_slot_4,
+                        slot_5: refreshed_market.item_slot_5,
+                        slot_6: refreshed_market.item_slot_6,
+                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                    },
+                );
         }
     }
 }
