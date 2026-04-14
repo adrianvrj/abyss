@@ -121,7 +121,7 @@ export function buildControllerOptions(defaultChainId: string): ControllerOption
     chains: [{ rpcUrl: CONTROLLER_RPC_URL }],
     namespace: NAMESPACE,
     slot: cartridgeSlot,
-    shouldOverridePresetPolicies: true,
+    shouldOverridePresetPolicies: false,
     policies: sessionPolicies,
     ...(CONTROLLER_PRESET ? { preset: CONTROLLER_PRESET } : {}),
   };

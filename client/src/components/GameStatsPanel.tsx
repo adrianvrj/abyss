@@ -17,7 +17,6 @@ interface GameStatsPanelProps {
     sessionId?: number;
     refreshTrigger?: number;
     currentLuck?: number;
-    currentTickets?: number;
     lastSpinPatternCount?: number;
     optimisticItems?: ContractItem[];
     hiddenItemIds?: number[];
@@ -45,7 +44,6 @@ export default function GameStatsPanel({
     sessionId,
     refreshTrigger = 0,
     currentLuck,
-    currentTickets = 0,
     lastSpinPatternCount = 0,
     optimisticItems = EMPTY_ARRAY,
     hiddenItemIds = EMPTY_ARRAY,
@@ -263,7 +261,7 @@ export default function GameStatsPanel({
                 </div>
             </div>
 
-            {/* Resources Row: Spins & Tickets */}
+            {/* Resources Row: Spins */}
             <div className="stats-section resources-section" style={{
                 display: 'flex',
                 flexDirection: 'row',
@@ -272,10 +270,10 @@ export default function GameStatsPanel({
                 <div style={{
                     flex: 1,
                     display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '8px',
+                    padding: '8px 12px',
                     background: 'rgba(255, 255, 255, 0.05)',
                     borderRadius: '6px',
                     border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -284,40 +282,12 @@ export default function GameStatsPanel({
                         fontFamily: "'PressStart2P', monospace",
                         fontSize: '9px',
                         color: 'rgba(255, 255, 255, 0.5)',
-                        marginBottom: '4px'
                     }}>SPINS</span>
                     <span style={{
                         fontFamily: "'PressStart2P', monospace",
                         fontSize: '14px',
                         color: '#FFEA00',
                     }}>{spinsRemaining}</span>
-                </div>
-
-                <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: '8px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}>
-                    <span style={{
-                        fontFamily: "'PressStart2P', monospace",
-                        fontSize: '9px',
-                        color: 'rgba(255, 255, 255, 0.5)',
-                        marginBottom: '4px'
-                    }}>TICKETS</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{
-                            fontFamily: "'PressStart2P', monospace",
-                            fontSize: '14px',
-                            color: '#FF841C',
-                        }}>{currentTickets}</span>
-                        <img src="/images/ticket.png" alt="T" width={14} height={7} loading="lazy" />
-                    </div>
                 </div>
             </div>
 

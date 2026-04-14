@@ -233,7 +233,6 @@ function GameStage({
                                 sessionId={numericSessionId}
                                 refreshTrigger={game.inventoryRefreshTrigger}
                                 currentLuck={game.currentLuck}
-                                currentTickets={game.tickets}
                                 lastSpinPatternCount={game.patterns.length}
                                 optimisticItems={game.optimisticItems}
                                 hiddenItemIds={game.hiddenItems}
@@ -365,7 +364,6 @@ function GameStage({
                         sessionId={numericSessionId}
                         refreshTrigger={game.inventoryRefreshTrigger}
                         currentLuck={game.currentLuck}
-                        currentTickets={game.tickets}
                         lastSpinPatternCount={game.patterns.length}
                         optimisticItems={game.optimisticItems}
                         hiddenItemIds={game.hiddenItems}

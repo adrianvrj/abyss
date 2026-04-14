@@ -503,8 +503,12 @@ export default function InlineMarketPanel({
 
     return (
         <div className={`inline-market-panel ${isCurrentCharm ? 'charm-mode' : ''}`}>
-            <div className={`panel-header ${isCurrentCharm ? 'charm-header' : ''}`}>
-                {isCurrentCharm ? 'CHARM' : 'MARKET'}
+            <div className={`panel-header ${isCurrentCharm ? 'charm-header' : ''}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{isCurrentCharm ? 'CHARM' : 'MARKET'}</span>
+                <div className="ticket-balance" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '16px', color: '#fff' }}>{currentTickets}</span>
+                    <img src="/images/ticket.png" alt="Tickets" width={28} height={14} loading="lazy" />
+                </div>
             </div>
 
             <div className={`item-display ${isCurrentCharm ? 'charm-display' : ''}`} style={{ position: 'relative', overflow: 'hidden' }}>
@@ -636,11 +640,15 @@ const styles = `
     }
     .panel-header {
         font-family: 'PressStart2P', monospace;
-        font-size: 12px;
+        font-size: 11px;
         color: #FF841C;
-        text-align: center;
+        text-align: left;
         padding-bottom: 8px;
         border-bottom: 1px solid #FF841C33;
+    }
+    .ticket-balance {
+        background: transparent;
+        padding: 0;
     }
     .loading {
         color: #666;
