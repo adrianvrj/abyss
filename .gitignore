@@ -7,3 +7,4 @@ target
 nums
 .agents
 .scarb-cache
+dojo/scripts
