@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { BundleApi } from "@/api/torii/bundle";
 import { useEntities } from "@/context/entities";
+import { useChipPrice } from "@/hooks/useChipPrice";
+import { BreakevenBreakdown } from "@/components/BreakevenBreakdown";
 
 interface SessionInfo {
     sessionId: number;
@@ -231,7 +233,8 @@ export function SessionsContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [isClaimed, setIsClaimed] = useState(false);
-    const { client } = useEntities();
+    const { client, config } = useEntities();
+    const { chipsPerUsdc, isLoading: isLoadingPrice } = useChipPrice();
     const [beastSessions, setBeastSessions] = useState(0);
     const shareMessage =
         "I'm minting my free Abyss game session!\n🎟️ @abyssdotfun\nhttps://play.abyssgame.fun";
@@ -629,6 +632,24 @@ export function SessionsContent() {
                         <span>&gt; NEW RUN</span>
                     )}
                 </motion.button>
+
+                {config && (() => {
+                    const sessionBundle =
+                        bundles.find((b) => b.id === CONTRACTS.SESSION_BUNDLE_ID) ??
+                        bundles.find((b) => b.price > 0n);
+                    const entryUsd = sessionBundle
+                        ? Number(sessionBundle.price) / 1_000_000
+                        : 1;
+                    return (
+                        <BreakevenBreakdown
+                            entryUsd={entryUsd}
+                            chipEmissionRate={config.chipEmissionRate}
+                            chipBoostMultiplier={config.chipBoostMultiplier}
+                            chipsPerUsdc={chipsPerUsdc}
+                            isLoadingPrice={isLoadingPrice}
+                        />
+                    );
+                })()}
 
                 <motion.div
                     style={styles.perksPanel}
