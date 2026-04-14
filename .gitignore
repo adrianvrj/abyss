@@ -3,3 +3,7 @@
 .secrets.md
 abyss-docs
 .DS_Store
+target
+nums
+.agents
+.scarb-cache

@@ -1,0 +1,236 @@
+#[starknet::interface]
+pub trait ICollection<TContractState> {
+    fn mint(ref self: TContractState, to: starknet::ContractAddress, soulbound: bool) -> u64;
+    fn burn(ref self: TContractState, token_id: u256);
+    fn update(ref self: TContractState, token_id: u256);
+    fn assert_is_owner(ref self: TContractState, owner: starknet::ContractAddress, token_id: u256);
+}
+
+pub fn NAME() -> ByteArray {
+    "Collection"
+}
+
+pub const MINTER_ROLE: felt252 = selector!("MINTER_ROLE");
+
+#[dojo::contract]
+pub mod Collection {
+    use collection::components::erc4906::erc4906::ERC4906Component;
+    use collection::components::erc7572::erc7572::ERC7572Component;
+    use collection::types::contract_metadata::ContractMetadata;
+    use dojo::world::{IWorldDispatcherTrait, WorldStorage, WorldStorageTrait};
+    use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
+    use openzeppelin::interfaces::token::erc721::{IERC721, IERC721Metadata};
+    use openzeppelin::introspection::src5::SRC5Component;
+    use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
+    use starknet::ContractAddress;
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use crate::constants::{BANNER, CLIENT_URL, DESCRIPTION, IMAGE, NAMESPACE, NAME as GAME_NAME, SYMBOL};
+    use crate::store::StoreTrait;
+    use crate::systems::play::NAME as PLAY_NAME;
+    use crate::systems::treasury::NAME as TREASURY;
+    use crate::types::session_metadata::SessionMetadata;
+    use super::{ICollection, MINTER_ROLE};
+
+    pub mod ERRORS {
+        pub const COLLECTION_NOT_OWNER: felt252 = 'Collection: caller not owner';
+        pub const COLLECTION_SOULBOUND: felt252 = 'Collection: token is soulbound';
+    }
+
+    component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    component!(path: ERC721Component, storage: erc721, event: ERC721Event);
+    component!(path: ERC4906Component, storage: erc4906, event: ERC4906Event);
+    component!(path: ERC7572Component, storage: erc7572, event: ERC7572Event);
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
+
+    impl ERC721StandardImpl = ERC721Component::ERC721Impl<ContractState>;
+    impl ERC721InternalImpl = ERC721Component::InternalImpl<ContractState>;
+
+    impl ERC4906InternalImpl = ERC4906Component::InternalImpl<ContractState>;
+
+    #[abi(embed_v0)]
+    impl ERC7572Impl = ERC7572Component::ERC7572Impl<ContractState>;
+    impl ERC7572InternalImpl = ERC7572Component::InternalImpl<ContractState>;
+
+    #[storage]
+    pub struct Storage {
+        #[substorage(v0)]
+        pub accesscontrol: AccessControlComponent::Storage,
+        #[substorage(v0)]
+        pub src5: SRC5Component::Storage,
+        #[substorage(v0)]
+        pub erc721: ERC721Component::Storage,
+        #[substorage(v0)]
+        pub erc4906: ERC4906Component::Storage,
+        #[substorage(v0)]
+        pub erc7572: ERC7572Component::Storage,
+        pub game_id: u64,
+        pub soulbound: Map<u256, bool>,
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        AccessControlEvent: AccessControlComponent::Event,
+        #[flat]
+        SRC5Event: SRC5Component::Event,
+        #[flat]
+        ERC721Event: ERC721Component::Event,
+        #[flat]
+        ERC4906Event: ERC4906Component::Event,
+        #[flat]
+        ERC7572Event: ERC7572Component::Event,
+    }
+
+    fn dojo_init(ref self: ContractState) {
+        let world: WorldStorage = self.world(@NAMESPACE());
+        self.accesscontrol.initializer();
+        self.erc721.initializer(GAME_NAME(), SYMBOL(), "");
+        self.erc4906.initializer();
+        self.erc7572.initializer();
+        // Grant MINTER_ROLE to Play contract
+        let play_address = world.dns_address(@PLAY_NAME()).expect('Play contract not found!');
+        self.accesscontrol._grant_role(MINTER_ROLE, play_address);
+        // Grant admin to Treasury
+        let treasury_address = world.dns_address(@TREASURY()).expect('Treasury not found!');
+        self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, treasury_address);
+        // Set contract metadata
+        let metadata = ContractMetadata {
+            name: self.erc721.name(),
+            symbol: Option::Some(self.erc721.symbol()),
+            description: Option::Some(DESCRIPTION()),
+            image: Option::Some(IMAGE()),
+            banner_image: Option::Some(BANNER()),
+            featured_image: None,
+            external_link: Option::Some(CLIENT_URL()),
+            collaborators: None,
+            properties: None,
+            socials: None,
+        };
+        self.erc7572.set_contract_metadata(metadata);
+        // Register external contract for Torii indexing
+        let this = starknet::get_contract_address();
+        let instance_name: felt252 = this.into();
+        world
+            .dispatcher
+            .register_external_contract(
+                namespace: NAMESPACE(),
+                contract_name: "ERC721",
+                instance_name: format!("{}", instance_name),
+                contract_address: this,
+                block_number: 1,
+            )
+    }
+
+    #[abi(embed_v0)]
+    impl ERC721Impl of IERC721<ContractState> {
+        fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
+            self.erc721.balance_of(account)
+        }
+
+        fn owner_of(self: @ContractState, token_id: u256) -> ContractAddress {
+            self.erc721.owner_of(token_id)
+        }
+
+        fn safe_transfer_from(
+            ref self: ContractState,
+            from: ContractAddress,
+            to: ContractAddress,
+            token_id: u256,
+            data: Span<felt252>,
+        ) {
+            let is_soulbound = self.soulbound.entry(token_id).read();
+            assert(!is_soulbound, ERRORS::COLLECTION_SOULBOUND);
+            self.erc721.safe_transfer_from(from, to, token_id, data)
+        }
+
+        fn transfer_from(
+            ref self: ContractState, from: ContractAddress, to: ContractAddress, token_id: u256,
+        ) {
+            let is_soulbound = self.soulbound.entry(token_id).read();
+            assert(!is_soulbound, ERRORS::COLLECTION_SOULBOUND);
+            self.erc721.transfer_from(from, to, token_id)
+        }
+
+        fn approve(ref self: ContractState, to: ContractAddress, token_id: u256) {
+            self.erc721.approve(to, token_id)
+        }
+
+        fn set_approval_for_all(
+            ref self: ContractState, operator: ContractAddress, approved: bool,
+        ) {
+            self.erc721.set_approval_for_all(operator, approved)
+        }
+
+        fn get_approved(self: @ContractState, token_id: u256) -> ContractAddress {
+            self.erc721.get_approved(token_id)
+        }
+
+        fn is_approved_for_all(
+            self: @ContractState, owner: ContractAddress, operator: ContractAddress,
+        ) -> bool {
+            self.erc721.is_approved_for_all(owner, operator)
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl ERC721MetadataImpl of IERC721Metadata<ContractState> {
+        fn name(self: @ContractState) -> ByteArray {
+            self.erc721.name()
+        }
+
+        fn symbol(self: @ContractState) -> ByteArray {
+            self.erc721.symbol()
+        }
+
+        fn token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+            let owner = self.erc721.owner_of(token_id);
+            if (owner.into() == 0) {
+                return "";
+            }
+            let session_id: u32 = token_id.try_into().expect('Invalid token ID');
+            let world = self.world(@NAMESPACE());
+            let play_address = world.dns_address(@PLAY_NAME()).expect('Play contract not found!');
+            let store = StoreTrait::new(world);
+            let session = store.session(session_id);
+            let collection_address = starknet::get_contract_address();
+
+            SessionMetadata::token_uri(session_id, @session, play_address, collection_address)
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl CollectionImpl of ICollection<ContractState> {
+        fn mint(ref self: ContractState, to: ContractAddress, soulbound: bool) -> u64 {
+            self.accesscontrol.assert_only_role(MINTER_ROLE);
+            let game_id = self.game_id.read() + 1;
+            self.game_id.write(game_id);
+            self.erc721.mint(to, game_id.into());
+            self.soulbound.entry(game_id.into()).write(soulbound);
+            game_id
+        }
+
+        fn burn(ref self: ContractState, token_id: u256) {
+            let caller = starknet::get_caller_address();
+            self.assert_is_owner(caller, token_id);
+            self.erc721.burn(token_id)
+        }
+
+        fn update(ref self: ContractState, token_id: u256) {
+            self.accesscontrol.assert_only_role(MINTER_ROLE);
+            self.erc4906.update_metadata(token_id)
+        }
+
+        fn assert_is_owner(ref self: ContractState, owner: ContractAddress, token_id: u256) {
+            let token_owner = self.erc721.owner_of(token_id);
+            assert(token_owner == owner, ERRORS::COLLECTION_NOT_OWNER);
+        }
+    }
+}

@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
-import { RpcProvider, Contract } from 'starknet';
-import { CONTRACTS } from '@/lib/constants';
+import manifest from '@/lib/manifest.json';
+import { RpcProvider } from 'starknet';
+
+export const dynamic = 'force-dynamic';
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
+const DEFAULT_RELIC_ADDRESS = manifest.contracts.find(
+    (contract) => contract.tag === 'ABYSS-RelicNFT'
+)?.address;
 
 // Configuration for Relic metadata
 const RELIC_METADATA: Record<string, any> = {
     "1": {
         name: "Mortis",
         description: "Gentleman of Death - Forces a random jackpot",
-        image: "https://abyss-game.xyz/images/relics/mortis.png", // Absolute URL required for marketplaces
+        image: `${BASE_URL}/images/relics/mortis.png`,
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Force Random Jackpot" },
@@ -19,7 +26,7 @@ const RELIC_METADATA: Record<string, any> = {
     "2": {
         name: "Phantom",
         description: "The Timeless Specter - Resets your spins to 5",
-        image: "https://abyss-game.xyz/images/relics/phantom.png",
+        image: `${BASE_URL}/images/relics/phantom.png`,
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Reset Spins" },
@@ -30,7 +37,7 @@ const RELIC_METADATA: Record<string, any> = {
     "3": {
         name: "Lucky the Dealer",
         description: "Doubles down on every bet - 2x next spin score",
-        image: "https://abyss-game.xyz/images/relics/lucky_the_dealer.png",
+        image: `${BASE_URL}/images/relics/lucky_the_dealer.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Double Next Spin" },
@@ -41,7 +48,7 @@ const RELIC_METADATA: Record<string, any> = {
     "4": {
         name: "Scorcher",
         description: "Master of the cursed 666 - Triggers 666 pattern",
-        image: "https://abyss-game.xyz/images/relics/scorcher.png",
+        image: `${BASE_URL}/images/relics/scorcher.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Trigger 666" },
@@ -52,7 +59,7 @@ const RELIC_METADATA: Record<string, any> = {
     "5": {
         name: "Inferno",
         description: "Hell's marketplace demon - Free market refresh",
-        image: "https://abyss-game.xyz/images/relics/inferno.png",
+        image: `${BASE_URL}/images/relics/inferno.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Free Market Refresh" },
@@ -62,43 +69,59 @@ const RELIC_METADATA: Record<string, any> = {
     }
 };
 
-const provider = new RpcProvider({ nodeUrl: "https://api.cartridge.gg/x/starknet/sepolia" });
+const provider = new RpcProvider({
+    nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/mainnet",
+});
+
+function normalizeAddress(value: string | null | undefined) {
+    if (!value) return null;
+    if (value.startsWith('0x') || value.startsWith('0X')) {
+        return value;
+    }
+
+    try {
+        return `0x${BigInt(value).toString(16)}`;
+    } catch {
+        return value;
+    }
+}
+
+function parseRelicId(value: string | null | undefined) {
+    if (!value) return null;
+    const relicId = Number.parseInt(value, 10);
+    if (!Number.isFinite(relicId) || relicId < 1) {
+        return null;
+    }
+    return relicId.toString();
+}
 
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const tokenId = (await params).id;
+    const url = new URL(request.url);
 
     try {
-        // Since get_relic_metadata returns a struct and reading raw storage without ABI can be tricky if we don't assume layout,
-        // we will try to use the contract interface if possible.
-        // However, fetching ABI every time might be slow.
-        // A more robust way for production is to just call 'get_relic_metadata' via execute/call on provider.
-
-        // We know the entrypoint is 'get_relic_metadata' and it takes u256 (low, high).
-        // Token ID passed in URL is likely a decimal string.
-
         const tokenIdBigInt = BigInt(tokenId);
         const low = tokenIdBigInt & ((BigInt(1) << BigInt(128)) - BigInt(1));
         const high = tokenIdBigInt >> BigInt(128);
+        const contractAddress = normalizeAddress(url.searchParams.get('contract') || DEFAULT_RELIC_ADDRESS);
+        const explicitRelicId = parseRelicId(url.searchParams.get('relicId'));
 
-        // Call the contract directly to avoid ABI fetching overhead if we parse manually, 
-        // but using Contract class is safer. We'll fetch ABI once normally, but here we can just do raw call.
-        // get_relic_metadata returns RelicMetadata struct.
-        // Structure: 
-        // relic_id: u32 (index 0)
-        // name: felt252 (index 1)
-        // ...
+        if (!contractAddress && !explicitRelicId) {
+            return NextResponse.json({ error: "Relic contract not found" }, { status: 500 });
+        }
 
-        const result = await provider.callContract({
-            contractAddress: CONTRACTS.RELIC_NFT,
-            entrypoint: "get_relic_metadata",
-            calldata: [low.toString(), high.toString()]
-        });
+        const relicId = explicitRelicId ?? await (async () => {
+            const result = await provider.callContract({
+                contractAddress: contractAddress!,
+                entrypoint: "get_relic_metadata",
+                calldata: [low.toString(), high.toString()]
+            });
 
-        // result[0] is relic_id (u32)
-        const relicId = BigInt(result[0]).toString();
+            return BigInt(result[0]).toString();
+        })();
 
         // If relicId is 0, it means it's not initialized or invalid (since our IDs start at 1)
         if (relicId === "0") {

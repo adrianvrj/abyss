@@ -1,0 +1,193 @@
+[2m2026-04-05 15:59:45.570 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m0 [3mtx_count[0m[2m=[0m0
+[2m2026-04-05 15:59:45.570 -06:00[0m [32m INFO[0m [2mkatana_core::backend[0m[2m:[0m Genesis initialized [3mgenesis_hash[0m[2m=[0m2397899355952773919897703213254817098110480820064955478296787355889573868989
+
+
+
+██╗  ██╗ █████╗ ████████╗ █████╗ ███╗   ██╗ █████╗
+██║ ██╔╝██╔══██╗╚══██╔══╝██╔══██╗████╗  ██║██╔══██╗
+█████╔╝ ███████║   ██║   ███████║██╔██╗ ██║███████║
+██╔═██╗ ██╔══██║   ██║   ██╔══██║██║╚██╗██║██╔══██║
+██║  ██╗██║  ██║   ██║   ██║  ██║██║ ╚████║██║  ██║
+╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+
+
+PREDEPLOYED CONTRACTS
+==================
+
+| Contract        | ETH Fee Token
+| Address         | 0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
+| Class Hash      | 0x00a2475bc66197c751d854ea8c39c6ad9781eb284103bcd856b58e6b500078ac
+
+| Contract        | STRK Fee Token
+| Address         | 0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d
+| Class Hash      | 0x00a2475bc66197c751d854ea8c39c6ad9781eb284103bcd856b58e6b500078ac
+
+| Contract        | Universal Deployer
+| Address         | 0x41a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf
+| Class Hash      | 0x07b3e05f48f0c69e4a65ce5e076a66271a527aff2c34ce1083ec6e1526997a69
+
+| Contract        | Account Contract
+| Class Hash      | 0x07dc7899aa655b0aae51eadff6d801a58e97dd99cf4666ee59e704249e51adf2
+
+
+PREFUNDED ACCOUNTS
+==================
+
+| Account address |  0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec
+| Private key     |  0xc5b2fcab997346f3ea1c00b002ecf6f382c5f9c9659a3894eb783c5320f912
+| Public key      |  0x33246ce85ebdc292e6a5c5b4dd51fab2757be34b8ffda847ca6925edf31cb67
+
+| Account address |  0x13d9ee239f33fea4f8785b9e3870ade909e20a9599ae7cd62c1c292b73af1b7
+| Private key     |  0x1c9053c053edf324aec366a34c6901b1095b07af69495bffec7d7fe21effb1b
+| Public key      |  0x4c339f18b9d1b95b64a6d378abd1480b2e0d5d5bd33cd0828cbce4d65c27284
+
+| Account address |  0x17cc6ca902ed4e8baa8463a7009ff18cc294fa85a94b4ce6ac30a9ebd6057c7
+| Private key     |  0x14d6672dcb4b77ca36a887e9a11cd9d637d5012468175829e9c6e770c61642
+| Public key      |  0x16e375df37a7653038bd9eccd767e780c2c4d4c66b4c85f455236a3fd75673a
+
+| Account address |  0x2af9427c5a277474c079a1283c880ee8a6f0f8fbf73ce969c08d88befec1bba
+| Private key     |  0x1800000000300000180000000000030000000000003006001800006600
+| Public key      |  0x2b191c2f3ecf685a91af7cf72a43e7b90e2e41220175de5c4f7498981b10053
+
+| Account address |  0x359b9068eadcaaa449c08b79a367c6fdfba9448c29e96934e3552dab0fdd950
+| Private key     |  0x2bbf4f9fd0bbb2e60b0316c1fe0b76cf7a4d0198bd493ced9b8df2a3a24d68a
+| Public key      |  0x640466ebd2ce505209d3e5c4494b4276ed8f1cde764d757eb48831961f7cdea
+
+| Account address |  0x4184158a64a82eb982ff702e4041a49db16fa3a18229aac4ce88c832baf56e4
+| Private key     |  0x6bf3604bcb41fed6c42bcca5436eeb65083a982ff65db0dc123f65358008b51
+| Public key      |  0x4b076e402835913e3f6812ed28cef8b757d4643ebf2714471a387cb10f22be3
+
+| Account address |  0x42b249d1633812d903f303d640a4261f58fead5aa24925a9efc1dd9d76fb555
+| Private key     |  0x283d1e73776cd4ac1ac5f0b879f561bded25eceb2cc589c674af0cec41df441
+| Public key      |  0x73c8a29ba0e6a368422d0551b3f45a30a27166b809ba07a41a1bc434b000ba7
+
+| Account address |  0x4e0b838810cb1a355beb7b3d894ca0e98ee524309c3f8b7cccb15a48e6270e2
+| Private key     |  0x736adbbcdac7cc600f89051db1abbc16b9996b46f6b58a9752a11c1028a8ec8
+| Public key      |  0x570258e7277eb345ab80803c1dc5847591efd028916fc826bc7cd47ccd8f20d
+
+| Account address |  0x5b6b8189bb580f0df1e6d6bec509ff0d6c9be7365d10627e0cf222ec1b47a71
+| Private key     |  0x33003003001800009900180300d206308b0070db00121318d17b5e6262150b
+| Public key      |  0x4c0f884b8e5b4f00d97a3aad26b2e5de0c0c76a555060c837da2e287403c01d
+
+| Account address |  0x6677fe62ee39c7b07401f754138502bab7fac99d2d3c5d37df7d1c6fab10819
+| Private key     |  0x3e3979c1ed728490308054fe357a9f49cf67f80f9721f44cc57235129e090f4
+| Public key      |  0x1e8965b7d0b20b91a62fe515dd991dc9fcb748acddf6b2cf18cec3bdd0f9f9a
+
+
+ACCOUNTS SEED
+=============
+0
+    
+[2m2026-04-05 15:59:45.570 -06:00[0m [32m INFO[0m [2mkatana_node[0m[2m:[0m Starting node. [3mchain[0m[2m=[0mSN_SEPOLIA
+[2m2026-04-05 15:59:45.571 -06:00[0m [32m INFO[0m [2mrpc[0m[2m:[0m RPC server started. [3maddr[0m[2m=[0m0.0.0.0:5050
+[2m2026-04-06 10:28:38.397 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x15ea5e9b2d673915787f016a66eab7f7ce945061090d0295a7c1e7a1eae32a7"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:38.796 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:38.812 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m1 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:28:46.224 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addInvokeTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x7ec2b6f3143d7034b965fb7ce13f48b2307c10e35a96b08da6c28a9608044b6"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:46.227 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 9810 | memory holes: 64 | ec_op_builtin: 3 | pedersen_builtin: 44 | poseidon_builtin: 7 | range_check_builtin: 220"
+[2m2026-04-06 10:28:46.231 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m2 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:28:48.833 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x1fefeb501117f34876644e0bc4df1aca713941eb774277ea3b115199f5217b9"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.846 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x2f36447d644d371cc0e4e785c5316b42599ca67bc81742de50bf01f95cd0606"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.856 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x87c5a8b2d55e4f70928ff1526b7b5b4e1a40ed56102eaf3529de4be40381fa"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.867 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:48.868 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m3 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:28:48.902 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0xcefe1ec89490c14a94b85aacbea4eb946f3ac755dbf9690f6d8b9e80d8e64c"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.914 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x7f1d28812549d9ad981e83287665216d90401d3244e0a6ba241e0117f73ccbd"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.927 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x35adc4ee0256229f03f65de8bfcdd196fd54c637479350ef9eea6e83008cda1"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.951 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x487fa6d280a6596b67f1377bb07cb1a07b57feb9dfedcc4c761f704d867b98a"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.963 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x269a85739768cf047cef7a855873ccfc65f5eddff77d745e65fdaefbd6b3c11"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.977 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x6630c235d06306dbc224b8e5a8093e7c2e439f0dfb26ca760043f09041ecb3e"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:48.991 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x620dda8c168431e1f54466770fec20c19481d0ea36fa71cd1cbbd6c05e0b589"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:49.006 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.017 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.019 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m4 [3mtx_count[0m[2m=[0m2
+[2m2026-04-06 10:28:49.054 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.066 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.080 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.105 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.116 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.130 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.144 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:49.150 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m5 [3mtx_count[0m[2m=[0m7
+[2m2026-04-06 10:28:56.419 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x3122f739d08143ea936832d94c6c477add3544ccfa755126c8c9ecf4e8fd81"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.430 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:56.432 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m6 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:28:56.611 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x4c3d9ebe520e545d00f31c6d10a2452feddade102cbaf880174d639d27cc1b8"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.625 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x2718c1086ad0a2f58108fcfb783bd07fdb900fdffad1f399e79e73c802f97a8"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.721 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x1228875eb72f53a05c4ee58c4694ee61c7db7dbe2357fb9a24508cabb7d84f8"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.738 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:56.740 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m7 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:28:56.755 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x3fd4048a5f50052f22eb2d18b854109359e264c477af6c208629ad4648cdc"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.808 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x2b94a1503c1ced5dcead4eed301ca849f04c5669523c8b7a9593e660c0ea4db"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.825 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x30e2a52ab69947ad99dd1330acb8343b8dfc6709c7888ebd288476159f89e75"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.843 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x2fcf9056b0eb46430bde9eb6c03ebe16fdc3a151bedb1b54a1de663990def59"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.926 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0xadb423bdb3cabfa91d1c3eeadee4c6143db5e715daffba02b4b136dad634fe"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:56.939 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.040 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.043 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m8 [3mtx_count[0m[2m=[0m2
+[2m2026-04-06 10:28:57.340 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x2d97ee90ce12e9c97d0c1e4cde58c8cb6d1a1116c303639f9f7b34e93e00a17"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:28:57.355 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.407 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.424 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.442 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.521 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.526 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m9 [3mtx_count[0m[2m=[0m5
+[2m2026-04-06 10:28:57.821 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:28:57.826 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m10 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:04.204 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x19e33d7ec0e0ab17e94814a003b2998d1d4009a56e3afe5f76da4f8c2d4c83c"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.229 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x59f4c979e534d73af71932769c6c58b78c01d2500dca86d90b69ab8190ec8f1"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.258 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:04.261 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m11 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:04.313 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:04.316 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m12 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:04.375 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0xb61a3d818df30feae4550aa005e429215cc63ee1a0526920f49868a7752db9"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.400 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x908c14371a8e40dff2921cdfc055df70e0673fcb782dd056417e130f864cbb"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.446 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:04.450 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m13 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:04.476 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:04.482 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m14 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:04.782 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x672028633f4c21b1ba91b25a6c2c7be9ba5339aa74c8ca99b7d168729619914"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.806 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x6ee600a227ce7addff4b993748588e69e4d44aa224d0c960aeeda766081622f"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.836 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x1affe1bf1823e3aa3d0a057b8c615cfb52e67f6ca9c677c9dfd2d5cba6cc98a"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.891 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x1491777359e4fc05516f653e246f454a468d68fb317dc616d35761f3b2a791a"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:04.921 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x32365cfd308a7452f1cb0c97fcbd4829aef4be4559c5e19282790161d1f1b66"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:05.208 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:05.215 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m15 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:05.245 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x32f2b6a281d65dc353ce83beb8ab991dfcfb68b03bdf903a91ef2436756c1de"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:05.272 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:05.304 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:05.357 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:05.384 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:05.391 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m16 [3mtx_count[0m[2m=[0m4
+[2m2026-04-06 10:29:05.419 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:05.422 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m17 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:11.767 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x3fab720aef060f7a1be461d6346114ff32e86af31c0ef86a08a109e0bcc9dd3"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:11.783 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:11.785 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m18 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:11.982 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x6a17fa746052c5caae034aa243056cb6b1aa55ae5d6fa574eb1a67a7ac1db07"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:11.993 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x2917a491a92786886dcb4bdd4d0d0899fb7e2a13295ada4b151c6b90acddd67"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:12.003 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:12.005 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m19 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:12.015 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3647 | memory holes: 6 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:12.017 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m20 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:12.330 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addDeclareTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0xc03678015091585db89ad71b10fc2ac43e641a564039a9f33cf71e97ade34d"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:12.340 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 3617 | memory holes: 32 | ec_op_builtin: 3 | pedersen_builtin: 16 | poseidon_builtin: 4 | range_check_builtin: 68"
+[2m2026-04-06 10:29:12.342 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m21 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:19.977 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addInvokeTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x324f8ee19e1f9c2867b81026bf4bc82f45ba0119156cc7e44a6eb8891dbfcb2"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:19.989 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 75459 | memory holes: 2772 | ec_op_builtin: 3 | pedersen_builtin: 254 | poseidon_builtin: 66 | range_check_builtin: 3887"
+[2m2026-04-06 10:29:19.993 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m22 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:22.666 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addInvokeTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0xb2ecedd3204d48e05569d598963c0e98e6cffb122654e23d3ff1aef6250ded"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:22.679 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 81399 | memory holes: 3173 | ec_op_builtin: 3 | pedersen_builtin: 266 | poseidon_builtin: 70 | range_check_builtin: 4413"
+[2m2026-04-06 10:29:22.684 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m23 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:25.588 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addInvokeTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x7f36e36735898439ce89a1a4f3b28a8b4794e4bd74016c8cf04b6cf90a1d494"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:25.607 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 78494 | memory holes: 2758 | ec_op_builtin: 3 | pedersen_builtin: 267 | poseidon_builtin: 70 | range_check_builtin: 3940"
+[2m2026-04-06 10:29:25.614 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m24 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:28.391 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addInvokeTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x55dee93dfc63707c66783cf51469b1d22be00d229bdb9f6e39d9bfb43662aef"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:28.399 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 41114 | memory holes: 1381 | ec_op_builtin: 3 | pedersen_builtin: 142 | poseidon_builtin: 35 | range_check_builtin: 1934"
+[2m2026-04-06 10:29:28.403 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m25 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:30.916 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addInvokeTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x58ffb9f26cbc65c539c5c1dfb54c120f0b79c394d6a92476052bfaf4c3a1786"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:30.921 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 15696 | memory holes: 112 | ec_op_builtin: 3 | pedersen_builtin: 65 | poseidon_builtin: 5 | range_check_builtin: 438"
+[2m2026-04-06 10:29:30.924 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m26 [3mtx_count[0m[2m=[0m1
+[2m2026-04-06 10:29:33.439 -06:00[0m [35mTRACE[0m [1mhttp_request[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/[1m}[0m[2m:[0m[1mrpc_call[0m[1m{[0m[3mmethod[0m[2m=[0m"starknet_addInvokeTransaction"[1m}[0m[2m:[0m[1mpool_add[0m[1m{[0m[3mtx_hash[0m[2m=[0m"0x4bdffd67ea1504c236325926ff21a7540e8f0335737b80132182ddf7974cf9d"[1m}[0m[2m:[0m [2mpool[0m[2m:[0m Transaction added to the pool
+[2m2026-04-06 10:29:33.449 -06:00[0m [35mTRACE[0m [2mexecutor[0m[2m:[0m Transaction resource usage. [3musage[0m[2m=[0m"steps: 56445 | memory holes: 1122 | bitwise_builtin: 66 | ec_op_builtin: 3 | pedersen_builtin: 84 | poseidon_builtin: 141 | range_check_builtin: 2859"
+[2m2026-04-06 10:29:33.453 -06:00[0m [32m INFO[0m [2mkatana::core::backend[0m[2m:[0m Block mined. [3mblock_number[0m[2m=[0m27 [3mtx_count[0m[2m=[0m1

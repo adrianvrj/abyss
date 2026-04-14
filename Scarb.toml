@@ -1,0 +1,34 @@
+[workspace]
+members = ["dojo"]
+description = "Abyss"
+homepage = "https://github.com/abyss-game/abyss"
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024_07"
+
+[workspace.dependencies]
+achievement = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+collection = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+bundle = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+leaderboard = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+merkledrop = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+quest = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+starterpack = { git = "https://github.com/cartridge-gg/arcade", rev = "fc2e81c" }
+graffiti = { git = "https://github.com/bal7hazar/graffiti.git", rev = "e8b0854" }
+dojo = "1.8.0"
+dojo_cairo_macros = "1.8.0"
+dojo_cairo_test = "1.8.0"
+openzeppelin = "3.0.0"
+starknet = "2.14.0"
+cairo_test = "2.14.0"
+
+[workspace.tool.fmt]
+sort-module-level-items = true
+
+[profile.slot]
+[profile.mainnet]
+[profile.sepolia]
+
+[tool.scarb]
+allow-prebuilt-plugins = ["dojo_cairo_macros"]

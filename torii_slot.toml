@@ -1,0 +1,24 @@
+world_address = "0x10767a7837e1d4b2c8e499a87610d7b2f5f306f9a077b01bf2cded0b995cee0"
+rpc = "https://api.cartridge.gg/x/starknet/sepolia"
+
+[server]
+http_cors_origins = ["*"]
+
+[grpc]
+optimistic = true
+
+[indexing]
+world_block = 0
+controllers = true
+pending = true
+pre_confirmed = true
+polling_interval = 1000
+contracts = [
+  "erc721:0x45e1e4efea6af7fbc5b74fae37427abaa493ae32de6b0c5050054832a0a7fe0",
+  "erc20:0x54a4cc6b8ea7683ad966b9d140db435dbba5fd4054c56da4da7762123b0b734",
+  "erc721:0x757d673ad960ae8dd7932530e106f2bf0affdacf437c385206b8b090c5c1c48",
+  "erc721:0x361679a02cd3c085d2bc8c14a0f0e7accd299d26497ba84155f66a846735e2d",
+]
+
+[erc]
+metadata_updates = true

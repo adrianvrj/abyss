@@ -1,0 +1,223 @@
+warn: in context of a workspace, only the `cairo` set in the workspace manifest is applied,
+but the `arcade` package also defines `cairo` in the manifest
+
+   Compiling dojo_cairo_macros v1.8.0
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Finished `release` profile [optimized] target(s) in 0.20s
+   Compiling abyss_game v0.1.0 (/Users/adran/Documents/repos/abyss/dojo/Scarb.toml)
+warn: Unused import: `abyss_game::store::WorldStorageTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/store.cairo:3:33
+use dojo::world::{WorldStorage, WorldStorageTrait};
+                                ^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::play::Play::WorldStorageTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:18:22
+    use dojo::world::WorldStorageTrait;
+                     ^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::play::Play::DEFAULT_ADMIN_ROLE`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:19:71
+    use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
+                                                                      ^^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::play::Play::ICharmDispatcher`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:32:40
+    use crate::interfaces::charm_nft::{ICharmDispatcher, ICharmDispatcherTrait};
+                                       ^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::play::Play::PlayerSessions`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:34:37
+        Config, PlayerSessionEntry, PlayerSessions, Session, SessionMarket, SpinResult,
+                                    ^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::play::Play::SessionMarket`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:34:62
+        Config, PlayerSessionEntry, PlayerSessions, Session, SessionMarket, SpinResult,
+                                                             ^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::play::Play::InventoryTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:38:52
+    use crate::helpers::inventory::{InventoryImpl, InventoryTrait};
+                                                   ^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::play::Play::PricingTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:40:48
+    use crate::helpers::pricing::{PricingImpl, PricingTrait};
+                                               ^^^^^^^^^^^^
+
+warn[E0001]: Unused variable. Consider ignoring by prefixing with `_`.
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:66:13
+        let world = self.world(@NAMESPACE());
+            ^^^^^
+
+error[E0002]: Method `consume_random` not found on type `abyss_game::interfaces::vrf::IVrfProviderDispatcher`. Consider importing one of the following traits: `crate::interfaces::vrf::IVrfProviderDispatcherTrait`.
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/play.cairo:177:35
+            let random_word = vrf.consume_random(Source::Nonce(caller));
+                                  ^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::market::ContractAddress`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:1:15
+use starknet::ContractAddress;
+              ^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::market::Market::WorldStorageTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:17:22
+    use dojo::world::WorldStorageTrait;
+                     ^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::market::Market::ContractAddress`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:18:19
+    use starknet::ContractAddress;
+                  ^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::market::Market::SessionInventory`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:21:53
+    use crate::models::index::{MarketSlotPurchased, SessionInventory, SessionMarket};
+                                                    ^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::market::Market::SessionMarket`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:21:71
+    use crate::models::index::{MarketSlotPurchased, SessionInventory, SessionMarket};
+                                                                      ^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::market::Market::Store`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:22:24
+    use crate::store::{Store, StoreTrait};
+                       ^^^^^
+
+warn: Unused import: `abyss_game::systems::market::Market::InventoryTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:23:52
+    use crate::helpers::inventory::{InventoryImpl, InventoryTrait};
+                                                   ^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::market::Market::MarketTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/market.cairo:24:46
+    use crate::helpers::market::{MarketImpl, MarketTrait};
+                                             ^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::relic::ContractAddress`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/relic.cairo:1:15
+use starknet::ContractAddress;
+              ^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::relic::Relic::WorldStorageTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/relic.cairo:16:22
+    use dojo::world::WorldStorageTrait;
+                     ^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::relic::Relic::ContractAddress`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/relic.cairo:17:19
+    use starknet::ContractAddress;
+                  ^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::relic::Relic::Store`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/relic.cairo:20:24
+    use crate::store::{Store, StoreTrait};
+                       ^^^^^
+
+warn: Unused import: `abyss_game::systems::relic::Relic::IRelicERC721Dispatcher`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/relic.cairo:21:40
+    use crate::interfaces::relic_nft::{IRelicERC721Dispatcher, IRelicERC721DispatcherTrait};
+                                       ^^^^^^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::relic::Relic::IRelicDispatcher`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/relic.cairo:22:40
+    use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicDispatcherTrait};
+                                       ^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::setup::Setup::WorldStorageTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:23:22
+    use dojo::world::WorldStorageTrait;
+                     ^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::setup::Setup::get_caller_address`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:27:19
+    use starknet::get_caller_address;
+                  ^^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::setup::Setup::Store`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:35:24
+    use crate::store::{Store, StoreTrait};
+                       ^^^^^
+
+warn: Usage of deprecated feature `"deprecated-starknet-consts"` with no `#[feature("deprecated-starknet-consts")]` attribute. Note: "Use `TryInto::try_into` in const context instead."
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:75:38
+            pragma_oracle: starknet::contract_address_const::<0>(),
+                                     ^^^^^^^^^^^^^^^^^^^^^^
+
+warn: Usage of deprecated feature `"deprecated-starknet-consts"` with no `#[feature("deprecated-starknet-consts")]` attribute. Note: "Use `TryInto::try_into` in const context instead."
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:76:35
+            chip_token: starknet::contract_address_const::<0>(),
+                                  ^^^^^^^^^^^^^^^^^^^^^^
+
+warn: Usage of deprecated feature `"deprecated-starknet-consts"` with no `#[feature("deprecated-starknet-consts")]` attribute. Note: "Use `TryInto::try_into` in const context instead."
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:77:34
+            charm_nft: starknet::contract_address_const::<0>(),
+                                 ^^^^^^^^^^^^^^^^^^^^^^
+
+warn: Usage of deprecated feature `"deprecated-starknet-consts"` with no `#[feature("deprecated-starknet-consts")]` attribute. Note: "Use `TryInto::try_into` in const context instead."
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:78:34
+            relic_nft: starknet::contract_address_const::<0>(),
+                                 ^^^^^^^^^^^^^^^^^^^^^^
+
+warn: Usage of deprecated feature `"deprecated-starknet-consts"` with no `#[feature("deprecated-starknet-consts")]` attribute. Note: "Use `TryInto::try_into` in const context instead."
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/setup.cairo:79:34
+            beast_nft: starknet::contract_address_const::<0>(),
+                                 ^^^^^^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::treasury::Treasury::WorldStorageTrait`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/treasury.cairo:17:22
+    use dojo::world::WorldStorageTrait;
+                     ^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::systems::treasury::Treasury::Store`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/treasury.cairo:23:24
+    use crate::store::{Store, StoreTrait};
+                       ^^^^^
+
+warn[E0001]: Unused variable. Consider ignoring by prefixing with `_`.
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/treasury.cairo:57:17
+            let caller = get_caller_address();
+                ^^^^^^
+
+warn[E0001]: Unused variable. Consider ignoring by prefixing with `_`.
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/treasury.cairo:59:21
+            let mut store = StoreTrait::new(world);
+                    ^^^^^
+
+warn[E0001]: Unused variable. Consider ignoring by prefixing with `_`.
+ --> /Users/adran/Documents/repos/abyss/dojo/src/systems/treasury.cairo:82:21
+            let mut store = StoreTrait::new(world);
+                    ^^^^^
+
+warn: Unused import: `abyss_game::helpers::inventory::Session`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/helpers/inventory.cairo:2:28
+use crate::models::index::{Session, SessionInventory, SessionCharmEntry, Item};
+                           ^^^^^^^
+
+warn: Unused import: `abyss_game::helpers::inventory::SessionInventory`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/helpers/inventory.cairo:2:37
+use crate::models::index::{Session, SessionInventory, SessionCharmEntry, Item};
+                                    ^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::helpers::inventory::SessionCharmEntry`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/helpers/inventory.cairo:2:55
+use crate::models::index::{Session, SessionInventory, SessionCharmEntry, Item};
+                                                      ^^^^^^^^^^^^^^^^^
+
+warn: Unused import: `abyss_game::helpers::inventory::Item`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/helpers/inventory.cairo:2:74
+use crate::models::index::{Session, SessionInventory, SessionCharmEntry, Item};
+                                                                         ^^^^
+
+warn: Unused import: `abyss_game::helpers::inventory::ICharmDispatcher`
+ --> /Users/adran/Documents/repos/abyss/dojo/src/helpers/inventory.cairo:3:36
+use crate::interfaces::charm_nft::{ICharmDispatcher, ICharmDispatcherTrait};
+                                   ^^^^^^^^^^^^^^^^
+
+error: could not compile `abyss_game` due to 1 previous error and 42 warnings
+
+Scarb command failed with exit code: exit status: 1
+

@@ -1,0 +1,541 @@
+import { useState, useEffect, useRef } from 'react';
+import { useAbyssGame } from '@/hooks/useAbyssGame';
+import {
+    getItemInfo,
+    ContractItem,
+    getCharmInfo,
+} from '@/utils/abyssContract';
+import { getItemImage } from '@/utils/itemImages';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAccount } from '@starknet-react/core';
+
+interface InlineInventoryPanelProps {
+    sessionId: number;
+    currentScore: number;
+    currentTickets?: number;
+    onUpdateScore: (newScore: number) => void;
+    onUpdateTickets?: (newTickets: number) => void;
+    onItemClick: (item: ContractItem) => void;
+    refreshTrigger?: number;
+    initialInventory?: ContractItem[];
+    optimisticItems?: ContractItem[];
+    onOpenRelics?: () => void;
+    sellingItemId?: number;
+    hiddenItemIds?: number[];
+    bibliaBroken?: boolean;
+    practiceMode?: boolean;
+    practiceItems?: ContractItem[];
+}
+
+export default function InlineInventoryPanel({
+    sessionId,
+    onItemClick,
+    refreshTrigger = 0,
+    initialInventory = [],
+    optimisticItems = [],
+    onOpenRelics,
+    sellingItemId,
+    hiddenItemIds = [],
+    bibliaBroken = false,
+    practiceMode = false,
+    practiceItems = [],
+}: InlineInventoryPanelProps) {
+    const { account } = useAccount();
+    const [, setLoading] = useState(!initialInventory.length);
+    const [ownedItems, setOwnedItems] = useState<ContractItem[]>(initialInventory);
+    const [hoveredItem, setHoveredItem] = useState<ContractItem | null>(null);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const latestInventoryRequestRef = useRef(0);
+
+    const handleNext = () => setCurrentIndex((prev) => (prev + 1) % 7);
+    const handlePrev = () => setCurrentIndex((prev) => (prev - 1 + 7) % 7);
+
+    const { getSessionItems } = useAbyssGame(account);
+
+    useEffect(() => {
+        if (practiceMode) {
+            setOwnedItems(practiceItems);
+            return;
+        }
+
+        if (sessionId) loadInventory();
+    }, [practiceItems, practiceMode, sessionId, refreshTrigger]);
+
+    async function loadInventory() {
+        const requestId = ++latestInventoryRequestRef.current;
+        try {
+            if (ownedItems.length === 0) setLoading(true);
+            const playerItems = await getSessionItems(sessionId);
+
+            const items = await Promise.all(playerItems.map(async (pi) => {
+                if (pi.item_id >= 1000) {
+                    const charmId = pi.item_id - 1000;
+                    const charmInfo = await getCharmInfo(charmId);
+                    if (!charmInfo) return null;
+
+                    const packedEffect = `${charmInfo.rarity}|||${charmInfo.effect}`;
+
+                    return {
+                        item_id: pi.item_id,
+                        name: charmInfo.name,
+                        description: charmInfo.description,
+                        price: charmInfo.shop_cost,
+                        sell_price: Math.floor(charmInfo.shop_cost / 2),
+                        effect_type: 7,
+                        effect_value: charmInfo.luck,
+                        target_symbol: packedEffect,
+                        image: charmInfo.image,
+                        charmInfo,
+                    } as ContractItem;
+                } else {
+                    return getItemInfo(pi.item_id);
+                }
+            }));
+
+            if (requestId !== latestInventoryRequestRef.current) {
+                return;
+            }
+
+            setOwnedItems(items.filter((i): i is ContractItem => i !== null));
+        } catch (error) {
+            console.error("Failed to load inventory:", error);
+        } finally {
+            if (requestId === latestInventoryRequestRef.current) {
+                setLoading(false);
+            }
+        }
+    }
+
+    function formatItemEffect(item: ContractItem): string {
+        const effectType = item.effect_type;
+        const targetSymbol = item.target_symbol || null;
+        const value = item.effect_value;
+
+        switch (effectType) {
+            case 0: return `+${value}% score multiplier`;
+            case 1: return targetSymbol ? `+${value}% ${targetSymbol} patterns` : `+${value}% all patterns`;
+            case 2: return targetSymbol ? `+${value}% ${targetSymbol} chance` : `+${value}% symbol chance`;
+            case 3: return targetSymbol ? `+${value} pts per ${targetSymbol}` : `+${value} pts per symbol`;
+            case 4: return `+${value} bonus spins`;
+            case 5: return `+${value}% level progress`;
+            case 6: return `666 protection (${value} spins)`;
+            case 7: {
+                if (targetSymbol && targetSymbol.includes('|||')) {
+                    const [rarity, effectText] = targetSymbol.split('|||');
+                    const displayEffect = effectText || `+${value}% LUCK`;
+                    return `${rarity} | ${displayEffect}`;
+                }
+                return `${targetSymbol} | +${value}% LUCK`;
+            }
+            default: return item.description || `Effect: ${value}`;
+        }
+    }
+
+    const ownedIds = new Set(ownedItems.map(i => i.item_id));
+    const uniqueOptimisticItems = optimisticItems.filter(i => !ownedIds.has(i.item_id));
+    const allItems = [...ownedItems, ...uniqueOptimisticItems];
+
+    let displayItems = allItems.filter(item => !hiddenItemIds?.includes(item.item_id));
+
+    if (bibliaBroken) {
+        const idx = displayItems.findIndex(i => i.item_id === 40);
+        if (idx !== -1) {
+            const newArr = [...displayItems];
+            newArr.splice(idx, 1);
+            displayItems = newArr;
+        }
+    }
+
+    const inventoryCount = displayItems.length;
+    const slots = Array.from({ length: 7 }, (_, i) => displayItems[i] || null);
+
+    return (
+        <div className="inline-inventory-panel">
+            {/* Desktop Grid View */}
+            <div className="inventory-slots desktop-view">
+                {slots.map((item, index) => {
+                    const isSelling = item && sellingItemId !== undefined && item.item_id === sellingItemId;
+                    return (
+                        <div
+                            key={index}
+                            className={`inv-slot ${item ? 'has-item' : 'empty'} ${isSelling ? 'selling' : ''}`}
+                            onClick={() => item && !isSelling && onItemClick(item)}
+                            onMouseEnter={() => item && setHoveredItem(item)}
+                            onMouseLeave={() => setHoveredItem(null)}
+                        >
+                            {item ? (
+                                <img
+                                    src={item.image || getItemImage(item.item_id)}
+                                    alt={item.name}
+                                    width={40}
+                                    height={40}
+                                    loading="lazy"
+                                    style={{ objectFit: 'contain', opacity: isSelling ? 0.5 : 1 }}
+                                />
+                            ) : (
+                                <span className="empty-slot-icon">+</span>
+                            )}
+
+                            {isSelling && (
+                                <div className="selling-overlay">
+                                    <div className="spinner-mini"></div>
+                                </div>
+                            )}
+
+                            {hoveredItem && item && hoveredItem.item_id === item.item_id && !isSelling && (
+                                <div className="item-tooltip">
+                                    <div className="tooltip-name">{item.name}</div>
+                                    <div className="tooltip-effect">{formatItemEffect(item)}</div>
+                                    <div style={{
+                                        marginTop: '4px',
+                                        fontSize: '10px',
+                                        color: '#FF841C',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px'
+                                    }}>
+                                        SELL FOR {item.sell_price}
+                                        <img src="/images/ticket.png" alt="Tickets" width={12} height={12} loading="lazy" />
+                                    </div>
+                                    <div className="tooltip-action">Click to sell</div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Mobile Carousel View */}
+            <div className="mobile-carousel-view">
+                <div className="carousel-header" style={{ position: 'relative' }}>
+                    <span>INVENTORY ({inventoryCount} / 7)</span>
+                    {onOpenRelics && (
+                        <button
+                            onClick={onOpenRelics}
+                            style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: '-5px',
+                                background: '#FF841C22',
+                                border: '1px solid #FF841C',
+                                fontSize: '8px',
+                                color: '#FF841C',
+                                fontFamily: "'PressStart2P', monospace",
+                                padding: '6px 8px',
+                                cursor: 'pointer',
+                                borderRadius: '4px'
+                            }}
+                        >
+                            RELICS
+                        </button>
+                    )}
+                </div>
+
+                <div className="carousel-display">
+                    {slots[currentIndex] ? (
+                        <>
+                            <div className="carousel-image">
+                                <img
+                                    src={slots[currentIndex]?.image || getItemImage(slots[currentIndex]?.item_id || 1)}
+                                    alt={slots[currentIndex]?.name || "Item"}
+                                    width={140}
+                                    height={140}
+                                    loading="lazy"
+                                    style={{ objectFit: 'contain' }}
+                                />
+                            </div>
+                            <div className="carousel-item-name">{slots[currentIndex]?.name}</div>
+                            <div className="carousel-item-effect">{formatItemEffect(slots[currentIndex]!)}</div>
+                        </>
+                    ) : (
+                        <div className="carousel-empty">
+                            <span className="empty-plus">+</span>
+                            <span>Empty Slot</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="carousel-nav">
+                    <button onClick={handlePrev}><ChevronLeft /></button>
+                    <span>{currentIndex + 1} / 7</span>
+                    <button onClick={handleNext}><ChevronRight /></button>
+                </div>
+
+                <button
+                    className={`carousel-action-btn ${!slots[currentIndex] ? 'disabled' : ''}`}
+                    onClick={() => slots[currentIndex] && onItemClick(slots[currentIndex]!)}
+                    disabled={!slots[currentIndex]}
+                >
+                    {slots[currentIndex] ? (
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            SELL {slots[currentIndex]!.sell_price}
+                            <img src="/images/ticket.png" alt="Tickets" width={24} height={24} loading="lazy" />
+                        </span>
+                    ) : (
+                        "EMPTY"
+                    )}
+                </button>
+            </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .inline-inventory-panel {
+                    background: rgba(0, 0, 0, 0.85);
+                    border: 2px solid #FF841C;
+                    border-radius: 8px;
+                    padding: 10px;
+                    width: 320px;
+                }
+                .inventory-slots {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                    justify-content: center;
+                }
+                .mobile-carousel-view {
+                    display: none;
+                    flex-direction: column;
+                    height: 100%;
+                    width: 100%;
+                    gap: 16px;
+                }
+                .carousel-header {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    color: #FF841C;
+                    text-align: center;
+                    padding-bottom: 10px;
+                    border-bottom: 1px solid #FF841C33;
+                }
+                .carousel-display {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(255, 132, 28, 0.05);
+                    border: 1px solid #FF841C44;
+                    border-radius: 8px;
+                    padding: 20px;
+                }
+                .carousel-image {
+                    margin-bottom: 16px;
+                }
+                .carousel-item-name {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    color: #fff;
+                    margin-bottom: 8px;
+                    text-align: center;
+                }
+                .carousel-item-effect {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 10px;
+                    color: #FFEA00;
+                    text-align: center;
+                    background: #000;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                }
+                .carousel-empty {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    color: #FF841C44;
+                    font-family: 'PressStart2P', monospace;
+                }
+                .empty-plus {
+                    font-size: 48px;
+                    margin-bottom: 8px;
+                }
+                .carousel-nav {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .carousel-nav button {
+                    background: transparent;
+                    border: 2px solid #FF841C;
+                    color: #FF841C;
+                    padding: 10px 15px;
+                    font-size: 18px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                }
+                .carousel-nav span {
+                    font-family: 'PressStart2P', monospace;
+                    color: #666;
+                    font-size: 12px;
+                }
+                .carousel-action-btn {
+                    width: 100%;
+                    padding: 16px;
+                    background: #FF841C;
+                    color: #000;
+                    border: none;
+                    border-radius: 6px;
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    cursor: pointer;
+                }
+                .carousel-action-btn.disabled {
+                    background: #333;
+                    color: #666;
+                    cursor: not-allowed;
+                }
+                @media (max-width: 1024px) {
+                    .inline-inventory-panel {
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                        background: transparent;
+                        padding: 0;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                    }
+                    .desktop-view {
+                        display: none;
+                    }
+                    .mobile-carousel-view {
+                        display: flex;
+                    }
+                    .carousel-header {
+                        font-size: 11px;
+                        text-align: left;
+                        padding-bottom: 10px;
+                    }
+                    .carousel-display {
+                        flex: 1;
+                        min-height: 0;
+                        background: rgba(0, 0, 0, 0.36);
+                        border: 1px solid rgba(255, 132, 28, 0.16);
+                        padding: 18px 14px;
+                    }
+                    .carousel-image img {
+                        width: 120px;
+                        height: 120px;
+                    }
+                    .carousel-item-name {
+                        font-size: 12px;
+                        line-height: 1.5;
+                    }
+                    .carousel-item-effect {
+                        font-size: 8px;
+                        line-height: 1.6;
+                        padding: 8px 10px;
+                    }
+                    .carousel-nav button {
+                        min-width: 56px;
+                        min-height: 48px;
+                        border-radius: 12px;
+                        padding: 10px 14px;
+                    }
+                    .carousel-nav span {
+                        font-size: 9px;
+                    }
+                    .carousel-action-btn {
+                        min-height: 50px;
+                        font-size: 9px;
+                        border-radius: 12px;
+                    }
+                }
+                .inv-slot {
+                    position: relative;
+                    width: 36px;
+                    height: 36px;
+                    background: rgba(0, 0, 0, 0.5);
+                    border: 1px solid #FF841C44;
+                    border-radius: 4px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                }
+                .inv-slot.has-item {
+                    cursor: pointer;
+                    border-color: #FF841C;
+                }
+                .inv-slot.has-item:hover {
+                    background: #FF841C33;
+                }
+                .inv-slot.empty {
+                    opacity: 0.3;
+                }
+                .empty-slot-icon {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 14px;
+                    color: #FF841C44;
+                }
+                .item-tooltip {
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    margin-bottom: 8px;
+                    background: rgba(0, 0, 0, 0.95);
+                    border: 2px solid #FF841C;
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    min-width: 140px;
+                    z-index: 1000;
+                    pointer-events: none;
+                }
+                .item-tooltip::after {
+                    content: '';
+                    position: absolute;
+                    top: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border: 6px solid transparent;
+                    border-top-color: #FF841C;
+                }
+                .tooltip-name {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 9px;
+                    color: #FF841C;
+                    margin-bottom: 6px;
+                    text-align: center;
+                    white-space: nowrap;
+                }
+                .tooltip-effect {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 8px;
+                    color: #FFEA00;
+                    margin-bottom: 6px;
+                    text-align: center;
+                }
+                .tooltip-action {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 7px;
+                    color: rgba(255, 255, 255, 0.5);
+                    text-align: center;
+                }
+                .inv-slot.selling {
+                    cursor: not-allowed;
+                    border-color: #666;
+                }
+                .selling-overlay {
+                    position: absolute;
+                    inset: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(0,0,0,0.6);
+                    border-radius: 4px;
+                }
+                .spinner-mini {
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid #FF841C;
+                    border-top-color: transparent;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            ` }} />
+        </div>
+    );
+}
