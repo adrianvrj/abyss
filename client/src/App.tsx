@@ -2,6 +2,7 @@ import { Suspense, useEffect, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Providers } from "@/components/providers";
 import ChipBalanceBadge from "@/components/ChipBalanceBadge";
+import ControllerButton from "@/components/ControllerButton";
 import { DEFAULT_CHAIN_ID, getToriiUrl, getWorldAddress } from "@/config";
 import { CONTROLLER_RPC_URL, cartridgeSlot } from "@/lib/controllerConfig";
 
@@ -79,6 +80,7 @@ function App() {
         }}
       >
         <ChipBalanceBadge />
+        <ControllerButton />
         <Suspense fallback={<MenuLoading />}>
           <Routes>
             <Route path="/" element={<MenuContent />} />

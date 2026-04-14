@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useConnect } from "@starknet-react/core";
+import { useLocation } from "react-router-dom";
 import { useController } from "@/hooks/useController";
 
 export default function ControllerButton() {
     const { isConnected, address } = useController();
+    const { pathname } = useLocation();
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -34,16 +36,17 @@ export default function ControllerButton() {
         }
     }, [controllerConnector]);
 
-    // Hide on mobile or when not connected
-    if (!isConnected || isMobile) return null;
-
     const displayAddress = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "Profile";
+
+    // Hide when not connected or on specific routes
+    if (!isConnected || pathname === "/game" || pathname === "/practice") return null;
 
     return (
         <div style={{
             position: "fixed",
-            bottom: "24px",
-            right: "24px",
+            ...(isMobile
+                ? { top: "16px", right: "16px" }
+                : { bottom: "24px", right: "24px" }),
             zIndex: 1000,
         }}>
             <motion.button
@@ -51,7 +54,7 @@ export default function ControllerButton() {
                     background: "#000000",
                     border: "2px solid #FF841C",
                     borderRadius: "8px",
-                    padding: "10px 14px",
+                    padding: isMobile ? "7px 10px" : "10px 14px",
                     fontFamily: "'PressStart2P', monospace",
                     fontSize: "10px",
                     color: "#FF841C",
@@ -69,3 +72,4 @@ export default function ControllerButton() {
         </div>
     );
 }
+

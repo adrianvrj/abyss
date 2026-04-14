@@ -70,9 +70,9 @@ export function ChipBalanceBadge() {
 
   const mobilePlacement = {
     top: "16px",
-    right: "16px",
+    right: "auto",
     bottom: "auto",
-    left: "auto",
+    left: "16px",
     transform: "none",
   };
 
