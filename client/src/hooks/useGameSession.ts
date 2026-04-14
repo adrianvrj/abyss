@@ -787,13 +787,17 @@ export function useGameSession(sessionId: string | null) {
 
                     if (spin.spinsRemaining <= 0) {
                         playSound('game-over');
+                        // Use receipt data for final tally to avoid Torii/Chain indexing lag
+                        const receiptFinalScore = spin.is666 ? 0 : (score + spin.scoreGained);
+                        const receiptTotalScore = spin.newTotalScore;
+
+                        // Still fetch session for background sync/other fields
                         const latestSession = await loadSessionData('spin:event-path:game-over');
                         await captureGameOverBuild();
-                        const finalBalance =
-                            latestSession?.score ??
-                            (spin.is666 ? 0 : (score + spin.scoreGained));
-                        const finalLifetimeScore =
-                            latestSession?.totalScore ?? spin.newTotalScore;
+
+                        // Prioritize receipt results over potentially stale Torii state
+                        const finalBalance = Math.max(receiptFinalScore, latestSession?.score || 0);
+                        const finalLifetimeScore = Math.max(receiptTotalScore, latestSession?.totalScore || 0);
 
                         setFinalScore(finalBalance);
                         setFinalTotalScore(finalLifetimeScore);
