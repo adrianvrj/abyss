@@ -10,6 +10,11 @@ default = "ABYSS"
   "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec",
   "0x127fd5f1fe78a71f8bcd1fec63e3fe2f0486b6ecd5c86a0466c3a21fa5cfcec"
 ]
+"ABYSS-Chip" = [
+  "0x34d6ca32770267000000",                                             # initial_supply (low)
+  "0x0",                                                                # initial_supply (high)
+  "0x39ca42b918d701ed01c50d2d5bebef9be78f80fe8d92170963523f8e0b532d9", # recipient (matches mainnet admin for dev)
+]
 
 [writers]
 "ABYSS" = [

@@ -88,6 +88,7 @@ pub const CHIP_DECIMALS: u32 = 18;
 pub const CHIP_SCORE_DIVISOR: u32 = 20;
 pub const DEFAULT_CHIP_EMISSION_RATE: u32 = 1; // 1 CHIP per 20 score
 pub const DEFAULT_CHIP_BOOST_MULTIPLIER: u32 = 1;
+pub const CHIP_TOTAL_SUPPLY: u256 = 10_000_000_000_000_000_000_000_000;
 
 // Revenue distribution (out of 100)
 pub const REVENUE_PRIZE_PCT: u32 = 50;

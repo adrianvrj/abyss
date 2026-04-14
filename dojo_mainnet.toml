@@ -10,7 +10,7 @@ default = "ABYSS"
 [env]
 rpc_url = "https://api.cartridge.gg/x/starknet/mainnet"
 world_address = "0x019210e07e069cc67b17be1fbb2258411ddabf745ac32f22d0e547a61a8eceeb"
-account_address = "0x39ca42b918d701ed01c50d2d5bebef9be78f80fe8d92170963523f8e0b532d9"
+account_address = "0x07e89f628e2a133213443FE1b43dd0BB48ae3ab182f7B568A3fBDC6667041697"
 
 [migration]
 order_inits = [
@@ -37,4 +37,9 @@ disable_multicall = true
   "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f", # vrf_address
   "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb", # quote_token
   "0x07e89f628e2a133213443FE1b43dd0BB48ae3ab182f7B568A3fBDC6667041697", # team_address
+]
+"ABYSS-Chip" = [
+  "0x34d6ca32770267000000",                                             # initial_supply (low)
+  "0x0",                                                                # initial_supply (high)
+  "0x07e89f628e2a133213443FE1b43dd0BB48ae3ab182f7B568A3fBDC6667041697", # recipient
 ]

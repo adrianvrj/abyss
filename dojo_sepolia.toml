@@ -37,3 +37,8 @@ disable_multicall = true
   "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343", # quote_token (USDC)
   "0x05CC7fe1BfAAf3e05DFe1FD67397CeB3570D8869ddF96c5b5bC911289EeBa706", # team_address
 ]
+"ABYSS-Chip" = [
+  "0x34d6ca32770267000000",                                             # initial_supply (low)
+  "0x0",                                                                # initial_supply (high)
+  "0x05CC7fe1BfAAf3e05DFe1FD67397CeB3570D8869ddF96c5b5bC911289EeBa706", # recipient
+]
