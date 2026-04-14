@@ -1,7 +1,6 @@
 import { Suspense, useEffect, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Providers } from "@/components/providers";
-import { ControllerStyler } from "@/components/ControllerStyler";
 import ChipBalanceBadge from "@/components/ChipBalanceBadge";
 import { DEFAULT_CHAIN_ID, getToriiUrl, getWorldAddress } from "@/config";
 import { CONTROLLER_RPC_URL, cartridgeSlot } from "@/lib/controllerConfig";
@@ -73,7 +72,6 @@ function App() {
 
   return (
     <Providers>
-      <ControllerStyler />
       <Router
         future={{
           v7_startTransition: true,

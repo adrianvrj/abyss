@@ -17,7 +17,7 @@ type SessionPolicies = {
   messages?: unknown[];
 };
 
-export const CONTROLLER_PRESET = import.meta.env.VITE_CARTRIDGE_PRESET || "";
+export const CONTROLLER_PRESET = import.meta.env.VITE_CARTRIDGE_PRESET || "abyss";
 export const DEFAULT_CARTRIDGE_CONTROLLER_RPC_URL = DEFAULT_CHAIN_ID.includes("534e5f4d41494e")
   ? `${DEFAULT_MAINNET_RPC_URL}/rpc/v0_9`
   : `${DEFAULT_SEPOLIA_RPC_URL}/rpc/v0_9`;
