@@ -7,7 +7,7 @@ import { Pattern, detectPatterns } from "@/utils/patternDetector";
 
 const DEFAULT_SYMBOL_SCORES = [7, 5, 4, 3, 2];
 const DEFAULT_SPINS = 5;
-const DEFAULT_TICKETS = 8;
+const DEFAULT_TICKETS = 6;
 const BIBLIA_ITEM_ID = 40;
 const MARKET_SLOT_COUNT = 6;
 const INVENTORY_LIMIT = 7;
@@ -120,20 +120,20 @@ export function getPracticeLevelThreshold(level: number) {
   if (level === 2) return 222;
   if (level === 3) return 333;
   if (level === 4) return 666;
-  if (level === 5) return 1000;
-  if (level === 6) return 2000;
-  if (level === 7) return 4000;
-  if (level === 8) return 6000;
-  if (level === 9) return 8000;
-  if (level === 10) return 10000;
-  return 30000 + ((level - 10) * 10000);
+  if (level === 5) return 1500;
+  if (level === 6) return 3500;
+  if (level === 7) return 7000;
+  if (level === 8) return 12000;
+  if (level === 9) return 20000;
+  if (level === 10) return 30000;
+  return 40000 + ((level - 10) * 20000);
 }
 
 export function getPractice666Probability(level: number) {
   if (level <= 2) {
     return 0;
   }
-  return (level - 2) * 15;
+  return (level - 2) * 20;
 }
 
 export function getPracticeRefreshCost(refreshCount: number) {
@@ -284,14 +284,7 @@ function getAwardedTickets(previousLevel: number, nextLevel: number) {
     return 0;
   }
 
-  let awarded = 0;
-  for (let level = previousLevel + 1; level <= nextLevel; level += 1) {
-    awarded += 1;
-    if (level === 6) {
-      awarded += 4;
-    }
-  }
-  return awarded;
+  return nextLevel - previousLevel;
 }
 
 function cloneItems(items: ContractItem[]) {
@@ -406,7 +399,7 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
     const leveledState = {
       ...nextState,
       level: nextState.level + 1,
-      tickets: nextState.tickets + 1 + (nextState.level + 1 === 6 ? 4 : 0),
+      tickets: nextState.tickets + 1,
       spinsRemaining: DEFAULT_SPINS + getSpinBonus(nextState.inventoryItems),
     };
     nextState = withDerivedState(leveledState);

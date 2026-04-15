@@ -85,16 +85,7 @@ function getTicketsAwardedForLevelTransition(previousLevel: number, nextLevel: n
         return 0;
     }
 
-    let awardedTickets = 0;
-
-    for (let level = previousLevel + 1; level <= nextLevel; level += 1) {
-        awardedTickets += 1;
-        if (level === 6) {
-            awardedTickets += 4;
-        }
-    }
-
-    return awardedTickets;
+    return nextLevel - previousLevel;
 }
 
 const RELIC_NAMES: Record<number, string> = {

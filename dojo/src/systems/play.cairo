@@ -255,9 +255,6 @@ pub mod Play {
                 }
                 session.level += 1;
                 session.tickets += 1;
-                if session.level == 6 {
-                    session.tickets += 4;
-                }
                 let spin_bonus = spin_modifiers.spin_bonus;
                 session.spins_remaining = 5 + spin_bonus;
             }

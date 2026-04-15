@@ -48,18 +48,18 @@ pub fn get_level_threshold(level: u32) -> u32 {
     } else if level == 4 {
         666
     } else if level == 5 {
-        1000
+        1500
     } else if level == 6 {
-        2000
+        3500
     } else if level == 7 {
-        4000
+        7000
     } else if level == 8 {
-        6000
+        12000
     } else if level == 9 {
-        8000
+        20000
     } else if level == 10 {
-        10000
+        30000
     } else {
-        30000 + ((level - 10) * 10000)
+        40000 + ((level - 10) * 20000)
     }
 }

@@ -163,7 +163,7 @@ pub mod Market {
                 store.set_session(@session);
             } else {
                 let item = store.item(item_id);
-                sell_price = (item.price * 50) / 100;
+                sell_price = item.sell_price;
 
                 let inv = store.inventory(session_id, item_id);
                 assert(inv.quantity >= quantity, 'Not enough items');

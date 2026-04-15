@@ -47,7 +47,7 @@ pub const WORLD_RESOURCE: felt252 = 0;
 
 // Session defaults
 pub const DEFAULT_SPINS: u32 = 5;
-pub const DEFAULT_TICKETS: u32 = 8;
+pub const DEFAULT_TICKETS: u32 = 6;
 
 // Default symbol scores
 pub const DEFAULT_SCORE_SEVEN: u32 = 7;
@@ -103,9 +103,9 @@ pub const LEVEL_1_THRESHOLD: u32 = 66;
 pub const LEVEL_2_THRESHOLD: u32 = 222;
 pub const LEVEL_3_THRESHOLD: u32 = 333;
 pub const LEVEL_4_THRESHOLD: u32 = 666;
-pub const LEVEL_5_THRESHOLD: u32 = 1000;
-pub const LEVEL_6_THRESHOLD: u32 = 2000;
-pub const LEVEL_7_THRESHOLD: u32 = 4000;
-pub const LEVEL_8_THRESHOLD: u32 = 6000;
-pub const LEVEL_9_THRESHOLD: u32 = 8000;
-pub const LEVEL_10_THRESHOLD: u32 = 10000;
+pub const LEVEL_5_THRESHOLD: u32 = 1500;
+pub const LEVEL_6_THRESHOLD: u32 = 3500;
+pub const LEVEL_7_THRESHOLD: u32 = 7000;
+pub const LEVEL_8_THRESHOLD: u32 = 12000;
+pub const LEVEL_9_THRESHOLD: u32 = 20000;
+pub const LEVEL_10_THRESHOLD: u32 = 30000;
