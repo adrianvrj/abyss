@@ -157,7 +157,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x7c60ff38c7eb98b7d644429061cd9ae94fb23c94f1eb250ba42ce38cf8eaa92",
+      "class_hash": "0x6cf6d3df4df705d5df52d31964109665b36920897f2370f8802021c514ba1a6",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",

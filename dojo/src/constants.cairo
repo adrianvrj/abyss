@@ -91,9 +91,9 @@ pub const DEFAULT_CHIP_BOOST_MULTIPLIER: u32 = 1;
 pub const CHIP_TOTAL_SUPPLY: u256 = 10_000_000_000_000_000_000_000_000;
 
 // Revenue distribution (out of 100)
-pub const REVENUE_PRIZE_PCT: u32 = 50;
-pub const REVENUE_TREASURY_PCT: u32 = 30;
-pub const REVENUE_TEAM_PCT: u32 = 20;
+pub const REVENUE_PRIZE_PCT: u32 = 70;
+pub const REVENUE_TREASURY_PCT: u32 = 0;
+pub const REVENUE_TEAM_PCT: u32 = 30;
 
 // Leaderboard
 pub const LEADERBOARD_SIZE: u32 = 10;
