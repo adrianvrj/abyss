@@ -1,6 +1,9 @@
+use bundle::models::index::Bundle;
 use dojo::event::EventStorage;
 use dojo::model::ModelStorage;
 use dojo::world::WorldStorage;
+use ekubo::components::clear::IClearDispatcher;
+use ekubo::interfaces::router::IRouterDispatcher;
 use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
@@ -42,6 +45,11 @@ pub impl StoreImpl of StoreTrait {
         IERC20Dispatcher { contract_address: config.chip_token }
     }
 
+    fn quote_disp(self: @Store) -> IERC20Dispatcher {
+        let config = self.config();
+        IERC20Dispatcher { contract_address: config.quote_token }
+    }
+
     fn charm_disp(self: @Store) -> ICharmDispatcher {
         let config = self.config();
         ICharmDispatcher { contract_address: config.charm_nft }
@@ -57,6 +65,16 @@ pub impl StoreImpl of StoreTrait {
         IRelicERC721Dispatcher { contract_address: config.relic_nft }
     }
 
+    fn ekubo_router(self: @Store) -> IRouterDispatcher {
+        let config = self.config();
+        IRouterDispatcher { contract_address: config.ekubo_router }
+    }
+
+    fn ekubo_clearer(self: @Store) -> IClearDispatcher {
+        let config = self.config();
+        IClearDispatcher { contract_address: config.ekubo_router }
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Config
     // ═══════════════════════════════════════════════════════════════════
@@ -67,6 +85,14 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_config(mut self: Store, config: @Config) {
         self.world.write_model(config)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Bundle
+    // ═══════════════════════════════════════════════════════════════════
+
+    fn bundle(self: @Store, bundle_id: u32) -> Bundle {
+        self.world.read_model(bundle_id)
     }
 
     // ═══════════════════════════════════════════════════════════════════

@@ -53,6 +53,7 @@ pub mod interfaces {
 }
 
 pub mod components {
+    pub mod purchase;
     pub mod spinnable;
 }
 

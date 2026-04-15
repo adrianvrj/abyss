@@ -97,7 +97,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x66f065d8918a6b1006993a6203ace5268544106b646f9914b4be28883c832ac",
+      "class_hash": "0x30a356913f64679fd036f57394e36cfdfcdfd1ed2408318928ad52484fcbf98",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x692f5a4127280fc4f83b41f1cc69b7a233657165c5533d000dee712f5a87d76",
+      "class_hash": "0x2b19f5a3cc3786635080ed9d9c84218570cc0ae5a6b6d32d4f9c99f9f73b171",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -128,7 +128,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x2905fbc0ffa64c7f1d52238e46b2e8e5cdf968a54a1fce07f7db00b33c25e1",
+      "class_hash": "0x7db2fe58c0bce9876254d0df1f6b773addd74f2ed698a5eb44dceb55d943d2b",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -157,7 +157,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x4f28f5fa404c6b936b7da44d3c553a4a0206739f6dab90a0de5269af545b7aa",
+      "class_hash": "0x7c60ff38c7eb98b7d644429061cd9ae94fb23c94f1eb250ba42ce38cf8eaa92",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -181,6 +181,14 @@
         "set_chip_boost_multiplier",
         "set_token_pair_id",
         "set_entry_price_usd",
+        "set_burn_percentage",
+        "set_treasury_percentage",
+        "set_team_percentage",
+        "set_ekubo_router",
+        "set_pool_fee",
+        "set_pool_tick_spacing",
+        "set_pool_extension",
+        "set_pool_sqrt",
         "initialize_items",
         "register_bundle",
         "register_default_session_bundle",
@@ -403,9 +411,49 @@
           "name": "total_items",
           "type": "core::integer::u32",
           "key": false
+        },
+        {
+          "name": "burn_percentage",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "treasury_percentage",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "team_percentage",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "ekubo_router",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": false
+        },
+        {
+          "name": "pool_fee",
+          "type": "core::integer::u128",
+          "key": false
+        },
+        {
+          "name": "pool_tick_spacing",
+          "type": "core::integer::u128",
+          "key": false
+        },
+        {
+          "name": "pool_extension",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": false
+        },
+        {
+          "name": "pool_sqrt",
+          "type": "core::integer::u256",
+          "key": false
         }
       ],
-      "class_hash": "0x7524a37b55b05e5c31c3c4ae7f8ecf72d52078c06c44755ffcee8ce842ebdb3",
+      "class_hash": "0x298ae85c107df58a869dba136b7e8777f00d708668f217787a6e93de4856100",
       "tag": "ABYSS-Config",
       "selector": "0x5f1ad3b20b522f430149644fca6cb52d1d21ddee009e310669c599c3307927"
     },
@@ -1464,6 +1512,12 @@
   ],
   "external_contracts": [],
   "abis": [
+    {
+      "type": "event",
+      "name": "abyss_game::components::purchase::PurchaseComponent::Event",
+      "kind": "enum",
+      "variants": []
+    },
     {
       "type": "struct",
       "name": "abyss_game::events::index::BibliaDiscarded",
@@ -2766,6 +2820,38 @@
         {
           "name": "total_items",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "burn_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "treasury_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "team_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "ekubo_router",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "pool_fee",
+          "type": "core::integer::u128"
+        },
+        {
+          "name": "pool_tick_spacing",
+          "type": "core::integer::u128"
+        },
+        {
+          "name": "pool_extension",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "pool_sqrt",
+          "type": "core::integer::u256"
         }
       ]
     },
@@ -2908,6 +2994,38 @@
         {
           "name": "total_items",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "burn_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "treasury_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "team_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "ekubo_router",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "pool_fee",
+          "type": "core::integer::u128"
+        },
+        {
+          "name": "pool_tick_spacing",
+          "type": "core::integer::u128"
+        },
+        {
+          "name": "pool_extension",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "pool_sqrt",
+          "type": "core::integer::u256"
         }
       ]
     },
@@ -4698,6 +4816,102 @@
         },
         {
           "type": "function",
+          "name": "set_burn_percentage",
+          "inputs": [
+            {
+              "name": "percentage",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_treasury_percentage",
+          "inputs": [
+            {
+              "name": "percentage",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_team_percentage",
+          "inputs": [
+            {
+              "name": "percentage",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_ekubo_router",
+          "inputs": [
+            {
+              "name": "address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_pool_fee",
+          "inputs": [
+            {
+              "name": "fee",
+              "type": "core::integer::u128"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_pool_tick_spacing",
+          "inputs": [
+            {
+              "name": "tick_spacing",
+              "type": "core::integer::u128"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_pool_extension",
+          "inputs": [
+            {
+              "name": "address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_pool_sqrt",
+          "inputs": [
+            {
+              "name": "sqrt",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "initialize_items",
           "inputs": [],
           "outputs": [],
@@ -4891,6 +5105,11 @@
         {
           "name": "BundleEvent",
           "type": "bundle::component::Component::Event",
+          "kind": "flat"
+        },
+        {
+          "name": "PurchaseEvent",
+          "type": "abyss_game::components::purchase::PurchaseComponent::Event",
           "kind": "flat"
         },
         {

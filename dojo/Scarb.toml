@@ -23,6 +23,7 @@ bundle.workspace = true
 leaderboard.workspace = true
 openzeppelin.workspace = true
 graffiti.workspace = true
+ekubo.workspace = true
 dojo.workspace = true
 dojo_cairo_macros.workspace = true
 starknet.workspace = true

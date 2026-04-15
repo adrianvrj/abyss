@@ -50,6 +50,15 @@ pub struct Config {
     pub total_sessions: u32,
     pub total_competitive_sessions: u32,
     pub total_items: u32,
+    // Revenue split + swap config
+    pub burn_percentage: u8,
+    pub treasury_percentage: u8,
+    pub team_percentage: u8,
+    pub ekubo_router: ContractAddress,
+    pub pool_fee: u128,
+    pub pool_tick_spacing: u128,
+    pub pool_extension: ContractAddress,
+    pub pool_sqrt: u256,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

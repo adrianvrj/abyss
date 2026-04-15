@@ -19,6 +19,14 @@ export type RpcGameConfig = {
   chipEmissionRate: number;
   chipBoostMultiplier: number;
   entryPriceUsd: bigint;
+  burnPercentage: number;
+  treasuryPercentage: number;
+  teamPercentage: number;
+  ekuboRouter: string;
+  poolFee: bigint;
+  poolTickSpacing: bigint;
+  poolExtension: string;
+  poolSqrt: bigint;
 };
 
 export type RpcGameItem = {
@@ -73,6 +81,15 @@ export async function getGameConfig(chainId: ChainLike): Promise<RpcGameConfig> 
     chipBoostMultiplier: Number(result[30] ?? 0),
     entryPriceUsd:
       BigInt(result[31] ?? "0") + (BigInt(result[32] ?? "0") << 128n),
+    burnPercentage: Number(result[36] ?? 0),
+    treasuryPercentage: Number(result[37] ?? 0),
+    teamPercentage: Number(result[38] ?? 0),
+    ekuboRouter: String(result[39] ?? "0x0"),
+    poolFee: BigInt(result[40] ?? "0"),
+    poolTickSpacing: BigInt(result[41] ?? "0"),
+    poolExtension: String(result[42] ?? "0x0"),
+    poolSqrt:
+      BigInt(result[43] ?? "0") + (BigInt(result[44] ?? "0") << 128n),
   };
 }
 

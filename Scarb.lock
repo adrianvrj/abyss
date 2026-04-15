@@ -10,6 +10,7 @@ dependencies = [
  "dojo",
  "dojo_cairo_macros",
  "dojo_cairo_test",
+ "ekubo",
  "graffiti",
  "leaderboard",
  "openzeppelin",
@@ -58,6 +59,11 @@ checksum = "sha256:0cab4c86390b6ee9c3969b82d27f46ecd7f14e686b9868528506103944638
 dependencies = [
  "dojo",
 ]
+
+[[package]]
+name = "ekubo"
+version = "0.1.0"
+source = "git+https://github.com/EkuboProtocol/starknet-contracts?rev=cf2e95f#cf2e95fd124bfb19491e1a7da9ffba4b63cc6c4e"
 
 [[package]]
 name = "graffiti"

@@ -43,6 +43,14 @@ export interface RawConfig {
   total_sessions: PrimitiveValue<string>;
   total_competitive_sessions: PrimitiveValue<string>;
   total_items: PrimitiveValue<string>;
+  burn_percentage: PrimitiveValue<string>;
+  treasury_percentage: PrimitiveValue<string>;
+  team_percentage: PrimitiveValue<string>;
+  ekubo_router: PrimitiveValue<string>;
+  pool_fee: PrimitiveValue<string>;
+  pool_tick_spacing: PrimitiveValue<string>;
+  pool_extension: PrimitiveValue<string>;
+  pool_sqrt: PrimitiveValue<string>;
 }
 
 export interface Config {
@@ -81,6 +89,14 @@ export interface Config {
   totalSessions: number;
   totalCompetitiveSessions: number;
   totalItems: number;
+  burnPercentage: number;
+  treasuryPercentage: number;
+  teamPercentage: number;
+  ekuboRouter: string;
+  poolFee: bigint;
+  poolTickSpacing: bigint;
+  poolExtension: string;
+  poolSqrt: bigint;
 }
 
 export const ConfigModel = {
@@ -128,6 +144,14 @@ export const ConfigModel = {
       totalSessions: toNumber(data.total_sessions),
       totalCompetitiveSessions: toNumber(data.total_competitive_sessions),
       totalItems: toNumber(data.total_items),
+      burnPercentage: toNumber(data.burn_percentage),
+      treasuryPercentage: toNumber(data.treasury_percentage),
+      teamPercentage: toNumber(data.team_percentage),
+      ekuboRouter: toAddress(data.ekubo_router),
+      poolFee: toBigInt(data.pool_fee),
+      poolTickSpacing: toBigInt(data.pool_tick_spacing),
+      poolExtension: toAddress(data.pool_extension),
+      poolSqrt: toBigInt(data.pool_sqrt),
     };
   },
 };
