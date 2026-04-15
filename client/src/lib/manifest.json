@@ -157,7 +157,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x6cf6d3df4df705d5df52d31964109665b36920897f2370f8802021c514ba1a6",
+      "class_hash": "0x23d472311836ad0b60dd744eea3905606f421fbe389d51b45df5a09df90b97e",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -184,6 +184,7 @@
         "set_burn_percentage",
         "set_treasury_percentage",
         "set_team_percentage",
+        "set_distribution",
         "set_ekubo_router",
         "set_pool_fee",
         "set_pool_tick_spacing",
@@ -4844,6 +4845,26 @@
           "inputs": [
             {
               "name": "percentage",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_distribution",
+          "inputs": [
+            {
+              "name": "burn_percentage",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "treasury_percentage",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "team_percentage",
               "type": "core::integer::u8"
             }
           ],

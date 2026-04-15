@@ -24,6 +24,9 @@ pub trait ISetup<T> {
     fn set_burn_percentage(ref self: T, percentage: u8);
     fn set_treasury_percentage(ref self: T, percentage: u8);
     fn set_team_percentage(ref self: T, percentage: u8);
+    fn set_distribution(
+        ref self: T, burn_percentage: u8, treasury_percentage: u8, team_percentage: u8,
+    );
     fn set_ekubo_router(ref self: T, address: ContractAddress);
     fn set_pool_fee(ref self: T, fee: u128);
     fn set_pool_tick_spacing(ref self: T, tick_spacing: u128);
@@ -608,6 +611,23 @@ pub mod Setup {
                 config.burn_percentage, config.treasury_percentage, percentage,
             );
             config.team_percentage = percentage;
+            store.set_config(@config);
+        }
+
+        fn set_distribution(
+            ref self: ContractState,
+            burn_percentage: u8,
+            treasury_percentage: u8,
+            team_percentage: u8,
+        ) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert_valid_distribution(burn_percentage, treasury_percentage, team_percentage);
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut config = store.config();
+            config.burn_percentage = burn_percentage;
+            config.treasury_percentage = treasury_percentage;
+            config.team_percentage = team_percentage;
             store.set_config(@config);
         }
 
