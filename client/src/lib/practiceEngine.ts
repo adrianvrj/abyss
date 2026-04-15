@@ -187,11 +187,6 @@ function getSpinBonus(items: ContractItem[]) {
   }, 0);
 }
 
-function getSymbolScores(items: ContractItem[]) {
-  const bonuses = getDirectScoreBonuses(items);
-  return DEFAULT_SYMBOL_SCORES.map((baseScore, index) => baseScore + bonuses[index]);
-}
-
 function buildWeightedSymbols(items: ContractItem[]) {
   const bonuses = getProbabilityBonuses(items);
   return [
