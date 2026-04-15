@@ -200,15 +200,9 @@ pub mod Play {
             let retrigger_bonuses = spin_modifiers.retrigger_bonuses;
             let pattern_bonuses = spin_modifiers.pattern_bonuses;
             let symbol_scores = spin_modifiers.symbol_scores;
-            let (score_seven, score_diamond, score_cherry, score_coin, score_lemon) = symbol_scores;
-            session.score_seven = score_seven;
-            session.score_diamond = score_diamond;
-            session.score_cherry = score_cherry;
-            session.score_coin = score_coin;
-            session.score_lemon = score_lemon;
             let probability_666 = get_level_666_probability(session.level);
 
-            let (score_gained, pats_count, mut is_666, is_jackpot, grid, _) =
+            let (score_gained, pats_count, mut is_666, is_jackpot, grid, (m7, md, mc, m_coin, ml)) =
                 crate::components::spinnable::SpinnableImpl::execute_spin(
                 random_word,
                 luck,
@@ -229,16 +223,6 @@ pub mod Play {
             let mut biblia_used = false;
             if is_666 && InventoryImpl::has_item_in_inventory(@store, session_id, 40) {
                 InventoryImpl::remove_item_from_inventory(ref store, session_id, 40);
-                let updated_symbol_scores = InventoryImpl::get_effective_symbol_scores(
-                    @store, session_id,
-                );
-                let (updated_seven, updated_diamond, updated_cherry, updated_coin, updated_lemon) =
-                    updated_symbol_scores;
-                session.score_seven = updated_seven;
-                session.score_diamond = updated_diamond;
-                session.score_cherry = updated_cherry;
-                session.score_coin = updated_coin;
-                session.score_lemon = updated_lemon;
                 is_666 = false;
                 biblia_used = true;
             }
@@ -254,6 +238,14 @@ pub mod Play {
             } else {
                 session.score += final_score;
                 session.total_score += final_score;
+
+                // Accumulate DirectScoreBonus: symbol value increases per pattern hit
+                let (b7, bd, bc, b_coin, bl) = spin_modifiers.direct_score_bonuses;
+                session.score_seven += m7 * b7;
+                session.score_diamond += md * bd;
+                session.score_cherry += mc * bc;
+                session.score_coin += m_coin * b_coin;
+                session.score_lemon += ml * bl;
             }
 
             loop {

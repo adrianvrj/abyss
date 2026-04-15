@@ -275,7 +275,6 @@ function withDerivedState(state: PracticeRunState): PracticeRunState {
     ...state,
     threshold: getPracticeLevelThreshold(state.level),
     risk: getPractice666Probability(state.level) / 10,
-    symbolScores: getSymbolScores(state.inventoryItems),
   };
 }
 
@@ -365,16 +364,29 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
     }
   }
 
-  const symbolScores = getSymbolScores(inventoryItems);
+  const symbolScores = [...state.symbolScores];
   const patterns = getPatternsForGrid(spin.grid, inventoryItems, symbolScores);
   const scoreGained = is666 ? 0 : patterns.reduce((sum, pattern) => sum + pattern.score, 0);
+
+  // Accumulate DirectScoreBonus per pattern hit (only if not 666)
+  let updatedScores = symbolScores;
+  if (!is666) {
+    const matchCounts = [0, 0, 0, 0, 0]; // seven, diamond, cherry, coin, lemon
+    const symbolTypeMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
+    patterns.forEach((p) => {
+      const idx = symbolTypeMap[p.symbolId];
+      if (idx !== undefined) matchCounts[idx] += 1;
+    });
+    const bonuses = getDirectScoreBonuses(inventoryItems);
+    updatedScores = symbolScores.map((score, i) => score + matchCounts[i] * bonuses[i]);
+  }
 
   let nextState: PracticeRunState = withDerivedState({
     ...state,
     rngState: spin.nextState,
     grid: spin.grid,
     inventoryItems,
-    symbolScores,
+    symbolScores: updatedScores,
     spinsRemaining: state.spinsRemaining - 1,
     sessionRevision: state.sessionRevision + 1,
     inventoryRevision: state.inventoryRevision + (bibliaUsed ? 1 : 0),

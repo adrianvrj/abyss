@@ -48,5 +48,5 @@ export const STATIC_ITEM_DEFINITIONS: Record<number, StaticItemDefinition> = {
   37: { name: "Fake Coin", description: "+24% lemon probability", price: 2, sell_price: 1, effect_type: 2, effect_value: 24, target_symbol: "lemon" },
   38: { name: "Pocket Watch", description: "+4 to lemon score on pattern", price: 4, sell_price: 2, effect_type: 3, effect_value: 4, target_symbol: "lemon" },
   39: { name: "Knight Helmet", description: "+1 to coin score on pattern", price: 1, sell_price: 1, effect_type: 3, effect_value: 1, target_symbol: "coin" },
-  40: { name: "La Biblia", description: "Protects from 666 pattern", price: 3, sell_price: 1, effect_type: 6, effect_value: 1, target_symbol: "six" },
+  40: { name: "La Biblia", description: "Protects from 666 pattern", price: 2, sell_price: 1, effect_type: 6, effect_value: 1, target_symbol: "six" },
 };

@@ -103,16 +103,6 @@ pub mod Market {
                 store.set_session(@session);
 
                 InventoryImpl::add_item_to_inventory(ref store, session_id, item_id);
-
-                let (score_seven, score_diamond, score_cherry, score_coin, score_lemon) =
-                    InventoryImpl::get_effective_symbol_scores(
-                    @store, session_id,
-                );
-                session.score_seven = score_seven;
-                session.score_diamond = score_diamond;
-                session.score_cherry = score_cherry;
-                session.score_coin = score_coin;
-                session.score_lemon = score_lemon;
                 store.set_session(@session);
             }
 
@@ -185,15 +175,6 @@ pub mod Market {
                     q -= 1;
                 }
 
-                let (score_seven, score_diamond, score_cherry, score_coin, score_lemon) =
-                    InventoryImpl::get_effective_symbol_scores(
-                    @store, session_id,
-                );
-                session.score_seven = score_seven;
-                session.score_diamond = score_diamond;
-                session.score_cherry = score_cherry;
-                session.score_coin = score_coin;
-                session.score_lemon = score_lemon;
                 store.set_session(@session);
             }
 

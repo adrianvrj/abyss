@@ -157,11 +157,11 @@ function GameStage({
                 />
             </div>
 
-            {practiceMode && activeMobileTab === 'home' && (
+            {/* {practiceMode && activeMobileTab === 'home' && (
                 <div className="practice-mode-badge">
                     Practice Mode
                 </div>
-            )}
+            )} */}
 
             {/* Mobile Tab Content Overlay */}
             <div className="mobile-content-overlay" style={{ display: (activeMobileTab !== 'home') ? 'flex' : 'none' }}>

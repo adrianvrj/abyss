@@ -15,15 +15,8 @@ export function applyItemEffects(
     // Deep copy
     const modifiedConfig: GameConfig = JSON.parse(JSON.stringify(baseConfig));
 
-    // Apply DirectScoreBonus effects
-    ownedItems
-        .filter(item => item.effect_type === ItemEffectType.DirectScoreBonus)
-        .forEach(item => {
-            const symbolConfig = modifiedConfig.symbols.find(s => s.type === item.target_symbol);
-            if (symbolConfig) {
-                symbolConfig.points += item.effect_value;
-            }
-        });
+    // DirectScoreBonus items no longer modify base symbol points.
+    // Their bonus accumulates per pattern hit during spins.
 
     // Apply SymbolProbabilityBoost effects
     ownedItems

@@ -19,6 +19,7 @@ pub struct SpinCycleModifiers {
     pub retrigger_bonuses: (u32, u32, u32, u32),
     pub pattern_bonuses: (u32, u32, u32, u32, u32, u32),
     pub symbol_scores: (u32, u32, u32, u32, u32),
+    pub direct_score_bonuses: (u32, u32, u32, u32, u32),
 }
 
 #[generate_trait]
@@ -351,12 +352,13 @@ pub impl InventoryImpl of InventoryTrait {
             retrigger_bonuses: (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger),
             pattern_bonuses: (h3, h4, h5, vert, diag, jp),
             symbol_scores: (
-                DEFAULT_SCORE_SEVEN + b7,
-                DEFAULT_SCORE_DIAMOND + bd,
-                DEFAULT_SCORE_CHERRY + bc,
-                DEFAULT_SCORE_COIN + b_coin,
-                DEFAULT_SCORE_LEMON + bl,
+                session.score_seven,
+                session.score_diamond,
+                session.score_cherry,
+                session.score_coin,
+                session.score_lemon,
             ),
+            direct_score_bonuses: (b7, bd, bc, b_coin, bl),
         }
     }
 

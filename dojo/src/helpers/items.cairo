@@ -564,7 +564,7 @@ pub fn get_all_items() -> Array<Item> {
                 item_id: 40,
                 name: 'La Biblia',
                 description: 'Protects from 666 pattern',
-                price: 3,
+                price: 2,
                 sell_price: 1,
                 effect_type: 6,
                 effect_value: 1,
