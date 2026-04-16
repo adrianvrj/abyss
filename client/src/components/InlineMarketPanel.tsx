@@ -85,7 +85,6 @@ export default function InlineMarketPanel({
     const [purchasingSlot, setPurchasingSlot] = useState<number | null>(null);
     const [currentItemIndex, setCurrentItemIndex] = useState(0);
     const latestMarketRequestRef = useRef(0);
-    const processedExternalRefreshKeyRef = useRef<string | null>(null);
 
     const {
         getSessionData,
@@ -183,21 +182,8 @@ export default function InlineMarketPanel({
             return;
         }
 
-        const refreshKey = [
-            sessionId,
-            refreshTrigger,
-            externalRefreshEvent.newScore,
-            externalRefreshEvent.currentLuck,
-            externalRefreshEvent.slots.join(':'),
-        ].join('|');
-
-        if (processedExternalRefreshKeyRef.current === refreshKey) {
-            return;
-        }
-
-        processedExternalRefreshKeyRef.current = refreshKey;
         void processMarketRefreshedEvent(externalRefreshEvent);
-    }, [externalRefreshEvent, practiceMode, refreshTrigger, sessionId]);
+    }, [externalRefreshEvent, practiceMode, sessionId]);
 
     useEffect(() => {
         if (practiceMode) {

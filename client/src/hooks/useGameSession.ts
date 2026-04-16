@@ -982,7 +982,6 @@ export function useGameSession(sessionId: string | null) {
                     setPendingRelicEffect(null);
                     await loadSessionData('relic:reset-spins');
                 } else if (eType === 4) {
-                    setMarketRefreshTrigger(prev => prev + 1);
                     setPendingRelicEffect(null);
                 } else {
                     setPendingRelicEffect(null);
@@ -1012,7 +1011,7 @@ export function useGameSession(sessionId: string | null) {
             if (events?.marketRefreshed) {
                 setLastMarketEvent(events.marketRefreshed);
             } else {
-                setInventoryRefreshTrigger(prev => prev + 1);
+                setMarketRefreshTrigger(prev => prev + 1);
             }
 
             const spinResult = await getLastSpinResult(Number(sessionId));
