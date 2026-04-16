@@ -141,7 +141,7 @@
     },
     {
       "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
-      "class_hash": "0x2a4ca5e969f20f086ad1e04fd527cd9337cee33b57c9f159c9741d70f67ba00",
+      "class_hash": "0x4102a8bc9e9ab6bef5c2a0154788a0e7a8eba4799bd6effd28f82a2f5cf1a7b",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
@@ -157,7 +157,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x23d472311836ad0b60dd744eea3905606f421fbe389d51b45df5a09df90b97e",
+      "class_hash": "0x606ea2273cfeedbedb7c26bf294d663678796f7e15f9553cf1f0f46deceb5db",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -196,6 +196,7 @@
         "register_free_social_bundle",
         "update_bundle",
         "update_bundle_metadata",
+        "admin_mint_session",
         "upgrade",
         "grant_role",
         "revoke_role",
@@ -5101,6 +5102,22 @@
             {
               "name": "metadata",
               "type": "core::byte_array::ByteArray"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "admin_mint_session",
+          "inputs": [
+            {
+              "name": "recipient",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "quantity",
+              "type": "core::integer::u32"
             }
           ],
           "outputs": [],

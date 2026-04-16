@@ -27,10 +27,13 @@ pub mod RelicNFT {
     use crate::constants::NAMESPACE;
     use crate::helpers::relic_types::get_relic_type_info;
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::store::StoreTrait;
     use crate::systems::setup::NAME as SETUP_NAME;
-    use crate::systems::token::NAME as TOKEN_NAME;
+    use crate::systems::token::{IChipDispatcher, IChipDispatcherTrait};
     use crate::systems::treasury::NAME as TREASURY_NAME;
     use super::{IRelic, IRelicCollection, IRelicERC721, RelicMetadata};
+
+    const HUNDRED: u256 = 100;
 
     component!(path: ERC721Component, storage: erc721, event: ERC721Event);
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
@@ -100,12 +103,31 @@ pub mod RelicNFT {
             let current_supply = self.minted_per_type.entry(relic_id).read();
             assert(current_supply < info.max_supply, 'Sold out');
 
-            let chip_address = world.dns_address(@TOKEN_NAME()).expect('Chip not found!');
-            let treasury_address = world
-                .dns_address(@TREASURY_NAME())
-                .expect('Treasury not found!');
+            let store = StoreTrait::new(world);
+            let config = store.config();
+            let chip_address = config.chip_token;
+            let this = starknet::get_contract_address();
+
+            // Pull full price from caller into this contract so we can split it.
             let chip = IERC20Dispatcher { contract_address: chip_address };
-            chip.transfer_from(caller, treasury_address, info.price_wei);
+            chip.transfer_from(caller, this, info.price_wei);
+
+            // Split using the same burn/treasury/team percentages as Setup purchases.
+            let total = info.price_wei;
+            let burn_amount = total * config.burn_percentage.into() / HUNDRED;
+            let treasury_amount = total * config.treasury_percentage.into() / HUNDRED;
+            let team_amount = total - burn_amount - treasury_amount;
+
+            if burn_amount > 0 {
+                let chip_token = IChipDispatcher { contract_address: chip_address };
+                chip_token.burn(burn_amount);
+            }
+            if treasury_amount > 0 {
+                chip.transfer(config.treasury, treasury_amount);
+            }
+            if team_amount > 0 {
+                chip.transfer(config.team, team_amount);
+            }
 
             let token_id_u64 = self.next_token_id.read() + 1;
             self.next_token_id.write(token_id_u64);

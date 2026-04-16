@@ -73,6 +73,7 @@ pub trait ISetup<T> {
         allower: ContractAddress,
     );
     fn update_bundle_metadata(ref self: T, bundle_id: u32, metadata: ByteArray);
+    fn admin_mint_session(ref self: T, recipient: ContractAddress, quantity: u32);
 }
 
 #[dojo::contract]
@@ -782,6 +783,19 @@ pub mod Setup {
 
             let world = self.world(@NAMESPACE());
             self.bundle.update_metadata(world, bundle_id, metadata);
+        }
+
+        fn admin_mint_session(
+            ref self: ContractState, recipient: ContractAddress, quantity: u32,
+        ) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+
+            let world = self.world(@NAMESPACE());
+            let play_address = world
+                .dns_address(@PLAY_NAME())
+                .expect('Play contract not found!');
+            let play = IPlayDispatcher { contract_address: play_address };
+            play.mint_session(recipient, quantity);
         }
     }
 
