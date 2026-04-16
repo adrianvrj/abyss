@@ -43,7 +43,7 @@ pub impl SpinnableImpl of SpinnableTrait {
         // Horizontal patterns (3 rows)
         let h_bonuses = (h3_bonus, h4_bonus, h5_bonus);
         let mut row: u32 = 0;
-        while row < 3 {
+        while row != 3 {
             let start = row * 5;
             let (score, pats, matched) = crate::helpers::patterns::check_horizontal_line(
                 g, start, symbol_scores, h_bonuses,

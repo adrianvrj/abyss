@@ -194,7 +194,7 @@ pub mod Play {
             let vrf = store.vrf_disp();
             let random_word = vrf.consume_random(Source::Nonce(caller));
 
-            let spin_modifiers = InventoryImpl::get_spin_cycle_modifiers(@store, session_id);
+            let spin_modifiers = InventoryImpl::get_spin_cycle_modifiers(@store, session_id, @session);
             let luck = spin_modifiers.effective_luck;
             let prob_bonuses = spin_modifiers.probability_bonuses;
             let retrigger_bonuses = spin_modifiers.retrigger_bonuses;
@@ -220,11 +220,18 @@ pub mod Play {
                 session.relic_pending_effect = RelicEffectType::NoEffect;
             }
 
+            let mut next_item_count = spin_modifiers.item_count;
             let mut biblia_used = false;
-            if is_666 && InventoryImpl::has_item_in_inventory(@store, session_id, 40) {
-                InventoryImpl::remove_item_from_inventory(ref store, session_id, 40);
-                is_666 = false;
-                biblia_used = true;
+            if is_666 {
+                let biblia_inventory = store.inventory(session_id, 40);
+                if biblia_inventory.quantity > 0 {
+                    InventoryImpl::remove_item_from_inventory(ref store, session_id, 40);
+                    is_666 = false;
+                    biblia_used = true;
+                    if biblia_inventory.quantity == 1 {
+                        next_item_count -= 1;
+                    }
+                }
             }
 
             session.total_spins += 1;
@@ -304,7 +311,15 @@ pub mod Play {
                 biblia_used,
             };
             store.set_spin_result(@spin_result);
-            let next_effective_luck = InventoryImpl::calculate_effective_luck(@store, session_id);
+            let next_effective_luck = InventoryImpl::calculate_effective_luck_from_spin_modifiers(
+                @spin_modifiers,
+                pats_count,
+                session.spins_remaining,
+                next_item_count,
+                session.score,
+                session.level,
+                session.blocked_666_this_session,
+            );
 
             // SYNC LEADERBOARD (Will be done via Torii indexing Session model)
 
@@ -623,7 +638,9 @@ pub mod Play {
                     @PlayerSessionEntry { player, index: ps_idx, session_id },
                 );
 
-            crate::helpers::market::MarketImpl::refresh_market(ref store, session_id);
+            crate::helpers::market::MarketImpl::refresh_market(
+                ref store, session_id, player,
+            );
             store.emit_session_created(session_id, player, true);
             session_id
         }

@@ -40,19 +40,18 @@ pub fn generate_grid_from_random(
     let thresh_coin = thresh_cherry + prob_coin;
 
     let mut i: u32 = 0;
-    while i < 15 {
+    while i != 15 {
         let position_seed = poseidon_hash_pair(random_word, i.into());
         let seed_value: u256 = position_seed.into();
 
         // Luck bias: chance to copy symbol from adjacent cell
-        let luck_roll: u32 = ((seed_value / 1000) % 100).try_into().unwrap();
+        let luck_window: u32 = (seed_value % 100000).try_into().unwrap();
+        let luck_roll: u32 = luck_window / 1000;
         let mut symbol: u8 = 0;
 
         if luck_bias_chance > 0 && luck_roll < luck_bias_chance && i > 0 {
             let copy_from = get_pattern_neighbor(i);
-            if copy_from < i {
-                symbol = *grid.at(copy_from);
-            }
+            symbol = *grid.at(copy_from);
         }
 
         // If no luck bias applied, use normal random symbol
@@ -98,12 +97,12 @@ pub fn generate_grid_from_random(
 ///   [5]  [6]  [7]  [8]  [9]   <- Row 1
 ///   [10] [11] [12] [13] [14]  <- Row 2
 pub fn get_pattern_neighbor(index: u32) -> u32 {
-    if index % 5 > 0 {
-        index - 1 // horizontal neighbor
-    } else if index >= 5 {
+    if index == 5 || index == 10 {
         index - 5 // vertical neighbor
-    } else {
+    } else if index == 0 {
         0 // first cell
+    } else {
+        index - 1 // horizontal neighbor
     }
 }
 
@@ -113,7 +112,7 @@ pub fn generate_jackpot_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
     let symbol: u8 = ((symbol_roll % 5) + 1).try_into().unwrap();
     let mut grid: Array<u8> = array![];
     let mut i: u32 = 0;
-    while i < 15 {
+    while i != 15 {
         grid.append(symbol);
         i += 1;
     }
@@ -124,7 +123,7 @@ pub fn generate_jackpot_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
 pub fn generate_666_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
     let mut grid: Array<u8> = array![];
     let mut i: u32 = 0;
-    while i < 15 {
+    while i != 15 {
         if i == 6 || i == 7 || i == 8 {
             grid.append(SymbolType::SIX);
         } else {
@@ -142,7 +141,7 @@ pub fn generate_666_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
 pub fn force_666_pattern(grid: @Array<u8>) -> Array<u8> {
     let mut result: Array<u8> = array![];
     let mut i: u32 = 0;
-    while i < 15 {
+    while i != 15 {
         if i == 6 || i == 7 || i == 8 {
             result.append(SymbolType::SIX);
         } else {

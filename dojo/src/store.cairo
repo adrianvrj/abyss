@@ -1,6 +1,6 @@
 use bundle::models::index::Bundle;
 use dojo::event::EventStorage;
-use dojo::model::ModelStorage;
+use dojo::model::{Model, ModelStorage};
 use dojo::world::WorldStorage;
 use ekubo::components::clear::IClearDispatcher;
 use ekubo::interfaces::router::IRouterDispatcher;
@@ -36,43 +36,73 @@ pub impl StoreImpl of StoreTrait {
     // ═══════════════════════════════════════════════════════════════════
 
     fn vrf_disp(self: @Store) -> IVrfProviderDispatcher {
-        let config = self.config();
-        IVrfProviderDispatcher { contract_address: config.vrf }
+        let vrf: ContractAddress = self
+            .world
+            .read_member_legacy(Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("vrf"));
+        IVrfProviderDispatcher { contract_address: vrf }
     }
 
     fn chip_disp(self: @Store) -> IERC20Dispatcher {
-        let config = self.config();
-        IERC20Dispatcher { contract_address: config.chip_token }
+        let chip_token: ContractAddress = self
+            .world
+            .read_member_legacy(
+                Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("chip_token"),
+            );
+        IERC20Dispatcher { contract_address: chip_token }
     }
 
     fn quote_disp(self: @Store) -> IERC20Dispatcher {
-        let config = self.config();
-        IERC20Dispatcher { contract_address: config.quote_token }
+        let quote_token: ContractAddress = self
+            .world
+            .read_member_legacy(
+                Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("quote_token"),
+            );
+        IERC20Dispatcher { contract_address: quote_token }
     }
 
     fn charm_disp(self: @Store) -> ICharmDispatcher {
-        let config = self.config();
-        ICharmDispatcher { contract_address: config.charm_nft }
+        let charm_nft: ContractAddress = self
+            .world
+            .read_member_legacy(
+                Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("charm_nft"),
+            );
+        ICharmDispatcher { contract_address: charm_nft }
     }
 
     fn relic_disp(self: @Store) -> IRelicDispatcher {
-        let config = self.config();
-        IRelicDispatcher { contract_address: config.relic_nft }
+        let relic_nft: ContractAddress = self
+            .world
+            .read_member_legacy(
+                Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("relic_nft"),
+            );
+        IRelicDispatcher { contract_address: relic_nft }
     }
 
     fn relic_erc721_disp(self: @Store) -> IRelicERC721Dispatcher {
-        let config = self.config();
-        IRelicERC721Dispatcher { contract_address: config.relic_nft }
+        let relic_nft: ContractAddress = self
+            .world
+            .read_member_legacy(
+                Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("relic_nft"),
+            );
+        IRelicERC721Dispatcher { contract_address: relic_nft }
     }
 
     fn ekubo_router(self: @Store) -> IRouterDispatcher {
-        let config = self.config();
-        IRouterDispatcher { contract_address: config.ekubo_router }
+        let ekubo_router: ContractAddress = self
+            .world
+            .read_member_legacy(
+                Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("ekubo_router"),
+            );
+        IRouterDispatcher { contract_address: ekubo_router }
     }
 
     fn ekubo_clearer(self: @Store) -> IClearDispatcher {
-        let config = self.config();
-        IClearDispatcher { contract_address: config.ekubo_router }
+        let ekubo_router: ContractAddress = self
+            .world
+            .read_member_legacy(
+                Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("ekubo_router"),
+            );
+        IClearDispatcher { contract_address: ekubo_router }
     }
 
     // ═══════════════════════════════════════════════════════════════════

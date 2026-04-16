@@ -10,3 +10,5 @@ nums
 dojo/scripts
 .snfoundry_cache
 cairo-optimization
+profiles
+snfoundry_trace

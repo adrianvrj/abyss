@@ -1,5 +1,92 @@
 use crate::models::index::Item;
 
+/// Returns only the hot-path item metadata needed during spin execution.
+pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
+    if item_id == 1 {
+        (3, 1, 'seven')
+    } else if item_id == 2 {
+        (3, 1, 'diamond')
+    } else if item_id == 3 {
+        (3, 1, 'cherry')
+    } else if item_id == 4 {
+        (3, 1, 'lemon')
+    } else if item_id == 5 {
+        (1, 15, '')
+    } else if item_id == 6 {
+        (1, 30, '')
+    } else if item_id == 7 {
+        (2, 15, 'seven')
+    } else if item_id == 8 {
+        (2, 12, 'diamond')
+    } else if item_id == 9 {
+        (4, 1, '')
+    } else if item_id == 10 {
+        (4, 3, '')
+    } else if item_id == 11 {
+        (2, 25, 'seven')
+    } else if item_id == 12 {
+        (2, 10, 'cherry')
+    } else if item_id == 13 {
+        (3, 2, 'cherry')
+    } else if item_id == 14 {
+        (3, 2, 'lemon')
+    } else if item_id == 15 {
+        (1, 50, '')
+    } else if item_id == 16 {
+        (2, 18, 'cherry')
+    } else if item_id == 17 {
+        (2, 14, 'coin')
+    } else if item_id == 18 {
+        (4, 5, '')
+    } else if item_id == 19 {
+        (3, 2, 'coin')
+    } else if item_id == 20 {
+        (3, 3, 'cherry')
+    } else if item_id == 21 {
+        (1, 80, '')
+    } else if item_id == 22 {
+        (1, 100, '')
+    } else if item_id == 23 {
+        (4, 10, '')
+    } else if item_id == 24 {
+        (1, 150, '')
+    } else if item_id == 25 {
+        (3, 2, 'seven')
+    } else if item_id == 26 {
+        (3, 2, 'diamond')
+    } else if item_id == 27 {
+        (2, 22, 'diamond')
+    } else if item_id == 28 {
+        (2, 28, 'cherry')
+    } else if item_id == 29 {
+        (2, 16, 'lemon')
+    } else if item_id == 30 {
+        (3, 3, 'lemon')
+    } else if item_id == 31 {
+        (2, 25, 'coin')
+    } else if item_id == 32 {
+        (3, 3, 'coin')
+    } else if item_id == 33 {
+        (3, 3, 'seven')
+    } else if item_id == 34 {
+        (2, 35, 'seven')
+    } else if item_id == 35 {
+        (3, 3, 'diamond')
+    } else if item_id == 36 {
+        (2, 30, 'diamond')
+    } else if item_id == 37 {
+        (2, 24, 'lemon')
+    } else if item_id == 38 {
+        (3, 4, 'lemon')
+    } else if item_id == 39 {
+        (3, 1, 'coin')
+    } else if item_id == 40 {
+        (6, 1, 'six')
+    } else {
+        (0, 0, '')
+    }
+}
+
 /// Returns all 40 item definitions extracted from the monolith.
 pub fn get_all_items() -> Array<Item> {
     let mut items: Array<Item> = array![];

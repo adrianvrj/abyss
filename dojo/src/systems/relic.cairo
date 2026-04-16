@@ -107,9 +107,7 @@ pub mod Relic {
                 sm.refresh_count += 1;
                 store.set_session_market(@sm);
 
-                MarketImpl::refresh_market(ref store, session_id);
-
-                let refreshed_market = store.session_market(session_id);
+                let refreshed_market = MarketImpl::refresh_market(ref store, session_id, caller);
                 store
                     .emit_market_refreshed(
                         @MarketRefreshed {

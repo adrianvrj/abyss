@@ -100,8 +100,6 @@ pub mod Market {
                 if item.effect_type == 4 {
                     session.spins_remaining += item.effect_value;
                 }
-                store.set_session(@session);
-
                 InventoryImpl::add_item_to_inventory(ref store, session_id, item_id);
                 store.set_session(@session);
             }
@@ -212,10 +210,11 @@ pub mod Market {
             store.set_session_market(@sm);
 
             // Execute refresh helper
-            crate::helpers::market::MarketImpl::refresh_market(ref store, session_id);
+            let refreshed_market = crate::helpers::market::MarketImpl::refresh_market(
+                ref store, session_id, caller,
+            );
 
             // Emit refresh event
-            let refreshed_market = store.session_market(session_id);
             store
                 .emit_market_refreshed(
                     @MarketRefreshed {

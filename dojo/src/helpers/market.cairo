@@ -8,8 +8,9 @@ use crate::store::{Store, StoreTrait};
 #[generate_trait]
 pub impl MarketImpl of MarketTrait {
     fn has_value(values: Span<u32>, target: u32) -> bool {
+        let len: u32 = values.len().try_into().unwrap();
         let mut i: u32 = 0;
-        while i < values.len() {
+        while i != len {
             if *values.at(i) == target {
                 return true;
             }
@@ -71,13 +72,17 @@ pub impl MarketImpl of MarketTrait {
     }
 
     fn generate_market_slot_item(
-        store: @Store, session_id: u32, player: ContractAddress, slot: u32, nonce: u32,
+        store: @Store,
+        session_id: u32,
+        player: ContractAddress,
+        owned_charm_ids: Span<u32>,
+        slot: u32,
+        nonce: u32,
     ) -> u32 {
         let seed = poseidon_hash_span(
             array![session_id.into(), player.into(), slot.into(), nonce.into()].span(),
         );
         let roll: u256 = seed.into();
-        let owned_charm_ids = Self::get_owned_charm_ids(store, player);
 
         if owned_charm_ids.len() > 0 {
             let charm_roll: u32 = (roll % 100).try_into().unwrap();
@@ -96,21 +101,28 @@ pub impl MarketImpl of MarketTrait {
     }
 
     /// Refresh the session market with 6 new random items.
-    fn refresh_market(ref store: Store, session_id: u32) {
-        let session = store.session(session_id);
+    fn refresh_market(
+        ref store: Store, session_id: u32, player: ContractAddress,
+    ) -> crate::models::index::SessionMarket {
         let mut sm = store.session_market(session_id);
         let nonce = sm.refresh_count;
+        let owned_charm_ids = Self::get_owned_charm_ids(@store, player);
 
         let mut generated_items: Array<u32> = array![];
         let mut slot: u32 = 0;
-        while slot < 6 {
+        while slot != 6 {
             let mut attempts: u32 = 0;
             let mut candidate: u32 = 0;
 
-            while attempts < 5 {
+            while attempts != 5 {
                 candidate =
                     Self::generate_market_slot_item(
-                        @store, session_id, session.player_address, slot, nonce + (attempts * 100),
+                        @store,
+                        session_id,
+                        player,
+                        owned_charm_ids.span(),
+                        slot,
+                        nonce + (attempts * 100),
                     );
 
                 if !Self::has_value(generated_items.span(), candidate) {
@@ -122,7 +134,12 @@ pub impl MarketImpl of MarketTrait {
             if candidate == 0 || Self::has_value(generated_items.span(), candidate) {
                 candidate =
                     Self::generate_market_slot_item(
-                        @store, session_id, session.player_address, slot, nonce + 500 + slot,
+                        @store,
+                        session_id,
+                        player,
+                        owned_charm_ids.span(),
+                        slot,
+                        nonce + 500 + slot,
                     );
             }
 
@@ -141,14 +158,16 @@ pub impl MarketImpl of MarketTrait {
 
         // Clear purchased flags
         let mut slot: u32 = 0;
-        while slot < 6 {
+        while slot != 6 {
             store
                 .set_market_slot_purchased(
                     @crate::models::index::MarketSlotPurchased {
                         session_id, slot, purchased: false,
                     },
-                );
+            );
             slot += 1;
         };
+
+        sm
     }
 }

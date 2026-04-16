@@ -2,11 +2,13 @@ use crate::constants::{
     DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
     DEFAULT_SCORE_SEVEN,
 };
+use crate::models::index::Session;
 // No imports from index needed currently as reported by compiler.
 use crate::helpers::charm_types::{
     calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
     get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
 };
+use crate::helpers::items::get_item_runtime_effect;
 use crate::store::{Store, StoreTrait};
 use crate::types::effect::{CharmConditionType, CharmEffectType, ItemEffectType};
 
@@ -14,12 +16,20 @@ use crate::types::effect::{CharmConditionType, CharmEffectType, ItemEffectType};
 pub struct SpinCycleModifiers {
     pub effective_luck: u32,
     pub base_luck: u32,
+    pub item_count: u32,
     pub spin_bonus: u32,
     pub probability_bonuses: (u32, u32, u32, u32, u32),
     pub retrigger_bonuses: (u32, u32, u32, u32),
     pub pattern_bonuses: (u32, u32, u32, u32, u32, u32),
     pub symbol_scores: (u32, u32, u32, u32, u32),
     pub direct_score_bonuses: (u32, u32, u32, u32, u32),
+    pub pattern_luck_per_pattern: u32,
+    pub no_pattern_bonus: u32,
+    pub low_spins_bonus: u32,
+    pub per_item_bonus: u32,
+    pub low_score_bonus: u32,
+    pub high_level_bonus: u32,
+    pub blocked_666_bonus: u32,
 }
 
 #[generate_trait]
@@ -178,8 +188,10 @@ pub impl InventoryImpl of InventoryTrait {
         bonus
     }
 
-    fn get_spin_cycle_modifiers(store: @Store, session_id: u32) -> SpinCycleModifiers {
-        let session = store.session(session_id);
+    fn get_spin_cycle_modifiers(
+        store: @Store, session_id: u32, session: @Session,
+    ) -> SpinCycleModifiers {
+        let session = *session;
         let last_spin = store.spin_result(session_id);
         let item_idx = store.session_item_index(session_id);
         let item_count = item_idx.count;
@@ -205,55 +217,55 @@ pub impl InventoryImpl of InventoryTrait {
         let mut i: u32 = 0;
         while i != item_count {
             let entry = store.session_item_entry(session_id, i);
-            let item = store.item(entry.item_id);
+            let (effect_type, effect_value, target_symbol) = get_item_runtime_effect(entry.item_id);
 
-            if item.effect_type == ItemEffectType::PatternMultiplierBoost {
-                if item.target_symbol == '' {
-                    h3 += item.effect_value;
-                    h4 += item.effect_value;
-                    h5 += item.effect_value;
-                    vert += item.effect_value;
-                    diag += item.effect_value;
-                    jp += item.effect_value;
-                } else if item.target_symbol == 'horizontal-3' {
-                    h3 += item.effect_value;
-                } else if item.target_symbol == 'horizontal-4' {
-                    h4 += item.effect_value;
-                } else if item.target_symbol == 'horizontal-5' {
-                    h5 += item.effect_value;
-                } else if item.target_symbol == 'vertical' || item.target_symbol == 'vertical-3' {
-                    vert += item.effect_value;
-                } else if item.target_symbol == 'diagonal' || item.target_symbol == 'diagonal-3' {
-                    diag += item.effect_value;
-                } else if item.target_symbol == 'jackpot' {
-                    jp += item.effect_value;
+            if effect_type == ItemEffectType::PatternMultiplierBoost {
+                if target_symbol == '' {
+                    h3 += effect_value;
+                    h4 += effect_value;
+                    h5 += effect_value;
+                    vert += effect_value;
+                    diag += effect_value;
+                    jp += effect_value;
+                } else if target_symbol == 'horizontal-3' {
+                    h3 += effect_value;
+                } else if target_symbol == 'horizontal-4' {
+                    h4 += effect_value;
+                } else if target_symbol == 'horizontal-5' {
+                    h5 += effect_value;
+                } else if target_symbol == 'vertical' || target_symbol == 'vertical-3' {
+                    vert += effect_value;
+                } else if target_symbol == 'diagonal' || target_symbol == 'diagonal-3' {
+                    diag += effect_value;
+                } else if target_symbol == 'jackpot' {
+                    jp += effect_value;
                 }
-            } else if item.effect_type == ItemEffectType::SymbolProbabilityBoost {
-                if item.target_symbol == 'seven' {
-                    p7 += item.effect_value;
-                } else if item.target_symbol == 'diamond' {
-                    pd += item.effect_value;
-                } else if item.target_symbol == 'cherry' {
-                    pc += item.effect_value;
-                } else if item.target_symbol == 'coin' {
-                    p_coin += item.effect_value;
-                } else if item.target_symbol == 'lemon' {
-                    pl += item.effect_value;
+            } else if effect_type == ItemEffectType::SymbolProbabilityBoost {
+                if target_symbol == 'seven' {
+                    p7 += effect_value;
+                } else if target_symbol == 'diamond' {
+                    pd += effect_value;
+                } else if target_symbol == 'cherry' {
+                    pc += effect_value;
+                } else if target_symbol == 'coin' {
+                    p_coin += effect_value;
+                } else if target_symbol == 'lemon' {
+                    pl += effect_value;
                 }
-            } else if item.effect_type == ItemEffectType::DirectScoreBonus {
-                if item.target_symbol == 'seven' {
-                    b7 += item.effect_value;
-                } else if item.target_symbol == 'diamond' {
-                    bd += item.effect_value;
-                } else if item.target_symbol == 'cherry' {
-                    bc += item.effect_value;
-                } else if item.target_symbol == 'coin' {
-                    b_coin += item.effect_value;
-                } else if item.target_symbol == 'lemon' {
-                    bl += item.effect_value;
+            } else if effect_type == ItemEffectType::DirectScoreBonus {
+                if target_symbol == 'seven' {
+                    b7 += effect_value;
+                } else if target_symbol == 'diamond' {
+                    bd += effect_value;
+                } else if target_symbol == 'cherry' {
+                    bc += effect_value;
+                } else if target_symbol == 'coin' {
+                    b_coin += effect_value;
+                } else if target_symbol == 'lemon' {
+                    bl += effect_value;
                 }
-            } else if item.effect_type == ItemEffectType::SpinBonus {
-                spin_bonus += item.effect_value;
+            } else if effect_type == ItemEffectType::SpinBonus {
+                spin_bonus += effect_value;
             }
 
             i += 1;
@@ -263,6 +275,13 @@ pub impl InventoryImpl of InventoryTrait {
         let charm_count = charm_idx.count;
         let mut base_luck: u32 = 0;
         let mut conditional_luck: u32 = 0;
+        let mut pattern_luck_per_pattern: u32 = 0;
+        let mut no_pattern_bonus: u32 = 0;
+        let mut low_spins_bonus: u32 = 0;
+        let mut per_item_bonus: u32 = 0;
+        let mut low_score_bonus: u32 = 0;
+        let mut high_level_bonus: u32 = 0;
+        let mut blocked_666_bonus: u32 = 0;
         let mut h3_retrigger: u32 = 1;
         let mut diag_retrigger: u32 = 1;
         let mut all_retrigger: u32 = 1;
@@ -301,32 +320,37 @@ pub impl InventoryImpl of InventoryTrait {
             }
 
             if charm_id == 12 {
-                conditional_luck += last_spin.patterns_count.into() * 6;
+                pattern_luck_per_pattern += val;
+                conditional_luck += last_spin.patterns_count.into() * val;
             }
 
             if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
+                no_pattern_bonus += val;
                 if last_spin.patterns_count == 0 {
                     conditional_luck += val;
                 }
             } else if charm_meta.condition_type == CharmConditionType::LowSpinsRemaining {
+                low_spins_bonus += val;
                 if session.spins_remaining <= 2 {
                     conditional_luck += val;
                 }
             } else if charm_meta.condition_type == CharmConditionType::PerItemInInventory {
+                per_item_bonus += val;
                 conditional_luck += item_count * val;
             } else if charm_meta.condition_type == CharmConditionType::LowScore {
+                low_score_bonus += val;
                 if session.score < 100 {
                     conditional_luck += val;
                 }
             } else if charm_meta.condition_type == CharmConditionType::HighLevel {
+                let high_level_conditional_bonus =
+                    if charm_meta.effect_value_2 > 0 { charm_meta.effect_value_2 } else { val };
+                high_level_bonus += high_level_conditional_bonus;
                 if session.level >= 5 {
-                    if charm_meta.effect_value_2 > 0 {
-                        conditional_luck += charm_meta.effect_value_2;
-                    } else {
-                        conditional_luck += val;
-                    }
+                    conditional_luck += high_level_conditional_bonus;
                 }
             } else if charm_meta.condition_type == CharmConditionType::Blocked666 {
+                blocked_666_bonus += val;
                 if session.blocked_666_this_session {
                     conditional_luck += val;
                 }
@@ -347,6 +371,7 @@ pub impl InventoryImpl of InventoryTrait {
         SpinCycleModifiers {
             effective_luck: base_luck + conditional_luck,
             base_luck,
+            item_count,
             spin_bonus,
             probability_bonuses: (p7, pd, pc, p_coin, pl),
             retrigger_bonuses: (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger),
@@ -359,7 +384,48 @@ pub impl InventoryImpl of InventoryTrait {
                 session.score_lemon,
             ),
             direct_score_bonuses: (b7, bd, bc, b_coin, bl),
+            pattern_luck_per_pattern,
+            no_pattern_bonus,
+            low_spins_bonus,
+            per_item_bonus,
+            low_score_bonus,
+            high_level_bonus,
+            blocked_666_bonus,
         }
+    }
+
+    fn calculate_effective_luck_from_spin_modifiers(
+        spin_modifiers: @SpinCycleModifiers,
+        last_spin_patterns: u8,
+        spins_remaining: u32,
+        item_count: u32,
+        score: u32,
+        level: u32,
+        blocked_666_this_session: bool,
+    ) -> u32 {
+        let spin_modifiers = *spin_modifiers;
+        let mut luck =
+            spin_modifiers.base_luck
+                + last_spin_patterns.into() * spin_modifiers.pattern_luck_per_pattern;
+
+        if last_spin_patterns == 0 {
+            luck += spin_modifiers.no_pattern_bonus;
+        }
+        if spins_remaining <= 2 {
+            luck += spin_modifiers.low_spins_bonus;
+        }
+        luck += item_count * spin_modifiers.per_item_bonus;
+        if score < 100 {
+            luck += spin_modifiers.low_score_bonus;
+        }
+        if level >= 5 {
+            luck += spin_modifiers.high_level_bonus;
+        }
+        if blocked_666_this_session {
+            luck += spin_modifiers.blocked_666_bonus;
+        }
+
+        luck
     }
 
     fn collect_session_charm_ids(store: @Store, session_id: u32) -> Array<u32> {
