@@ -275,6 +275,9 @@ export function usePracticeSession() {
   const noopNumberArraySetter = useNoopSetter<number[]>();
   const noopOptionalNumberSetter = useNoopSetter<number | undefined>();
   const noopItemsSetter = useNoopSetter<ContractItem[]>();
+  const registerInventoryItemAcquired = useCallback((_item: ContractItem) => {
+    return;
+  }, []);
 
   return {
     practiceMode: true,
@@ -351,6 +354,7 @@ export function usePracticeSession() {
     setCurrentLuck: noopOptionalNumberSetter,
     lastMarketEvent,
     setLastMarketEvent,
+    registerInventoryItemAcquired,
     handleSpin,
     handleActivateRelic: async () => {
       return;

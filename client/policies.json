@@ -68,7 +68,31 @@
     "entrypoint": "approve"
   },
   {
+    "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+    "entrypoint": "transfer"
+  },
+  {
     "contractAddress": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
     "entrypoint": "approve"
+  },
+  {
+    "contractAddress": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    "entrypoint": "transfer"
+  },
+  {
+    "contractAddress": "0x199741822c2dc722f6f605204f35e56dbc23bceed54818168c4c49e4fb8737e",
+    "entrypoint": "clear"
+  },
+  {
+    "contractAddress": "0x199741822c2dc722f6f605204f35e56dbc23bceed54818168c4c49e4fb8737e",
+    "entrypoint": "clear_minimum"
+  },
+  {
+    "contractAddress": "0x199741822c2dc722f6f605204f35e56dbc23bceed54818168c4c49e4fb8737e",
+    "entrypoint": "multihop_swap"
+  },
+  {
+    "contractAddress": "0x199741822c2dc722f6f605204f35e56dbc23bceed54818168c4c49e4fb8737e",
+    "entrypoint": "multi_multihop_swap"
   }
 ]

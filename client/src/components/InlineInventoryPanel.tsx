@@ -59,7 +59,7 @@ export default function InlineInventoryPanel({
         }
 
         if (sessionId) loadInventory();
-    }, [practiceItems, practiceMode, sessionId, refreshTrigger]);
+    }, [practiceItems, practiceMode, sessionId, refreshTrigger, hiddenItemIds]);
 
     async function loadInventory() {
         const requestId = ++latestInventoryRequestRef.current;
@@ -96,7 +96,9 @@ export default function InlineInventoryPanel({
                 return;
             }
 
-            setOwnedItems(items.filter((i): i is ContractItem => i !== null));
+            setOwnedItems(items.filter((i): i is ContractItem => (
+                i !== null && !hiddenItemIds.includes(i.item_id)
+            )));
         } catch (error) {
             console.error("Failed to load inventory:", error);
         } finally {

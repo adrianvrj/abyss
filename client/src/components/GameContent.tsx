@@ -191,7 +191,7 @@ function GameStage({
                                 onUpdateLuck={(luck) => game.setCurrentLuck(luck)}
                                 onUpdateSymbolScores={game.setSymbolScores}
                                 onInventoryChange={() => game.setInventoryRefreshTrigger(prev => prev + 1)}
-                                onPurchaseSuccess={(item) => game.setOptimisticItems(prev => [...prev, item])}
+                                onPurchaseSuccess={game.registerInventoryItemAcquired}
                                 initialItems={game.initialMarketItems}
                                 refreshTrigger={game.marketRefreshTrigger}
                                 externalRefreshEvent={game.lastMarketEvent}
@@ -260,7 +260,7 @@ function GameStage({
                         onUpdateLuck={(luck) => game.setCurrentLuck(luck)}
                         onUpdateSymbolScores={game.setSymbolScores}
                         onInventoryChange={() => game.setInventoryRefreshTrigger(prev => prev + 1)}
-                        onPurchaseSuccess={(item) => game.setOptimisticItems(prev => [...prev, item])}
+                        onPurchaseSuccess={game.registerInventoryItemAcquired}
                         initialItems={game.initialMarketItems}
                         refreshTrigger={game.marketRefreshTrigger}
                         externalRefreshEvent={game.lastMarketEvent}

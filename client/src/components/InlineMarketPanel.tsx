@@ -85,6 +85,7 @@ export default function InlineMarketPanel({
     const [purchasingSlot, setPurchasingSlot] = useState<number | null>(null);
     const [currentItemIndex, setCurrentItemIndex] = useState(0);
     const latestMarketRequestRef = useRef(0);
+    const processedExternalRefreshKeyRef = useRef<string | null>(null);
 
     const {
         getSessionData,
@@ -155,30 +156,48 @@ export default function InlineMarketPanel({
     }
 
     useEffect(() => {
-        if (practiceMode) {
-            setLoading(false);
-            setMarketData({
-                refresh_count: practiceRefreshCount,
-                item_slot_1: practiceMarketItems[0]?.item_id ?? 0,
-                item_slot_2: practiceMarketItems[1]?.item_id ?? 0,
-                item_slot_3: practiceMarketItems[2]?.item_id ?? 0,
-                item_slot_4: practiceMarketItems[3]?.item_id ?? 0,
-                item_slot_5: practiceMarketItems[4]?.item_id ?? 0,
-                item_slot_6: practiceMarketItems[5]?.item_id ?? 0,
-            });
-            setMarketItems(practiceMarketItems);
-            setOwnedItemIds(new Set(practiceOwnedItems.map((item) => item.item_id)));
-            setPurchasedInCurrentMarket(new Set(practicePurchasedSlots));
-            setCurrentItemIndex((prev) =>
-                practiceMarketItems.length === 0 ? 0 : Math.min(prev, practiceMarketItems.length - 1),
-            );
+        if (!practiceMode) {
             return;
         }
 
-        if (externalRefreshEvent) {
-            processMarketRefreshedEvent(externalRefreshEvent);
+        setLoading(false);
+        setMarketData({
+            refresh_count: practiceRefreshCount,
+            item_slot_1: practiceMarketItems[0]?.item_id ?? 0,
+            item_slot_2: practiceMarketItems[1]?.item_id ?? 0,
+            item_slot_3: practiceMarketItems[2]?.item_id ?? 0,
+            item_slot_4: practiceMarketItems[3]?.item_id ?? 0,
+            item_slot_5: practiceMarketItems[4]?.item_id ?? 0,
+            item_slot_6: practiceMarketItems[5]?.item_id ?? 0,
+        });
+        setMarketItems(practiceMarketItems);
+        setOwnedItemIds(new Set(practiceOwnedItems.map((item) => item.item_id)));
+        setPurchasedInCurrentMarket(new Set(practicePurchasedSlots));
+        setCurrentItemIndex((prev) =>
+            practiceMarketItems.length === 0 ? 0 : Math.min(prev, practiceMarketItems.length - 1),
+        );
+    }, [practiceMode, practiceMarketItems, practiceOwnedItems, practicePurchasedSlots, practiceRefreshCount]);
+
+    useEffect(() => {
+        if (practiceMode || !externalRefreshEvent || externalRefreshEvent.sessionId !== sessionId) {
+            return;
         }
-    }, [externalRefreshEvent, practiceMode, practiceMarketItems, practiceOwnedItems, practicePurchasedSlots, practiceRefreshCount]);
+
+        const refreshKey = [
+            sessionId,
+            refreshTrigger,
+            externalRefreshEvent.newScore,
+            externalRefreshEvent.currentLuck,
+            externalRefreshEvent.slots.join(':'),
+        ].join('|');
+
+        if (processedExternalRefreshKeyRef.current === refreshKey) {
+            return;
+        }
+
+        processedExternalRefreshKeyRef.current = refreshKey;
+        void processMarketRefreshedEvent(externalRefreshEvent);
+    }, [externalRefreshEvent, practiceMode, refreshTrigger, sessionId]);
 
     useEffect(() => {
         if (practiceMode) {
@@ -287,17 +306,15 @@ export default function InlineMarketPanel({
             onUpdateLuck(refreshEvent.currentLuck);
         }
         setPurchasedInCurrentMarket(new Set());
-
-        const newMarketData: SessionMarket = {
-            refresh_count: marketData ? marketData.refresh_count + 1 : 0,
-            item_slot_1: refreshEvent.slots[0],
-            item_slot_2: refreshEvent.slots[1],
-            item_slot_3: refreshEvent.slots[2],
-            item_slot_4: refreshEvent.slots[3],
-            item_slot_5: refreshEvent.slots[4],
-            item_slot_6: refreshEvent.slots[5],
-        };
-        setMarketData(newMarketData);
+        setMarketData((prev) => ({
+            refresh_count: (prev?.refresh_count ?? 0) + 1,
+            item_slot_1: refreshEvent.slots[0] ?? 0,
+            item_slot_2: refreshEvent.slots[1] ?? 0,
+            item_slot_3: refreshEvent.slots[2] ?? 0,
+            item_slot_4: refreshEvent.slots[3] ?? 0,
+            item_slot_5: refreshEvent.slots[4] ?? 0,
+            item_slot_6: refreshEvent.slots[5] ?? 0,
+        }));
 
         const items: ContractItem[] = [];
         const charmMap = new Map<number, CharmInfo>();

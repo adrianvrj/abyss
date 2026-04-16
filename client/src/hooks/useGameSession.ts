@@ -96,6 +96,8 @@ const RELIC_NAMES: Record<number, string> = {
     5: 'Inferno',
 };
 
+const BIBLIA_ITEM_ID = 40;
+
 export interface OwnedRelic {
     tokenId: bigint;
     relicId: number;
@@ -327,6 +329,22 @@ export function useGameSession(sessionId: string | null) {
 
         return build;
     }, [hiddenItems, initialInventoryItems, optimisticItems]);
+
+    const hideInventoryItem = useCallback((itemId: number) => {
+        setInitialInventoryItems((prev) => prev.filter((item) => item.item_id !== itemId));
+        setOptimisticItems((prev) => prev.filter((item) => item.item_id !== itemId));
+        setHiddenItems((prev) => (
+            prev.includes(itemId) ? prev : [...prev, itemId]
+        ));
+    }, []);
+
+    const registerInventoryItemAcquired = useCallback((item: ContractItem) => {
+        setHiddenItems((prev) => prev.filter((hiddenItemId) => hiddenItemId !== item.item_id));
+        setOptimisticItems((prev) => {
+            const next = prev.filter((existing) => existing.item_id !== item.item_id);
+            return [...next, item];
+        });
+    }, []);
 
     const captureGameOverBuild = useCallback(async () => {
         const fallbackBuild = getLocalBuildItems();
@@ -631,7 +649,6 @@ export function useGameSession(sessionId: string | null) {
         setShowLuckyScoreBoostAnimation(false);
         setLuckyScoreBoostTotal(0);
         setLuckyScoreBoostBonus(0);
-        setHiddenItems([]);
         setBibliaBroken(false);
         spinSoundRef.current = playSound('spin');
 
@@ -739,7 +756,10 @@ export function useGameSession(sessionId: string | null) {
                 if (spin.bibliaUsed) {
                     const discarded = events.bibliaDiscarded?.discarded ?? true;
                     setBibliaDiscarded(discarded);
-                    if (discarded) setBibliaBroken(true);
+                    if (discarded) {
+                        setBibliaBroken(true);
+                        hideInventoryItem(BIBLIA_ITEM_ID);
+                    }
                     setShowBibliaAnimation(true);
                     setInventoryRefreshTrigger(prev => prev + 1);
                     loadScoreBonuses();
@@ -879,6 +899,7 @@ export function useGameSession(sessionId: string | null) {
                     if (spinResult.bibliaUsed) {
                         setBibliaDiscarded(true);
                         setBibliaBroken(true);
+                        hideInventoryItem(BIBLIA_ITEM_ID);
                         setShowBibliaAnimation(true);
                         setInventoryRefreshTrigger(prev => prev + 1);
                         loadScoreBonuses();
@@ -1048,16 +1069,14 @@ export function useGameSession(sessionId: string | null) {
             setInitialInventoryItems(prev => prev.filter(item => item.item_id !== soldItemId));
             setOptimisticItems(prev => prev.filter(item => item.item_id !== soldItemId));
             setInventoryRefreshTrigger(prev => prev + 1);
-            setHiddenItems(prev => (
-                prev.includes(soldItemId) ? prev : [...prev, soldItemId]
-            ));
+            hideInventoryItem(soldItemId);
             setItemToSell(null);
         } catch (e) {
             console.error("Sell failed", e);
         } finally {
             setIsSelling(false);
         }
-    }, [itemToSell, sessionId, account, sellItemHook, loadSessionData]);
+    }, [itemToSell, sessionId, account, sellItemHook, loadSessionData, hideInventoryItem]);
 
     return {
         // Core game state
@@ -1090,7 +1109,7 @@ export function useGameSession(sessionId: string | null) {
         itemToSell, setItemToSell, isSelling, hiddenItems,
         inventoryRefreshTrigger, setInventoryRefreshTrigger,
         marketRefreshTrigger, setMarketRefreshTrigger, optimisticItems, setOptimisticItems,
-        currentLuck, setCurrentLuck, lastMarketEvent, setLastMarketEvent,
+        currentLuck, setCurrentLuck, lastMarketEvent, setLastMarketEvent, registerInventoryItemAcquired,
 
         // Actions
         handleSpin, handleActivateRelic, handleEquipRelic, handleSellConfirm,

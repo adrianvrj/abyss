@@ -10,22 +10,37 @@ interface BreakevenBreakdownProps {
 
 const CHIP_SCORE_DIVISOR = 20;
 
-const LEVEL_THRESHOLDS: Record<number, number> = {
-  1: 66,
-  2: 222,
-  3: 333,
-  4: 666,
-  5: 1000,
-  6: 2000,
-  7: 4000,
-  8: 6000,
-  9: 8000,
-  10: 10000,
-};
+function getLevelThreshold(level: number): number {
+  if (level <= 1) return 66;
+  if (level === 2) return 222;
+  if (level === 3) return 333;
+  if (level === 4) return 666;
+  if (level === 5) return 1500;
+  if (level === 6) return 3500;
+  if (level === 7) return 7000;
+  if (level === 8) return 12000;
+  if (level === 9) return 20000;
+  if (level === 10) return 30000;
+  return 40000 + ((level - 10) * 20000);
+}
 
 function getChipsAtLevel(level: number, effectiveRate: number): number {
-  const score = LEVEL_THRESHOLDS[level] ?? 0;
+  const score = getLevelThreshold(level);
   return (score / CHIP_SCORE_DIVISOR) * effectiveRate;
+}
+
+function getBreakevenLevel(chipsNeeded: number, effectiveRate: number): number | null {
+  if (chipsNeeded <= 0) {
+    return 1;
+  }
+
+  for (let level = 1; level <= 999; level += 1) {
+    if (getChipsAtLevel(level, effectiveRate) >= chipsNeeded) {
+      return level;
+    }
+  }
+
+  return null;
 }
 
 export function BreakevenBreakdown({
@@ -90,11 +105,16 @@ export function BreakevenBreakdown({
 
   const chipPriceUsd = 1 / chipsPerUsdc!;
   const chipsNeeded = chipsPerUsdc! * entryUsd;
-
-  const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const breakevenLevel = levels.find(
-    (l) => getChipsAtLevel(l, effectiveRate) >= chipsNeeded,
-  );
+  const breakevenLevel = getBreakevenLevel(chipsNeeded, effectiveRate);
+  const trackEndLevel = breakevenLevel && breakevenLevel > 10 ? breakevenLevel : 10;
+  const trackStartLevel = Math.max(1, trackEndLevel - 9);
+  const levels = Array.from({ length: trackEndLevel - trackStartLevel + 1 }, (_, index) => (
+    trackStartLevel + index
+  ));
+  const trackRange = Math.max(1, trackEndLevel - trackStartLevel);
+  const breakevenOffset = breakevenLevel === null
+    ? null
+    : ((breakevenLevel - trackStartLevel) / trackRange) * 100;
 
   return (
     <motion.div style={styles.container} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
@@ -119,10 +139,10 @@ export function BreakevenBreakdown({
           {/* Track bar */}
           <div style={{ position: "relative", height: "4px", background: "rgba(255,132,28,0.15)", borderRadius: "2px" }}>
             {/* Filled portion up to breakeven */}
-            {breakevenLevel && (
+            {breakevenOffset !== null && (
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${((breakevenLevel - 1) / 9) * 100}%` }}
+                animate={{ width: `${breakevenOffset}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
                 style={{
                   position: "absolute",
@@ -135,11 +155,11 @@ export function BreakevenBreakdown({
               />
             )}
             {/* Breakeven marker */}
-            {breakevenLevel && (
+            {breakevenOffset !== null && (
               <div
                 style={{
                   position: "absolute",
-                  left: `${((breakevenLevel - 1) / 9) * 100}%`,
+                  left: `${breakevenOffset}%`,
                   top: "-5px",
                   width: "14px",
                   height: "14px",
