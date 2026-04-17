@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface DemonicScoreResetAnimationProps {
@@ -18,10 +18,21 @@ export default function DemonicScoreResetAnimation({
     previousScore,
     onComplete,
 }: DemonicScoreResetAnimationProps) {
-    useEffect(() => {
-        const timer = window.setTimeout(onComplete, 2400);
-        return () => window.clearTimeout(timer);
+    const completedRef = useRef(false);
+
+    const handleComplete = useCallback(() => {
+        if (completedRef.current) {
+            return;
+        }
+        completedRef.current = true;
+        onComplete();
     }, [onComplete]);
+
+    useEffect(() => {
+        completedRef.current = false;
+        const timer = window.setTimeout(handleComplete, 2400);
+        return () => window.clearTimeout(timer);
+    }, [handleComplete]);
 
     return (
         <motion.div
@@ -29,11 +40,13 @@ export default function DemonicScoreResetAnimation({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
+            onClick={handleComplete}
             style={{
                 position: 'fixed',
                 inset: 0,
                 zIndex: 100004,
-                pointerEvents: 'none',
+                pointerEvents: 'auto',
+                cursor: 'pointer',
                 overflow: 'hidden',
                 display: 'flex',
                 alignItems: 'center',

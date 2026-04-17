@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
 interface BibliaSaveAnimationProps {
@@ -36,11 +36,21 @@ export default function BibliaSaveAnimation({
 }: BibliaSaveAnimationProps) {
     const isSacrifice = discarded;
     const particles = isSacrifice ? sacrificeParticles : holyParticles;
+    const completedRef = useRef(false);
+
+    const handleComplete = useCallback(() => {
+        if (completedRef.current) {
+            return;
+        }
+        completedRef.current = true;
+        onComplete();
+    }, [onComplete]);
 
     useEffect(() => {
-        const timer = window.setTimeout(onComplete, 2200);
+        completedRef.current = false;
+        const timer = window.setTimeout(handleComplete, 2200);
         return () => window.clearTimeout(timer);
-    }, [onComplete]);
+    }, [handleComplete]);
 
     return (
         <motion.div
@@ -48,11 +58,13 @@ export default function BibliaSaveAnimation({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.16 }}
+            onClick={handleComplete}
             style={{
                 position: "fixed",
                 inset: 0,
                 zIndex: 100005,
-                pointerEvents: "none",
+                pointerEvents: "auto",
+                cursor: "pointer",
                 overflow: "hidden",
                 display: "flex",
                 alignItems: "center",
