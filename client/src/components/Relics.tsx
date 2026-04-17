@@ -8,8 +8,9 @@ import {
     getChipAddress,
     getRelicNftAddress,
 } from "@/config";
-import { CHIP_TOKEN_IMAGE_URL } from "@/lib/constants";
+import { CONTRACTS, CHIP_TOKEN_IMAGE_URL, USDC_TOKEN_IMAGE_URL } from "@/lib/constants";
 import { getRpcProvider } from "@/api/rpc/provider";
+import { getGameConfig } from "@/api/rpc/play";
 import { ArrowLeft } from "lucide-react";
 
 // Relic data matching the contract configuration
@@ -85,6 +86,18 @@ function formatChipPrice(price: number) {
     return price.toLocaleString("en-US");
 }
 
+function parseUint256(result: readonly string[]) {
+    const low = BigInt(result[0] ?? "0");
+    const high = BigInt(result[1] ?? "0");
+    return low + (high << 128n);
+}
+
+function formatUsdcAmount(amount: bigint) {
+    const whole = amount / 1_000_000n;
+    const fraction = (amount % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+    return fraction.length > 0 ? `${whole}.${fraction}` : whole.toString();
+}
+
 export function Relics() {
     const navigate = useNavigate();
     const { chain } = useNetwork();
@@ -92,6 +105,9 @@ export function Relics() {
     const [ownedRelics, setOwnedRelics] = useState<number[]>([]);
     const [supplyData, setSupplyData] = useState<Record<number, { current: number; max: number }>>({});
     const [chipBalance, setChipBalance] = useState<bigint>(BigInt(0));
+    const [usdcBalance, setUsdcBalance] = useState<bigint>(BigInt(0));
+    const [quoteToken, setQuoteToken] = useState<string>(CONTRACTS.USDC_TOKEN);
+    const [tokenPrices, setTokenPrices] = useState<Record<number, { chip: bigint; usdc: bigint }>>({});
     const [minting, setMinting] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
@@ -107,19 +123,29 @@ export function Relics() {
         setIsLoading(true);
 
         try {
+            const config = await getGameConfig(chainId);
+            const configuredQuoteToken = config.quoteToken || CONTRACTS.USDC_TOKEN;
+            setQuoteToken(configuredQuoteToken);
+
             // Load CHIP balance
-            const result = await provider.callContract({
+            const chipResult = await provider.callContract({
                 contractAddress: chipAddress,
                 entrypoint: "balance_of",
                 calldata: [account.address],
             });
-            const low = BigInt(result[0]);
-            const high = BigInt(result[1]);
-            const balance = low + (high << BigInt(128));
-            setChipBalance(balance / BigInt(10 ** 18));
+            setChipBalance(parseUint256(chipResult) / BigInt(10 ** 18));
+
+            // Load USDC balance
+            const usdcResult = await provider.callContract({
+                contractAddress: configuredQuoteToken,
+                entrypoint: "balance_of",
+                calldata: [account.address],
+            });
+            setUsdcBalance(parseUint256(usdcResult));
 
             // Load supply
             const supplies: Record<number, { current: number; max: number }> = {};
+            const prices: Record<number, { chip: bigint; usdc: bigint }> = {};
             for (const relic of RELICS) {
                 try {
                     const res = await provider.callContract({
@@ -134,8 +160,31 @@ export function Relics() {
                 } catch (e) {
                     supplies[relic.id] = { current: 0, max: relic.maxSupply };
                 }
+
+                try {
+                    const chipPriceResult = await provider.callContract({
+                        contractAddress: relicNftAddress,
+                        entrypoint: "get_relic_cost_in_token",
+                        calldata: [relic.id.toString(), chipAddress],
+                    });
+                    const usdcPriceResult = await provider.callContract({
+                        contractAddress: relicNftAddress,
+                        entrypoint: "get_relic_cost_in_token",
+                        calldata: [relic.id.toString(), configuredQuoteToken],
+                    });
+                    prices[relic.id] = {
+                        chip: parseUint256(chipPriceResult),
+                        usdc: parseUint256(usdcPriceResult),
+                    };
+                } catch (e) {
+                    prices[relic.id] = {
+                        chip: BigInt(relic.price) * (10n ** 18n),
+                        usdc: 0n,
+                    };
+                }
             }
             setSupplyData(supplies);
+            setTokenPrices(prices);
 
             // Load owned
             const ownedTokensResult = await provider.callContract({
@@ -165,30 +214,29 @@ export function Relics() {
         } finally {
             setIsLoading(false);
         }
-    }, [account, chipAddress, provider, relicNftAddress]);
+    }, [account, chainId, chipAddress, provider, relicNftAddress]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
-    const handleMint = useCallback(async (relicId: number, price: number) => {
+    const handleMint = useCallback(async (relicId: number, paymentToken: string, amount: bigint) => {
         if (!account) return;
         setMinting(relicId);
         try {
-            const priceWei = BigInt(price) * (10n ** 18n);
-            const low = priceWei & ((1n << 128n) - 1n);
-            const high = priceWei >> 128n;
+            const low = amount & ((1n << 128n) - 1n);
+            const high = amount >> 128n;
 
             const tx = await account.execute([
                 {
-                    contractAddress: chipAddress,
+                    contractAddress: paymentToken,
                     entrypoint: "approve",
                     calldata: [relicNftAddress, low.toString(), high.toString()],
                 },
                 {
                     contractAddress: relicNftAddress,
-                    entrypoint: "mint_relic",
-                    calldata: [relicId.toString()],
+                    entrypoint: "mint_relic_with_token",
+                    calldata: [relicId.toString(), paymentToken],
                 },
             ]);
 
@@ -199,7 +247,7 @@ export function Relics() {
         } finally {
             setMinting(null);
         }
-    }, [account, chipAddress, loadData, provider, relicNftAddress]);
+    }, [account, loadData, provider, relicNftAddress]);
 
     return (
         <div style={{
@@ -251,8 +299,39 @@ export function Relics() {
                     <ArrowLeft size={24} />
                 </button>
                 <h1 style={{ fontSize: "20px", color: "#FF841C", margin: 0 }}>RELICS</h1>
-                <div style={{ fontSize: "12px", color: "#FFD700" }}>
-                    {chipBalance.toString()} CHIP
+                <div style={{ display: "grid", gap: "8px", justifyItems: "end" }}>
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "12px",
+                        color: "#FFD700",
+                    }}>
+                        <img
+                            src={CHIP_TOKEN_IMAGE_URL}
+                            alt="CHIP"
+                            width={25}
+                            height={25}
+                            // style={{ objectFit: "contain" }}
+                        />
+                        <span>{chipBalance.toString()}</span>
+                    </div>
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "12px",
+                        color: "#7dd3fc",
+                    }}>
+                        <img
+                            src={USDC_TOKEN_IMAGE_URL}
+                            alt="USDC"
+                            width={25}
+                            height={25}
+                            // style={{ objectFit: "contain" }}
+                        />
+                        <span>{formatUsdcAmount(usdcBalance)}</span>
+                    </div>
                 </div>
             </div>
 
@@ -266,8 +345,15 @@ export function Relics() {
             }}>
                 {RELICS.map((relic) => {
                     const supply = supplyData[relic.id] || { current: 0, max: relic.maxSupply };
+                    const prices = tokenPrices[relic.id] || {
+                        chip: BigInt(relic.price) * (10n ** 18n),
+                        usdc: 0n,
+                    };
+                    const chipPrice = prices.chip / (10n ** 18n);
+                    const usdcPrice = prices.usdc;
                     const isSoldOut = supply.current >= supply.max;
-                    const canAfford = chipBalance >= BigInt(relic.price);
+                    const canAffordChip = chipBalance >= chipPrice;
+                    const canAffordUsdc = usdcPrice > 0 && usdcBalance >= usdcPrice;
                     const isOwned = ownedRelics.includes(relic.id);
                     const rarityColor = RARITY_COLORS[relic.rarity];
 
@@ -364,36 +450,84 @@ export function Relics() {
                                         <img
                                             src={CHIP_TOKEN_IMAGE_URL}
                                             alt="CHIP"
-                                            width={14}
-                                            height={14}
+                                            width={18}
+                                            height={18}
                                             style={{ objectFit: "contain" }}
                                         />
-                                        <span>{formatChipPrice(relic.price)} CHIP</span>
+                                        <span>{formatChipPrice(Number(chipPrice))}</span>
                                     </div>
 
-                                    <button
-                                        onClick={() => handleMint(relic.id, relic.price)}
-                                        disabled={isSoldOut || !canAfford || minting !== null}
-                                        style={{
-                                            width: "100%",
-                                            padding: "12px",
-                                            background: isSoldOut || !canAfford ? "rgba(255, 132, 28, 0.1)" : "#FF841C",
-                                            border: "none",
-                                            borderRadius: "8px",
-                                            color: isSoldOut || !canAfford ? "#666" : "#000",
-                                            fontSize: "10px",
-                                            cursor: isSoldOut || !canAfford ? "not-allowed" : "pointer",
-                                            fontFamily: "'PressStart2P', monospace",
-                                        }}
-                                    >
-                                        {minting === relic.id
-                                            ? "MINTING..."
-                                            : isSoldOut
-                                                ? "SOLD OUT"
-                                                : !canAfford
-                                                    ? "NEED CHIPS"
-                                                    : "MINT RELIC"}
-                                    </button>
+                                    <div style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "8px",
+                                        fontSize: "11px",
+                                        color: "#FFD700",
+                                        marginBottom: "12px",
+                                        textAlign: "center",
+                                    }}>
+                                        <img
+                                            src={USDC_TOKEN_IMAGE_URL}
+                                            alt="USDC"
+                                            width={18}
+                                            height={18}
+                                            style={{ objectFit: "contain" }}
+                                        />
+                                        <span>{formatUsdcAmount(usdcPrice)}</span>
+                                    </div>
+
+                                    <div style={{ display: "grid", gap: "10px" }}>
+                                        <button
+                                            onClick={() => handleMint(relic.id, chipAddress, prices.chip)}
+                                            disabled={isSoldOut || !canAffordChip || minting !== null}
+                                            style={{
+                                                width: "100%",
+                                                padding: "12px",
+                                                background: isSoldOut || !canAffordChip ? "rgba(255, 132, 28, 0.1)" : "#FF841C",
+                                                border: "none",
+                                                borderRadius: "8px",
+                                                color: isSoldOut || !canAffordChip ? "#666" : "#000",
+                                                fontSize: "10px",
+                                                cursor: isSoldOut || !canAffordChip ? "not-allowed" : "pointer",
+                                                fontFamily: "'PressStart2P', monospace",
+                                            }}
+                                        >
+                                            {minting === relic.id
+                                                ? "MINTING..."
+                                                : isSoldOut
+                                                    ? "SOLD OUT"
+                                                    : !canAffordChip
+                                                        ? "NEED CHIPS"
+                                                        : "MINT WITH CHIP"}
+                                        </button>
+
+                                        <button
+                                            onClick={() => handleMint(relic.id, quoteToken, prices.usdc)}
+                                            disabled={isSoldOut || !canAffordUsdc || minting !== null || prices.usdc === 0n}
+                                            style={{
+                                                width: "100%",
+                                                padding: "12px",
+                                                background: isSoldOut || !canAffordUsdc || prices.usdc === 0n ? "rgba(125, 211, 252, 0.1)" : "#7dd3fc",
+                                                border: "none",
+                                                borderRadius: "8px",
+                                                color: isSoldOut || !canAffordUsdc || prices.usdc === 0n ? "#666" : "#04111d",
+                                                fontSize: "10px",
+                                                cursor: isSoldOut || !canAffordUsdc || prices.usdc === 0n ? "not-allowed" : "pointer",
+                                                fontFamily: "'PressStart2P', monospace",
+                                            }}
+                                        >
+                                            {minting === relic.id
+                                                ? "MINTING..."
+                                                : prices.usdc === 0n
+                                                    ? "USDC OFF"
+                                                    : isSoldOut
+                                                        ? "SOLD OUT"
+                                                        : !canAffordUsdc
+                                                            ? "NEED USDC"
+                                                            : "MINT WITH USDC"}
+                                        </button>
+                                    </div>
                                 </>
                             ) : (
                                 <div style={{

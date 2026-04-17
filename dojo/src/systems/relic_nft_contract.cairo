@@ -9,6 +9,12 @@ pub fn NAME() -> ByteArray {
 #[starknet::interface]
 pub trait IRelicCollection<TContractState> {
     fn mint_relic(ref self: TContractState, relic_id: u32) -> u256;
+    fn mint_relic_with_token(
+        ref self: TContractState, relic_id: u32, payment_token: ContractAddress,
+    ) -> u256;
+    fn get_relic_cost_in_token(
+        self: @TContractState, relic_id: u32, payment_token: ContractAddress,
+    ) -> u256;
     fn get_player_relics(self: @TContractState, player: ContractAddress) -> Array<u256>;
     fn get_supply_info(self: @TContractState, relic_id: u32) -> (u32, u32);
 }
@@ -16,6 +22,11 @@ pub trait IRelicCollection<TContractState> {
 #[dojo::contract]
 pub mod RelicNFT {
     use dojo::world::{IWorldDispatcherTrait, WorldStorageTrait};
+    use ekubo::components::clear::IClearDispatcherTrait;
+    use ekubo::interfaces::erc20::IERC20Dispatcher as EkuboERC20Dispatcher;
+    use ekubo::interfaces::router::{IRouterDispatcherTrait, RouteNode, TokenAmount};
+    use ekubo::types::i129::i129;
+    use ekubo::types::keys::PoolKey;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::interfaces::token::erc721::{IERC721, IERC721Metadata};
     use openzeppelin::introspection::src5::SRC5Component;
@@ -25,8 +36,12 @@ pub mod RelicNFT {
     };
     use starknet::{ContractAddress, get_caller_address};
     use crate::constants::NAMESPACE;
+    use crate::helpers::pricing::{fixed_quote_amount_from_units, relic_quote_units_for_rarity};
     use crate::helpers::relic_types::get_relic_type_info;
-    use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::interfaces::erc20::{
+        IERC20Dispatcher, IERC20DispatcherTrait, IERC20MetadataDispatcher,
+        IERC20MetadataDispatcherTrait,
+    };
     use crate::store::StoreTrait;
     use crate::systems::setup::NAME as SETUP_NAME;
     use crate::systems::token::{IChipDispatcher, IChipDispatcherTrait};
@@ -70,6 +85,84 @@ pub mod RelicNFT {
         SRC5Event: SRC5Component::Event,
     }
 
+    fn split_amounts(
+        total_amount: u256, burn_percentage: u8, treasury_percentage: u8,
+    ) -> (u256, u256, u256) {
+        let burn_amount = total_amount * burn_percentage.into() / HUNDRED;
+        let treasury_amount = total_amount * treasury_percentage.into() / HUNDRED;
+        let team_amount = total_amount - burn_amount - treasury_amount;
+        (burn_amount, treasury_amount, team_amount)
+    }
+
+    fn get_relic_cost_for_token(
+        price_chip: u256,
+        rarity: u8,
+        chip_token: ContractAddress,
+        quote_token: ContractAddress,
+        payment_token: ContractAddress,
+    ) -> u256 {
+        if payment_token == chip_token {
+            return price_chip;
+        }
+
+        assert(payment_token == quote_token, 'Unsupported payment token');
+        let quote_metadata = IERC20MetadataDispatcher { contract_address: payment_token };
+        let quote_decimals = quote_metadata.decimals();
+        fixed_quote_amount_from_units(relic_quote_units_for_rarity(rarity), quote_decimals)
+    }
+
+    fn swap_and_burn_chip(
+        ref self: ContractState, quote_token: ContractAddress, burn_amount_quote: u256,
+    ) {
+        if burn_amount_quote == 0 {
+            return;
+        }
+
+        let world = self.world(@NAMESPACE());
+        let store = StoreTrait::new(world);
+        let config = store.config();
+        let chip_address = config.chip_token;
+        let quote = IERC20Dispatcher { contract_address: quote_token };
+        let router = store.ekubo_router();
+
+        quote.transfer(router.contract_address, burn_amount_quote);
+
+        let (token0, token1) = if quote.contract_address < chip_address {
+            (quote.contract_address, chip_address)
+        } else {
+            (chip_address, quote.contract_address)
+        };
+
+        let route_node = RouteNode {
+            pool_key: PoolKey {
+                token0,
+                token1,
+                fee: config.pool_fee,
+                tick_spacing: config.pool_tick_spacing,
+                extension: config.pool_extension,
+            },
+            sqrt_ratio_limit: config.pool_sqrt,
+            skip_ahead: 0,
+        };
+        let token_amount = TokenAmount {
+            token: quote.contract_address, amount: i129 { mag: burn_amount_quote.low, sign: false },
+        };
+
+        router.swap(route_node, token_amount);
+
+        let clearer = store.ekubo_clearer();
+        clearer.clear_minimum(EkuboERC20Dispatcher { contract_address: chip_address }, 0);
+        clearer.clear(EkuboERC20Dispatcher { contract_address: quote.contract_address });
+
+        let this = starknet::get_contract_address();
+        let chip = store.chip_disp();
+        let burn_amount = chip.balance_of(this);
+        if burn_amount > 0 {
+            let chip_token = IChipDispatcher { contract_address: chip_address };
+            chip_token.burn(burn_amount);
+        }
+    }
+
     fn dojo_init(ref self: ContractState) {
         let world = self.world(@NAMESPACE());
         self.erc721.initializer("Abyss Relics", "RELIC", "");
@@ -97,6 +190,14 @@ pub mod RelicNFT {
     #[abi(embed_v0)]
     impl RelicCollectionImpl of IRelicCollection<ContractState> {
         fn mint_relic(ref self: ContractState, relic_id: u32) -> u256 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            self.mint_relic_with_token(relic_id, store.config().chip_token)
+        }
+
+        fn mint_relic_with_token(
+            ref self: ContractState, relic_id: u32, payment_token: ContractAddress,
+        ) -> u256 {
             let caller = get_caller_address();
             let world = self.world(@NAMESPACE());
             let info = get_relic_type_info(relic_id);
@@ -107,26 +208,34 @@ pub mod RelicNFT {
             let config = store.config();
             let chip_address = config.chip_token;
             let this = starknet::get_contract_address();
+            let total = get_relic_cost_for_token(
+                info.price_wei,
+                info.metadata.rarity,
+                chip_address,
+                config.quote_token,
+                payment_token,
+            );
+            let (burn_amount, treasury_amount, team_amount) = split_amounts(
+                total, config.burn_percentage, config.treasury_percentage,
+            );
 
-            // Pull full price from caller into this contract so we can split it.
-            let chip = IERC20Dispatcher { contract_address: chip_address };
-            chip.transfer_from(caller, this, info.price_wei);
+            let token = IERC20Dispatcher { contract_address: payment_token };
+            token.transfer_from(caller, this, total);
 
-            // Split using the same burn/treasury/team percentages as Setup purchases.
-            let total = info.price_wei;
-            let burn_amount = total * config.burn_percentage.into() / HUNDRED;
-            let treasury_amount = total * config.treasury_percentage.into() / HUNDRED;
-            let team_amount = total - burn_amount - treasury_amount;
-
-            if burn_amount > 0 {
-                let chip_token = IChipDispatcher { contract_address: chip_address };
-                chip_token.burn(burn_amount);
+            if payment_token == chip_address {
+                if burn_amount > 0 {
+                    let chip_token = IChipDispatcher { contract_address: chip_address };
+                    chip_token.burn(burn_amount);
+                }
+            } else {
+                swap_and_burn_chip(ref self, payment_token, burn_amount);
             }
+
             if treasury_amount > 0 {
-                chip.transfer(config.treasury, treasury_amount);
+                token.transfer(config.treasury, treasury_amount);
             }
             if team_amount > 0 {
-                chip.transfer(config.team, team_amount);
+                token.transfer(config.team, team_amount);
             }
 
             let token_id_u64 = self.next_token_id.read() + 1;
@@ -138,6 +247,22 @@ pub mod RelicNFT {
             self.minted_per_type.entry(relic_id).write(current_supply + 1);
 
             token_id
+        }
+
+        fn get_relic_cost_in_token(
+            self: @ContractState, relic_id: u32, payment_token: ContractAddress,
+        ) -> u256 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let info = get_relic_type_info(relic_id);
+            let config = store.config();
+            get_relic_cost_for_token(
+                info.price_wei,
+                info.metadata.rarity,
+                config.chip_token,
+                config.quote_token,
+                payment_token,
+            )
         }
 
         fn get_player_relics(self: @ContractState, player: ContractAddress) -> Array<u256> {

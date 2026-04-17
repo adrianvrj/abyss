@@ -68,6 +68,7 @@ export const sessionPolicies: SessionPolicies = {
     [CONTRACTS.RELIC_NFT]: {
       methods: [
         { entrypoint: "mint_relic" },
+        { entrypoint: "mint_relic_with_token" },
       ],
     },
   },

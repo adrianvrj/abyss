@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x6a6697dec8904a250ba390fc1be450623458fb1a4357f81b87c7449c96f4599",
+      "class_hash": "0x29ffadb67b1482e2e02769e1600d9ade35ea644785fb0d4ac41b8820e4b4bc0",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -141,13 +141,14 @@
     },
     {
       "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
-      "class_hash": "0x4102a8bc9e9ab6bef5c2a0154788a0e7a8eba4799bd6effd28f82a2f5cf1a7b",
+      "class_hash": "0x763f8a4bc3281ef2d7b3aaad17ea681ed2d90380b8b402d38f0d2c65086b1ad",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
       "systems": [
         "dojo_init",
         "mint_relic",
+        "mint_relic_with_token",
         "set_base_uri",
         "upgrade",
         "grant_role",
@@ -4585,6 +4586,46 @@
             }
           ],
           "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "mint_relic_with_token",
+          "inputs": [
+            {
+              "name": "relic_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "payment_token",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "get_relic_cost_in_token",
+          "inputs": [
+            {
+              "name": "relic_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "payment_token",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "view"
         },
         {
           "type": "function",

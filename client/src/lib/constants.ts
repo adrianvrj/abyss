@@ -49,6 +49,10 @@ export const CHIP_TOKEN_IMAGE_URL =
   import.meta.env.VITE_CHIP_TOKEN_IMAGE_URL ??
   "https://abyssgame.fun/chip-token.svg";
 
+export const USDC_TOKEN_IMAGE_URL =
+  import.meta.env.VITE_USDC_TOKEN_IMAGE_URL ??
+  "/images/tokens/usdc.svg";
+
 export const SymbolType = {
   SEVEN: 1,
   DIAMOND: 2,
