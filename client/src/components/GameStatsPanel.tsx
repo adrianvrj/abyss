@@ -8,6 +8,7 @@ import {
     getPatternBonusMap,
     getPatternRetriggerMap,
 } from '@/lib/patternMath';
+import { getSymbolProbabilityDistribution } from '@/utils/itemEffects';
 
 interface GameStatsPanelProps {
     level: number;
@@ -174,7 +175,11 @@ export default function GameStatsPanel({
         }
     }
 
-    function getModifiedSymbols(): (SymbolConfig & { points: number; probBonus: number })[] {
+    function getModifiedSymbols(): (SymbolConfig & {
+        points: number;
+        probBonus: number;
+        probabilityDelta: number;
+    })[] {
         const scoreIndices: Record<string, number> = {
             seven: 0,
             diamond: 1,
@@ -182,6 +187,12 @@ export default function GameStatsPanel({
             coin: 3,
             lemon: 4,
         };
+        const probabilityByType = new Map(
+            getSymbolProbabilityDistribution(DEFAULT_GAME_CONFIG, items).map((symbol) => [
+                symbol.type,
+                symbol,
+            ])
+        );
 
         return DEFAULT_GAME_CONFIG.symbols
             .filter(s => s.type !== 'six')
@@ -207,8 +218,15 @@ export default function GameStatsPanel({
                     Array.isArray(symbolScores) && symbolScores.length >= 5
                         ? symbolScores[scoreIndex] ?? symbol.points
                         : symbol.points + fallbackPointBonus;
+                const probabilityEntry = probabilityByType.get(symbol.type);
 
-                return { ...symbol, points: currentScore, probBonus };
+                return {
+                    ...symbol,
+                    points: currentScore,
+                    probability: probabilityEntry?.probability ?? symbol.probability,
+                    probBonus,
+                    probabilityDelta: probabilityEntry?.delta ?? 0,
+                };
             });
     }
 
@@ -342,6 +360,7 @@ export default function GameStatsPanel({
                             points={symbol.points}
                             probability={symbol.probability}
                             probBonus={symbol.probBonus}
+                            probabilityDelta={symbol.probabilityDelta}
                         />
                     ))}
                 </div>
@@ -456,15 +475,34 @@ interface SymbolRowProps {
     points: number;
     probability: number;
     probBonus: number;
+    probabilityDelta: number;
 }
 
-function SymbolRow({ symbolType, points, probability, probBonus }: SymbolRowProps) {
+function SymbolRow({ symbolType, points, probability, probBonus, probabilityDelta }: SymbolRowProps) {
     const info = SYMBOL_INFO[symbolType];
     const basePoints = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbolType)?.points || 0;
-    const totalProb = probability + probBonus;
     const hasProbBonus = probBonus > 0;
+    const hasProbShift = Math.abs(probabilityDelta) >= 0.05;
     const isBaseScore = points > basePoints;
-    const hasAnyBonus = isBaseScore || hasProbBonus;
+    const hasAnyBonus = isBaseScore || hasProbBonus || hasProbShift;
+    const probabilityColor =
+        probabilityDelta > 0.05
+            ? '#00FF64'
+            : probabilityDelta < -0.05
+                ? '#FF7A7A'
+                : '#666';
+    const probabilityShiftLabel =
+        probabilityDelta > 0.05
+            ? `+${Math.abs(probabilityDelta).toFixed(1)}`
+            : probabilityDelta < -0.05
+                ? `-${Math.abs(probabilityDelta).toFixed(1)}`
+                : null;
+    const rowBackground =
+        probabilityDelta < -0.05
+            ? 'rgba(255, 122, 122, 0.1)'
+            : hasAnyBonus
+                ? 'rgba(0, 255, 100, 0.1)'
+                : 'rgba(255, 255, 255, 0.05)';
 
     return (
         <div style={{
@@ -472,7 +510,7 @@ function SymbolRow({ symbolType, points, probability, probBonus }: SymbolRowProp
             alignItems: 'center',
             gap: '8px',
             padding: '4px 8px',
-            background: hasAnyBonus ? 'rgba(0, 255, 100, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+            background: rowBackground,
             borderRadius: '4px',
         }}>
             <div style={{ width: 24, height: 24, position: 'relative' }}>
@@ -502,10 +540,12 @@ function SymbolRow({ symbolType, points, probability, probBonus }: SymbolRowProp
             <span style={{
                 fontFamily: "'PressStart2P', monospace",
                 fontSize: '9px',
-                color: hasProbBonus ? '#00FF64' : '#666',
+                color: probabilityColor,
             }}>
-                {totalProb}%
-                {hasProbBonus && <span style={{ fontSize: '7px' }}> (+{probBonus})</span>}
+                {probability.toFixed(1)}%
+                {probabilityShiftLabel && (
+                    <span style={{ fontSize: '7px' }}> ({probabilityShiftLabel})</span>
+                )}
             </span>
         </div>
     );

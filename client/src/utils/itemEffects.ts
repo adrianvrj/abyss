@@ -5,6 +5,15 @@ export interface AppliedEffects {
     modifiedConfig: GameConfig;
 }
 
+export interface SymbolProbabilityDistribution {
+    type: SymbolConfig['type'];
+    baseWeight: number;
+    bonusWeight: number;
+    finalWeight: number;
+    probability: number;
+    delta: number;
+}
+
 /**
  * Apply item effects to base game configuration
  */
@@ -44,6 +53,49 @@ export function applyItemEffects(
     }
 
     return { modifiedConfig };
+}
+
+export function getSymbolProbabilityDistribution(
+    baseConfig: GameConfig,
+    ownedItems: ContractItem[]
+): SymbolProbabilityDistribution[] {
+    const symbols = baseConfig.symbols.map((symbol) => {
+        const bonusWeight = ownedItems.reduce((sum, item) => {
+            if (
+                item.effect_type === ItemEffectType.SymbolProbabilityBoost &&
+                item.target_symbol === symbol.type
+            ) {
+                return sum + item.effect_value;
+            }
+
+            return sum;
+        }, 0);
+
+        const finalWeight = symbol.probability + bonusWeight;
+
+        return {
+            type: symbol.type,
+            baseWeight: symbol.probability,
+            bonusWeight,
+            finalWeight,
+        };
+    });
+
+    const baseTotal = symbols.reduce((sum, symbol) => sum + symbol.baseWeight, 0);
+    const finalTotal = symbols.reduce((sum, symbol) => sum + symbol.finalWeight, 0);
+
+    return symbols.map((symbol) => {
+        const baseProbability =
+            baseTotal > 0 ? (symbol.baseWeight / baseTotal) * 100 : 0;
+        const probability =
+            finalTotal > 0 ? (symbol.finalWeight / finalTotal) * 100 : 0;
+
+        return {
+            ...symbol,
+            probability,
+            delta: probability - baseProbability,
+        };
+    });
 }
 
 function normalizeProbabilities(symbols: SymbolConfig[]): void {

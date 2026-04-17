@@ -558,7 +558,7 @@ function GameStage({
                     gap: 12px;
                     position: fixed;
                     left: 20px;
-                    top: 180px;
+                    top: 132px;
                     z-index: 100;
                 }
                 @media (min-width: 1025px) {

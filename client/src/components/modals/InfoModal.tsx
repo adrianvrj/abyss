@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import ModalWrapper from './ModalWrapper';
 import { DEFAULT_GAME_CONFIG, SYMBOL_INFO, GameConfig, PatternType } from '@/utils/GameConfig';
 import { ContractItem, getItemInfo, getSessionItems } from '@/utils/abyssContract';
-import { applyItemEffects } from '@/utils/itemEffects';
+import { applyItemEffects, getSymbolProbabilityDistribution, type SymbolProbabilityDistribution } from '@/utils/itemEffects';
 
 interface InfoModalProps {
     sessionId: number;
@@ -60,6 +60,9 @@ export default function InfoModal({
     const [activeTab, setActiveTab] = useState<InfoTab>('how');
     const [loading, setLoading] = useState(true);
     const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
+    const [symbolDistribution, setSymbolDistribution] = useState<SymbolProbabilityDistribution[]>(
+        () => getSymbolProbabilityDistribution(DEFAULT_GAME_CONFIG, [])
+    );
     const [sessionItemCount, setSessionItemCount] = useState(0);
 
     useEffect(() => {
@@ -84,10 +87,12 @@ export default function InfoModal({
 
             const effects = applyItemEffects(DEFAULT_GAME_CONFIG, items);
             setGameConfig(effects.modifiedConfig);
+            setSymbolDistribution(getSymbolProbabilityDistribution(DEFAULT_GAME_CONFIG, items));
             setSessionItemCount(items.length);
         } catch (error) {
             console.error('Failed to load items:', error);
             setGameConfig(DEFAULT_GAME_CONFIG);
+            setSymbolDistribution(getSymbolProbabilityDistribution(DEFAULT_GAME_CONFIG, []));
             setSessionItemCount(0);
         } finally {
             setLoading(false);
@@ -256,9 +261,24 @@ export default function InfoModal({
                                     .filter((symbol) => symbol.type !== 'six')
                                     .map((symbol) => {
                                         const original = DEFAULT_GAME_CONFIG.symbols.find((baseSymbol) => baseSymbol.type === symbol.type);
+                                        const probabilityEntry = symbolDistribution.find((entry) => entry.type === symbol.type);
+                                        const displayProbability = probabilityEntry?.probability ?? symbol.probability;
+                                        const probabilityDelta = probabilityEntry?.delta ?? 0;
                                         const pointsModified = original ? wasModified(symbol.points, original.points) : false;
-                                        const probabilityModified = original ? wasModified(symbol.probability, original.probability) : false;
+                                        const probabilityModified = Math.abs(probabilityDelta) >= 0.05;
                                         const info = SYMBOL_INFO[symbol.type];
+                                        const probabilityColor =
+                                            probabilityDelta > 0.05
+                                                ? '#4ADE80'
+                                                : probabilityDelta < -0.05
+                                                    ? '#F87171'
+                                                    : '#888';
+                                        const probabilityShiftLabel =
+                                            probabilityDelta > 0.05
+                                                ? `+${Math.abs(probabilityDelta).toFixed(1)}`
+                                                : probabilityDelta < -0.05
+                                                    ? `-${Math.abs(probabilityDelta).toFixed(1)}`
+                                                    : null;
 
                                         return (
                                             <div
@@ -294,11 +314,16 @@ export default function InfoModal({
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 8, color: probabilityModified ? '#4ADE80' : '#888' }}>
-                                                            {symbol.probability}%
+                                                        <div style={{ fontFamily: "'PressStart2P', monospace", fontSize: 8, color: probabilityColor }}>
+                                                            {displayProbability.toFixed(1)}%
+                                                            {probabilityShiftLabel && (
+                                                                <span style={{ color: probabilityColor, marginLeft: 6 }}>
+                                                                    {probabilityShiftLabel}
+                                                                </span>
+                                                            )}
                                                             {probabilityModified && original && (
                                                                 <span style={{ color: '#666', marginLeft: 6, textDecoration: 'line-through' }}>
-                                                                    {original.probability}%
+                                                                    {original.probability.toFixed(1)}%
                                                                 </span>
                                                             )}
                                                         </div>

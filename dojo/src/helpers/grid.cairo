@@ -26,6 +26,7 @@ pub fn generate_grid_from_random(
     } else {
         luck
     };
+    let luck_bias_threshold = luck_bias_chance * 1000;
 
     let (p7, pd, pc, p_coin, pl) = probability_bonuses;
     let prob_seven = 10 + p7;
@@ -45,13 +46,14 @@ pub fn generate_grid_from_random(
         let seed_value: u256 = position_seed.into();
 
         // Luck bias: chance to copy symbol from adjacent cell
-        let luck_window: u32 = (seed_value % 100000).try_into().unwrap();
-        let luck_roll: u32 = luck_window / 1000;
         let mut symbol: u8 = 0;
 
-        if luck_bias_chance > 0 && luck_roll < luck_bias_chance && i > 0 {
-            let copy_from = get_pattern_neighbor(i);
-            symbol = *grid.at(copy_from);
+        if luck_bias_threshold > 0 && i > 0 {
+            let luck_window: u32 = (seed_value % 100000).try_into().unwrap();
+            if luck_window < luck_bias_threshold {
+                let copy_from = get_pattern_neighbor(i);
+                symbol = *grid.at(copy_from);
+            }
         }
 
         // If no luck bias applied, use normal random symbol

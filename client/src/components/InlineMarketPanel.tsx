@@ -11,6 +11,7 @@ import {
     CharmInfo
 } from '@/utils/abyssContract';
 import { getItemImage } from '@/utils/itemImages';
+import { SYMBOL_INFO } from '@/utils/GameConfig';
 import { RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAccount } from '@starknet-react/core';
 
@@ -458,7 +459,7 @@ export default function InlineMarketPanel({
     const wasPurchased = purchasedInCurrentMarket.has(currentItemIndex);
     const isInventoryFull = visibleInventoryCount >= 7 && !isOwned && !isCurrentCharm;
     const canAfford = currentItem ? currentTickets >= currentItem.price : false;
-    const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && !purchasingSlot;
+    const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && purchasingSlot === null;
 
     function getEffectDetails(item: ContractItem): string {
         if (item.description && item.description.length > 0) return item.description;
@@ -494,6 +495,48 @@ export default function InlineMarketPanel({
         }
     }
 
+    function renderDesktopEffect(item: ContractItem, charmInfo?: CharmInfo) {
+        if (isCharmItem(item.item_id) && charmInfo) {
+            return charmInfo.effect || charmInfo.description;
+        }
+
+        const targetSymbol = item.target_symbol as keyof typeof SYMBOL_INFO | '';
+        const symbolInfo = targetSymbol && targetSymbol in SYMBOL_INFO ? SYMBOL_INFO[targetSymbol] : null;
+
+        if (item.effect_type === ItemEffectType.DirectScoreBonus && symbolInfo) {
+            return (
+                <span className="desktop-effect-inline">
+                    <span>+{item.effect_value}</span>
+                    <img
+                        src={symbolInfo.image}
+                        alt={symbolInfo.name}
+                        width={11}
+                        height={11}
+                        loading="lazy"
+                    />
+                </span>
+            );
+        }
+
+        if (item.effect_type === ItemEffectType.SymbolProbabilityBoost && symbolInfo) {
+            return (
+                <span className="desktop-effect-inline">
+                    <span>+{item.effect_value}%</span>
+                    <img
+                        src={symbolInfo.image}
+                        alt={symbolInfo.name}
+                        width={11}
+                        height={11}
+                        loading="lazy"
+                    />
+                    <span>chance</span>
+                </span>
+            );
+        }
+
+        return getEffectDetails(item);
+    }
+
     if (loading) {
         return (
             <div className="inline-market-panel">
@@ -514,116 +557,199 @@ export default function InlineMarketPanel({
                 </div>
             </div>
 
-            <div className={`item-display ${isCurrentCharm ? 'charm-display' : ''}`} style={{ position: 'relative', overflow: 'hidden' }}>
-                {marketItems.map((item, index) => {
-                    const isVisible = index === currentItemIndex;
-                    const isPurchasedSlot = purchasedInCurrentMarket.has(index);
-                    const isItemCharm = isCharmItem(item.item_id);
-                    const charmInfo = charmInfoMap.get(item.item_id);
+            <div className="desktop-market-view">
+                <div className="desktop-market-grid">
+                    {marketItems.map((item, index) => {
+                        const isPurchasedSlot = purchasedInCurrentMarket.has(index);
+                        const isItemCharm = isCharmItem(item.item_id);
+                        const charmInfo = charmInfoMap.get(item.item_id);
+                        const isDesktopOwned =
+                            ownedItemIds.has(item.item_id) && !hiddenItemIds.includes(item.item_id);
+                        const isDesktopInventoryFull =
+                            visibleInventoryCount >= 7 && !isDesktopOwned && !isItemCharm;
+                        const canDesktopAfford = currentTickets >= item.price;
+                        const isDesktopPurchasing = purchasingSlot === index;
+                        const canDesktopPurchase =
+                            !isDesktopOwned
+                            && !isPurchasedSlot
+                            && !isDesktopInventoryFull
+                            && canDesktopAfford
+                            && purchasingSlot === null;
+                        const desktopEffect = renderDesktopEffect(item, charmInfo);
+                        const desktopImage = isItemCharm && charmInfo
+                            ? charmInfo.image
+                            : getItemImage(item.item_id);
 
-                    return (
-                        <div key={`${item.item_id}-${index}`} style={{
-                            display: isVisible ? 'flex' : 'none',
-                            width: '100%',
-                            height: '100%',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}>
-                            {isPurchasedSlot ? (
-                                <div className="sold-state">
-                                    <div className="item-image sold">
-                                        <img
-                                            src={isItemCharm && charmInfo ? charmInfo.image : getItemImage(item.item_id)}
-                                            alt={item.name}
-                                            width={180}
-                                            height={180}
-                                            loading="lazy"
-                                            style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
-                                        />
-                                    </div>
-                                    <div className="sold-badge">SOLD</div>
+                        return (
+                            <div
+                                key={`desktop-${item.item_id}-${index}`}
+                                className={`desktop-market-card ${isPurchasedSlot ? 'sold' : ''}`}
+                            >
+                                <div className="desktop-market-image-frame">
+                                    <img
+                                        src={desktopImage}
+                                        alt={item.name}
+                                        width={76}
+                                        height={76}
+                                        loading="lazy"
+                                        style={{
+                                            objectFit: 'contain',
+                                            filter: isPurchasedSlot ? 'grayscale(100%) opacity(0.3)' : 'none',
+                                        }}
+                                    />
                                 </div>
-                            ) : isItemCharm && charmInfo ? (
-                                <>
-                                    <div className="charm-image">
-                                        <img
-                                            src={charmInfo.image}
-                                            alt={charmInfo.name}
-                                            width={140}
-                                            height={140}
-                                            loading="lazy"
-                                            style={{ objectFit: 'contain' }}
-                                        />
-                                    </div>
-                                    {charmInfo.rarity && (
-                                        <div className="charm-rarity" style={{ color: getRarityColor(charmInfo.rarity) }}>
-                                            {charmInfo.rarity.toUpperCase()}
-                                        </div>
+
+                                <div className="desktop-market-effect">{desktopEffect}</div>
+
+                                <button
+                                    className={`desktop-market-buy buy-btn ${!canDesktopPurchase ? 'disabled' : ''}`}
+                                    onClick={() => canDesktopPurchase && handleBuy(index, item)}
+                                    disabled={!canDesktopPurchase}
+                                >
+                                    {isDesktopPurchasing ? '...' : (
+                                        isPurchasedSlot ? 'SOLD' :
+                                            isDesktopOwned ? 'OWNED' :
+                                                isDesktopInventoryFull ? 'FULL' :
+                                                    !canDesktopAfford ? (
+                                                        <span className="desktop-buy-copy">
+                                                            <span>NEED {item.price}</span>
+                                                            <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
+                                                        </span>
+                                                    ) : (
+                                                        <span className="desktop-buy-copy">
+                                                            <span>BUY {item.price}</span>
+                                                            <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
+                                                        </span>
+                                                    )
                                     )}
-                                    <div className="item-name charm-name">{charmInfo.name}</div>
-                                    <div className="charm-effect">{charmInfo.effect || charmInfo.description}</div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="item-image">
-                                        <img
-                                            src={getItemImage(item.item_id)}
-                                            alt={item.name}
-                                            width={180}
-                                            height={180}
-                                            loading="lazy"
-                                            style={{ objectFit: 'contain' }}
-                                        />
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <button
+                    className="refresh-btn"
+                    onClick={handleRefresh}
+                    disabled={refreshing || currentScore < refreshCost}
+                >
+                    <RotateCw className={refreshing ? 'spinning' : ''} size={14} />
+                    <span>REFRESH {refreshCost}</span>
+                </button>
+            </div>
+
+            <div className="mobile-market-view">
+                <div className={`item-display ${isCurrentCharm ? 'charm-display' : ''}`} style={{ position: 'relative', overflow: 'hidden' }}>
+                    {marketItems.map((item, index) => {
+                        const isVisible = index === currentItemIndex;
+                        const isPurchasedSlot = purchasedInCurrentMarket.has(index);
+                        const isItemCharm = isCharmItem(item.item_id);
+                        const charmInfo = charmInfoMap.get(item.item_id);
+
+                        return (
+                            <div key={`${item.item_id}-${index}`} style={{
+                                display: isVisible ? 'flex' : 'none',
+                                width: '100%',
+                                height: '100%',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                {isPurchasedSlot ? (
+                                    <div className="sold-state">
+                                        <div className="item-image sold">
+                                            <img
+                                                src={isItemCharm && charmInfo ? charmInfo.image : getItemImage(item.item_id)}
+                                                alt={item.name}
+                                                width={180}
+                                                height={180}
+                                                loading="lazy"
+                                                style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
+                                            />
+                                        </div>
+                                        <div className="sold-badge">SOLD</div>
                                     </div>
-                                    <div className="item-name">{item.name}</div>
-                                    <div className="effect-badge">{getEffectDetails(item)}</div>
-                                </>
-                            )}
-                        </div>
-                    );
-                })}
+                                ) : isItemCharm && charmInfo ? (
+                                    <>
+                                        <div className="charm-image">
+                                            <img
+                                                src={charmInfo.image}
+                                                alt={charmInfo.name}
+                                                width={140}
+                                                height={140}
+                                                loading="lazy"
+                                                style={{ objectFit: 'contain' }}
+                                            />
+                                        </div>
+                                        {charmInfo.rarity && (
+                                            <div className="charm-rarity" style={{ color: getRarityColor(charmInfo.rarity) }}>
+                                                {charmInfo.rarity.toUpperCase()}
+                                            </div>
+                                        )}
+                                        <div className="item-name charm-name">{charmInfo.name}</div>
+                                        <div className="charm-effect">{charmInfo.effect || charmInfo.description}</div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="item-image">
+                                            <img
+                                                src={getItemImage(item.item_id)}
+                                                alt={item.name}
+                                                width={180}
+                                                height={180}
+                                                loading="lazy"
+                                                style={{ objectFit: 'contain' }}
+                                            />
+                                        </div>
+                                        <div className="item-name">{item.name}</div>
+                                        <div className="effect-badge">{getEffectDetails(item)}</div>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="carousel-nav">
+                    <button onClick={handlePrev}><ChevronLeft /></button>
+                    <span>{currentSlotLabel}/{marketItems.length}</span>
+                    <button onClick={handleNext}><ChevronRight /></button>
+                </div>
+
+                <button
+                    className={`buy-btn ${(!canPurchase || wasPurchased) ? 'disabled' : ''}`}
+                    onClick={() => canPurchase && !wasPurchased && handleBuy(currentItemIndex, currentItem!)}
+                    disabled={!canPurchase || wasPurchased}
+                >
+                    {wasPurchased ? "SOLD" : (
+                        purchasingSlot === currentItemIndex ? "..." : (
+                            isOwned ? "OWNED" :
+                                isInventoryFull ? "FULL" :
+                                    !currentItem ? "..." :
+                                        !canAfford ? (
+                                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                NEED {currentItem.price ?? '...'}
+                                                <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
+                                            </span>
+                                        ) : (
+                                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                BUY {currentItem.price ?? '...'}
+                                                <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
+                                            </span>
+                                        )
+                        )
+                    )}
+                </button>
+
+                <button
+                    className="refresh-btn"
+                    onClick={handleRefresh}
+                    disabled={refreshing || currentScore < refreshCost}
+                >
+                    <RotateCw className={refreshing ? 'spinning' : ''} size={14} />
+                    <span>REFRESH {refreshCost}</span>
+                </button>
             </div>
-
-            <div className="carousel-nav">
-                <button onClick={handlePrev}><ChevronLeft /></button>
-                <span>{currentSlotLabel}/{marketItems.length}</span>
-                <button onClick={handleNext}><ChevronRight /></button>
-            </div>
-
-            <button
-                className={`buy-btn ${(!canPurchase || wasPurchased) ? 'disabled' : ''}`}
-                onClick={() => canPurchase && !wasPurchased && handleBuy(currentItemIndex, currentItem!)}
-                disabled={!canPurchase || wasPurchased}
-            >
-                {wasPurchased ? "SOLD" : (
-                    purchasingSlot === currentItemIndex ? "..." : (
-                        isOwned ? "OWNED" :
-                            isInventoryFull ? "FULL" :
-                                !currentItem ? "..." :
-                                    !canAfford ? (
-                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                            NEED {currentItem.price ?? '...'}
-                                            <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
-                                        </span>
-                                    ) : (
-                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                            BUY {currentItem.price ?? '...'}
-                                            <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
-                                        </span>
-                                    )
-                    )
-                )}
-            </button>
-
-            <button
-                className="refresh-btn"
-                onClick={handleRefresh}
-                disabled={refreshing || currentScore < refreshCost}
-            >
-                <RotateCw className={refreshing ? 'spinning' : ''} size={14} />
-                <span>REFRESH {refreshCost}</span>
-            </button>
 
             <style dangerouslySetInnerHTML={{ __html: styles }} />
         </div>
@@ -637,6 +763,14 @@ const styles = `
         border-radius: 8px;
         padding: 15px;
         width: 300px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .desktop-market-view {
+        display: none;
+    }
+    .mobile-market-view {
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -771,6 +905,61 @@ const styles = `
         opacity: 0.5;
         cursor: not-allowed;
     }
+    .desktop-market-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+    .desktop-market-card {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 132, 28, 0.18);
+        border-radius: 8px;
+        padding: 9px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 176px;
+    }
+    .desktop-market-card.sold {
+        opacity: 0.82;
+    }
+    .desktop-market-image-frame {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 82px;
+        padding: 2px 0 0;
+    }
+    .desktop-market-effect {
+        font-family: 'PressStart2P', monospace;
+        font-size: 7px;
+        line-height: 1.55;
+        color: #d2d2d2;
+        min-height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    .desktop-effect-inline {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: #fff;
+    }
+    .desktop-market-buy {
+        margin-top: auto;
+        padding: 7px;
+        font-size: 8px;
+    }
+    .desktop-buy-copy {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
     .spinning {
         animation: spin 1s linear infinite;
     }
@@ -854,6 +1043,33 @@ const styles = `
         }
         .carousel-nav span {
             font-size: 9px;
+        }
+    }
+    @media (min-width: 1025px) {
+        .inline-market-panel {
+            width: min(332px, calc(100vw - 40px));
+            max-height: calc(100vh - 260px);
+            gap: 8px;
+        }
+        .desktop-market-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+        }
+        .mobile-market-view {
+            display: none;
+        }
+        .desktop-market-grid {
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+        .desktop-market-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        .desktop-market-grid::-webkit-scrollbar-thumb {
+            background: rgba(255, 132, 28, 0.28);
+            border-radius: 999px;
         }
     }
 `;
