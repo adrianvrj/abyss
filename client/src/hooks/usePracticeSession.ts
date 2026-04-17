@@ -230,8 +230,8 @@ export function usePracticeSession() {
     }
 
     if (outcome.bibliaUsed) {
-      setBibliaDiscarded(true);
-      setBibliaBroken(true);
+      setBibliaDiscarded(outcome.bibliaDiscarded);
+      setBibliaBroken(outcome.bibliaDiscarded);
       setShowBibliaAnimation(true);
     }
 

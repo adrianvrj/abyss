@@ -13,12 +13,13 @@ pub trait IMarket<T> {
 #[dojo::contract]
 pub mod Market {
     use starknet::get_caller_address;
-    use crate::constants::NAMESPACE;
+    use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
     use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshed};
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::market::MarketImpl;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
     use crate::models::index::MarketSlotPurchased;
+    use crate::types::effect::ItemEffectType;
     use crate::store::StoreTrait;
     use super::*;
 
@@ -93,14 +94,16 @@ pub mod Market {
                 purchase_price = item.price;
                 assert(session.tickets >= purchase_price, 'Not enough tickets');
 
-                let existing = store.inventory(session_id, item_id);
-                assert(existing.quantity == 0, 'Item already owned');
-
                 session.tickets -= purchase_price;
-                if item.effect_type == 4 {
-                    session.spins_remaining += item.effect_value;
+                if item.effect_type == ItemEffectType::SpinBonus {
+                    let next_spins = session.spins_remaining + item.effect_value;
+                    session.spins_remaining =
+                        if next_spins > MAX_CURRENT_SPINS { MAX_CURRENT_SPINS } else { next_spins };
+                } else {
+                    let existing = store.inventory(session_id, item_id);
+                    assert(existing.quantity == 0, 'Item already owned');
+                    InventoryImpl::add_item_to_inventory(ref store, session_id, item_id);
                 }
-                InventoryImpl::add_item_to_inventory(ref store, session_id, item_id);
                 store.set_session(@session);
             }
 

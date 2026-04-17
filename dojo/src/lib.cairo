@@ -59,6 +59,7 @@ pub mod components {
 
 #[cfg(test)]
 pub mod tests {
+    pub mod balance_logic;
     pub mod charm_logic;
     pub mod pattern_logic;
     pub mod setup;

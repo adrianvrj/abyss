@@ -106,8 +106,10 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
             await buyItem(sessionId, slot);
             onUpdateScore(currentScore - item.price);
             setPurchasedInCurrentMarket(prev => new Set(prev).add(slot));
-            setOwnedItemIds(prev => new Set(prev).add(item.item_id));
-            setInventoryCount(prev => prev + 1);
+            if (item.effect_type !== ItemEffectType.SpinBonus) {
+                setOwnedItemIds(prev => new Set(prev).add(item.item_id));
+                setInventoryCount(prev => prev + 1);
+            }
         } catch (e) {
             console.error("Purchase failed", e);
         } finally {
@@ -121,8 +123,9 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
     const currentItem = marketItems[currentItemIndex];
     const currentSlot = currentItemIndex + 1;
     const isOwned = currentItem ? ownedItemIds.has(currentItem.item_id) : false;
+    const isSpinConsumable = currentItem ? currentItem.effect_type === ItemEffectType.SpinBonus : false;
     const wasPurchased = purchasedInCurrentMarket.has(currentSlot);
-    const isInventoryFull = inventoryCount >= 7 && !isOwned;
+    const isInventoryFull = inventoryCount >= 7 && !isOwned && !isSpinConsumable;
     const canAfford = currentItem ? currentScore >= currentItem.price : false;
     const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && !purchasingSlot;
 
@@ -134,7 +137,7 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
             case ItemEffectType.SymbolProbabilityBoost: return `+${val}% chance ${item.target_symbol}`;
             case ItemEffectType.PatternMultiplierBoost: return `+${val}% patterns`;
             case ItemEffectType.ScoreMultiplier: return `+${val}% score`;
-            case ItemEffectType.SpinBonus: return `+${val} spins`;
+            case ItemEffectType.SpinBonus: return `+${val} instant spins`;
             case ItemEffectType.LevelProgressionBonus: return `-${val}% level req`;
             default: return "Unknown";
         }

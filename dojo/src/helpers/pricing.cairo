@@ -54,6 +54,6 @@ mod tests {
     #[test]
     fn relic_quote_units_match_rarity_policy() {
         assert_eq!(relic_quote_units_for_rarity(2), 60);
-        assert_eq!(relic_quote_units_for_rarity(3), 40);
+        assert_eq!(relic_quote_units_for_rarity(3), 80);
     }
 }

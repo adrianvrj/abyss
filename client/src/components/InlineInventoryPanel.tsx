@@ -118,7 +118,7 @@ export default function InlineInventoryPanel({
             case 1: return targetSymbol ? `+${value}% ${targetSymbol} patterns` : `+${value}% all patterns`;
             case 2: return targetSymbol ? `+${value}% ${targetSymbol} chance` : `+${value}% symbol chance`;
             case 3: return targetSymbol ? `+${value} pts per ${targetSymbol}` : `+${value} pts per symbol`;
-            case 4: return `+${value} bonus spins`;
+            case 4: return `+${value} instant spins`;
             case 5: return `+${value}% level progress`;
             case 6: return `666 protection (${value} spins)`;
             case 7: {

@@ -11,46 +11,52 @@ const RELIC_METADATA: Record<string, {
     rarity: string;
     effect_type: string;
     effect_description: string;
+    cooldown: number;
 }> = {
     "1": {
         name: "Mortis",
-        description: "The beginning of the end. A relic that embodies the finality of existence.",
-        image: `${BASE_URL}/images/relics/1.png`,
-        rarity: "Common",
-        effect_type: "Game Over",
-        effect_description: "Ends your session immediately upon activation"
+        description: "Gentleman of Death - Forces a random jackpot.",
+        image: `${BASE_URL}/images/relics/mortis.png`,
+        rarity: "Mythic",
+        effect_type: "Random Jackpot",
+        effect_description: "Forces a random jackpot on your next spin.",
+        cooldown: 13,
     },
     "2": {
         name: "Phantom",
-        description: "Now you see it, now you don't. A relic that manipulates the fabric of spins.",
-        image: `${BASE_URL}/images/relics/2.png`,
-        rarity: "Rare",
-        effect_type: "Free Spins",
-        effect_description: "Grants 5 free spins instantly"
+        description: "The Timeless Specter - Resets to max spins.",
+        image: `${BASE_URL}/images/relics/phantom.png`,
+        rarity: "Mythic",
+        effect_type: "Reset Spins",
+        effect_description: "Resets your run back to max spins when activated.",
+        cooldown: 10,
     },
     "3": {
         name: "Lucky the Dealer",
-        description: "Luck is not a chance, it's a choice. And Lucky chooses you.",
-        image: `${BASE_URL}/images/relics/3.png`,
-        rarity: "Epic",
-        effect_type: "Luck Boost",
-        effect_description: "+50 Luck for the next 10 spins"
+        description: "Doubles down on every bet - 5x next spin score.",
+        image: `${BASE_URL}/images/relics/lucky_the_dealer.png`,
+        rarity: "Legendary",
+        effect_type: "Double Next Spin",
+        effect_description: "Multiplies the next spin score by 5x.",
+        cooldown: 9,
     },
     "4": {
         name: "Scorcher",
-        description: "Burn it all down. Chaos reigns supreme when the Scorcher is active.",
-        image: `${BASE_URL}/images/relics/4.png`,
+        description: "Master of the cursed 666 - Immediately end session.",
+        image: `${BASE_URL}/images/relics/scorcher.png`,
         rarity: "Legendary",
-        effect_type: "High Risk",
-        effect_description: "Ends session, 50% chance to double score, 50% to lose half"
+        effect_type: "End Session",
+        effect_description: "Immediately ends the current session when activated.",
+        cooldown: 9,
     },
     "5": {
         name: "Inferno",
-        description: "The market ablaze with new opportunities. Fresh goods, hot prices.",
-        image: `${BASE_URL}/images/relics/5.png`,
-        rarity: "Rare",
+        description: "Hell's marketplace demon - Free market refresh.",
+        image: `${BASE_URL}/images/relics/inferno.png`,
+        rarity: "Legendary",
         effect_type: "Market Refresh",
-        effect_description: "Instantly refreshes the market items"
+        effect_description: "Instantly refreshes the market inventory for free.",
+        cooldown: 9,
     }
 };
 
@@ -86,6 +92,7 @@ export async function GET(request: Request) {
                 { trait_type: "Rarity", value: metadata.rarity },
                 { trait_type: "Effect Type", value: metadata.effect_type },
                 { trait_type: "Effect", value: metadata.effect_description },
+                { trait_type: "Cooldown", value: metadata.cooldown, display_type: "number" },
                 { trait_type: "Relic ID", value: parseInt(relicIdVal), display_type: "number" }
             ],
             background_color: RARITY_COLORS[metadata.rarity]?.replace("#", "") || "1A1A2E"

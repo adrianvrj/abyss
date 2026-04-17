@@ -18,41 +18,41 @@ const RELIC_METADATA: Record<string, any> = {
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Force Random Jackpot" },
-            { trait_type: "Cooldown", value: 5, display_type: "number" },
+            { trait_type: "Cooldown", value: 13, display_type: "number" },
             { trait_type: "Stat: Luck", value: 1, display_type: "number" },
             { trait_type: "Stat: Vitality", value: 1, display_type: "number" }
         ]
     },
     "2": {
         name: "Phantom",
-        description: "The Timeless Specter - Resets your spins to 5",
+        description: "The Timeless Specter - Resets to max spins",
         image: `${BASE_URL}/images/relics/phantom.png`,
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Reset Spins" },
-            { trait_type: "Cooldown", value: 5, display_type: "number" },
+            { trait_type: "Cooldown", value: 10, display_type: "number" },
             { trait_type: "Stat: Wisdom", value: 1, display_type: "number" }
         ]
     },
     "3": {
         name: "Lucky the Dealer",
-        description: "Doubles down on every bet - 2x next spin score",
+        description: "Doubles down on every bet - 5x next spin score",
         image: `${BASE_URL}/images/relics/lucky_the_dealer.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Double Next Spin" },
-            { trait_type: "Cooldown", value: 3, display_type: "number" },
+            { trait_type: "Cooldown", value: 9, display_type: "number" },
             { trait_type: "Stat: Charisma", value: 1, display_type: "number" }
         ]
     },
     "4": {
         name: "Scorcher",
-        description: "Master of the cursed 666 - Triggers 666 pattern",
+        description: "Master of the cursed 666 - Immediately end session",
         image: `${BASE_URL}/images/relics/scorcher.png`,
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
-            { trait_type: "Effect", value: "Trigger 666" },
-            { trait_type: "Cooldown", value: 5, display_type: "number" },
+            { trait_type: "Effect", value: "End Session" },
+            { trait_type: "Cooldown", value: 9, display_type: "number" },
             { trait_type: "Stat: Intelligence", value: 1, display_type: "number" }
         ]
     },
@@ -63,7 +63,7 @@ const RELIC_METADATA: Record<string, any> = {
         attributes: [
             { trait_type: "Rarity", value: "Legendary" },
             { trait_type: "Effect", value: "Free Market Refresh" },
-            { trait_type: "Cooldown", value: 3, display_type: "number" },
+            { trait_type: "Cooldown", value: 9, display_type: "number" },
             { trait_type: "Stat: Dexterity", value: 1, display_type: "number" }
         ]
     }

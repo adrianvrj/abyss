@@ -166,11 +166,6 @@ pub impl InventoryImpl of InventoryTrait {
         let item_count = item_idx.count;
         let mut i: u32 = 0;
         while i != item_count {
-            let entry = store.session_item_entry(session_id, i);
-            let item = store.item(entry.item_id);
-            if item.effect_type == ItemEffectType::SpinBonus {
-                bonus += item.effect_value;
-            }
             i += 1;
         }
 
@@ -194,7 +189,7 @@ pub impl InventoryImpl of InventoryTrait {
         let session = *session;
         let last_spin = store.spin_result(session_id);
         let item_idx = store.session_item_index(session_id);
-        let item_count = item_idx.count;
+        let raw_item_count = item_idx.count;
 
         let mut b7: u32 = 0;
         let mut bd: u32 = 0;
@@ -215,9 +210,14 @@ pub impl InventoryImpl of InventoryTrait {
         let mut spin_bonus: u32 = 0;
 
         let mut i: u32 = 0;
-        while i != item_count {
+        let mut persistent_item_count: u32 = 0;
+        while i != raw_item_count {
             let entry = store.session_item_entry(session_id, i);
             let (effect_type, effect_value, target_symbol) = get_item_runtime_effect(entry.item_id);
+
+            if effect_type != ItemEffectType::SpinBonus {
+                persistent_item_count += 1;
+            }
 
             if effect_type == ItemEffectType::PatternMultiplierBoost {
                 if target_symbol == '' {
@@ -264,8 +264,6 @@ pub impl InventoryImpl of InventoryTrait {
                 } else if target_symbol == 'lemon' {
                     bl += effect_value;
                 }
-            } else if effect_type == ItemEffectType::SpinBonus {
-                spin_bonus += effect_value;
             }
 
             i += 1;
@@ -336,7 +334,7 @@ pub impl InventoryImpl of InventoryTrait {
                 }
             } else if charm_meta.condition_type == CharmConditionType::PerItemInInventory {
                 per_item_bonus += val;
-                conditional_luck += item_count * val;
+                conditional_luck += persistent_item_count * val;
             } else if charm_meta.condition_type == CharmConditionType::LowScore {
                 low_score_bonus += val;
                 if session.score < 100 {
@@ -371,7 +369,7 @@ pub impl InventoryImpl of InventoryTrait {
         SpinCycleModifiers {
             effective_luck: base_luck + conditional_luck,
             base_luck,
-            item_count,
+            item_count: persistent_item_count,
             spin_bonus,
             probability_bonuses: (p7, pd, pc, p_coin, pl),
             retrigger_bonuses: (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger),

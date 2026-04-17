@@ -422,7 +422,9 @@ export default function InlineMarketPanel({
                 }, 500);
             }
 
-            setOwnedItemIds(prev => new Set(prev).add(purchasedItemId));
+            if (purchasedItem && purchasedItem.effect_type !== ItemEffectType.SpinBonus) {
+                setOwnedItemIds(prev => new Set(prev).add(purchasedItemId));
+            }
             onInventoryChange?.();
             if (purchasedItem) {
                 onPurchaseSuccess?.(purchasedItem);
@@ -452,12 +454,15 @@ export default function InlineMarketPanel({
     const currentItem = marketItems[currentItemIndex];
     const currentSlotLabel = currentItemIndex + 1;
     const isCurrentCharm = currentItem ? isCharmItem(currentItem.item_id) : false;
+    const isCurrentSpinConsumable =
+        currentItem ? currentItem.effect_type === ItemEffectType.SpinBonus : false;
     const visibleInventoryCount = Array.from(ownedItemIds).filter((itemId) => itemId < 1000).length;
     const isOwned = currentItem
         ? ownedItemIds.has(currentItem.item_id) && !hiddenItemIds.includes(currentItem.item_id)
         : false;
     const wasPurchased = purchasedInCurrentMarket.has(currentItemIndex);
-    const isInventoryFull = visibleInventoryCount >= 7 && !isOwned && !isCurrentCharm;
+    const isInventoryFull =
+        visibleInventoryCount >= 7 && !isOwned && !isCurrentCharm && !isCurrentSpinConsumable;
     const canAfford = currentItem ? currentTickets >= currentItem.price : false;
     const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && purchasingSlot === null;
 
@@ -476,7 +481,7 @@ export default function InlineMarketPanel({
             case ItemEffectType.ScoreMultiplier:
                 return `x${val} score multiplier`;
             case ItemEffectType.SpinBonus:
-                return `+${val} extra spins`;
+                return `+${val} instant spins`;
             case ItemEffectType.LevelProgressionBonus:
                 return `-${val}% level requirement`;
             case ItemEffectType.SixSixSixProtection:

@@ -7,6 +7,7 @@ import { Pattern, detectPatterns } from "@/utils/patternDetector";
 
 const DEFAULT_SYMBOL_SCORES = [7, 5, 4, 3, 2];
 const DEFAULT_SPINS = 5;
+const MAX_CURRENT_SPINS = 8;
 const DEFAULT_TICKETS = 6;
 const BIBLIA_ITEM_ID = 40;
 const MARKET_SLOT_COUNT = 6;
@@ -44,6 +45,7 @@ export interface PracticeSpinOutcome {
   is666: boolean;
   isJackpot: boolean;
   bibliaUsed: boolean;
+  bibliaDiscarded: boolean;
   previousScore: number;
   previousLevel: number;
   awardedTickets: number;
@@ -178,15 +180,6 @@ function getProbabilityBonuses(items: ContractItem[]) {
   );
 }
 
-function getSpinBonus(items: ContractItem[]) {
-  return items.reduce((total, item) => {
-    if (item.effect_type !== ItemEffectType.SpinBonus) {
-      return total;
-    }
-    return total + item.effect_value;
-  }, 0);
-}
-
 function buildWeightedSymbols(items: ContractItem[]) {
   const bonuses = getProbabilityBonuses(items);
   return [
@@ -194,7 +187,7 @@ function buildWeightedSymbols(items: ContractItem[]) {
     15 + bonuses[1],
     20 + bonuses[2],
     25 + bonuses[3],
-    30 + bonuses[4],
+    20 + bonuses[4],
   ];
 }
 
@@ -329,6 +322,7 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
       is666: false,
       isJackpot: false,
       bibliaUsed: false,
+      bibliaDiscarded: false,
       previousScore: state.score,
       previousLevel: state.level,
       awardedTickets: 0,
@@ -341,13 +335,18 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
   const previousLevel = state.level;
   const inventoryItems = cloneItems(state.inventoryItems);
   let bibliaUsed = false;
+  let bibliaDiscarded = false;
   let is666 = spin.is666;
 
   if (is666) {
     const bibliaIndex = inventoryItems.findIndex((item) => item.item_id === BIBLIA_ITEM_ID);
     if (bibliaIndex >= 0) {
-      inventoryItems.splice(bibliaIndex, 1);
       bibliaUsed = true;
+      const discardRoll = takeRandomInt(spin.nextState, 100);
+      bibliaDiscarded = discardRoll.value < 50;
+      if (bibliaDiscarded) {
+        inventoryItems.splice(bibliaIndex, 1);
+      }
       is666 = false;
     }
   }
@@ -377,7 +376,7 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
     symbolScores: updatedScores,
     spinsRemaining: state.spinsRemaining - 1,
     sessionRevision: state.sessionRevision + 1,
-    inventoryRevision: state.inventoryRevision + (bibliaUsed ? 1 : 0),
+    inventoryRevision: state.inventoryRevision + (bibliaDiscarded ? 1 : 0),
   });
 
   if (is666) {
@@ -400,7 +399,7 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
       ...nextState,
       level: nextState.level + 1,
       tickets: nextState.tickets + 1,
-      spinsRemaining: DEFAULT_SPINS + getSpinBonus(nextState.inventoryItems),
+      spinsRemaining: DEFAULT_SPINS,
     };
     nextState = withDerivedState(leveledState);
   }
@@ -419,6 +418,7 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
     is666,
     isJackpot: spin.isJackpot,
     bibliaUsed,
+    bibliaDiscarded,
     previousScore,
     previousLevel,
     awardedTickets: getAwardedTickets(previousLevel, nextState.level),
@@ -443,22 +443,23 @@ export function buyPracticeItem(state: PracticeRunState, slotIndex: number): Pra
     return null;
   }
 
-  const inventoryItems = [...state.inventoryItems, { ...item }];
   const purchasedSlots = [...state.purchasedSlots, slotIndex];
+  const isSpinConsumable = item.effect_type === ItemEffectType.SpinBonus;
+  const inventoryItems = isSpinConsumable ? state.inventoryItems : [...state.inventoryItems, { ...item }];
   let nextState = withDerivedState({
     ...state,
     tickets: state.tickets - item.price,
     inventoryItems,
     purchasedSlots,
-    inventoryRevision: state.inventoryRevision + 1,
+    inventoryRevision: state.inventoryRevision + (isSpinConsumable ? 0 : 1),
     marketRevision: state.marketRevision + 1,
     sessionRevision: state.sessionRevision + 1,
   });
 
-  if (item.effect_type === ItemEffectType.SpinBonus) {
+  if (isSpinConsumable) {
     nextState = {
       ...nextState,
-      spinsRemaining: nextState.spinsRemaining + item.effect_value,
+      spinsRemaining: Math.min(MAX_CURRENT_SPINS, nextState.spinsRemaining + item.effect_value),
     };
   }
 
@@ -476,6 +477,9 @@ export function sellPracticeItem(state: PracticeRunState, itemId: number): Pract
   }
 
   const soldItem = state.inventoryItems[sellIndex];
+  if (soldItem.effect_type === ItemEffectType.SpinBonus) {
+    return null;
+  }
   const inventoryItems = state.inventoryItems.filter((_, index) => index !== sellIndex);
   const nextState = withDerivedState({
     ...state,

@@ -47,6 +47,7 @@ pub const WORLD_RESOURCE: felt252 = 0;
 
 // Session defaults
 pub const DEFAULT_SPINS: u32 = 5;
+pub const MAX_CURRENT_SPINS: u32 = 8;
 pub const DEFAULT_TICKETS: u32 = 6;
 
 // Default symbol scores

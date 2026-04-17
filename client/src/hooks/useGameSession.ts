@@ -897,9 +897,12 @@ export function useGameSession(sessionId: string | null) {
                     }
 
                     if (spinResult.bibliaUsed) {
-                        setBibliaDiscarded(true);
-                        setBibliaBroken(true);
-                        hideInventoryItem(BIBLIA_ITEM_ID);
+                        const discarded = events.bibliaDiscarded?.discarded ?? false;
+                        setBibliaDiscarded(discarded);
+                        setBibliaBroken(discarded);
+                        if (discarded) {
+                            hideInventoryItem(BIBLIA_ITEM_ID);
+                        }
                         setShowBibliaAnimation(true);
                         setInventoryRefreshTrigger(prev => prev + 1);
                         loadScoreBonuses();

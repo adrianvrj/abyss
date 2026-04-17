@@ -12,7 +12,7 @@ pub trait IRelic<T> {
 #[dojo::contract]
 pub mod Relic {
     use starknet::get_caller_address;
-    use crate::constants::NAMESPACE;
+    use crate::constants::{DEFAULT_SPINS, NAMESPACE};
     use crate::events::index::{MarketRefreshed, RelicActivated};
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::market::MarketImpl;
@@ -100,8 +100,7 @@ pub mod Relic {
             } else if effect == RelicEffectType::DoubleNextSpin {
                 session.relic_pending_effect = RelicEffectType::DoubleNextSpin;
             } else if effect == RelicEffectType::ResetSpins {
-                let spin_bonus = InventoryImpl::get_inventory_spin_bonus(@store, session_id);
-                session.spins_remaining = 5 + spin_bonus;
+                session.spins_remaining = DEFAULT_SPINS;
             } else if effect == RelicEffectType::FreeMarketRefresh {
                 let mut sm = store.session_market(session_id);
                 sm.refresh_count += 1;

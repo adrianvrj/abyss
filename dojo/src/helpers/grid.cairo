@@ -33,7 +33,7 @@ pub fn generate_grid_from_random(
     let prob_diamond = 15 + pd;
     let prob_cherry = 20 + pc;
     let prob_coin = 25 + p_coin;
-    let prob_lemon = 30 + pl;
+    let prob_lemon = 20 + pl;
     let total_prob = prob_seven + prob_diamond + prob_cherry + prob_coin + prob_lemon;
     let thresh_seven = prob_seven;
     let thresh_diamond = thresh_seven + prob_diamond;

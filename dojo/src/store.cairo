@@ -7,8 +7,8 @@ use ekubo::interfaces::router::IRouterDispatcher;
 use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
-    CharmMinted, ItemPurchased, ItemSold, MarketRefreshed, RelicActivated, RelicEquipped,
-    SessionCreated, SessionEnded, SpinCompleted,
+    BibliaDiscarded, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed, RelicActivated,
+    RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
@@ -336,6 +336,10 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_charm_minted(mut self: Store, event: @CharmMinted) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_biblia_discarded(mut self: Store, event: @BibliaDiscarded) {
         self.world.emit_event(event);
     }
 }

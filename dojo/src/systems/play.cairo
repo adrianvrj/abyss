@@ -222,13 +222,21 @@ pub mod Play {
 
             let mut next_item_count = spin_modifiers.item_count;
             let mut biblia_used = false;
+            let mut biblia_discarded = false;
             if is_666 {
                 let biblia_inventory = store.inventory(session_id, 40);
                 if biblia_inventory.quantity > 0 {
-                    InventoryImpl::remove_item_from_inventory(ref store, session_id, 40);
+                    let biblia_seed = poseidon_hash_span(
+                        array![session_id.into(), random_word, caller.into(), 40.into()].span(),
+                    );
+                    let biblia_roll_u256: u256 = biblia_seed.into();
+                    biblia_discarded = (biblia_roll_u256 % 100) < 50;
+                    if biblia_discarded {
+                        InventoryImpl::remove_item_from_inventory(ref store, session_id, 40);
+                    }
                     is_666 = false;
                     biblia_used = true;
-                    if biblia_inventory.quantity == 1 {
+                    if biblia_discarded && biblia_inventory.quantity == 1 {
                         next_item_count -= 1;
                     }
                 }
@@ -262,8 +270,7 @@ pub mod Play {
                 }
                 session.level += 1;
                 session.tickets += 1;
-                let spin_bonus = spin_modifiers.spin_bonus;
-                session.spins_remaining = 5 + spin_bonus;
+                session.spins_remaining = DEFAULT_SPINS;
             }
 
             if session.is_active && session.spins_remaining == 0 {
@@ -359,6 +366,16 @@ pub mod Play {
                         score_lemon: session.score_lemon,
                     },
                 );
+            if biblia_used {
+                store
+                    .emit_biblia_discarded(
+                        @crate::events::index::BibliaDiscarded {
+                            session_id,
+                            player: caller,
+                            discarded: biblia_discarded,
+                        },
+                    );
+            }
         }
 
         fn end_session(ref self: ContractState, session_id: u32) {
