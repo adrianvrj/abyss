@@ -33,6 +33,21 @@ pub trait ISetup<T> {
     fn set_pool_extension(ref self: T, address: ContractAddress);
     fn set_pool_sqrt(ref self: T, sqrt: u256);
     fn initialize_items(ref self: T);
+    fn set_item_pricing(ref self: T, item_id: u32, price: u32, sell_price: u32);
+    fn set_item_effect(
+        ref self: T, item_id: u32, effect_type: u8, effect_value: u32, target_symbol: felt252,
+    );
+    fn set_item_definition(
+        ref self: T,
+        item_id: u32,
+        name: felt252,
+        description: felt252,
+        price: u32,
+        sell_price: u32,
+        effect_type: u8,
+        effect_value: u32,
+        target_symbol: felt252,
+    );
     fn register_bundle(
         ref self: T,
         referral_percentage: u8,
@@ -99,7 +114,7 @@ pub mod Setup {
     };
     use crate::interfaces::charm_nft::{ICharmDispatcher, ICharmDispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicDispatcherTrait};
-    use crate::models::index::{Config, TokenPairId};
+    use crate::models::index::{Config, Item, TokenPairId};
     use crate::store::StoreTrait;
     use crate::systems::charm::NAME as CHARM_NAME;
     use crate::systems::play::{IPlayDispatcher, IPlayDispatcherTrait, NAME as PLAY_NAME};
@@ -693,6 +708,74 @@ pub mod Setup {
             let mut config = store.config();
             config.total_items = len;
             store.set_config(@config);
+        }
+
+        fn set_item_pricing(ref self: ContractState, item_id: u32, price: u32, sell_price: u32) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert(item_id > 0, 'Invalid item');
+
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut item = store.item(item_id);
+            item.price = price;
+            item.sell_price = sell_price;
+            store.set_item(@item);
+        }
+
+        fn set_item_effect(
+            ref self: ContractState,
+            item_id: u32,
+            effect_type: u8,
+            effect_value: u32,
+            target_symbol: felt252,
+        ) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert(item_id > 0, 'Invalid item');
+
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut item = store.item(item_id);
+            item.effect_type = effect_type;
+            item.effect_value = effect_value;
+            item.target_symbol = target_symbol;
+            store.set_item(@item);
+        }
+
+        fn set_item_definition(
+            ref self: ContractState,
+            item_id: u32,
+            name: felt252,
+            description: felt252,
+            price: u32,
+            sell_price: u32,
+            effect_type: u8,
+            effect_value: u32,
+            target_symbol: felt252,
+        ) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert(item_id > 0, 'Invalid item');
+
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            store
+                .set_item(
+                    @Item {
+                        item_id,
+                        name,
+                        description,
+                        price,
+                        sell_price,
+                        effect_type,
+                        effect_value,
+                        target_symbol,
+                    },
+                );
+
+            let mut config = store.config();
+            if item_id > config.total_items {
+                config.total_items = item_id;
+                store.set_config(@config);
+            }
         }
 
         fn register_bundle(

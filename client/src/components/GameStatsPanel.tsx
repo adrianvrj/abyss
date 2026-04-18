@@ -8,6 +8,7 @@ import {
     getPatternBonusMap,
     getPatternRetriggerMap,
 } from '@/lib/patternMath';
+import { CHIP_TOKEN_IMAGE_URL } from '@/lib/constants';
 import { getSymbolProbabilityDistribution } from '@/utils/itemEffects';
 
 interface GameStatsPanelProps {
@@ -25,6 +26,7 @@ interface GameStatsPanelProps {
     blocked666?: boolean;
     itemsOverride?: ContractItem[];
     practiceMode?: boolean;
+    diamondChipBonusUnits?: number;
 }
 
 const symbolNameToType: Record<string, SymbolType> = {
@@ -52,6 +54,7 @@ export default function GameStatsPanel({
     blocked666 = false,
     itemsOverride = EMPTY_ARRAY,
     practiceMode = false,
+    diamondChipBonusUnits = 0,
 }: GameStatsPanelProps) {
     const [fetchedItems, setFetchedItems] = useState<ContractItem[]>([]);
     const [items, setItems] = useState<ContractItem[]>([]);
@@ -177,7 +180,7 @@ export default function GameStatsPanel({
 
     function getModifiedSymbols(): (SymbolConfig & {
         points: number;
-        probBonus: number;
+        weightDelta: number;
         probabilityDelta: number;
     })[] {
         const scoreIndices: Record<string, number> = {
@@ -197,7 +200,7 @@ export default function GameStatsPanel({
         return DEFAULT_GAME_CONFIG.symbols
             .filter(s => s.type !== 'six')
             .map(symbol => {
-                let probBonus = 0;
+                let weightDelta = 0;
                 let fallbackPointBonus = 0;
 
                 items.forEach(item => {
@@ -208,8 +211,12 @@ export default function GameStatsPanel({
                         fallbackPointBonus += item.effect_value;
                     }
 
-                    if (item.effect_type === ItemEffectType.SymbolProbabilityBoost && matchesSymbol) {
-                        probBonus += item.effect_value;
+                    if (item.effect_type === ItemEffectType.SymbolProbabilityBoost) {
+                        if (item.target_symbol === 'anti-coin' && symbol.type === 'coin') {
+                            weightDelta -= item.effect_value;
+                        } else if (matchesSymbol) {
+                            weightDelta += item.effect_value;
+                        }
                     }
                 });
 
@@ -224,7 +231,7 @@ export default function GameStatsPanel({
                     ...symbol,
                     points: currentScore,
                     probability: probabilityEntry?.probability ?? symbol.probability,
-                    probBonus,
+                    weightDelta,
                     probabilityDelta: probabilityEntry?.delta ?? 0,
                 };
             });
@@ -307,6 +314,43 @@ export default function GameStatsPanel({
                         color: '#FFEA00',
                     }}>{spinsRemaining}</span>
                 </div>
+                {diamondChipBonusUnits > 0 && (
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        background: 'rgba(255, 209, 102, 0.08)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 209, 102, 0.18)'
+                    }}>
+                        <span style={{
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: '9px',
+                            color: 'rgba(255, 255, 255, 0.5)',
+                        }}>DIAMOND CHIP</span>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontFamily: "'PressStart2P', monospace",
+                            fontSize: '12px',
+                            color: '#FFD166',
+                        }}>
+                            +{diamondChipBonusUnits}
+                            <img
+                                src={CHIP_TOKEN_IMAGE_URL}
+                                alt="CHIP"
+                                width={14}
+                                height={14}
+                                loading="lazy"
+                                style={{ objectFit: 'contain' }}
+                            />
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Luck Row */}
@@ -359,7 +403,7 @@ export default function GameStatsPanel({
                             symbolType={symbol.type}
                             points={symbol.points}
                             probability={symbol.probability}
-                            probBonus={symbol.probBonus}
+                            weightDelta={symbol.weightDelta}
                             probabilityDelta={symbol.probabilityDelta}
                         />
                     ))}
@@ -474,31 +518,25 @@ interface SymbolRowProps {
     symbolType: SymbolType;
     points: number;
     probability: number;
-    probBonus: number;
+    weightDelta: number;
     probabilityDelta: number;
 }
 
-function SymbolRow({ symbolType, points, probability, probBonus, probabilityDelta }: SymbolRowProps) {
+function SymbolRow({ symbolType, points, probability, weightDelta, probabilityDelta }: SymbolRowProps) {
     const info = SYMBOL_INFO[symbolType];
     const basePoints = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbolType)?.points || 0;
-    const hasProbBonus = probBonus > 0;
+    const hasWeightShift = weightDelta !== 0;
     const hasProbShift = Math.abs(probabilityDelta) >= 0.05;
     const isBaseScore = points > basePoints;
-    const hasAnyBonus = isBaseScore || hasProbBonus || hasProbShift;
+    const hasAnyBonus = isBaseScore || hasWeightShift || hasProbShift;
     const probabilityColor =
         probabilityDelta > 0.05
             ? '#00FF64'
             : probabilityDelta < -0.05
                 ? '#FF7A7A'
                 : '#666';
-    const probabilityShiftLabel =
-        probabilityDelta > 0.05
-            ? `+${Math.abs(probabilityDelta).toFixed(1)}`
-            : probabilityDelta < -0.05
-                ? `-${Math.abs(probabilityDelta).toFixed(1)}`
-                : null;
     const rowBackground =
-        probabilityDelta < -0.05
+        weightDelta < 0
             ? 'rgba(255, 122, 122, 0.1)'
             : hasAnyBonus
                 ? 'rgba(0, 255, 100, 0.1)'
@@ -543,9 +581,6 @@ function SymbolRow({ symbolType, points, probability, probBonus, probabilityDelt
                 color: probabilityColor,
             }}>
                 {probability.toFixed(1)}%
-                {probabilityShiftLabel && (
-                    <span style={{ fontSize: '7px' }}> ({probabilityShiftLabel})</span>
-                )}
             </span>
         </div>
     );

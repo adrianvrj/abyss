@@ -10,7 +10,13 @@ interface OwnedRelic {
   cooldown: number;
 }
 
-const EMPTY_RELICS: OwnedRelic[] = [];
+const PRACTICE_RELICS: OwnedRelic[] = [
+  { tokenId: 1n, relicId: 1, name: "Mortis", cooldown: 13 },
+  { tokenId: 2n, relicId: 2, name: "Phantom", cooldown: 10 },
+  { tokenId: 3n, relicId: 3, name: "Lucky the Dealer", cooldown: 9 },
+  { tokenId: 4n, relicId: 4, name: "Scorcher", cooldown: 9 },
+  { tokenId: 5n, relicId: 5, name: "Inferno", cooldown: 9 },
+];
 const EMPTY_ITEMS: ContractItem[] = [];
 const EMPTY_PATTERNS: Pattern[] = [];
 
@@ -31,6 +37,8 @@ export function usePracticeSession() {
     buyItem,
     sellItem,
     refreshMarket,
+    equipRelic,
+    activateRelic,
     playAgain,
   } = usePractice();
 
@@ -57,6 +65,7 @@ export function usePracticeSession() {
   const [showLuckyScoreBoostAnimation, setShowLuckyScoreBoostAnimation] = useState(false);
   const [luckyScoreBoostTotal, setLuckyScoreBoostTotal] = useState(0);
   const [luckyScoreBoostBonus, setLuckyScoreBoostBonus] = useState(0);
+  const [showCashOutAnimation, setShowCashOutAnimation] = useState(false);
   const [relicIndex, setRelicIndex] = useState(0);
   const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
   const [isSelling, setIsSelling] = useState(false);
@@ -136,6 +145,7 @@ export function usePracticeSession() {
     setShowLuckyScoreBoostAnimation(false);
     setLuckyScoreBoostTotal(0);
     setLuckyScoreBoostBonus(0);
+    setShowCashOutAnimation(false);
     setItemToSell(null);
   }, []);
 
@@ -201,6 +211,7 @@ export function usePracticeSession() {
     setShowingPatterns(false);
     setShowGameOver(false);
     setGameOverReason(null);
+    const luckyWasActive = currentRun.pendingRelicEffect === 2;
     setShowLuckyScoreBoostAnimation(false);
     setLuckyScoreBoostTotal(0);
     setLuckyScoreBoostBonus(0);
@@ -235,6 +246,10 @@ export function usePracticeSession() {
       setShowBibliaAnimation(true);
     }
 
+    if (outcome.cashOutSucceeded) {
+      setShowCashOutAnimation(true);
+    }
+
     if (outcome.is666) {
       setScoreResetPreviousScore(outcome.previousScore);
       setShowScoreResetAnimation(true);
@@ -244,6 +259,16 @@ export function usePracticeSession() {
       if (outcome.patterns.length > 0) {
         setShowingPatterns(true);
       }
+
+      if (luckyWasActive && outcome.scoreGained > 0) {
+        const baseScore = Math.floor(outcome.scoreGained / 5);
+        const luckyBonus = Math.max(0, outcome.scoreGained - baseScore);
+        window.setTimeout(() => {
+          setLuckyScoreBoostTotal(outcome.scoreGained);
+          setLuckyScoreBoostBonus(luckyBonus);
+          setShowLuckyScoreBoostAnimation(true);
+        }, outcome.patterns.length > 0 ? Math.max(500, outcome.patterns.length * 250) : 350);
+      }
     }
 
     if (outcome.isJackpot) {
@@ -252,13 +277,20 @@ export function usePracticeSession() {
 
     setIsSpinning(false);
 
-    const sequenceDelay = outcome.is666 ? 1900 : Math.max(1000, outcome.patterns.length * 400 + 600);
+    const sequenceDelay = outcome.cashOutSucceeded
+      ? 2400
+      : outcome.is666
+        ? 1900
+        : Math.max(1000, outcome.patterns.length * 400 + 600);
 
     if (outcome.endedRun) {
       window.setTimeout(() => {
         setFinalScore(outcome.nextState.score);
         setFinalTotalScore(outcome.nextState.totalScore);
-        setChipsEarned(0);
+        setChipsEarned(
+          Math.floor(Math.max(0, outcome.nextState.score) / 20)
+            + outcome.nextState.diamondChipBonusUnits,
+        );
         setGameOverBuildItems(outcome.nextState.inventoryItems);
         setGameOverReason("no_spins");
         setShowGameOver(true);
@@ -278,6 +310,39 @@ export function usePracticeSession() {
   const registerInventoryItemAcquired = useCallback((_item: ContractItem) => {
     return;
   }, []);
+
+  const equippedRelic = PRACTICE_RELICS.find((relic) => relic.relicId === (run?.equippedRelicId ?? 0)) ?? null;
+
+  const handleActivateRelic = useCallback(async () => {
+    const currentRun = runRef.current;
+    if (!currentRun || !equippedRelic || currentRun.relicCooldownRemaining > 0) {
+      return;
+    }
+
+    const outcome = activateRelic();
+    if (!outcome) {
+      return;
+    }
+
+    if (outcome.relicId === 4) {
+      setFinalScore(outcome.nextState.score);
+      setFinalTotalScore(outcome.nextState.totalScore);
+      setChipsEarned(
+        Math.floor(Math.max(0, outcome.nextState.score) / 20)
+          + outcome.nextState.diamondChipBonusUnits,
+      );
+      setGameOverBuildItems(outcome.nextState.inventoryItems);
+      setGameOverReason("scorched");
+      setShowGameOver(true);
+      return;
+    }
+
+    setShowRelicActivation(true);
+  }, [activateRelic, equippedRelic]);
+
+  const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {
+    equipRelic(relic.relicId);
+  }, [equipRelic]);
 
   return {
     practiceMode: true,
@@ -299,7 +364,7 @@ export function usePracticeSession() {
     showingPatterns,
     symbolScores: run?.symbolScores ?? [7, 5, 4, 3, 2],
     blocked666: run?.blocked666 ?? false,
-    pendingRelicEffect: null,
+    pendingRelicEffect: run?.pendingRelicEffect ?? null,
     setScore: noopNumberSetter,
     setTickets: noopNumberSetter,
     setSpinsRemaining: noopNumberSetter,
@@ -312,6 +377,7 @@ export function usePracticeSession() {
     finalScore,
     finalTotalScore,
     chipsEarned,
+    diamondChipBonusUnits: run?.diamondChipBonusUnits ?? 0,
     chipsClaimed,
     gameOverBuildItems,
     setShowGameOver,
@@ -326,18 +392,20 @@ export function usePracticeSession() {
     showLuckyScoreBoostAnimation,
     luckyScoreBoostTotal,
     luckyScoreBoostBonus,
+    showCashOutAnimation,
     setShowBibliaAnimation,
     setShowCharmAnimation,
     setMintedCharmInfo,
     setShowRelicActivation,
     setShowScoreResetAnimation,
     setShowLuckyScoreBoostAnimation,
+    setShowCashOutAnimation,
     setGameOverReason,
-    equippedRelic: null,
-    ownedRelics: EMPTY_RELICS,
+    equippedRelic,
+    ownedRelics: PRACTICE_RELICS,
     isActivatingRelic: false,
     isEquippingRelic: false,
-    relicCooldownRemaining: 0,
+    relicCooldownRemaining: run?.relicCooldownRemaining ?? 0,
     relicIndex,
     setRelicIndex,
     itemToSell,
@@ -356,12 +424,8 @@ export function usePracticeSession() {
     setLastMarketEvent,
     registerInventoryItemAcquired,
     handleSpin,
-    handleActivateRelic: async () => {
-      return;
-    },
-    handleEquipRelic: async (_relic: OwnedRelic) => {
-      return;
-    },
+    handleActivateRelic,
+    handleEquipRelic,
     handleSellConfirm,
     playSound,
     handlePracticeBuy,

@@ -7,6 +7,7 @@ pub mod ItemEffectType {
     pub const SpinBonus: u8 = 4;
     pub const LevelProgressionBonus: u8 = 5;
     pub const SixSixSixProtection: u8 = 6;
+    pub const SixSixSixCashOut: u8 = 11;
 }
 
 /// Relic effect types - active equipment effects

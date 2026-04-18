@@ -48,7 +48,7 @@ pub const WORLD_RESOURCE: felt252 = 0;
 // Session defaults
 pub const DEFAULT_SPINS: u32 = 5;
 pub const MAX_CURRENT_SPINS: u32 = 8;
-pub const DEFAULT_TICKETS: u32 = 6;
+pub const DEFAULT_TICKETS: u32 = 8;
 
 // Default symbol scores
 pub const DEFAULT_SCORE_SEVEN: u32 = 7;
@@ -82,7 +82,7 @@ pub const JACKPOT_THREE_SEVENS: u32 = 3;
 // Market
 pub const MARKET_SLOTS: u32 = 6;
 pub const BASE_REFRESH_COST: u32 = 50;
-pub const TOTAL_ITEMS: u32 = 40;
+pub const TOTAL_ITEMS: u32 = 41;
 
 // CHIP token
 pub const CHIP_DECIMALS: u32 = 18;

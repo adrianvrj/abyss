@@ -4,6 +4,8 @@ import {
   getCharmDropChance as readCharmDropChance,
   getChipsToClaim as readChipsToClaim,
   getGameItem,
+  getSessionChipBonusUnits as readSessionChipBonusUnits,
+  getSessionChipPayout as readSessionChipPayout,
   getSessionInventoryCount as readSessionInventoryCount,
   getSessionLuck as readSessionLuck,
 } from "@/api/rpc/play";
@@ -48,6 +50,7 @@ export enum ItemEffectType {
   SpinBonus = 4,
   LevelProgressionBonus = 5,
   SixSixSixProtection = 6,
+  SixSixSixCashOut = 11,
   CharmEffect = 7,
 }
 
@@ -261,9 +264,12 @@ export async function getItemInfo(itemId: number): Promise<ContractItem> {
     return null;
   });
   const fallback = STATIC_ITEM_DEFINITIONS[itemId];
+  const preferStaticDescription = new Set([2, 8, 17, 26, 27, 31, 32, 35, 36, 41]).has(itemId);
 
   const resolvedName = item?.name || fallback?.name || `Item #${itemId}`;
-  const resolvedDescription = item?.description || fallback?.description || "";
+  const resolvedDescription = preferStaticDescription
+    ? (fallback?.description || item?.description || "")
+    : (item?.description || fallback?.description || "");
   const resolvedPrice =
     item && item.price > 0 ? item.price : (fallback?.price ?? 0);
   const resolvedSellPrice =
@@ -395,6 +401,14 @@ export async function getAvailableBeastSessions(playerAddress: string): Promise<
 
 export async function getChipsToClaim(sessionId: number): Promise<bigint> {
   return readChipsToClaim(DEFAULT_CHAIN_ID, sessionId);
+}
+
+export async function getSessionChipPayout(sessionId: number): Promise<bigint> {
+  return readSessionChipPayout(DEFAULT_CHAIN_ID, sessionId);
+}
+
+export async function getSessionChipBonusUnits(sessionId: number): Promise<number> {
+  return readSessionChipBonusUnits(DEFAULT_CHAIN_ID, sessionId);
 }
 
 export async function claimChips(sessionId: number, executor: any): Promise<any> {

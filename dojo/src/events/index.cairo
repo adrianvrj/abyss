@@ -188,3 +188,17 @@ pub struct BibliaDiscarded {
     pub player: ContractAddress,
     pub discarded: bool,
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CASH OUT RESOLVED
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct CashOutResolved {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub succeeded: bool,
+}

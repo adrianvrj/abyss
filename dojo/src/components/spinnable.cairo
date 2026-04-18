@@ -7,6 +7,7 @@ pub impl SpinnableImpl of SpinnableTrait {
         random_word: felt252,
         luck: u32,
         probability_bonuses: (u32, u32, u32, u32, u32),
+        coin_probability_penalty: u32,
         probability_666: u32,
         retrigger_bonuses: (u32, u32, u32, u32),
         pattern_bonuses: (u32, u32, u32, u32, u32, u32),
@@ -18,7 +19,7 @@ pub impl SpinnableImpl of SpinnableTrait {
             crate::helpers::grid::generate_jackpot_grid(random_word)
         } else {
             crate::helpers::grid::generate_grid_from_random(
-                random_word, luck, probability_bonuses, probability_666,
+                random_word, luck, probability_bonuses, coin_probability_penalty, probability_666,
             )
         };
 

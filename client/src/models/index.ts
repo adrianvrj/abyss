@@ -45,5 +45,6 @@ export {
   type RelicEquippedEvent,
   type CharmMintedEvent,
   type BibliaDiscardedEvent,
+  type CashOutResolvedEvent,
   type ParsedGameEvents,
 } from "@/models/game-events";

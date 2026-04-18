@@ -31,6 +31,14 @@ export function applyItemEffects(
     ownedItems
         .filter(item => item.effect_type === ItemEffectType.SymbolProbabilityBoost)
         .forEach(item => {
+            if (item.target_symbol === 'anti-coin') {
+                const coinSymbol = modifiedConfig.symbols.find((symbol) => symbol.type === 'coin');
+                if (coinSymbol) {
+                    coinSymbol.probability = Math.max(0, coinSymbol.probability - item.effect_value);
+                }
+                return;
+            }
+
             const symbolConfig = modifiedConfig.symbols.find(s => s.type === item.target_symbol);
             if (symbolConfig) {
                 symbolConfig.probability += item.effect_value;
@@ -68,10 +76,18 @@ export function getSymbolProbabilityDistribution(
                 return sum + item.effect_value;
             }
 
+            if (
+                item.effect_type === ItemEffectType.SymbolProbabilityBoost &&
+                item.target_symbol === 'anti-coin' &&
+                symbol.type === 'coin'
+            ) {
+                return sum - item.effect_value;
+            }
+
             return sum;
         }, 0);
 
-        const finalWeight = symbol.probability + bonusWeight;
+        const finalWeight = Math.max(0, symbol.probability + bonusWeight);
 
         return {
             type: symbol.type,

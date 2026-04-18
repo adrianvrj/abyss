@@ -6,7 +6,8 @@ use crate::constants::{
 use crate::helpers::grid::generate_grid_from_random;
 use crate::models::index::{
     Config, Item, MarketSlotPurchased, Session, SessionCharmEntry, SessionCharms,
-    SessionInventory, SessionItemEntry, SessionItemIndex, SessionMarket, SpinResult,
+    SessionChipBonus, SessionInventory, SessionItemEntry, SessionItemIndex, SessionMarket,
+    SpinResult,
 };
 use crate::store::StoreTrait;
 use crate::systems::market::{IMarketDispatcher, IMarketDispatcherTrait};
@@ -43,6 +44,7 @@ fn profile_execute_spin_hot_path() {
             random_word,
             24,
             probability_bonuses,
+            0,
             18,
             retrigger_bonuses,
             pattern_bonuses,
@@ -80,7 +82,7 @@ fn profile_generate_grid_hot_path() {
     while i != PROFILE_ITERATIONS {
         let random_word: felt252 = (0xC011EC7_u32 + i).into();
         let (grid, is_666, is_jackpot) = generate_grid_from_random(
-            random_word, 24, probability_bonuses, 18,
+            random_word, 24, probability_bonuses, 0, 18,
         );
 
         checksum += (*grid.at(0)).into();
@@ -113,6 +115,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
         TestResource::Model(declared_class_hash("m_Config")),
         TestResource::Model(declared_class_hash("m_Session")),
         TestResource::Model(declared_class_hash("m_SpinResult")),
+        TestResource::Model(declared_class_hash("m_SessionChipBonus")),
         TestResource::Model(declared_class_hash("m_SessionInventory")),
         TestResource::Model(declared_class_hash("m_Item")),
         TestResource::Model(declared_class_hash("m_SessionItemIndex")),
@@ -134,6 +137,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
             array![
                 selector_from_names(@NAMESPACE(), @"Session"),
                 selector_from_names(@NAMESPACE(), @"SpinResult"),
+                selector_from_names(@NAMESPACE(), @"SessionChipBonus"),
                 selector_from_names(@NAMESPACE(), @"SpinCompleted"),
             ]
                 .span(),
@@ -309,6 +313,7 @@ fn seed_request_spin_profile_session(
             },
         );
     world.write_model_test(@SessionItemIndex { session_id, count: 4 });
+    world.write_model_test(@SessionChipBonus { session_id, bonus_units: 0 });
     world.write_model_test(@SessionItemEntry { session_id, index: 0, item_id: 1 });
     world.write_model_test(@SessionItemEntry { session_id, index: 1, item_id: 2 });
     world.write_model_test(@SessionItemEntry { session_id, index: 2, item_id: 3 });

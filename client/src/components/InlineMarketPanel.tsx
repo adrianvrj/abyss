@@ -12,6 +12,7 @@ import {
 } from '@/utils/abyssContract';
 import { getItemImage } from '@/utils/itemImages';
 import { SYMBOL_INFO } from '@/utils/GameConfig';
+import { CHIP_TOKEN_IMAGE_URL } from '@/lib/constants';
 import { RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAccount } from '@starknet-react/core';
 
@@ -24,6 +25,13 @@ function logMarketDebug(stage: string, payload?: unknown) {
     }
 
     console.log(`[ABYSS_MARKET] ${stage}`, payload);
+}
+
+function getDiamondChipBonus(item: ContractItem) {
+    if (item.item_id === 2 || item.item_id === 8) return 1;
+    if (item.item_id === 26 || item.item_id === 27) return 2;
+    if (item.item_id === 35 || item.item_id === 36) return 3;
+    return 0;
 }
 
 interface InlineMarketPanelProps {
@@ -475,6 +483,9 @@ export default function InlineMarketPanel({
             case ItemEffectType.DirectScoreBonus:
                 return target ? `+${val} pts to ${target}` : `+${val} pts`;
             case ItemEffectType.SymbolProbabilityBoost:
+                if (target === 'anti-coin') {
+                    return `-${val} coin weight`;
+                }
                 return target ? `+${val}% ${target} chance` : `+${val}% chance`;
             case ItemEffectType.PatternMultiplierBoost:
                 return (target && target !== '0') ? `+${val}% ${target} patterns` : `+${val}% all patterns`;
@@ -491,6 +502,118 @@ export default function InlineMarketPanel({
         }
     }
 
+    function renderDiamondChipBonus(item: ContractItem) {
+        const chipBonus = getDiamondChipBonus(item);
+        if (!chipBonus) {
+            return null;
+        }
+
+        return (
+            <span className="desktop-effect-inline desktop-effect-chip">
+                <span>+{chipBonus}</span>
+                <img
+                    src={CHIP_TOKEN_IMAGE_URL}
+                    alt="CHIP"
+                    width={11}
+                    height={11}
+                    loading="lazy"
+                />
+            </span>
+        );
+    }
+
+    function renderEffectDisplay(item: ContractItem, compact = false) {
+        if (item.effect_type === ItemEffectType.SymbolProbabilityBoost && item.target_symbol === 'anti-coin') {
+            return (
+                <span className={`desktop-effect-inline ${compact ? 'compact-effect' : ''}`}>
+                    <span>-{item.effect_value}</span>
+                    <img
+                        src={SYMBOL_INFO.coin.image}
+                        alt={SYMBOL_INFO.coin.name}
+                        width={compact ? 16 : 11}
+                        height={compact ? 16 : 11}
+                        loading="lazy"
+                    />
+                    <span>weight</span>
+                </span>
+            );
+        }
+
+        if (
+            (item.effect_type === ItemEffectType.DirectScoreBonus || item.effect_type === ItemEffectType.SymbolProbabilityBoost)
+            && item.target_symbol === 'diamond'
+        ) {
+            const primary = item.effect_type === ItemEffectType.DirectScoreBonus
+                ? (
+                    <span className="desktop-effect-inline">
+                        <span>+{item.effect_value}</span>
+                        <img
+                            src={SYMBOL_INFO.diamond.image}
+                            alt={SYMBOL_INFO.diamond.name}
+                            width={compact ? 16 : 11}
+                            height={compact ? 16 : 11}
+                            loading="lazy"
+                        />
+                    </span>
+                )
+                : (
+                    <span className="desktop-effect-inline">
+                        <span>+{item.effect_value}%</span>
+                        <img
+                            src={SYMBOL_INFO.diamond.image}
+                            alt={SYMBOL_INFO.diamond.name}
+                            width={compact ? 16 : 11}
+                            height={compact ? 16 : 11}
+                            loading="lazy"
+                        />
+                    </span>
+                );
+
+            const chip = renderDiamondChipBonus(item);
+            return (
+                <span className={`effect-stack ${compact ? 'compact-effect' : ''}`}>
+                    {primary}
+                    {chip}
+                </span>
+            );
+        }
+
+        const targetSymbol = item.target_symbol as keyof typeof SYMBOL_INFO | '';
+        const symbolInfo = targetSymbol && targetSymbol in SYMBOL_INFO ? SYMBOL_INFO[targetSymbol] : null;
+
+        if (item.effect_type === ItemEffectType.DirectScoreBonus && symbolInfo) {
+            return (
+                <span className={`desktop-effect-inline ${compact ? 'compact-effect' : ''}`}>
+                    <span>+{item.effect_value}</span>
+                    <img
+                        src={symbolInfo.image}
+                        alt={symbolInfo.name}
+                        width={compact ? 16 : 11}
+                        height={compact ? 16 : 11}
+                        loading="lazy"
+                    />
+                </span>
+            );
+        }
+
+        if (item.effect_type === ItemEffectType.SymbolProbabilityBoost && symbolInfo) {
+            return (
+                <span className={`desktop-effect-inline ${compact ? 'compact-effect' : ''}`}>
+                    <span>+{item.effect_value}%</span>
+                    <img
+                        src={symbolInfo.image}
+                        alt={symbolInfo.name}
+                        width={compact ? 16 : 11}
+                        height={compact ? 16 : 11}
+                        loading="lazy"
+                    />
+                </span>
+            );
+        }
+
+        return getEffectDetails(item);
+    }
+
     function getRarityColor(rarity: string): string {
         switch (rarity) {
             case 'Legendary': return '#FFD700';
@@ -505,41 +628,7 @@ export default function InlineMarketPanel({
             return charmInfo.effect || charmInfo.description;
         }
 
-        const targetSymbol = item.target_symbol as keyof typeof SYMBOL_INFO | '';
-        const symbolInfo = targetSymbol && targetSymbol in SYMBOL_INFO ? SYMBOL_INFO[targetSymbol] : null;
-
-        if (item.effect_type === ItemEffectType.DirectScoreBonus && symbolInfo) {
-            return (
-                <span className="desktop-effect-inline">
-                    <span>+{item.effect_value}</span>
-                    <img
-                        src={symbolInfo.image}
-                        alt={symbolInfo.name}
-                        width={11}
-                        height={11}
-                        loading="lazy"
-                    />
-                </span>
-            );
-        }
-
-        if (item.effect_type === ItemEffectType.SymbolProbabilityBoost && symbolInfo) {
-            return (
-                <span className="desktop-effect-inline">
-                    <span>+{item.effect_value}%</span>
-                    <img
-                        src={symbolInfo.image}
-                        alt={symbolInfo.name}
-                        width={11}
-                        height={11}
-                        loading="lazy"
-                    />
-                    <span>chance</span>
-                </span>
-            );
-        }
-
-        return getEffectDetails(item);
+        return renderEffectDisplay(item);
     }
 
     if (loading) {
@@ -707,7 +796,7 @@ export default function InlineMarketPanel({
                                             />
                                         </div>
                                         <div className="item-name">{item.name}</div>
-                                        <div className="effect-badge">{getEffectDetails(item)}</div>
+                                        <div className="effect-badge">{renderEffectDisplay(item, true)}</div>
                                     </>
                                 )}
                             </div>
@@ -826,6 +915,9 @@ const styles = `
         font-size: 9px;
         padding: 5px 10px;
         border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
     .sold-state {
         display: flex;
@@ -953,6 +1045,19 @@ const styles = `
         justify-content: center;
         gap: 4px;
         color: #fff;
+    }
+    .effect-stack {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .compact-effect {
+        color: #000;
+    }
+    .desktop-effect-chip img {
+        border-radius: 999px;
     }
     .desktop-market-buy {
         margin-top: auto;

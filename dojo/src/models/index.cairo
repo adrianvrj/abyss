@@ -149,6 +149,14 @@ pub struct SessionMarket {
     pub item_slot_6: u32,
 }
 
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct SessionChipBonus {
+    #[key]
+    pub session_id: u32,
+    pub bonus_units: u32,
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SESSION INVENTORY - Items owned per session
 // ═══════════════════════════════════════════════════════════════════════════

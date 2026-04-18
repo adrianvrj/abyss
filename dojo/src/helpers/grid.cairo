@@ -14,6 +14,7 @@ pub fn generate_grid_from_random(
     random_word: felt252,
     luck: u32,
     probability_bonuses: (u32, u32, u32, u32, u32),
+    coin_probability_penalty: u32,
     probability_666: u32,
 ) -> (Array<u8>, bool, bool) {
     let mut grid: Array<u8> = array![];
@@ -32,7 +33,12 @@ pub fn generate_grid_from_random(
     let prob_seven = 10 + p7;
     let prob_diamond = 15 + pd;
     let prob_cherry = 20 + pc;
-    let prob_coin = 25 + p_coin;
+    let raw_prob_coin = 25 + p_coin;
+    let prob_coin = if coin_probability_penalty >= raw_prob_coin {
+        0
+    } else {
+        raw_prob_coin - coin_probability_penalty
+    };
     let prob_lemon = 20 + pl;
     let total_prob = prob_seven + prob_diamond + prob_cherry + prob_coin + prob_lemon;
     let thresh_seven = prob_seven;

@@ -1,9 +1,24 @@
 use starknet::ContractAddress;
+use crate::constants::CHIP_SCORE_DIVISOR;
 use crate::models::index::{Config, Item, Session, SessionMarket, SpinResult};
 
 #[inline]
 pub fn NAME() -> ByteArray {
     "Play"
+}
+
+#[inline(always)]
+pub fn get_total_chip_units(score: u32, bonus_units: u32) -> u32 {
+    (score / CHIP_SCORE_DIVISOR) + bonus_units
+}
+
+#[inline(always)]
+pub fn get_chip_payout_amount(
+    score: u32, bonus_units: u32, chip_emission_rate: u32, chip_boost_multiplier: u32,
+) -> u256 {
+    (get_total_chip_units(score, bonus_units).into()
+        * chip_emission_rate.into()
+        * chip_boost_multiplier.into()) * 1_000_000_000_000_000_000
 }
 
 #[starknet::interface]
@@ -26,6 +41,8 @@ pub trait IPlay<T> {
     fn get_session_inventory_count(self: @T, session_id: u32) -> u32;
     fn get_charm_drop_chance(self: @T, session_id: u32) -> u32;
     fn get_chips_to_claim(self: @T, session_id: u32) -> u256;
+    fn get_session_chip_payout(self: @T, session_id: u32) -> u256;
+    fn get_session_chip_bonus_units(self: @T, session_id: u32) -> u32;
     fn get_session_items(self: @T, session_id: u32) -> Span<(u32, u32)>;
     fn get_spin_result(self: @T, session_id: u32) -> SpinResult;
     fn get_level_threshold(self: @T, level: u32) -> u32;
@@ -44,8 +61,8 @@ pub mod Play {
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::{ContractAddress, get_caller_address};
     use crate::constants::{
-        CHIP_SCORE_DIVISOR, DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND,
-        DEFAULT_SCORE_LEMON, DEFAULT_SCORE_SEVEN, DEFAULT_SPINS, DEFAULT_TICKETS, NAMESPACE,
+        DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
+        DEFAULT_SCORE_SEVEN, DEFAULT_SPINS, DEFAULT_TICKETS, NAMESPACE,
     };
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::pricing::PricingImpl;
@@ -55,7 +72,9 @@ pub mod Play {
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicERC721Dispatcher, IRelicERC721DispatcherTrait};
     use crate::interfaces::vrf::{IVrfProviderDispatcherTrait, Source};
-    use crate::models::index::{Config, Item, PlayerSessionEntry, Session, SpinResult};
+    use crate::models::index::{
+        Config, Item, PlayerSessionEntry, Session, SessionChipBonus, SpinResult,
+    };
     use crate::store::{Store, StoreTrait};
     use crate::systems::collection_system::{
         ICollectionDispatcher, ICollectionDispatcherTrait, NAME as COLLECTION_NAME,
@@ -65,6 +84,8 @@ pub mod Play {
     use super::*;
 
     const LEADERBOARD_ID: felt252 = 1;
+    const BIBLIA_ITEM_ID: u32 = 40;
+    const CASH_OUT_ITEM_ID: u32 = 41;
 
     // Components
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
@@ -181,6 +202,10 @@ pub mod Play {
             let mut store = StoreTrait::new(world);
 
             let mut session = store.session(session_id);
+            let mut session_chip_bonus = store.session_chip_bonus(session_id);
+            if session_chip_bonus.session_id == 0 {
+                session_chip_bonus.session_id = session_id;
+            }
             assert(session.player_address == caller, 'Not session owner');
             assert(session.is_active, 'Session not active');
             assert(session.spins_remaining > 0, 'No spins remaining');
@@ -197,6 +222,7 @@ pub mod Play {
             let spin_modifiers = InventoryImpl::get_spin_cycle_modifiers(@store, session_id, @session);
             let luck = spin_modifiers.effective_luck;
             let prob_bonuses = spin_modifiers.probability_bonuses;
+            let coin_probability_penalty = spin_modifiers.coin_probability_penalty;
             let retrigger_bonuses = spin_modifiers.retrigger_bonuses;
             let pattern_bonuses = spin_modifiers.pattern_bonuses;
             let symbol_scores = spin_modifiers.symbol_scores;
@@ -207,6 +233,7 @@ pub mod Play {
                 random_word,
                 luck,
                 prob_bonuses,
+                coin_probability_penalty,
                 probability_666,
                 retrigger_bonuses,
                 pattern_bonuses,
@@ -223,23 +250,63 @@ pub mod Play {
             let mut next_item_count = spin_modifiers.item_count;
             let mut biblia_used = false;
             let mut biblia_discarded = false;
+            let mut cash_out_succeeded = false;
+            let mut cash_out_failed = false;
             if is_666 {
-                let biblia_inventory = store.inventory(session_id, 40);
-                if biblia_inventory.quantity > 0 {
-                    let biblia_seed = poseidon_hash_span(
-                        array![session_id.into(), random_word, caller.into(), 40.into()].span(),
+                let cash_out_inventory = store.inventory(session_id, CASH_OUT_ITEM_ID);
+                if cash_out_inventory.quantity > 0 {
+                    InventoryImpl::remove_item_from_inventory(
+                        ref store, session_id, CASH_OUT_ITEM_ID,
                     );
-                    let biblia_roll_u256: u256 = biblia_seed.into();
-                    biblia_discarded = (biblia_roll_u256 % 100) < 50;
-                    if biblia_discarded {
-                        InventoryImpl::remove_item_from_inventory(ref store, session_id, 40);
+                    let cash_out_seed = poseidon_hash_span(
+                        array![
+                            session_id.into(), random_word, caller.into(), CASH_OUT_ITEM_ID.into(),
+                        ]
+                            .span(),
+                    );
+                    let cash_out_roll_u256: u256 = cash_out_seed.into();
+                    cash_out_succeeded = (cash_out_roll_u256 % 100) < 50;
+                    cash_out_failed = !cash_out_succeeded;
+                    if cash_out_succeeded {
+                        is_666 = false;
                     }
-                    is_666 = false;
-                    biblia_used = true;
-                    if biblia_discarded && biblia_inventory.quantity == 1 {
+                    if cash_out_inventory.quantity == 1 {
                         next_item_count -= 1;
                     }
+                } else {
+                    let biblia_inventory = store.inventory(session_id, BIBLIA_ITEM_ID);
+                    if biblia_inventory.quantity > 0 {
+                        let biblia_seed = poseidon_hash_span(
+                            array![
+                                session_id.into(), random_word, caller.into(), BIBLIA_ITEM_ID.into(),
+                            ]
+                                .span(),
+                        );
+                        let biblia_roll_u256: u256 = biblia_seed.into();
+                        biblia_discarded = (biblia_roll_u256 % 100) < 50;
+                        if biblia_discarded {
+                            InventoryImpl::remove_item_from_inventory(
+                                ref store, session_id, BIBLIA_ITEM_ID,
+                            );
+                        }
+                        is_666 = false;
+                        biblia_used = true;
+                        if biblia_discarded && biblia_inventory.quantity == 1 {
+                            next_item_count -= 1;
+                        }
+                    }
                 }
+            }
+
+            if cash_out_succeeded || cash_out_failed {
+                store
+                    .emit_cash_out_resolved(
+                        @crate::events::index::CashOutResolved {
+                            session_id,
+                            player: caller,
+                            succeeded: cash_out_succeeded,
+                        },
+                    );
             }
 
             session.total_spins += 1;
@@ -261,6 +328,16 @@ pub mod Play {
                 session.score_cherry += mc * bc;
                 session.score_coin += m_coin * b_coin;
                 session.score_lemon += ml * bl;
+
+                session_chip_bonus.bonus_units +=
+                    md * spin_modifiers.diamond_chip_bonus_per_pattern;
+            }
+
+            if cash_out_succeeded {
+                session.spins_remaining = 0;
+                session.is_active = false;
+            } else if cash_out_failed {
+                session.spins_remaining = (session.spins_remaining + 1) / 2;
             }
 
             loop {
@@ -282,12 +359,14 @@ pub mod Play {
 
             if !session.is_active {
                 store.set_session(@session);
+                store.set_session_chip_bonus(@session_chip_bonus);
                 InternalImpl::process_end_session_rewards(
                     ref store, ref session, session_id, random_word,
                 );
             }
 
             store.set_session(@session);
+            store.set_session_chip_bonus(@session_chip_bonus);
             let (collection_address, _) = world
                 .dns(@COLLECTION_NAME())
                 .expect('Collection not found!');
@@ -538,12 +617,27 @@ pub mod Play {
                 return 0.into();
             }
 
+            Self::get_session_chip_payout(self, session_id)
+        }
+
+        fn get_session_chip_payout(self: @ContractState, session_id: u32) -> u256 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let session = store.session(session_id);
             let config = store.config();
-            let base_chips = session.score / CHIP_SCORE_DIVISOR;
-            (base_chips.into()
-                * config.chip_emission_rate.into()
-                * config.chip_boost_multiplier.into())
-                * 1_000_000_000_000_000_000
+            let session_chip_bonus = store.session_chip_bonus(session_id);
+            get_chip_payout_amount(
+                session.score,
+                session_chip_bonus.bonus_units,
+                config.chip_emission_rate,
+                config.chip_boost_multiplier,
+            )
+        }
+
+        fn get_session_chip_bonus_units(self: @ContractState, session_id: u32) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            store.session_chip_bonus(session_id).bonus_units
         }
 
         fn get_session_items(self: @ContractState, session_id: u32) -> Span<(u32, u32)> {
@@ -645,6 +739,7 @@ pub mod Play {
                 score_lemon: DEFAULT_SCORE_LEMON,
             };
             store.set_session(@session);
+            store.set_session_chip_bonus(@SessionChipBonus { session_id, bonus_units: 0 });
 
             let mut ps = store.player_sessions(player);
             let ps_idx = ps.count;
@@ -687,12 +782,13 @@ pub mod Play {
         ) {
             if !session.is_active && !session.chips_claimed {
                 let config = store.config();
-
-                let base_chips = session.score / CHIP_SCORE_DIVISOR;
-                let chip_amount: u256 = (base_chips.into()
-                    * config.chip_emission_rate.into()
-                    * config.chip_boost_multiplier.into())
-                    * 1_000_000_000_000_000_000;
+                let session_chip_bonus = store.session_chip_bonus(session_id);
+                let chip_amount = get_chip_payout_amount(
+                    session.score,
+                    session_chip_bonus.bonus_units,
+                    config.chip_emission_rate,
+                    config.chip_boost_multiplier,
+                );
 
                 let zero_addr: ContractAddress = Zero::zero();
                 if chip_amount > 0 && config.chip_token != zero_addr {

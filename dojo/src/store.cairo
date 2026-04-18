@@ -7,8 +7,8 @@ use ekubo::interfaces::router::IRouterDispatcher;
 use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
-    BibliaDiscarded, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed, RelicActivated,
-    RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
+    BibliaDiscarded, CashOutResolved, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed,
+    RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
@@ -17,7 +17,7 @@ use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, MarketSlotPurchased, PlayerSessionEntry, PlayerSessions,
     Session, SessionCharmEntry, SessionCharms, SessionInventory, SessionItemEntry, SessionItemIndex,
-    SessionMarket, SpinResult, TokenPairId, XShareSessionClaim,
+    SessionMarket, SessionChipBonus, SpinResult, TokenPairId, XShareSessionClaim,
 };
 
 #[derive(Copy, Drop)]
@@ -159,6 +159,18 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_session_market(mut self: Store, market: @SessionMarket) {
         self.world.write_model(market)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Session CHIP Bonus
+    // ═══════════════════════════════════════════════════════════════════
+
+    fn session_chip_bonus(self: @Store, session_id: u32) -> SessionChipBonus {
+        self.world.read_model(session_id)
+    }
+
+    fn set_session_chip_bonus(mut self: Store, bonus: @SessionChipBonus) {
+        self.world.write_model(bonus)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -340,6 +352,10 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_biblia_discarded(mut self: Store, event: @BibliaDiscarded) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_cash_out_resolved(mut self: Store, event: @CashOutResolved) {
         self.world.emit_event(event);
     }
 }

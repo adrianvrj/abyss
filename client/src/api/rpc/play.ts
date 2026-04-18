@@ -228,3 +228,29 @@ export async function getChipsToClaim(chainId: ChainLike, sessionId: number) {
   const high = BigInt(result[1] ?? "0");
   return low + (high << 128n);
 }
+
+export async function getSessionChipPayout(chainId: ChainLike, sessionId: number) {
+  const provider = getRpcProvider(chainId);
+  const playAddress = getPlayAddress(chainId);
+  const result = await provider.callContract({
+    contractAddress: playAddress,
+    entrypoint: "get_session_chip_payout",
+    calldata: [sessionId.toString()],
+  });
+
+  const low = BigInt(result[0] ?? "0");
+  const high = BigInt(result[1] ?? "0");
+  return low + (high << 128n);
+}
+
+export async function getSessionChipBonusUnits(chainId: ChainLike, sessionId: number) {
+  const provider = getRpcProvider(chainId);
+  const playAddress = getPlayAddress(chainId);
+  const result = await provider.callContract({
+    contractAddress: playAddress,
+    entrypoint: "get_session_chip_bonus_units",
+    calldata: [sessionId.toString()],
+  });
+
+  return Number(result[0] ?? 0);
+}

@@ -8,6 +8,7 @@ interface GameOverModalProps {
     finalScore: number;
     totalScore?: number;
     chipsEarned?: number;
+    diamondChipBonusUnits?: number;
     buildItems?: ContractItem[];
     sessionId?: number;
     level?: number;
@@ -22,6 +23,7 @@ export default function GameOverModal({
     finalScore,
     totalScore,
     chipsEarned,
+    diamondChipBonusUnits = 0,
     buildItems = [],
     onBackToMenu,
     practiceMode = false,
@@ -92,6 +94,17 @@ export default function GameOverModal({
                         }}>
                             {practiceMode ? 'NO ONCHAIN REWARDS IN PRACTICE' : `CHIPS EARNED: ${displayedChipsEarned}`}
                         </div>
+                        {!practiceMode && diamondChipBonusUnits > 0 && (
+                            <div style={{
+                                fontFamily: "'PressStart2P', monospace",
+                                fontSize: 'clamp(9px, 1.2vw, 12px)',
+                                color: '#FFD166',
+                                textAlign: 'center',
+                                letterSpacing: '0.08em',
+                            }}>
+                                DIAMOND BONUS: +{diamondChipBonusUnits} CHIP
+                            </div>
+                        )}
 
                         {/* Items row */}
                         {buildItems.length > 0 ? (

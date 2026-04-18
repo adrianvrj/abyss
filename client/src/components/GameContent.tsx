@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import SlotGrid from "@/components/SlotGrid";
 import PatternOverlay from "@/components/PatternOverlay";
 import LevelUpAnimation from "@/components/LevelUpAnimation";
@@ -12,6 +12,7 @@ import SellConfirmModal from "@/components/SellConfirmModal";
 import BibliaSaveAnimation from "@/components/BibliaSaveAnimation";
 import DemonicScoreResetAnimation from "@/components/DemonicScoreResetAnimation";
 import LuckyScoreBoostAnimation from "@/components/LuckyScoreBoostAnimation";
+import TrickyDiceCashOutAnimation from "@/components/TrickyDiceCashOutAnimation";
 import RelicActivationAnimation from "@/components/RelicActivationAnimation";
 import CharmMintAnimation from "@/components/CharmMintAnimation";
 import RelicModal from "@/components/modals/RelicModal";
@@ -20,6 +21,7 @@ import PreloadingScreen from "@/components/PreloadingScreen";
 import { useAssets } from "@/components/providers/AssetPreloaderProvider";
 import { useGameSession } from "@/hooks/useGameSession";
 import { usePracticeSession } from "@/hooks/usePracticeSession";
+import { getItemImage } from "@/utils/itemImages";
 import { AnimatePresence } from "framer-motion";
 import { Store, Package, HelpCircle, Home, Gem } from "lucide-react";
 
@@ -77,6 +79,7 @@ function GameStage({
     practiceMode: boolean;
 }) {
     const navigate = useNavigate();
+    const TRICKY_DICE_ITEM_ID = 41;
     const [activeMobileTab, setActiveMobileTab] = useState<'home' | 'market' | 'inventory' | 'info'>('home');
     const [activeModal, setActiveModal] = useState<'info' | null>(null);
     const [showRelicModal, setShowRelicModal] = useState(false);
@@ -100,6 +103,22 @@ function GameStage({
     const activeMobileMeta = activeMobileTab === 'home' ? null : mobileTabMeta[activeMobileTab];
 
     const { isLoaded: assetsLoaded, progress: loadProgress } = useAssets();
+    const visibleInventoryItems = useMemo(() => {
+        const hidden = new Set(game.hiddenItems ?? []);
+        const seen = new Set<number>();
+        const merged = [...(game.initialInventoryItems ?? []), ...(game.optimisticItems ?? [])];
+
+        return merged.filter((item) => {
+            if (!item || hidden.has(item.item_id) || seen.has(item.item_id)) {
+                return false;
+            }
+
+            seen.add(item.item_id);
+            return true;
+        });
+    }, [game.hiddenItems, game.initialInventoryItems, game.optimisticItems]);
+    const trickyDiceItem = visibleInventoryItems.find((item) => item.item_id === TRICKY_DICE_ITEM_ID);
+    const shouldShowTrickyDice = Boolean(trickyDiceItem) && !game.showGameOver && activeMobileTab === 'home';
 
     const isLoading = !assetsLoaded || game.isInitialLoading;
 
@@ -240,6 +259,7 @@ function GameStage({
                                 blocked666={game.blocked666}
                                 practiceMode={practiceMode}
                                 itemsOverride={game.initialInventoryItems}
+                                diamondChipBonusUnits={game.diamondChipBonusUnits}
                             />
                         </div>
                     </div>
@@ -297,6 +317,18 @@ function GameStage({
                         onClick={game.handleSpin}
                         style={{ pointerEvents: game.isSpinning ? 'none' : 'auto' }}
                     >
+                        {shouldShowTrickyDice && (
+                            <div className="tricky-dice-floating-indicator" aria-hidden="true">
+                                <img
+                                    src={trickyDiceItem?.image || getItemImage(TRICKY_DICE_ITEM_ID)}
+                                    alt="Tricky Dice"
+                                    width={72}
+                                    height={72}
+                                    loading="lazy"
+                                    style={{ objectFit: 'contain', imageRendering: 'pixelated' }}
+                                />
+                            </div>
+                        )}
                         <img src="/images/slot_machine.png" alt="Slot Machine" className="slot-machine-image" />
 
                         <div className="score-display" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -314,7 +346,7 @@ function GameStage({
                                     onComplete={() => game.setShowingPatterns(false)}
                                 />
                             )}
-                            {!game.isSpinning && game.spinsRemaining > 0 && !game.showLevelUp && !game.showBibliaAnimation && !game.showScoreResetAnimation && !game.showCharmAnimation && !game.showRelicActivation && !game.showingPatterns && (
+                            {!game.isSpinning && game.spinsRemaining > 0 && !game.showLevelUp && !game.showBibliaAnimation && !game.showScoreResetAnimation && !game.showCashOutAnimation && !game.showCharmAnimation && !game.showRelicActivation && !game.showingPatterns && (
                                 <div className="tap-to-spin">
                                     {game.pendingRelicEffect === 0 ? "JACKPOT FORCE" :
                                         game.pendingRelicEffect === 2 ? "5X NEXT SPIN" :
@@ -324,7 +356,7 @@ function GameStage({
                         </div>
 
                         {/* Mobile Relic Controls */}
-                        {!practiceMode && activeMobileTab === 'home' && (
+                        {activeMobileTab === 'home' && (
                             <div className="mobile-floating-controls">
                                 <button
                                     className="mobile-relic-btn equip-btn"
@@ -371,9 +403,10 @@ function GameStage({
                         blocked666={game.blocked666}
                         practiceMode={practiceMode}
                         itemsOverride={game.initialInventoryItems}
+                        diamondChipBonusUnits={game.diamondChipBonusUnits}
                     />
                     <div className="sidebar-buttons">
-                        {!practiceMode && game.equippedRelic && (
+                        {game.equippedRelic && (
                             <button
                                 className="sidebar-btn equipped-relic"
                                 onClick={(e) => { e.stopPropagation(); game.handleActivateRelic(); }}
@@ -394,7 +427,7 @@ function GameStage({
                                 )}
                             </button>
                         )}
-                        {!practiceMode && (
+                        {(
                             <button className="sidebar-btn" onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }} title="Relics" disabled={game.isSpinning}>
                                 <Gem size={20} color="#FF841C" />
                             </button>
@@ -439,7 +472,7 @@ function GameStage({
                 />
             )}
 
-            {!practiceMode && showRelicModal && (
+            {showRelicModal && (
                 <RelicModal
                     ownedRelics={game.ownedRelics}
                     equippedRelic={game.equippedRelic}
@@ -467,6 +500,11 @@ function GameStage({
                         totalScore={game.luckyScoreBoostTotal}
                         luckyBonus={game.luckyScoreBoostBonus}
                         onComplete={() => game.setShowLuckyScoreBoostAnimation(false)}
+                    />
+                )}
+                {game.showCashOutAnimation && (
+                    <TrickyDiceCashOutAnimation
+                        onComplete={() => game.setShowCashOutAnimation(false)}
                     />
                 )}
                 {shouldShowBibliaAnimation && (
@@ -505,6 +543,7 @@ function GameStage({
                 finalScore={game.finalScore}
                 totalScore={game.finalTotalScore}
                 chipsEarned={game.chipsEarned}
+                diamondChipBonusUnits={game.diamondChipBonusUnits}
                 buildItems={game.gameOverBuildItems}
                 sessionId={numericSessionId}
                 level={game.level}
@@ -596,6 +635,29 @@ function GameStage({
                     width: auto;
                     display: block;
                     transform: scale(1.08) translateY(1.8%);
+                }
+                .tricky-dice-floating-indicator {
+                    position: fixed;
+                    left: 50%;
+                    bottom: 22px;
+                    transform: translateX(-50%);
+                    z-index: 140;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    pointer-events: none;
+                    animation: trickyDiceFloat 2.4s ease-in-out infinite;
+                }
+                .tricky-dice-floating-indicator img {
+                    filter: drop-shadow(0 0 10px rgba(255, 132, 28, 0.4));
+                }
+                @keyframes trickyDiceFloat {
+                    0%, 100% {
+                        transform: translateX(-50%) translateY(0);
+                    }
+                    50% {
+                        transform: translateX(-50%) translateY(-6px);
+                    }
                 }
                 .score-display {
                     position: absolute;
@@ -813,6 +875,17 @@ function GameStage({
                         height: auto;
                         transform: none;
                         filter: drop-shadow(0 22px 40px rgba(0, 0, 0, 0.5));
+                    }
+                    .tricky-dice-floating-indicator {
+                        position: absolute;
+                        left: 50%;
+                        bottom: auto;
+                        top: -52px;
+                        transform: translateX(-50%);
+                    }
+                    .tricky-dice-floating-indicator img {
+                        width: 56px;
+                        height: 56px;
                     }
                     .score-display {
                         top: 8%;

@@ -5,7 +5,9 @@ import { Pattern, detectPatterns, ScoreBonuses } from '@/utils/patternDetector';
 import { applyPatternModifiers } from '@/lib/patternMath';
 import {
     getSessionItems, getItemInfo, ItemEffectType, ContractItem,
-    getCharmInfo, CharmInfo, getSessionMarket, getSessionLuck, isCharmItem, getCharmIdFromItemId
+    getCharmInfo, CharmInfo, getSessionMarket, getSessionLuck, getSessionChipPayout,
+    getSessionChipBonusUnits,
+    isCharmItem, getCharmIdFromItemId
 } from '@/utils/abyssContract';
 import { CONTRACTS, DEFAULT_CHAIN_ID } from '@/lib/constants';
 import { getCharmMetadata, getPlayerCharms } from '@/api/rpc/relic';
@@ -97,6 +99,7 @@ const RELIC_NAMES: Record<number, string> = {
 };
 
 const BIBLIA_ITEM_ID = 40;
+const CASH_OUT_ITEM_ID = 41;
 
 export interface OwnedRelic {
     tokenId: bigint;
@@ -152,6 +155,7 @@ export function useGameSession(sessionId: string | null) {
     const [finalScore, setFinalScore] = useState(0);
     const [finalTotalScore, setFinalTotalScore] = useState(0);
     const [chipsEarned, setChipsEarned] = useState(0);
+    const [diamondChipBonusUnits, setDiamondChipBonusUnits] = useState(0);
     const [chipsClaimed, setChipsClaimed] = useState(false);
     const [gameOverBuildItems, setGameOverBuildItems] = useState<ContractItem[]>([]);
 
@@ -167,6 +171,7 @@ export function useGameSession(sessionId: string | null) {
     const [showLuckyScoreBoostAnimation, setShowLuckyScoreBoostAnimation] = useState(false);
     const [luckyScoreBoostTotal, setLuckyScoreBoostTotal] = useState(0);
     const [luckyScoreBoostBonus, setLuckyScoreBoostBonus] = useState(0);
+    const [showCashOutAnimation, setShowCashOutAnimation] = useState(false);
 
     // Relic State
     const [equippedRelic, setEquippedRelic] = useState<OwnedRelic | null>(null);
@@ -203,6 +208,25 @@ export function useGameSession(sessionId: string | null) {
 
     const calculateChipPayout = useCallback((scoreValue: number) => {
         return Math.floor(Math.max(0, scoreValue) / 20);
+    }, []);
+
+    const resolveChipPayout = useCallback(async (targetSessionId: number, fallbackScore: number) => {
+        try {
+            const payout = await getSessionChipPayout(targetSessionId);
+            return Number(payout / 1_000_000_000_000_000_000n);
+        } catch (error) {
+            console.warn('Failed to resolve session chip payout from chain, using fallback', error);
+            return calculateChipPayout(fallbackScore);
+        }
+    }, [calculateChipPayout]);
+
+    const resolveDiamondChipBonusUnits = useCallback(async (targetSessionId: number) => {
+        try {
+            return await getSessionChipBonusUnits(targetSessionId);
+        } catch (error) {
+            console.warn('Failed to resolve diamond chip bonus units from chain', error);
+            return 0;
+        }
     }, []);
 
     useEffect(() => { scoreBonusesRef.current = scoreBonuses; }, [scoreBonuses]);
@@ -495,6 +519,8 @@ export function useGameSession(sessionId: string | null) {
             setTickets(data.tickets);
             const effectiveLuck = await getSessionLuck(Number(sessionId)).catch(() => data.luck);
             setCurrentLuck(effectiveLuck);
+            const resolvedDiamondBonus = await resolveDiamondChipBonusUnits(Number(sessionId));
+            setDiamondChipBonusUnits(resolvedDiamondBonus);
 
             if (data.totalSpins >= lastKnownTotalSpinsRef.current) {
                 setSpinsRemaining(data.spinsRemaining);
@@ -699,6 +725,7 @@ export function useGameSession(sessionId: string | null) {
                 setBlocked666(spin.is666);
                 const resolvedCurrentLuck = await getSessionLuck(Number(sessionId)).catch(() => spin.currentLuck);
                 if (resolvedCurrentLuck !== undefined) setCurrentLuck(resolvedCurrentLuck);
+                setDiamondChipBonusUnits(await resolveDiamondChipBonusUnits(Number(sessionId)));
 
                 if (spin.is666) {
                     setScoreResetPreviousScore(score);
@@ -765,6 +792,15 @@ export function useGameSession(sessionId: string | null) {
                     loadScoreBonuses();
                 }
 
+                if (events.cashOutResolved) {
+                    hideInventoryItem(CASH_OUT_ITEM_ID);
+                    setInventoryRefreshTrigger(prev => prev + 1);
+                    loadScoreBonuses();
+                    if (events.cashOutResolved.succeeded) {
+                        setShowCashOutAnimation(true);
+                    }
+                }
+
                 if (spin.isJackpot) playSound('jackpot');
 
                 const patternDuration = spin.is666 ? 1400 : detectedPatterns.length * 600;
@@ -773,9 +809,11 @@ export function useGameSession(sessionId: string | null) {
                     ? (detectedPatterns.length > 0 ? patternDuration + 120 : 420)
                     : 0;
                 const luckyRevealDuration = shouldRevealLuckyBoost ? 1300 : 0;
-                const sequenceDelay = spin.is666
-                    ? 1900
-                    : Math.max(1000, patternDuration + 800) + luckyRevealDuration;
+                const sequenceDelay = events.cashOutResolved?.succeeded
+                    ? 2400
+                    : spin.is666
+                        ? 1900
+                        : Math.max(1000, patternDuration + 800) + luckyRevealDuration;
 
                 if (shouldRevealLuckyBoost) {
                     const baseScore = Math.floor(spin.scoreGained / 5);
@@ -809,10 +847,11 @@ export function useGameSession(sessionId: string | null) {
                         // Prioritize receipt results over potentially stale Torii state
                         const finalBalance = Math.max(receiptFinalScore, latestSession?.score || 0);
                         const finalLifetimeScore = Math.max(receiptTotalScore, latestSession?.totalScore || 0);
+                        const earnedChips = await resolveChipPayout(Number(sessionId), finalBalance);
 
                         setFinalScore(finalBalance);
                         setFinalTotalScore(finalLifetimeScore);
-                        setChipsEarned(calculateChipPayout(finalBalance));
+                        setChipsEarned(earnedChips);
                         if (latestSession) {
                             setChipsClaimed(latestSession.chipsClaimed);
                         }
@@ -908,6 +947,15 @@ export function useGameSession(sessionId: string | null) {
                         loadScoreBonuses();
                     }
 
+                    if (events.cashOutResolved) {
+                        hideInventoryItem(CASH_OUT_ITEM_ID);
+                        setInventoryRefreshTrigger(prev => prev + 1);
+                        loadScoreBonuses();
+                        if (events.cashOutResolved.succeeded) {
+                            setShowCashOutAnimation(true);
+                        }
+                    }
+
                     if (spinResult.is666 || latestSession?.blocked666) {
                         logSpinDebug('spin:fallback:666-detected', {
                             spinResult: summarizeSpinResultSnapshot(spinResult),
@@ -917,9 +965,11 @@ export function useGameSession(sessionId: string | null) {
 
                     if (!latestSession?.isActive || (latestSession?.spinsRemaining ?? 0) <= 0) {
                         await captureGameOverBuild();
+                        const resolvedScore = latestSession?.score ?? spinResult.score ?? 0;
+                        const earnedChips = await resolveChipPayout(Number(sessionId), resolvedScore);
                         setFinalScore(latestSession?.score ?? spinResult.score ?? 0);
                         setFinalTotalScore(latestSession?.totalScore ?? latestSession?.score ?? spinResult.score ?? 0);
-                        setChipsEarned(calculateChipPayout(latestSession?.score ?? spinResult.score ?? 0));
+                        setChipsEarned(earnedChips);
                         if (latestSession) {
                             setChipsClaimed(latestSession.chipsClaimed);
                         }
@@ -958,7 +1008,7 @@ export function useGameSession(sessionId: string | null) {
             }
             await loadSessionData('spin:catch');
         }
-    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild]);
+    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
 
     const handleActivateRelic = useCallback(async () => {
         if (!equippedRelic || !sessionId || isActivatingRelic || relicCooldownRemaining > 0) return;
@@ -995,7 +1045,7 @@ export function useGameSession(sessionId: string | null) {
                     await captureGameOverBuild();
                     setFinalScore(score);
                     setFinalTotalScore(score);
-                    setChipsEarned(calculateChipPayout(score));
+                    setChipsEarned(await resolveChipPayout(Number(sessionId), score));
                     setChipsClaimed(false);
                     setGameOverReason('scorched');
                     setIsSessionActive(false);
@@ -1026,7 +1076,7 @@ export function useGameSession(sessionId: string | null) {
         } finally {
             setIsActivatingRelic(false);
         }
-    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, activateRelic, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo, loadSessionData]);
+    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, activateRelic, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo, loadSessionData, resolveChipPayout]);
 
     const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {
         if (!sessionId || equippedRelic) return;
@@ -1092,16 +1142,16 @@ export function useGameSession(sessionId: string | null) {
         initialMarketItems, initialInventoryItems,
 
         // Game over
-        showGameOver, gameOverReason, finalScore, finalTotalScore, chipsEarned, chipsClaimed, gameOverBuildItems,
+        showGameOver, gameOverReason, finalScore, finalTotalScore, chipsEarned, diamondChipBonusUnits, chipsClaimed, gameOverBuildItems,
         setShowGameOver,
 
         // Animations
         showBibliaAnimation, bibliaDiscarded, bibliaBroken,
         showCharmAnimation, mintedCharmInfo,
         showRelicActivation, showScoreResetAnimation, scoreResetPreviousScore,
-        showLuckyScoreBoostAnimation, luckyScoreBoostTotal, luckyScoreBoostBonus,
+        showLuckyScoreBoostAnimation, luckyScoreBoostTotal, luckyScoreBoostBonus, showCashOutAnimation,
         setShowBibliaAnimation, setShowCharmAnimation, setMintedCharmInfo,
-        setShowRelicActivation, setShowScoreResetAnimation, setShowLuckyScoreBoostAnimation, setGameOverReason,
+        setShowRelicActivation, setShowScoreResetAnimation, setShowLuckyScoreBoostAnimation, setShowCashOutAnimation, setGameOverReason,
 
         // Relics
         equippedRelic, ownedRelics, isActivatingRelic, isEquippingRelic,

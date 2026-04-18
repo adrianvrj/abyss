@@ -72,6 +72,11 @@ export interface BibliaDiscardedEvent {
     discarded: boolean;
 }
 
+export interface CashOutResolvedEvent {
+    sessionId: number;
+    succeeded: boolean;
+}
+
 export interface ParsedEvents {
     spinCompleted: SpinCompletedEvent | null;
     itemsPurchased: ItemPurchasedEvent[];
@@ -81,6 +86,7 @@ export interface ParsedEvents {
     relicEquipped: RelicEquippedEvent | null;
     charmMinted: CharmMintedEvent | null;
     bibliaDiscarded: BibliaDiscardedEvent | null;
+    cashOutResolved: CashOutResolvedEvent | null;
 }
 
 type RawEvent = {
@@ -112,6 +118,7 @@ const EVENT_SELECTORS = {
     RelicEquipped: hash.getSelectorFromName('RelicEquipped'),
     CharmMinted: hash.getSelectorFromName('CharmMinted'),
     BibliaDiscarded: hash.getSelectorFromName('BibliaDiscarded'),
+    CashOutResolved: hash.getSelectorFromName('CashOutResolved'),
 };
 
 function feltToNumber(value: string | bigint | number | undefined | null, fallback = 0): number {
@@ -476,6 +483,19 @@ function parseBibliaDiscardedEvent(eventData: Array<string | bigint | number>): 
     }
 }
 
+function parseCashOutResolvedEvent(eventData: Array<string | bigint | number>): CashOutResolvedEvent | null {
+    if (!eventData || eventData.length < 1) return null;
+    try {
+        return {
+            sessionId: 0,
+            succeeded: isTruthyFelt(eventData[0]),
+        };
+    } catch (e) {
+        console.error('Failed to parse CashOutResolved event:', e);
+        return null;
+    }
+}
+
 export function hasParsedEvents(events: ParsedEvents): boolean {
     return Boolean(
         events.spinCompleted ||
@@ -484,6 +504,7 @@ export function hasParsedEvents(events: ParsedEvents): boolean {
         events.relicEquipped ||
         events.charmMinted ||
         events.bibliaDiscarded ||
+        events.cashOutResolved ||
         events.itemsPurchased.length > 0 ||
         events.itemsSold.length > 0,
     );
@@ -502,6 +523,7 @@ function parseNormalizedEvents(
         relicEquipped: null,
         charmMinted: null,
         bibliaDiscarded: null,
+        cashOutResolved: null,
     };
 
     const allowedAddresses = sourceAddresses
@@ -572,6 +594,12 @@ function parseNormalizedEvents(
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.BibliaDiscarded);
                 result.bibliaDiscarded = parsed;
             }
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CashOutResolved) >= 0) {
+            const parsed = parseCashOutResolvedEvent(event.data);
+            if (parsed) {
+                parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CashOutResolved);
+                result.cashOutResolved = parsed;
+            }
         } else {
             const dojoEvent = unwrapDojoEventData(event.data);
             const emitterAddress = normalizeAddress(event.keys[2]);
@@ -621,10 +649,18 @@ function parseNormalizedEvents(
                     result.charmMinted = parsed;
                 }
             } else if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 1) {
-                const parsed = parseBibliaDiscardedEvent(dojoEvent.fieldValues);
-                if (parsed) {
-                    parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.BibliaDiscarded);
-                    result.bibliaDiscarded = parsed;
+                if (findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.CashOutResolved) >= 0) {
+                    const parsed = parseCashOutResolvedEvent(dojoEvent.fieldValues);
+                    if (parsed) {
+                        parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.CashOutResolved);
+                        result.cashOutResolved = parsed;
+                    }
+                } else {
+                    const parsed = parseBibliaDiscardedEvent(dojoEvent.fieldValues);
+                    if (parsed) {
+                        parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.BibliaDiscarded);
+                        result.bibliaDiscarded = parsed;
+                    }
                 }
             }
         }
@@ -653,6 +689,7 @@ export function parseReceiptEvents(
             relicEquipped: null,
             charmMinted: null,
             bibliaDiscarded: null,
+            cashOutResolved: null,
         };
     }
 

@@ -8,13 +8,16 @@ import {
   useState,
 } from "react";
 import {
+  PracticeRelicActivationOutcome,
   PracticeBuyOutcome,
   PracticeRefreshOutcome,
   PracticeRunState,
   PracticeSellOutcome,
   PracticeSpinOutcome,
+  activatePracticeRelic,
   buyPracticeItem,
   createPracticeRun,
+  equipPracticeRelic,
   refreshPracticeMarket,
   sellPracticeItem,
   spinPracticeRun,
@@ -29,6 +32,8 @@ type PracticeContextValue = {
   buyItem: (slotIndex: number) => PracticeBuyOutcome | null;
   sellItem: (itemId: number) => PracticeSellOutcome | null;
   refreshMarket: () => PracticeRefreshOutcome | null;
+  equipRelic: (relicId: number) => PracticeRunState | null;
+  activateRelic: () => PracticeRelicActivationOutcome | null;
   playAgain: () => PracticeRunState;
 };
 
@@ -120,6 +125,36 @@ export function PracticeProvider({ children }: PropsWithChildren) {
     return outcome;
   }, []);
 
+  const equipRelic = useCallback((relicId: number) => {
+    let nextRun: PracticeRunState | null = null;
+
+    setRun((current) => {
+      if (!current) {
+        return current;
+      }
+
+      nextRun = equipPracticeRelic(current, relicId);
+      return nextRun ?? current;
+    });
+
+    return nextRun;
+  }, []);
+
+  const activateRelic = useCallback(() => {
+    let outcome: PracticeRelicActivationOutcome | null = null;
+
+    setRun((current) => {
+      if (!current) {
+        return current;
+      }
+
+      outcome = activatePracticeRelic(current);
+      return outcome?.nextState ?? current;
+    });
+
+    return outcome;
+  }, []);
+
   const playAgain = useCallback(() => {
     const nextRun = createRun();
     setRun(nextRun);
@@ -136,9 +171,11 @@ export function PracticeProvider({ children }: PropsWithChildren) {
       buyItem,
       sellItem,
       refreshMarket,
+      equipRelic,
+      activateRelic,
       playAgain,
     }),
-    [run, startPractice, resetPractice, clearPractice, spin, buyItem, sellItem, refreshMarket, playAgain],
+    [run, startPractice, resetPractice, clearPractice, spin, buyItem, sellItem, refreshMarket, equipRelic, activateRelic, playAgain],
   );
 
   return (

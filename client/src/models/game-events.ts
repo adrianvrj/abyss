@@ -68,6 +68,11 @@ export interface BibliaDiscardedEvent {
   discarded: boolean;
 }
 
+export interface CashOutResolvedEvent {
+  sessionId: number;
+  succeeded: boolean;
+}
+
 export interface ParsedGameEvents {
   spinCompleted: SpinCompletedEvent | null;
   itemsPurchased: ItemPurchasedEvent[];
@@ -77,5 +82,5 @@ export interface ParsedGameEvents {
   relicEquipped: RelicEquippedEvent | null;
   charmMinted: CharmMintedEvent | null;
   bibliaDiscarded: BibliaDiscardedEvent | null;
+  cashOutResolved: CashOutResolvedEvent | null;
 }
-

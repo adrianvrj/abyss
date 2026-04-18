@@ -8,7 +8,7 @@ use crate::helpers::charm_types::{
     calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
     get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
 };
-use crate::helpers::items::get_item_runtime_effect;
+use crate::helpers::items::{get_item_diamond_chip_bonus, get_item_runtime_effect};
 use crate::store::{Store, StoreTrait};
 use crate::types::effect::{CharmConditionType, CharmEffectType, ItemEffectType};
 
@@ -19,10 +19,12 @@ pub struct SpinCycleModifiers {
     pub item_count: u32,
     pub spin_bonus: u32,
     pub probability_bonuses: (u32, u32, u32, u32, u32),
+    pub coin_probability_penalty: u32,
     pub retrigger_bonuses: (u32, u32, u32, u32),
     pub pattern_bonuses: (u32, u32, u32, u32, u32, u32),
     pub symbol_scores: (u32, u32, u32, u32, u32),
     pub direct_score_bonuses: (u32, u32, u32, u32, u32),
+    pub diamond_chip_bonus_per_pattern: u32,
     pub pattern_luck_per_pattern: u32,
     pub no_pattern_bonus: u32,
     pub low_spins_bonus: u32,
@@ -88,6 +90,7 @@ pub impl InventoryImpl of InventoryTrait {
         let mut pc: u32 = 0;
         let mut p_coin: u32 = 0;
         let mut pl: u32 = 0;
+        let mut anti_coin_penalty: u32 = 0;
 
         let item_idx = store.session_item_index(session_id);
         let item_count = item_idx.count;
@@ -107,11 +110,14 @@ pub impl InventoryImpl of InventoryTrait {
                     p_coin += item.effect_value;
                 } else if item.target_symbol == 'lemon' {
                     pl += item.effect_value;
+                } else if item.target_symbol == 'anti-coin' {
+                    anti_coin_penalty += item.effect_value;
                 }
             }
             i += 1;
         }
-        (p7, pd, pc, p_coin, pl)
+        let adjusted_coin = if anti_coin_penalty >= p_coin { 0 } else { p_coin - anti_coin_penalty };
+        (p7, pd, pc, adjusted_coin, pl)
     }
 
     /// Get pattern multiplier bonuses from inventory
@@ -201,6 +207,7 @@ pub impl InventoryImpl of InventoryTrait {
         let mut pc: u32 = 0;
         let mut p_coin: u32 = 0;
         let mut pl: u32 = 0;
+        let mut coin_probability_penalty: u32 = 0;
         let mut h3: u32 = 0;
         let mut h4: u32 = 0;
         let mut h5: u32 = 0;
@@ -208,6 +215,7 @@ pub impl InventoryImpl of InventoryTrait {
         let mut diag: u32 = 0;
         let mut jp: u32 = 0;
         let mut spin_bonus: u32 = 0;
+        let mut diamond_chip_bonus_per_pattern: u32 = 0;
 
         let mut i: u32 = 0;
         let mut persistent_item_count: u32 = 0;
@@ -251,6 +259,8 @@ pub impl InventoryImpl of InventoryTrait {
                     p_coin += effect_value;
                 } else if target_symbol == 'lemon' {
                     pl += effect_value;
+                } else if target_symbol == 'anti-coin' {
+                    coin_probability_penalty += effect_value;
                 }
             } else if effect_type == ItemEffectType::DirectScoreBonus {
                 if target_symbol == 'seven' {
@@ -265,6 +275,8 @@ pub impl InventoryImpl of InventoryTrait {
                     bl += effect_value;
                 }
             }
+
+            diamond_chip_bonus_per_pattern += get_item_diamond_chip_bonus(entry.item_id);
 
             i += 1;
         }
@@ -372,6 +384,7 @@ pub impl InventoryImpl of InventoryTrait {
             item_count: persistent_item_count,
             spin_bonus,
             probability_bonuses: (p7, pd, pc, p_coin, pl),
+            coin_probability_penalty,
             retrigger_bonuses: (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger),
             pattern_bonuses: (h3, h4, h5, vert, diag, jp),
             symbol_scores: (
@@ -382,6 +395,7 @@ pub impl InventoryImpl of InventoryTrait {
                 session.score_lemon,
             ),
             direct_score_bonuses: (b7, bd, bc, b_coin, bl),
+            diamond_chip_bonus_per_pattern,
             pattern_luck_per_pattern,
             no_pattern_bonus,
             low_spins_bonus,
