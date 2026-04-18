@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
-      "class_hash": "0x187fec1d2968863a4b5f80860ff4af24829f5bdbcbf601402a1bd2134bb961f",
+      "class_hash": "0x7eab86cf0165a6fb67dadce850cba36d6a5e6ee9fde13af73963caf30cd7264",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -97,7 +97,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x4a655d6f9126cb55e41b54d4814f6282ec98b8668a4750261339d2693246c6e",
+      "class_hash": "0x4d00e40482390188e02b1611137b7c87532cf86bfa4c331162975d9474ba98e",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x29ffadb67b1482e2e02769e1600d9ade35ea644785fb0d4ac41b8820e4b4bc0",
+      "class_hash": "0xdd89fdfefcf146e74f30fafc4860f0884bb252a6f615adcfdff6b4b19a0cfd",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -128,7 +128,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x5758e487a900cdc4f953a765d015fbc6dddcdaaee5c35b273781e3945126dd6",
+      "class_hash": "0x6717962e90f849dc202b0f9fd66c8754836cf1900226ebcb6cc612f4deb87f",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -141,7 +141,7 @@
     },
     {
       "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
-      "class_hash": "0x587296c1d028790f21bb38728a58ae0647e34c14b32b1a863f9d124ebb32f39",
+      "class_hash": "0x3082a52427819a6b7f28aefdb9d26334f27ea671b4c0914efa0f67bfc8b4690",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
@@ -158,7 +158,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x2386919c44132f493f7e12195ef886cd21f50f83b76c56facacf062a0290531",
+      "class_hash": "0x7d7f75fdf7a5748d40335f8c741ffc32130ed708b00d90fbb3698283c84cd90",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -192,6 +192,9 @@
         "set_pool_extension",
         "set_pool_sqrt",
         "initialize_items",
+        "set_item_pricing",
+        "set_item_effect",
+        "set_item_definition",
         "register_bundle",
         "register_default_session_bundle",
         "register_free_social_bundle",
@@ -732,6 +735,23 @@
           "key": true
         },
         {
+          "name": "bonus_units",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x7e4c56b92812e170d4d8681c83350e18d1f8a8e3de8a77c8c3eeb1592088fa5",
+      "tag": "ABYSS-SessionChipBonus",
+      "selector": "0x509e54fc96074b4d021ccaf938c8f4f6bc513a8a5543ff504d51cdbdc3027fc"
+    },
+    {
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
           "name": "item_id",
           "type": "core::integer::u32",
           "key": true
@@ -784,6 +804,28 @@
       "class_hash": "0x6864addc37aa34dc18401e264b2d3c9be98f58bd6949d434c3d9049ae603528",
       "tag": "ABYSS-SessionItemIndex",
       "selector": "0x730c074c77b2ce5abd2a962db188e10e703286c18ceebc759815b8b3518a4df"
+    },
+    {
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "item_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "count",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x4631f3bd8006007eca4fdb4130b3ac3bcd6584499495611079c5a2f00ceb868",
+      "tag": "ABYSS-SessionItemPurchaseCount",
+      "selector": "0x332a2c34878e9db5810bac54f0bac533367d74fefbb3a85153780051e47b58e"
     },
     {
       "members": [
@@ -1011,6 +1053,28 @@
       "class_hash": "0x4722a52404e7b8902170945e50150f7ff8bfcb89cbb7f14a4d7d219296024ce",
       "tag": "ABYSS-BibliaDiscarded",
       "selector": "0x5d1732cf9421d7095bcfaddfccd7034c009440ea10a1f85b702aed9bcffce91"
+    },
+    {
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "succeeded",
+          "type": "core::bool",
+          "key": false
+        }
+      ],
+      "class_hash": "0x3c798fe733f21501d5726f18c19fa03a7ce281b865a607bae48356bdb453836",
+      "tag": "ABYSS-CashOutResolved",
+      "selector": "0x532122c603bd970f1f8967cea6b5fcdf8f78e75ddfa5048f2738d73bd6c5f0c"
     },
     {
       "members": [
@@ -1545,6 +1609,34 @@
       "members": [
         {
           "name": "discarded",
+          "type": "core::bool"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::CashOutResolved",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "succeeded",
+          "type": "core::bool"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::CashOutResolvedValue",
+      "members": [
+        {
+          "name": "succeeded",
           "type": "core::bool"
         }
       ]
@@ -2236,6 +2328,12 @@
     {
       "type": "event",
       "name": "abyss_game::events::index::e_BibliaDiscarded::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::events::index::e_CashOutResolved::Event",
       "kind": "enum",
       "variants": []
     },
@@ -3332,6 +3430,30 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::models::index::SessionChipBonus",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "bonus_units",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::SessionChipBonusValue",
+      "members": [
+        {
+          "name": "bonus_units",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::models::index::SessionInventory",
       "members": [
         {
@@ -3403,6 +3525,34 @@
     {
       "type": "struct",
       "name": "abyss_game::models::index::SessionItemIndexValue",
+      "members": [
+        {
+          "name": "count",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::SessionItemPurchaseCount",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "item_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "count",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::SessionItemPurchaseCountValue",
       "members": [
         {
           "name": "count",
@@ -3868,6 +4018,12 @@
     },
     {
       "type": "event",
+      "name": "abyss_game::models::index::m_SessionChipBonus::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
       "name": "abyss_game::models::index::m_SessionInventory::Event",
       "kind": "enum",
       "variants": []
@@ -3881,6 +4037,12 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_SessionItemIndex::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::models::index::m_SessionItemPurchaseCount::Event",
       "kind": "enum",
       "variants": []
     },
@@ -4378,6 +4540,58 @@
           "outputs": [
             {
               "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_session_chip_payout",
+          "inputs": [
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_session_chip_bonus_units",
+          "inputs": [
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_session_item_purchase_price",
+          "inputs": [
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "item_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
             }
           ],
           "state_mutability": "view"
@@ -4977,6 +5191,90 @@
           "type": "function",
           "name": "initialize_items",
           "inputs": [],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_item_pricing",
+          "inputs": [
+            {
+              "name": "item_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "price",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "sell_price",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_item_effect",
+          "inputs": [
+            {
+              "name": "item_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "effect_type",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "effect_value",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "target_symbol",
+              "type": "core::felt252"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_item_definition",
+          "inputs": [
+            {
+              "name": "item_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "description",
+              "type": "core::felt252"
+            },
+            {
+              "name": "price",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "sell_price",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "effect_type",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "effect_value",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "target_symbol",
+              "type": "core::felt252"
+            }
+          ],
           "outputs": [],
           "state_mutability": "external"
         },
