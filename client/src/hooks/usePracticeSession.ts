@@ -431,6 +431,7 @@ export function usePracticeSession() {
     handlePracticeBuy,
     handlePracticeRefresh,
     handlePlayAgain,
+    practiceBibliaPurchaseCount: run?.bibliaPurchaseCount ?? 0,
     practicePurchasedSlots: run?.purchasedSlots ?? [],
     practiceRefreshCount: run?.refreshCount ?? 0,
     startPractice,

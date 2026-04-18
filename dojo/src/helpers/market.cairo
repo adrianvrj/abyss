@@ -1,7 +1,7 @@
 use core::num::traits::Zero;
 use core::poseidon::poseidon_hash_span;
 use starknet::ContractAddress;
-use crate::constants::TOTAL_ITEMS;
+use crate::constants::{MARKET_CHARM_APPEAR_CHANCE, TOTAL_ITEMS};
 use crate::interfaces::charm_nft::ICharmDispatcherTrait;
 use crate::store::{Store, StoreTrait};
 
@@ -71,11 +71,35 @@ pub impl MarketImpl of MarketTrait {
         2 + ((refresh_count * (refresh_count + 3)) / 2)
     }
 
+    fn get_recent_market_items(market: crate::models::index::SessionMarket) -> Array<u32> {
+        let mut recent_items: Array<u32> = array![];
+        let slots = array![
+            market.item_slot_1,
+            market.item_slot_2,
+            market.item_slot_3,
+            market.item_slot_4,
+            market.item_slot_5,
+            market.item_slot_6,
+        ];
+
+        let mut i: u32 = 0;
+        while i < slots.len() {
+            let item_id = *slots.at(i);
+            if item_id > 0 && !Self::has_value(recent_items.span(), item_id) {
+                recent_items.append(item_id);
+            }
+            i += 1;
+        }
+
+        recent_items
+    }
+
     fn generate_market_slot_item(
         store: @Store,
         session_id: u32,
         player: ContractAddress,
         owned_charm_ids: Span<u32>,
+        excluded_ids: Span<u32>,
         slot: u32,
         nonce: u32,
     ) -> u32 {
@@ -86,18 +110,26 @@ pub impl MarketImpl of MarketTrait {
 
         if owned_charm_ids.len() > 0 {
             let charm_roll: u32 = (roll % 100).try_into().unwrap();
-            if charm_roll < 30 {
+            if charm_roll < MARKET_CHARM_APPEAR_CHANCE {
                 let charm_index: u32 = ((roll / 100) % owned_charm_ids.len().into())
                     .try_into()
                     .unwrap();
                 let charm_id = *owned_charm_ids.at(charm_index);
-                if charm_id > 0 && !Self::has_session_charm(store, session_id, charm_id) {
-                    return 1000 + charm_id;
+                let charm_item_id = 1000 + charm_id;
+                if charm_id > 0
+                    && !Self::has_session_charm(store, session_id, charm_id)
+                    && !Self::has_value(excluded_ids, charm_item_id) {
+                    return charm_item_id;
                 }
             }
         }
 
-        Self::generate_random_item_id(session_id, slot + 1, nonce)
+        let item_id = Self::generate_random_item_id(session_id, slot + 1, nonce);
+        if Self::has_value(excluded_ids, item_id) {
+            return 0;
+        }
+
+        item_id
     }
 
     /// Refresh the session market with 6 new random items.
@@ -107,6 +139,7 @@ pub impl MarketImpl of MarketTrait {
         let mut sm = store.session_market(session_id);
         let nonce = sm.refresh_count;
         let owned_charm_ids = Self::get_owned_charm_ids(@store, player);
+        let recent_items = Self::get_recent_market_items(sm);
 
         let mut generated_items: Array<u32> = array![];
         let mut slot: u32 = 0;
@@ -114,33 +147,31 @@ pub impl MarketImpl of MarketTrait {
             let mut attempts: u32 = 0;
             let mut candidate: u32 = 0;
 
-            while attempts != 5 {
+            while attempts != 20 {
                 candidate =
                     Self::generate_market_slot_item(
                         @store,
                         session_id,
                         player,
                         owned_charm_ids.span(),
+                        recent_items.span(),
                         slot,
                         nonce + (attempts * 100),
                     );
 
-                if !Self::has_value(generated_items.span(), candidate) {
+                if candidate != 0 && !Self::has_value(generated_items.span(), candidate) {
                     break;
                 }
                 attempts += 1;
             }
 
             if candidate == 0 || Self::has_value(generated_items.span(), candidate) {
-                candidate =
-                    Self::generate_market_slot_item(
-                        @store,
-                        session_id,
-                        player,
-                        owned_charm_ids.span(),
-                        slot,
-                        nonce + 500 + slot,
-                    );
+                candidate = 1;
+                while candidate <= TOTAL_ITEMS
+                    && (Self::has_value(recent_items.span(), candidate)
+                        || Self::has_value(generated_items.span(), candidate)) {
+                    candidate += 1;
+                }
             }
 
             generated_items.append(candidate);

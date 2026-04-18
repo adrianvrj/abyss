@@ -640,6 +640,24 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
     [getSessionItems],
   );
 
+  const getSessionItemPurchasePrice = useCallback(
+    async (sessionId: number, itemId: number): Promise<number> => {
+      try {
+        const result = await provider.callContract({
+          contractAddress: playAddress,
+          entrypoint: "get_session_item_purchase_price",
+          calldata: CallData.compile([sessionId, itemId]),
+        });
+
+        return Number(result[0] ?? 0);
+      } catch (error) {
+        console.error("Get session item purchase price error:", error);
+        return 0;
+      }
+    },
+    [playAddress, provider],
+  );
+
   const isMarketSlotPurchased = useCallback(
     async (sessionId: number, slotId: number): Promise<boolean> => {
       try {
@@ -692,6 +710,7 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
     getSessionItems,
     getSessionMarket,
     getSessionInventoryCount,
+    getSessionItemPurchasePrice,
     isMarketSlotPurchased,
     getPlayerItems,
     getSystemAddress,

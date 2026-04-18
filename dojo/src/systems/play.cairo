@@ -43,6 +43,7 @@ pub trait IPlay<T> {
     fn get_chips_to_claim(self: @T, session_id: u32) -> u256;
     fn get_session_chip_payout(self: @T, session_id: u32) -> u256;
     fn get_session_chip_bonus_units(self: @T, session_id: u32) -> u32;
+    fn get_session_item_purchase_price(self: @T, session_id: u32, item_id: u32) -> u32;
     fn get_session_items(self: @T, session_id: u32) -> Span<(u32, u32)>;
     fn get_spin_result(self: @T, session_id: u32) -> SpinResult;
     fn get_level_threshold(self: @T, level: u32) -> u32;
@@ -65,6 +66,7 @@ pub mod Play {
         DEFAULT_SCORE_SEVEN, DEFAULT_SPINS, DEFAULT_TICKETS, NAMESPACE,
     };
     use crate::helpers::inventory::InventoryImpl;
+    use crate::helpers::items::get_item_purchase_price;
     use crate::helpers::pricing::PricingImpl;
     use crate::helpers::probability::get_666_probability as get_level_666_probability;
     use crate::helpers::scoring::get_level_threshold;
@@ -73,7 +75,8 @@ pub mod Play {
     use crate::interfaces::relic_nft::{IRelicERC721Dispatcher, IRelicERC721DispatcherTrait};
     use crate::interfaces::vrf::{IVrfProviderDispatcherTrait, Source};
     use crate::models::index::{
-        Config, Item, PlayerSessionEntry, Session, SessionChipBonus, SpinResult,
+        Config, Item, PlayerSessionEntry, Session, SessionChipBonus, SessionItemPurchaseCount,
+        SpinResult,
     };
     use crate::store::{Store, StoreTrait};
     use crate::systems::collection_system::{
@@ -640,6 +643,14 @@ pub mod Play {
             store.session_chip_bonus(session_id).bonus_units
         }
 
+        fn get_session_item_purchase_price(self: @ContractState, session_id: u32, item_id: u32) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let item = store.item(item_id);
+            let purchase_count = store.session_item_purchase_count(session_id, item_id);
+            get_item_purchase_price(item_id, item.price, purchase_count.count)
+        }
+
         fn get_session_items(self: @ContractState, session_id: u32) -> Span<(u32, u32)> {
             let world = self.world(@NAMESPACE());
             let store = StoreTrait::new(world);
@@ -740,6 +751,10 @@ pub mod Play {
             };
             store.set_session(@session);
             store.set_session_chip_bonus(@SessionChipBonus { session_id, bonus_units: 0 });
+            store
+                .set_session_item_purchase_count(
+                    @SessionItemPurchaseCount { session_id, item_id: BIBLIA_ITEM_ID, count: 0 },
+                );
 
             let mut ps = store.player_sessions(player);
             let ps_idx = ps.count;

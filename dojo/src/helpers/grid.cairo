@@ -39,7 +39,7 @@ pub fn generate_grid_from_random(
     } else {
         raw_prob_coin - coin_probability_penalty
     };
-    let prob_lemon = 20 + pl;
+    let prob_lemon = 24 + pl;
     let total_prob = prob_seven + prob_diamond + prob_cherry + prob_coin + prob_lemon;
     let thresh_seven = prob_seven;
     let thresh_diamond = thresh_seven + prob_diamond;

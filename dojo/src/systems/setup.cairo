@@ -390,7 +390,7 @@ pub mod Setup {
             coin_points: DEFAULT_SCORE_COIN,
             coin_prob: 25,
             lemon_points: DEFAULT_SCORE_LEMON,
-            lemon_prob: 30,
+            lemon_prob: 24,
             six_points: 0,
             six_prob: 0,
             // Pattern multipliers

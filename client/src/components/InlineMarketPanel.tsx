@@ -18,6 +18,7 @@ import { useAccount } from '@starknet-react/core';
 
 const DEBUG_MARKET_SYNC =
     import.meta.env.DEV || import.meta.env.VITE_ABYSS_DEBUG_MARKET === 'true';
+const BIBLIA_ITEM_ID = 40;
 
 function logMarketDebug(stage: string, payload?: unknown) {
     if (!DEBUG_MARKET_SYNC) {
@@ -53,6 +54,7 @@ interface InlineMarketPanelProps {
     practiceMode?: boolean;
     practiceMarketItems?: ContractItem[];
     practiceOwnedItems?: ContractItem[];
+    practiceBibliaPurchaseCount?: number;
     practicePurchasedSlots?: number[];
     practiceRefreshCount?: number;
     onPracticeRefresh?: () => Promise<void> | void;
@@ -78,6 +80,7 @@ export default function InlineMarketPanel({
     practiceMode = false,
     practiceMarketItems = [],
     practiceOwnedItems = [],
+    practiceBibliaPurchaseCount = 0,
     practicePurchasedSlots = [],
     practiceRefreshCount = 0,
     onPracticeRefresh,
@@ -99,10 +102,36 @@ export default function InlineMarketPanel({
         getSessionData,
         getSessionMarket,
         getSessionItems,
+        getSessionItemPurchasePrice,
         isMarketSlotPurchased,
         buyItem,
         refreshMarket
     } = useAbyssGame(account);
+
+    function getDisplayedPrice(item: ContractItem | null | undefined) {
+        if (!item) {
+            return 0;
+        }
+
+        if (practiceMode && item.item_id === BIBLIA_ITEM_ID) {
+            return item.price + practiceBibliaPurchaseCount;
+        }
+
+        return item.price;
+    }
+
+    async function applySessionItemPrices(items: ContractItem[]) {
+        return Promise.all(
+            items.map(async (item) => {
+                if (practiceMode || item.item_id !== BIBLIA_ITEM_ID) {
+                    return item;
+                }
+
+                const dynamicPrice = await getSessionItemPurchasePrice(sessionId, item.item_id);
+                return dynamicPrice > 0 ? { ...item, price: dynamicPrice } : item;
+            }),
+        );
+    }
 
     function applyDirectScoreBonus(
         currentScores: number[],
@@ -265,8 +294,10 @@ export default function InlineMarketPanel({
                 return;
             }
 
+            const pricedItems = await applySessionItemPrices(items);
+
             setMarketData(market);
-            setMarketItems(items);
+            setMarketItems(pricedItems);
             setCharmInfoMap(charmMap);
             setOwnedItemIds(new Set(visiblePlayerItems.map((playerItem) => playerItem.item_id)));
             setPurchasedInCurrentMarket(prev => {
@@ -330,7 +361,8 @@ export default function InlineMarketPanel({
 
             items.push(item);
         }
-        setMarketItems(items);
+        const pricedItems = await applySessionItemPrices(items);
+        setMarketItems(pricedItems);
         setCharmInfoMap(charmMap);
         setCurrentItemIndex(0);
     }
@@ -374,8 +406,10 @@ export default function InlineMarketPanel({
     }
 
     async function handleBuy(slotIndex: number, item: ContractItem) {
+        const itemPrice = getDisplayedPrice(item);
+
         if (practiceMode) {
-            if (!onPracticeBuy || currentTickets < item.price) return;
+            if (!onPracticeBuy || currentTickets < itemPrice) return;
             setPurchasingSlot(slotIndex);
             try {
                 await onPracticeBuy(slotIndex, item);
@@ -387,7 +421,7 @@ export default function InlineMarketPanel({
             return;
         }
 
-        if (currentTickets < item.price) return;
+        if (currentTickets < itemPrice) return;
         setPurchasingSlot(slotIndex);
         setPurchasedInCurrentMarket(prev => new Set(prev).add(slotIndex));
         try {
@@ -396,9 +430,9 @@ export default function InlineMarketPanel({
                 slotIndex,
                 itemId: item.item_id,
                 currentTickets,
-                itemPrice: item.price,
+                itemPrice,
             });
-            if (onUpdateTickets) onUpdateTickets(currentTickets - item.price);
+            if (onUpdateTickets) onUpdateTickets(currentTickets - itemPrice);
 
             const events = await buyItem(sessionId, slotIndex);
             logMarketDebug('buy:events', events);
@@ -471,7 +505,8 @@ export default function InlineMarketPanel({
     const wasPurchased = purchasedInCurrentMarket.has(currentItemIndex);
     const isInventoryFull =
         visibleInventoryCount >= 7 && !isOwned && !isCurrentCharm && !isCurrentSpinConsumable;
-    const canAfford = currentItem ? currentTickets >= currentItem.price : false;
+    const currentItemPrice = getDisplayedPrice(currentItem);
+    const canAfford = currentItem ? currentTickets >= currentItemPrice : false;
     const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && purchasingSlot === null;
 
     function getEffectDetails(item: ContractItem): string {
@@ -657,11 +692,12 @@ export default function InlineMarketPanel({
                         const isPurchasedSlot = purchasedInCurrentMarket.has(index);
                         const isItemCharm = isCharmItem(item.item_id);
                         const charmInfo = charmInfoMap.get(item.item_id);
+                        const itemPrice = getDisplayedPrice(item);
                         const isDesktopOwned =
                             ownedItemIds.has(item.item_id) && !hiddenItemIds.includes(item.item_id);
                         const isDesktopInventoryFull =
                             visibleInventoryCount >= 7 && !isDesktopOwned && !isItemCharm;
-                        const canDesktopAfford = currentTickets >= item.price;
+                        const canDesktopAfford = currentTickets >= itemPrice;
                         const isDesktopPurchasing = purchasingSlot === index;
                         const canDesktopPurchase =
                             !isDesktopOwned
@@ -706,12 +742,12 @@ export default function InlineMarketPanel({
                                                 isDesktopInventoryFull ? 'FULL' :
                                                     !canDesktopAfford ? (
                                                         <span className="desktop-buy-copy">
-                                                            <span>NEED {item.price}</span>
+                                                            <span>NEED {itemPrice}</span>
                                                             <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
                                                         </span>
                                                     ) : (
                                                         <span className="desktop-buy-copy">
-                                                            <span>BUY {item.price}</span>
+                                                            <span>BUY {itemPrice}</span>
                                                             <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
                                                         </span>
                                                     )
@@ -822,12 +858,12 @@ export default function InlineMarketPanel({
                                     !currentItem ? "..." :
                                         !canAfford ? (
                                             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                NEED {currentItem.price ?? '...'}
+                                                NEED {currentItemPrice || '...'}
                                                 <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
                                             </span>
                                         ) : (
                                             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                BUY {currentItem.price ?? '...'}
+                                                BUY {currentItemPrice || '...'}
                                                 <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
                                             </span>
                                         )

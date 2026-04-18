@@ -8,7 +8,7 @@ import { Pattern, detectPatterns } from "@/utils/patternDetector";
 const DEFAULT_SYMBOL_SCORES = [7, 5, 4, 3, 2];
 const DEFAULT_SPINS = 5;
 const MAX_CURRENT_SPINS = 8;
-const DEFAULT_TICKETS = 8;
+const DEFAULT_TICKETS = 7;
 const BIBLIA_ITEM_ID = 40;
 const CASH_OUT_ITEM_ID = 41;
 const MARKET_SLOT_COUNT = 6;
@@ -53,6 +53,7 @@ export interface PracticeRunState {
   equippedRelicId: number;
   relicCooldownRemaining: number;
   pendingRelicEffect: number | null;
+  bibliaPurchaseCount: number;
 }
 
 export interface PracticeSpinOutcome {
@@ -144,6 +145,14 @@ function buildPracticeItem(itemId: number): ContractItem {
   };
 }
 
+function getItemPurchasePrice(item: ContractItem, bibliaPurchaseCount: number) {
+  if (item.item_id === BIBLIA_ITEM_ID) {
+    return item.price + bibliaPurchaseCount;
+  }
+
+  return item.price;
+}
+
 export function getPracticeLevelThreshold(level: number) {
   if (level <= 1) return 66;
   if (level === 2) return 222;
@@ -217,18 +226,32 @@ function buildWeightedSymbols(items: ContractItem[]) {
     15 + bonuses[1],
     20 + bonuses[2],
     Math.max(0, 25 + bonuses[3]),
-    20 + bonuses[4],
+    24 + bonuses[4],
   ];
 }
 
-function generateMarketItems(rngState: number) {
+function generateMarketItems(rngState: number, previousItems: ContractItem[] = []) {
   let nextState = rngState;
   const pickedIds = new Set<number>();
+  const excludedIds = new Set<number>(previousItems.map((item) => item.item_id));
+  let attempts = 0;
 
-  while (pickedIds.size < MARKET_SLOT_COUNT) {
+  while (pickedIds.size < MARKET_SLOT_COUNT && attempts < 200) {
     const next = takeRandomInt(nextState, MAX_ITEM_ID);
     nextState = next.nextState;
-    pickedIds.add(next.value + 1);
+    const itemId = next.value + 1;
+    if (!excludedIds.has(itemId) && !pickedIds.has(itemId)) {
+      pickedIds.add(itemId);
+    }
+    attempts += 1;
+  }
+
+  if (pickedIds.size < MARKET_SLOT_COUNT) {
+    for (let itemId = 1; itemId <= MAX_ITEM_ID && pickedIds.size < MARKET_SLOT_COUNT; itemId += 1) {
+      if (!excludedIds.has(itemId) && !pickedIds.has(itemId)) {
+        pickedIds.add(itemId);
+      }
+    }
   }
 
   return {
@@ -337,7 +360,7 @@ function getDiamondChipBonusUnits(items: ContractItem[]) {
 
 export function createPracticeRun(runId: number, seed: number): PracticeRunState {
   const normalizedSeed = toNonZeroSeed(seed);
-  const market = generateMarketItems(normalizedSeed);
+  const market = generateMarketItems(normalizedSeed, []);
 
   return withDerivedState({
     id: runId,
@@ -365,6 +388,7 @@ export function createPracticeRun(runId: number, seed: number): PracticeRunState
     equippedRelicId: 0,
     relicCooldownRemaining: 0,
     pendingRelicEffect: null,
+    bibliaPurchaseCount: 0,
   });
 }
 
@@ -528,6 +552,7 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
 
 export function buyPracticeItem(state: PracticeRunState, slotIndex: number): PracticeBuyOutcome | null {
   const item = state.marketItems[slotIndex];
+  const purchasePrice = item ? getItemPurchasePrice(item, state.bibliaPurchaseCount) : 0;
   const alreadyPurchased = state.purchasedSlots.includes(slotIndex);
   const alreadyOwned = state.inventoryItems.some((inventoryItem) => inventoryItem.item_id === item?.item_id);
   const inventoryFull = state.inventoryItems.length >= INVENTORY_LIMIT;
@@ -538,7 +563,7 @@ export function buyPracticeItem(state: PracticeRunState, slotIndex: number): Pra
     alreadyPurchased ||
     alreadyOwned ||
     inventoryFull ||
-    state.tickets < item.price
+    state.tickets < purchasePrice
   ) {
     return null;
   }
@@ -548,12 +573,14 @@ export function buyPracticeItem(state: PracticeRunState, slotIndex: number): Pra
   const inventoryItems = isSpinConsumable ? state.inventoryItems : [...state.inventoryItems, { ...item }];
   let nextState = withDerivedState({
     ...state,
-    tickets: state.tickets - item.price,
+    tickets: state.tickets - purchasePrice,
     inventoryItems,
     purchasedSlots,
     inventoryRevision: state.inventoryRevision + (isSpinConsumable ? 0 : 1),
     marketRevision: state.marketRevision + 1,
     sessionRevision: state.sessionRevision + 1,
+    bibliaPurchaseCount:
+      state.bibliaPurchaseCount + (item.item_id === BIBLIA_ITEM_ID ? 1 : 0),
   });
 
   if (isSpinConsumable) {
@@ -565,7 +592,7 @@ export function buyPracticeItem(state: PracticeRunState, slotIndex: number): Pra
 
   return {
     nextState: withDerivedState(nextState),
-    purchasedItem: { ...item },
+    purchasedItem: { ...item, price: purchasePrice },
   };
 }
 
@@ -602,7 +629,7 @@ export function refreshPracticeMarket(state: PracticeRunState): PracticeRefreshO
     return null;
   }
 
-  const market = generateMarketItems(state.rngState);
+  const market = generateMarketItems(state.rngState, state.marketItems);
   const nextState = withDerivedState({
     ...state,
     rngState: market.nextState,
@@ -683,7 +710,7 @@ export function activatePracticeRelic(state: PracticeRunState): PracticeRelicAct
   }
 
   if (relicId === 5) {
-    const market = generateMarketItems(state.rngState);
+    const market = generateMarketItems(state.rngState, state.marketItems);
     const nextState = withDerivedState({
       ...state,
       rngState: market.nextState,

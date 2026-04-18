@@ -17,7 +17,8 @@ use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, MarketSlotPurchased, PlayerSessionEntry, PlayerSessions,
     Session, SessionCharmEntry, SessionCharms, SessionInventory, SessionItemEntry, SessionItemIndex,
-    SessionMarket, SessionChipBonus, SpinResult, TokenPairId, XShareSessionClaim,
+    SessionMarket, SessionChipBonus, SessionItemPurchaseCount, SpinResult, TokenPairId,
+    XShareSessionClaim,
 };
 
 #[derive(Copy, Drop)]
@@ -171,6 +172,20 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_session_chip_bonus(mut self: Store, bonus: @SessionChipBonus) {
         self.world.write_model(bonus)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Session Item Purchase Count
+    // ═══════════════════════════════════════════════════════════════════
+
+    fn session_item_purchase_count(
+        self: @Store, session_id: u32, item_id: u32,
+    ) -> SessionItemPurchaseCount {
+        self.world.read_model((session_id, item_id))
+    }
+
+    fn set_session_item_purchase_count(mut self: Store, purchase_count: @SessionItemPurchaseCount) {
+        self.world.write_model(purchase_count)
     }
 
     // ═══════════════════════════════════════════════════════════════════

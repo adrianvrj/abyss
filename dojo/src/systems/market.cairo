@@ -16,8 +16,10 @@ pub mod Market {
     use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
     use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshed};
     use crate::helpers::inventory::InventoryImpl;
+    use crate::helpers::items::{BIBLIA_ITEM_ID, get_item_purchase_price};
     use crate::helpers::market::MarketImpl;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
+    use crate::models::index::SessionItemPurchaseCount;
     use crate::models::index::MarketSlotPurchased;
     use crate::types::effect::ItemEffectType;
     use crate::store::StoreTrait;
@@ -91,7 +93,8 @@ pub mod Market {
                 store.set_session(@session);
             } else {
                 let item = store.item(item_id);
-                purchase_price = item.price;
+                let mut purchase_count = store.session_item_purchase_count(session_id, item_id);
+                purchase_price = get_item_purchase_price(item_id, item.price, purchase_count.count);
                 assert(session.tickets >= purchase_price, 'Not enough tickets');
 
                 session.tickets -= purchase_price;
@@ -103,6 +106,19 @@ pub mod Market {
                     let existing = store.inventory(session_id, item_id);
                     assert(existing.quantity == 0, 'Item already owned');
                     InventoryImpl::add_item_to_inventory(ref store, session_id, item_id);
+                }
+                if item_id == BIBLIA_ITEM_ID {
+                    purchase_count.session_id = session_id;
+                    purchase_count.item_id = item_id;
+                    purchase_count.count += 1;
+                    store
+                        .set_session_item_purchase_count(
+                            @SessionItemPurchaseCount {
+                                session_id,
+                                item_id,
+                                count: purchase_count.count,
+                            },
+                        );
                 }
                 store.set_session(@session);
             }

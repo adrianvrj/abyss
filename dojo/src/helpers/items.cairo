@@ -1,9 +1,19 @@
 use crate::models::index::Item;
 
+pub const BIBLIA_ITEM_ID: u32 = 40;
+
+pub fn get_item_purchase_price(item_id: u32, base_price: u32, purchase_count: u32) -> u32 {
+    if item_id == BIBLIA_ITEM_ID {
+        base_price + purchase_count
+    } else {
+        base_price
+    }
+}
+
 /// Returns only the hot-path item metadata needed during spin execution.
 pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     if item_id == 1 {
-        (3, 3, 'seven')
+        (3, 4, 'seven')
     } else if item_id == 2 {
         (3, 2, 'diamond')
     } else if item_id == 3 {
@@ -23,25 +33,25 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     } else if item_id == 10 {
         (4, 2, '')
     } else if item_id == 11 {
-        (2, 10, 'seven')
+        (2, 12, 'seven')
     } else if item_id == 12 {
-        (2, 12, 'cherry')
+        (2, 8, 'cherry')
     } else if item_id == 13 {
-        (3, 2, 'cherry')
+        (3, 1, 'cherry')
     } else if item_id == 14 {
         (3, 1, 'lemon')
     } else if item_id == 15 {
         (1, 50, '')
     } else if item_id == 16 {
-        (2, 20, 'cherry')
+        (2, 14, 'cherry')
     } else if item_id == 17 {
-        (2, 3, 'anti-coin')
+        (2, 4, 'anti-coin')
     } else if item_id == 18 {
         (4, 3, '')
     } else if item_id == 19 {
-        (3, 1, 'coin')
+        (2, 3, 'anti-coin')
     } else if item_id == 20 {
-        (3, 3, 'cherry')
+        (3, 2, 'cherry')
     } else if item_id == 21 {
         (1, 80, '')
     } else if item_id == 22 {
@@ -51,23 +61,23 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     } else if item_id == 24 {
         (1, 150, '')
     } else if item_id == 25 {
-        (3, 7, 'seven')
+        (3, 9, 'seven')
     } else if item_id == 26 {
         (3, 3, 'diamond')
     } else if item_id == 27 {
         (2, 14, 'diamond')
     } else if item_id == 28 {
-        (2, 30, 'cherry')
+        (2, 20, 'cherry')
     } else if item_id == 29 {
-        (2, 8, 'lemon')
+        (2, 6, 'lemon')
     } else if item_id == 30 {
-        (3, 2, 'lemon')
+        (3, 1, 'lemon')
     } else if item_id == 31 {
-        (2, 5, 'anti-coin')
-    } else if item_id == 32 {
         (2, 7, 'anti-coin')
+    } else if item_id == 32 {
+        (2, 9, 'anti-coin')
     } else if item_id == 33 {
-        (3, 10, 'seven')
+        (3, 13, 'seven')
     } else if item_id == 34 {
         (2, 16, 'seven')
     } else if item_id == 35 {
@@ -75,11 +85,11 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     } else if item_id == 36 {
         (2, 20, 'diamond')
     } else if item_id == 37 {
-        (2, 8, 'lemon')
+        (2, 5, 'lemon')
     } else if item_id == 38 {
-        (3, 3, 'lemon')
+        (3, 2, 'lemon')
     } else if item_id == 39 {
-        (3, 1, 'coin')
+        (2, 5, 'anti-coin')
     } else if item_id == 40 {
         (6, 1, 'six')
     } else if item_id == 41 {
@@ -111,11 +121,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 1,
                 name: 'Chilly Pepper',
-                description: '+3 to seven score on pattern',
+                description: '+4 to seven score on pattern',
                 price: 1,
                 sell_price: 0,
                 effect_type: 3,
-                effect_value: 3,
+                effect_value: 4,
                 target_symbol: 'seven',
             },
         );
@@ -139,11 +149,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 11,
                 name: 'Ghost Mask',
-                description: '+10% seven probability',
+                description: '+12% seven probability',
                 price: 3,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 10,
+                effect_value: 12,
                 target_symbol: 'seven',
             },
         );
@@ -153,11 +163,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 25,
                 name: 'Hockey Mask',
-                description: '+7 to seven score on pattern',
+                description: '+9 to seven score on pattern',
                 price: 2,
                 sell_price: 1,
                 effect_type: 3,
-                effect_value: 7,
+                effect_value: 9,
                 target_symbol: 'seven',
             },
         );
@@ -167,11 +177,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 33,
                 name: 'Ticket',
-                description: '+10 to seven score on pattern',
+                description: '+13 to seven score on pattern',
                 price: 3,
                 sell_price: 2,
                 effect_type: 3,
-                effect_value: 10,
+                effect_value: 13,
                 target_symbol: 'seven',
             },
         );
@@ -295,11 +305,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 12,
                 name: 'Skull',
-                description: '+12% cherry probability',
+                description: '+8% cherry probability',
                 price: 1,
                 sell_price: 0,
                 effect_type: 2,
-                effect_value: 12,
+                effect_value: 8,
                 target_symbol: 'cherry',
             },
         );
@@ -309,6 +319,34 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 13,
                 name: 'Pig Bank',
+                description: '+1 to cherry score on pattern',
+                price: 2,
+                sell_price: 1,
+                effect_type: 3,
+                effect_value: 1,
+                target_symbol: 'cherry',
+            },
+        );
+
+    items
+        .append(
+            Item {
+                item_id: 16,
+                name: 'Weird Hand',
+                description: '+14% cherry probability',
+                price: 2,
+                sell_price: 1,
+                effect_type: 2,
+                effect_value: 14,
+                target_symbol: 'cherry',
+            },
+        );
+
+    items
+        .append(
+            Item {
+                item_id: 20,
+                name: 'Smelly Boots',
                 description: '+2 to cherry score on pattern',
                 price: 2,
                 sell_price: 1,
@@ -321,41 +359,13 @@ pub fn get_all_items() -> Array<Item> {
     items
         .append(
             Item {
-                item_id: 16,
-                name: 'Weird Hand',
-                description: '+20% cherry probability',
-                price: 2,
-                sell_price: 1,
-                effect_type: 2,
-                effect_value: 20,
-                target_symbol: 'cherry',
-            },
-        );
-
-    items
-        .append(
-            Item {
-                item_id: 20,
-                name: 'Smelly Boots',
-                description: '+3 to cherry score on pattern',
-                price: 2,
-                sell_price: 1,
-                effect_type: 3,
-                effect_value: 3,
-                target_symbol: 'cherry',
-            },
-        );
-
-    items
-        .append(
-            Item {
                 item_id: 28,
                 name: 'Devil Head',
-                description: '+30% cherry probability',
+                description: '+20% cherry probability',
                 price: 4,
                 sell_price: 2,
                 effect_type: 2,
-                effect_value: 30,
+                effect_value: 20,
                 target_symbol: 'cherry',
             },
         );
@@ -368,7 +378,7 @@ pub fn get_all_items() -> Array<Item> {
                 name: 'Old Cassette',
                 description: '+1 to lemon score on pattern',
                 price: 1,
-                sell_price: 0,
+                sell_price: 1,
                 effect_type: 3,
                 effect_value: 1,
                 target_symbol: 'lemon',
@@ -381,7 +391,7 @@ pub fn get_all_items() -> Array<Item> {
                 item_id: 14,
                 name: 'Old Wig',
                 description: '+1 to lemon score on pattern',
-                price: 2,
+                price: 1,
                 sell_price: 1,
                 effect_type: 3,
                 effect_value: 1,
@@ -394,11 +404,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 29,
                 name: 'Cigarettes',
-                description: '+8% lemon probability',
-                price: 3,
+                description: '+6% lemon probability',
+                price: 2,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 8,
+                effect_value: 6,
                 target_symbol: 'lemon',
             },
         );
@@ -408,11 +418,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 30,
                 name: 'Soul Contract',
-                description: '+2 to lemon score on pattern',
-                price: 4,
-                sell_price: 1,
+                description: '+1 to lemon score on pattern',
+                price: 3,
+                sell_price: 2,
                 effect_type: 3,
-                effect_value: 2,
+                effect_value: 1,
                 target_symbol: 'lemon',
             },
         );
@@ -422,11 +432,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 37,
                 name: 'Fake Coin',
-                description: '+8% lemon probability',
-                price: 4,
-                sell_price: 1,
+                description: '+5% lemon probability',
+                price: 3,
+                sell_price: 2,
                 effect_type: 2,
-                effect_value: 8,
+                effect_value: 5,
                 target_symbol: 'lemon',
             },
         );
@@ -436,11 +446,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 38,
                 name: 'Pocket Watch',
-                description: '+3 to lemon score on pattern',
-                price: 5,
+                description: '+2 to lemon score on pattern',
+                price: 4,
                 sell_price: 2,
                 effect_type: 3,
-                effect_value: 3,
+                effect_value: 2,
                 target_symbol: 'lemon',
             },
         );
@@ -451,7 +461,21 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 17,
                 name: 'Golden Globe',
-                description: 'Tilt coin +3% others',
+                description: '-4 coin weight',
+                price: 1,
+                sell_price: 0,
+                effect_type: 2,
+                effect_value: 4,
+                target_symbol: 'anti-coin',
+            },
+        );
+
+    items
+        .append(
+            Item {
+                item_id: 19,
+                name: 'Old Phone',
+                description: '-3 coin weight',
                 price: 1,
                 sell_price: 0,
                 effect_type: 2,
@@ -463,39 +487,11 @@ pub fn get_all_items() -> Array<Item> {
     items
         .append(
             Item {
-                item_id: 19,
-                name: 'Old Phone',
-                description: '+1 to coin score on pattern',
-                price: 2,
-                sell_price: 1,
-                effect_type: 3,
-                effect_value: 1,
-                target_symbol: 'coin',
-            },
-        );
-
-    items
-        .append(
-            Item {
                 item_id: 31,
                 name: 'Beer Can',
-                description: 'Tilt coin +5% others',
-                price: 3,
+                description: '-7 coin weight',
+                price: 2,
                 sell_price: 1,
-                effect_type: 2,
-                effect_value: 5,
-                target_symbol: 'anti-coin',
-            },
-        );
-
-    items
-        .append(
-            Item {
-                item_id: 32,
-                name: 'Memory Card',
-                description: 'Tilt coin +7% others',
-                price: 4,
-                sell_price: 2,
                 effect_type: 2,
                 effect_value: 7,
                 target_symbol: 'anti-coin',
@@ -505,14 +501,28 @@ pub fn get_all_items() -> Array<Item> {
     items
         .append(
             Item {
+                item_id: 32,
+                name: 'Memory Card',
+                description: '-9 coin weight',
+                price: 3,
+                sell_price: 1,
+                effect_type: 2,
+                effect_value: 9,
+                target_symbol: 'anti-coin',
+            },
+        );
+
+    items
+        .append(
+            Item {
                 item_id: 39,
                 name: 'Knight Helmet',
-                description: '+1 to coin score on pattern',
-                price: 1,
-                sell_price: 0,
-                effect_type: 3,
-                effect_value: 1,
-                target_symbol: 'coin',
+                description: '-5 coin weight',
+                price: 2,
+                sell_price: 1,
+                effect_type: 2,
+                effect_value: 5,
+                target_symbol: 'anti-coin',
             },
         );
 
@@ -665,7 +675,7 @@ pub fn get_all_items() -> Array<Item> {
                 item_id: 40,
                 name: 'La Biblia',
                 description: 'Protects from 666 pattern',
-                price: 3,
+                price: 1,
                 sell_price: 1,
                 effect_type: 6,
                 effect_value: 1,

@@ -157,6 +157,16 @@ pub struct SessionChipBonus {
     pub bonus_units: u32,
 }
 
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct SessionItemPurchaseCount {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub item_id: u32,
+    pub count: u32,
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SESSION INVENTORY - Items owned per session
 // ═══════════════════════════════════════════════════════════════════════════

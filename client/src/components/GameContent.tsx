@@ -218,6 +218,7 @@ function GameStage({
                                 practiceMode={practiceMode}
                                 practiceMarketItems={game.initialMarketItems}
                                 practiceOwnedItems={game.initialInventoryItems}
+                                practiceBibliaPurchaseCount={practiceGame?.practiceBibliaPurchaseCount}
                                 practicePurchasedSlots={practiceGame?.practicePurchasedSlots}
                                 practiceRefreshCount={practiceGame?.practiceRefreshCount}
                                 onPracticeRefresh={practiceGame?.handlePracticeRefresh}
@@ -288,6 +289,7 @@ function GameStage({
                         practiceMode={practiceMode}
                         practiceMarketItems={game.initialMarketItems}
                         practiceOwnedItems={game.initialInventoryItems}
+                        practiceBibliaPurchaseCount={practiceGame?.practiceBibliaPurchaseCount}
                         practicePurchasedSlots={practiceGame?.practicePurchasedSlots}
                         practiceRefreshCount={practiceGame?.practiceRefreshCount}
                         onPracticeRefresh={practiceGame?.handlePracticeRefresh}
