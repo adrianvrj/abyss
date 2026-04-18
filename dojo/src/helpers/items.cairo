@@ -45,11 +45,11 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     } else if item_id == 16 {
         (2, 14, 'cherry')
     } else if item_id == 17 {
-        (2, 4, 'anti-coin')
+        (2, 5, 'anti-coin')
     } else if item_id == 18 {
         (4, 3, '')
     } else if item_id == 19 {
-        (2, 3, 'anti-coin')
+        (2, 4, 'anti-coin')
     } else if item_id == 20 {
         (3, 2, 'cherry')
     } else if item_id == 21 {
@@ -73,9 +73,9 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     } else if item_id == 30 {
         (3, 1, 'lemon')
     } else if item_id == 31 {
-        (2, 7, 'anti-coin')
+        (2, 8, 'anti-coin')
     } else if item_id == 32 {
-        (2, 9, 'anti-coin')
+        (2, 11, 'anti-coin')
     } else if item_id == 33 {
         (3, 13, 'seven')
     } else if item_id == 34 {
@@ -89,7 +89,7 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     } else if item_id == 38 {
         (3, 2, 'lemon')
     } else if item_id == 39 {
-        (2, 5, 'anti-coin')
+        (2, 6, 'anti-coin')
     } else if item_id == 40 {
         (6, 1, 'six')
     } else if item_id == 41 {
@@ -461,6 +461,20 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 17,
                 name: 'Golden Globe',
+                description: '-5 coin weight',
+                price: 1,
+                sell_price: 0,
+                effect_type: 2,
+                effect_value: 5,
+                target_symbol: 'anti-coin',
+            },
+        );
+
+    items
+        .append(
+            Item {
+                item_id: 19,
+                name: 'Old Phone',
                 description: '-4 coin weight',
                 price: 1,
                 sell_price: 0,
@@ -473,27 +487,13 @@ pub fn get_all_items() -> Array<Item> {
     items
         .append(
             Item {
-                item_id: 19,
-                name: 'Old Phone',
-                description: '-3 coin weight',
-                price: 1,
-                sell_price: 0,
-                effect_type: 2,
-                effect_value: 3,
-                target_symbol: 'anti-coin',
-            },
-        );
-
-    items
-        .append(
-            Item {
                 item_id: 31,
                 name: 'Beer Can',
-                description: '-7 coin weight',
-                price: 2,
+                description: '-8 coin weight',
+                price: 1,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 7,
+                effect_value: 8,
                 target_symbol: 'anti-coin',
             },
         );
@@ -503,11 +503,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 32,
                 name: 'Memory Card',
-                description: '-9 coin weight',
-                price: 3,
+                description: '-11 coin weight',
+                price: 2,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 9,
+                effect_value: 11,
                 target_symbol: 'anti-coin',
             },
         );
@@ -517,11 +517,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 39,
                 name: 'Knight Helmet',
-                description: '-5 coin weight',
-                price: 2,
+                description: '-6 coin weight',
+                price: 1,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 5,
+                effect_value: 6,
                 target_symbol: 'anti-coin',
             },
         );
