@@ -1151,12 +1151,17 @@ const styles = `
             border: none;
             background: transparent;
             padding: 0;
-            justify-content: space-between;
+            justify-content: flex-start;
             gap: 12px;
+        }
+        .mobile-market-view {
+            flex: 1;
+            min-height: 0;
         }
         .panel-header {
             font-size: 11px;
             padding: 0 0 10px;
+            flex: 0 0 auto;
         }
         .item-display {
             flex: 1;
@@ -1164,23 +1169,44 @@ const styles = `
             height: auto;
             min-height: 0;
             margin: 0;
-            padding: 18px 14px;
+            padding: 24px 16px;
             background: rgba(0, 0, 0, 0.36);
             border: 1px solid rgba(255, 132, 28, 0.16);
+            gap: 12px;
+        }
+        .item-image, .charm-image {
+            margin-bottom: 0;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            width: 100%;
         }
         .item-image img, .charm-image img {
-            width: 120px;
-            height: 120px;
+            width: auto;
+            height: auto;
+            max-width: min(72%, 240px);
+            max-height: 100%;
+            object-fit: contain;
         }
         .item-name {
-            font-size: 12px;
+            font-size: 13px;
             line-height: 1.5;
+            flex: 0 0 auto;
         }
         .effect-badge, .charm-effect {
-            font-size: 8px;
+            font-size: 9px;
             line-height: 1.6;
-            padding: 8px 10px;
+            padding: 6px 10px;
             text-align: center;
+            background: transparent;
+            color: #fff;
+            flex: 0 0 auto;
+        }
+        .effect-badge .compact-effect,
+        .effect-badge .desktop-effect-inline {
+            color: #fff;
         }
         .buy-btn, .refresh-btn {
             min-height: 50px;

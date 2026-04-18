@@ -3,6 +3,8 @@ import { getPracticeEffectiveLuck } from "@/lib/practiceEngine";
 import { Pattern } from "@/utils/patternDetector";
 import { ContractItem } from "@/utils/abyssContract";
 import { usePractice } from "@/context/practice";
+import { getGameConfig } from "@/api/rpc/play";
+import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 interface OwnedRelic {
   tokenId: bigint;
@@ -20,6 +22,7 @@ const PRACTICE_RELICS: OwnedRelic[] = [
 ];
 const EMPTY_ITEMS: ContractItem[] = [];
 const EMPTY_PATTERNS: Pattern[] = [];
+const CHIP_SCORE_DIVISOR = 20;
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -72,6 +75,7 @@ export function usePracticeSession() {
   const [isSelling, setIsSelling] = useState(false);
   const currentLuck = run ? getPracticeEffectiveLuck(run) : 0;
   const [lastMarketEvent, setLastMarketEvent] = useState<null>(null);
+  const chipEconomyConfigRef = useRef<{ emissionRate: number; boostMultiplier: number } | null>(null);
 
   const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const spinSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -80,6 +84,31 @@ export function usePracticeSession() {
   useEffect(() => {
     runRef.current = run;
   }, [run]);
+
+  const loadChipEconomyConfig = useCallback(async () => {
+    if (chipEconomyConfigRef.current) {
+      return chipEconomyConfigRef.current;
+    }
+
+    const config = await getGameConfig(DEFAULT_CHAIN_ID);
+    const resolved = {
+      emissionRate: config.chipEmissionRate,
+      boostMultiplier: config.chipBoostMultiplier,
+    };
+    chipEconomyConfigRef.current = resolved;
+    return resolved;
+  }, []);
+
+  const calculatePracticeChipPayout = useCallback(async (scoreValue: number, diamondBonusUnits: number) => {
+    try {
+      const { emissionRate, boostMultiplier } = await loadChipEconomyConfig();
+      const baseUnits = Math.floor(Math.max(0, scoreValue) / CHIP_SCORE_DIVISOR);
+      return (baseUnits + Math.max(0, diamondBonusUnits)) * emissionRate * boostMultiplier;
+    } catch (error) {
+      console.warn("Failed to resolve chip economy config for practice payout", error);
+      return Math.floor(Math.max(0, scoreValue) / CHIP_SCORE_DIVISOR) + Math.max(0, diamondBonusUnits);
+    }
+  }, [loadChipEconomyConfig]);
 
   useEffect(() => {
     if (!run) {
@@ -285,19 +314,21 @@ export function usePracticeSession() {
         : Math.max(1000, outcome.patterns.length * 400 + 600);
 
     if (outcome.endedRun) {
-      window.setTimeout(() => {
+      window.setTimeout(async () => {
         setFinalScore(outcome.nextState.score);
         setFinalTotalScore(outcome.nextState.totalScore);
         setChipsEarned(
-          Math.floor(Math.max(0, outcome.nextState.score) / 20)
-            + outcome.nextState.diamondChipBonusUnits,
+          await calculatePracticeChipPayout(
+            outcome.nextState.score,
+            outcome.nextState.diamondChipBonusUnits,
+          ),
         );
         setGameOverBuildItems(outcome.nextState.inventoryItems);
         setGameOverReason("no_spins");
         setShowGameOver(true);
       }, sequenceDelay);
     }
-  }, [isSpinning, playSound, showGameOver, spin]);
+  }, [calculatePracticeChipPayout, isSpinning, playSound, showGameOver, spin]);
 
   const handlePlayAgain = useCallback(() => {
     playAgain();
@@ -329,8 +360,10 @@ export function usePracticeSession() {
       setFinalScore(outcome.nextState.score);
       setFinalTotalScore(outcome.nextState.totalScore);
       setChipsEarned(
-        Math.floor(Math.max(0, outcome.nextState.score) / 20)
-          + outcome.nextState.diamondChipBonusUnits,
+        await calculatePracticeChipPayout(
+          outcome.nextState.score,
+          outcome.nextState.diamondChipBonusUnits,
+        ),
       );
       setGameOverBuildItems(outcome.nextState.inventoryItems);
       setGameOverReason("scorched");
@@ -339,7 +372,7 @@ export function usePracticeSession() {
     }
 
     setShowRelicActivation(true);
-  }, [activateRelic, equippedRelic]);
+  }, [activateRelic, calculatePracticeChipPayout, equippedRelic]);
 
   const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {
     equipRelic(relic.relicId);

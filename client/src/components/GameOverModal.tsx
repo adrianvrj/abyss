@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import type { ContractItem } from '@/utils/abyssContract';
 import { getItemImage } from '@/utils/itemImages';
+import { CHIP_TOKEN_IMAGE_URL } from '@/lib/constants';
 
 interface GameOverModalProps {
     isVisible: boolean;
@@ -21,7 +22,6 @@ interface GameOverModalProps {
 export default function GameOverModal({
     isVisible,
     finalScore,
-    totalScore,
     chipsEarned,
     diamondChipBonusUnits = 0,
     buildItems = [],
@@ -29,8 +29,7 @@ export default function GameOverModal({
     practiceMode = false,
     onPlayAgain,
 }: GameOverModalProps) {
-    const scoreForChips = totalScore ?? finalScore;
-    const displayedChipsEarned = chipsEarned ?? Math.floor(scoreForChips / 20);
+    const displayedChipsEarned = chipsEarned ?? 0;
 
     return (
         <AnimatePresence>
@@ -91,8 +90,24 @@ export default function GameOverModal({
                             color: '#FF841C',
                             textAlign: 'center',
                             letterSpacing: '0.1em',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px',
                         }}>
-                            {practiceMode ? 'NO ONCHAIN REWARDS IN PRACTICE' : `CHIPS EARNED: ${displayedChipsEarned}`}
+                            {practiceMode ? `YOU WOULD HAVE WON:` : `CHIPS EARNED:`}
+                            <img
+                                src={CHIP_TOKEN_IMAGE_URL}
+                                alt="CHIP"
+                                width={20}
+                                height={20}
+                                style={{
+                                    objectFit: 'contain',
+                                    imageRendering: 'pixelated',
+                                    flexShrink: 0,
+                                }}
+                            />
+                            <span>{displayedChipsEarned}</span>
                         </div>
                         {!practiceMode && diamondChipBonusUnits > 0 && (
                             <div style={{

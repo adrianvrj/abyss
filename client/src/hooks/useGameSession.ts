@@ -12,6 +12,7 @@ import {
 import { CONTRACTS, DEFAULT_CHAIN_ID } from '@/lib/constants';
 import { getCharmMetadata, getPlayerCharms } from '@/api/rpc/relic';
 import { getRpcProvider } from '@/api/rpc/provider';
+import { getGameConfig } from '@/api/rpc/play';
 
 const DEBUG_SPIN_SYNC =
     import.meta.env.DEV || import.meta.env.VITE_ABYSS_DEBUG_SPIN === 'true';
@@ -100,6 +101,7 @@ const RELIC_NAMES: Record<number, string> = {
 
 const BIBLIA_ITEM_ID = 40;
 const CASH_OUT_ITEM_ID = 41;
+const CHIP_SCORE_DIVISOR = 20;
 
 export interface OwnedRelic {
     tokenId: bigint;
@@ -124,6 +126,7 @@ export function useGameSession(sessionId: string | null) {
     } = useAbyssGame(account);
     const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
     const rpcProvider = getRpcProvider(chainId);
+    const chipEconomyConfigRef = useRef<{ emissionRate: number; boostMultiplier: number } | null>(null);
 
     // Game State
     const [level, setLevel] = useState(1);
@@ -206,19 +209,54 @@ export function useGameSession(sessionId: string | null) {
     const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
     const spinSoundRef = useRef<HTMLAudioElement | null>(null);
 
-    const calculateChipPayout = useCallback((scoreValue: number) => {
-        return Math.floor(Math.max(0, scoreValue) / 20);
+    const loadChipEconomyConfig = useCallback(async () => {
+        if (chipEconomyConfigRef.current) {
+            return chipEconomyConfigRef.current;
+        }
+
+        const config = await getGameConfig(chainId);
+        const resolved = {
+            emissionRate: config.chipEmissionRate,
+            boostMultiplier: config.chipBoostMultiplier,
+        };
+        chipEconomyConfigRef.current = resolved;
+        return resolved;
+    }, [chainId]);
+
+    const calculateChipPayout = useCallback((
+        scoreValue: number,
+        bonusUnits = 0,
+        emissionRate = 1,
+        boostMultiplier = 1,
+    ) => {
+        const baseUnits = Math.floor(Math.max(0, scoreValue) / CHIP_SCORE_DIVISOR);
+        return (baseUnits + Math.max(0, bonusUnits)) * emissionRate * boostMultiplier;
     }, []);
 
-    const resolveChipPayout = useCallback(async (targetSessionId: number, fallbackScore: number) => {
+    const resolveChipPayout = useCallback(async (
+        targetSessionId: number,
+        fallbackScore: number,
+        fallbackBonusUnits = 0,
+    ) => {
         try {
             const payout = await getSessionChipPayout(targetSessionId);
             return Number(payout / 1_000_000_000_000_000_000n);
         } catch (error) {
-            console.warn('Failed to resolve session chip payout from chain, using fallback', error);
-            return calculateChipPayout(fallbackScore);
+            console.warn('Failed to resolve session chip payout from chain, using config fallback', error);
+            try {
+                const { emissionRate, boostMultiplier } = await loadChipEconomyConfig();
+                return calculateChipPayout(
+                    fallbackScore,
+                    fallbackBonusUnits,
+                    emissionRate,
+                    boostMultiplier,
+                );
+            } catch (configError) {
+                console.warn('Failed to resolve chip economy config, using minimal fallback', configError);
+                return calculateChipPayout(fallbackScore, fallbackBonusUnits);
+            }
         }
-    }, [calculateChipPayout]);
+    }, [calculateChipPayout, loadChipEconomyConfig]);
 
     const resolveDiamondChipBonusUnits = useCallback(async (targetSessionId: number) => {
         try {
@@ -847,7 +885,13 @@ export function useGameSession(sessionId: string | null) {
                         // Prioritize receipt results over potentially stale Torii state
                         const finalBalance = Math.max(receiptFinalScore, latestSession?.score || 0);
                         const finalLifetimeScore = Math.max(receiptTotalScore, latestSession?.totalScore || 0);
-                        const earnedChips = await resolveChipPayout(Number(sessionId), finalBalance);
+                        const finalDiamondBonus = await resolveDiamondChipBonusUnits(Number(sessionId));
+                        setDiamondChipBonusUnits(finalDiamondBonus);
+                        const earnedChips = await resolveChipPayout(
+                            Number(sessionId),
+                            finalBalance,
+                            finalDiamondBonus,
+                        );
 
                         setFinalScore(finalBalance);
                         setFinalTotalScore(finalLifetimeScore);
@@ -966,7 +1010,13 @@ export function useGameSession(sessionId: string | null) {
                     if (!latestSession?.isActive || (latestSession?.spinsRemaining ?? 0) <= 0) {
                         await captureGameOverBuild();
                         const resolvedScore = latestSession?.score ?? spinResult.score ?? 0;
-                        const earnedChips = await resolveChipPayout(Number(sessionId), resolvedScore);
+                        const finalDiamondBonus = await resolveDiamondChipBonusUnits(Number(sessionId));
+                        setDiamondChipBonusUnits(finalDiamondBonus);
+                        const earnedChips = await resolveChipPayout(
+                            Number(sessionId),
+                            resolvedScore,
+                            finalDiamondBonus,
+                        );
                         setFinalScore(latestSession?.score ?? spinResult.score ?? 0);
                         setFinalTotalScore(latestSession?.totalScore ?? latestSession?.score ?? spinResult.score ?? 0);
                         setChipsEarned(earnedChips);
@@ -1045,7 +1095,9 @@ export function useGameSession(sessionId: string | null) {
                     await captureGameOverBuild();
                     setFinalScore(score);
                     setFinalTotalScore(score);
-                    setChipsEarned(await resolveChipPayout(Number(sessionId), score));
+                    const finalDiamondBonus = await resolveDiamondChipBonusUnits(Number(sessionId));
+                    setDiamondChipBonusUnits(finalDiamondBonus);
+                    setChipsEarned(await resolveChipPayout(Number(sessionId), score, finalDiamondBonus));
                     setChipsClaimed(false);
                     setGameOverReason('scorched');
                     setIsSessionActive(false);
