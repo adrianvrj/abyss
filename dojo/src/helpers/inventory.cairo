@@ -168,15 +168,9 @@ pub impl InventoryImpl of InventoryTrait {
     /// Get cumulative spin bonus from inventory
     fn get_inventory_spin_bonus(store: @Store, session_id: u32) -> u32 {
         let mut bonus: u32 = 0;
-        let item_idx = store.session_item_index(session_id);
-        let item_count = item_idx.count;
-        let mut i: u32 = 0;
-        while i != item_count {
-            i += 1;
-        }
 
         let charm_ids = Self::collect_session_charm_ids(store, session_id);
-        let charm_count: u32 = charm_ids.len().try_into().unwrap();
+        let charm_count = charm_ids.len();
         let mut j: u32 = 0;
         while j != charm_count {
             let charm_meta = get_charm_type_info(*charm_ids.at(j));

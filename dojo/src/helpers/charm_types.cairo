@@ -266,8 +266,9 @@ pub fn get_charm_retrigger_bonuses_for_ids(charm_ids: Span<u32>) -> (u32, u32, u
     let mut all_retrigger: u32 = 1;
     let mut jackpot_retrigger: u32 = 1;
 
+    let len = charm_ids.len();
     let mut i: u32 = 0;
-    while i < charm_ids.len().try_into().unwrap() {
+    while i != len {
         let charm_id = *charm_ids.at(i);
         let charm_meta = get_charm_type_info(charm_id);
 
@@ -307,9 +308,10 @@ pub fn get_charm_retrigger_bonuses_for_ids(charm_ids: Span<u32>) -> (u32, u32, u
 
 pub fn calculate_base_luck_from_charm_ids(charm_ids: Span<u32>) -> u32 {
     let mut luck: u32 = 0;
+    let len = charm_ids.len();
     let mut i: u32 = 0;
 
-    while i < charm_ids.len().try_into().unwrap() {
+    while i != len {
         let charm_meta = get_charm_type_info(*charm_ids.at(i));
         if charm_meta.effect_type == CharmEffectType::LuckBoost {
             luck += charm_meta.effect_value;
@@ -333,9 +335,10 @@ pub fn calculate_effective_luck_from_charm_ids(
     blocked_666_this_session: bool,
 ) -> u32 {
     let mut luck = calculate_base_luck_from_charm_ids(charm_ids);
+    let len = charm_ids.len();
     let mut i: u32 = 0;
 
-    while i < charm_ids.len().try_into().unwrap() {
+    while i != len {
         let charm_id = *charm_ids.at(i);
         let charm_meta = get_charm_type_info(charm_id);
         let val = charm_meta.effect_value;

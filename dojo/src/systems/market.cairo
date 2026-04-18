@@ -226,11 +226,10 @@ pub mod Market {
             session.score -= cost;
             sm.refresh_count += 1;
             store.set_session(@session);
-            store.set_session_market(@sm);
 
-            // Execute refresh helper
+            // Execute refresh helper (helper writes the final session_market)
             let refreshed_market = crate::helpers::market::MarketImpl::refresh_market(
-                ref store, session_id, caller,
+                ref store, sm, session_id, caller,
             );
 
             // Emit refresh event

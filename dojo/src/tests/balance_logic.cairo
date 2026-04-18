@@ -24,13 +24,39 @@ fn find_item(item_id: u32) -> Item {
 
 #[test]
 fn test_spin_consumable_runtime_values_match_balance_patch() {
-    let (_, red_button_spins, _) = get_item_runtime_effect(10);
+    let devil_onion = find_item(9);
+    let pyramid = find_item(18);
+    let (_, devil_onion_spins, _) = get_item_runtime_effect(9);
     let (_, pyramid_spins, _) = get_item_runtime_effect(18);
-    let (_, devil_seal_spins, _) = get_item_runtime_effect(23);
 
-    assert(red_button_spins == 2, 'red button spins');
+    assert(devil_onion.price == 1, 'devil onion price');
+    assert(pyramid.price == 2, 'pyramid price');
+    assert(devil_onion.sell_price == 1, 'devil onion sell');
+    assert(pyramid.sell_price == 2, 'pyramid sell');
+    assert(devil_onion_spins == 1, 'devil onion spins');
     assert(pyramid_spins == 3, 'pyramid spins');
-    assert(devil_seal_spins == 4, 'devil seal spins');
+}
+
+#[test]
+fn test_pattern_multiplier_prices_match_balance_patch() {
+    let bat_boomerang = find_item(5);
+    let holy_eye = find_item(6);
+    let amulet = find_item(15);
+    let bloody_wrench = find_item(21);
+    let car_keys = find_item(22);
+    let holy_grail = find_item(24);
+
+    assert(bat_boomerang.price == 1, 'bat boomerang price');
+    assert(bat_boomerang.effect_value == 20, 'bat boomerang value');
+    assert(holy_eye.price == 2, 'holy eye price');
+    assert(holy_eye.effect_value == 40, 'holy eye value');
+    assert(amulet.price == 3, 'amulet price');
+    assert(amulet.effect_value == 60, 'amulet value');
+    assert(bloody_wrench.price == 4, 'bloody wrench price');
+    assert(bloody_wrench.effect_value == 90, 'bloody wrench value');
+    assert(car_keys.price == 5, 'car keys price');
+    assert(car_keys.effect_value == 120, 'car keys value');
+    assert(holy_grail.price == 7, 'holy grail legacy price');
 }
 
 #[test]
@@ -50,28 +76,31 @@ fn test_lemon_and_meta_shift_item_definitions_match_patch() {
     let smelly_boots = find_item(20);
     let devil_head = find_item(28);
 
-    assert(old_wig.price == 1, 'old wig price');
-    assert(old_wig.effect_value == 1, 'old wig value');
+    assert(old_wig.price == 2, 'old wig price');
+    assert(old_wig.effect_value == 2, 'old wig value');
     assert(cigarettes.price == 2, 'cigarettes price');
-    assert(cigarettes.effect_value == 6, 'cigarettes value');
+    assert(cigarettes.effect_value == 5, 'cigarettes value');
     assert(fake_coin.price == 3, 'fake coin price');
-    assert(fake_coin.effect_value == 5, 'fake coin value');
-    assert(chilly_pepper.effect_value == 4, 'chilly pepper value');
+    assert(fake_coin.effect_value == 6, 'fake coin value');
+    assert(chilly_pepper.effect_value == 14, 'chilly pepper value');
     assert(nerd_glasses.effect_value == 6, 'nerd glasses value');
     assert(ghost_mask.effect_value == 12, 'ghost mask value');
-    assert(hockey_mask.effect_value == 9, 'hockey mask value');
-    assert(ticket.effect_value == 13, 'ticket value');
+    assert(hockey_mask.effect_value == 21, 'hockey mask value');
+    assert(ticket.effect_value == 28, 'ticket value');
     assert(devil_train.price == 4, 'devil train price');
     assert(devil_train.effect_value == 16, 'devil train value');
     assert(skull.effect_value == 8, 'skull value');
-    assert(pig_bank.effect_value == 1, 'pig bank value');
+    assert(pig_bank.effect_value == 3, 'pig bank value');
     assert(weird_hand.effect_value == 14, 'weird hand value');
-    assert(smelly_boots.effect_value == 2, 'smelly boots value');
+    assert(smelly_boots.price == 3, 'smelly boots price');
+    assert(smelly_boots.effect_value == 4, 'smelly boots value');
     assert(devil_head.effect_value == 20, 'devil head value');
     assert(find_item(4).sell_price == 1, 'old cassette sell');
-    assert(find_item(30).effect_value == 1, 'soul contract value');
+    assert(find_item(30).price == 3, 'soul contract price');
+    assert(find_item(30).effect_value == 3, 'soul contract value');
     assert(find_item(30).sell_price == 2, 'soul contract sell');
-    assert(find_item(38).effect_value == 2, 'pocket watch value');
+    assert(find_item(38).price == 4, 'pocket watch price');
+    assert(find_item(38).effect_value == 4, 'pocket watch value');
 }
 
 #[test]
@@ -92,24 +121,25 @@ fn test_coin_diamond_and_cash_out_item_definitions_match_patch() {
     assert(milk.effect_value == 2, 'milk value');
     assert(ace.effect_value == 8, 'ace probability');
     assert(globe.target_symbol == 'anti-coin', 'golden globe target');
-    assert(globe.effect_value == 5, 'golden globe value');
+    assert(globe.effect_value == 8, 'golden globe value');
     assert(old_phone.target_symbol == 'anti-coin', 'old phone target');
     assert(old_phone.price == 1, 'old phone price');
     assert(old_phone.effect_value == 4, 'old phone value');
     assert(rune.effect_value == 3, 'rune value');
     assert(bloody_knife.effect_value == 14, 'bloody knife value');
     assert(beer_can.target_symbol == 'anti-coin', 'beer can target');
-    assert(beer_can.effect_value == 8, 'beer can value');
-    assert(beer_can.price == 1, 'beer can price');
+    assert(beer_can.effect_value == 11, 'beer can value');
+    assert(beer_can.price == 2, 'beer can price');
     assert(memory_card.effect_type == 2, 'memory card type');
     assert(memory_card.target_symbol == 'anti-coin', 'memory card target');
-    assert(memory_card.effect_value == 11, 'memory card value');
-    assert(memory_card.price == 2, 'memory card price');
+    assert(memory_card.effect_value == 20, 'memory card value');
+    assert(memory_card.price == 3, 'memory card price');
+    assert(memory_card.sell_price == 2, 'memory card sell');
     assert(fake_dollar.effect_value == 4, 'fake dollar value');
     assert(bull_skull.effect_value == 20, 'bull skull value');
     assert(knight_helmet.target_symbol == 'anti-coin', 'knight helmet target');
     assert(knight_helmet.effect_value == 6, 'knight helmet value');
-    assert(knight_helmet.price == 1, 'knight helmet price');
+    assert(knight_helmet.price == 2, 'knight helmet price');
     assert(cash_out.effect_type == 11, 'cash out type');
     assert(cash_out.price == 4, 'cash out price');
     assert(get_item_diamond_chip_bonus(2) == 1, 'milk chip bonus');

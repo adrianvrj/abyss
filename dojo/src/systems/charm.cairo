@@ -182,7 +182,7 @@ pub mod Charm {
             assert(charm_ids.len() > 0, 'Invalid rarity');
 
             let random_u256: u256 = random_seed.into();
-            let index: u32 = (random_u256 % charm_ids.len().into()).try_into().unwrap();
+            let index: u32 = (random_u256.low % charm_ids.len().into()).try_into().unwrap();
             let charm_id = *charm_ids.at(index);
             InternalImpl::mint_charm_internal(ref self, player, charm_id)
         }

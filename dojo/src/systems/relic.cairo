@@ -104,9 +104,10 @@ pub mod Relic {
             } else if effect == RelicEffectType::FreeMarketRefresh {
                 let mut sm = store.session_market(session_id);
                 sm.refresh_count += 1;
-                store.set_session_market(@sm);
 
-                let refreshed_market = MarketImpl::refresh_market(ref store, session_id, caller);
+                let refreshed_market = MarketImpl::refresh_market(
+                    ref store, sm, session_id, caller,
+                );
                 store
                     .emit_market_refreshed(
                         @MarketRefreshed {

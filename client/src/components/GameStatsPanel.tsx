@@ -179,6 +179,7 @@ export default function GameStatsPanel({
     }
 
     function getModifiedSymbols(): (SymbolConfig & {
+        currentWeight: number;
         points: number;
         weightDelta: number;
         probabilityDelta: number;
@@ -229,6 +230,7 @@ export default function GameStatsPanel({
 
                 return {
                     ...symbol,
+                    currentWeight: probabilityEntry?.finalWeight ?? symbol.probability,
                     points: currentScore,
                     probability: probabilityEntry?.probability ?? symbol.probability,
                     weightDelta,
@@ -402,6 +404,7 @@ export default function GameStatsPanel({
                             key={symbol.type}
                             symbolType={symbol.type}
                             points={symbol.points}
+                            currentWeight={symbol.currentWeight}
                             probability={symbol.probability}
                             weightDelta={symbol.weightDelta}
                             probabilityDelta={symbol.probabilityDelta}
@@ -517,12 +520,13 @@ export default function GameStatsPanel({
 interface SymbolRowProps {
     symbolType: SymbolType;
     points: number;
+    currentWeight: number;
     probability: number;
     weightDelta: number;
     probabilityDelta: number;
 }
 
-function SymbolRow({ symbolType, points, probability, weightDelta, probabilityDelta }: SymbolRowProps) {
+function SymbolRow({ symbolType, points, currentWeight, probability, weightDelta, probabilityDelta }: SymbolRowProps) {
     const info = SYMBOL_INFO[symbolType];
     const basePoints = DEFAULT_GAME_CONFIG.symbols.find(s => s.type === symbolType)?.points || 0;
     const hasWeightShift = weightDelta !== 0;
@@ -575,13 +579,33 @@ function SymbolRow({ symbolType, points, probability, weightDelta, probabilityDe
             }}>
                 {points}pt
             </span>
-            <span style={{
-                fontFamily: "'PressStart2P', monospace",
-                fontSize: '9px',
-                color: probabilityColor,
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                gap: '2px',
+                minWidth: '64px',
             }}>
-                {probability.toFixed(1)}%
-            </span>
+                <span style={{
+                    fontFamily: "'PressStart2P', monospace",
+                    fontSize: '9px',
+                    color: probabilityColor,
+                }}>
+                    {probability.toFixed(1)}%
+                </span>
+                <span style={{
+                    fontFamily: "'PressStart2P', monospace",
+                    fontSize: '8px',
+                    color: hasWeightShift
+                        ? weightDelta > 0
+                            ? '#00FF64'
+                            : '#FF7A7A'
+                        : 'rgba(255,255,255,0.45)',
+                }}>
+                    W {currentWeight}
+                    {hasWeightShift ? ` (${weightDelta > 0 ? '+' : ''}${weightDelta})` : ''}
+                </span>
+            </div>
         </div>
     );
 }

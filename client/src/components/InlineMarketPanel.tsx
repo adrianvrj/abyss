@@ -529,7 +529,7 @@ export default function InlineMarketPanel({
                 if (target === 'anti-coin') {
                     return `-${val} coin weight`;
                 }
-                return target ? `+${val}% ${target} chance` : `+${val}% chance`;
+                return target ? `+${val} ${target} weight` : `+${val} weight`;
             case ItemEffectType.PatternMultiplierBoost:
                 return (target && target !== '0') ? `+${val}% ${target} patterns` : `+${val}% all patterns`;
             case ItemEffectType.ScoreMultiplier:

@@ -268,7 +268,7 @@ pub mod Play {
                             .span(),
                     );
                     let cash_out_roll_u256: u256 = cash_out_seed.into();
-                    cash_out_succeeded = (cash_out_roll_u256 % 100) < 50;
+                    cash_out_succeeded = (cash_out_roll_u256.low % 100) < 50;
                     cash_out_failed = !cash_out_succeeded;
                     if cash_out_succeeded {
                         is_666 = false;
@@ -286,7 +286,7 @@ pub mod Play {
                                 .span(),
                         );
                         let biblia_roll_u256: u256 = biblia_seed.into();
-                        biblia_discarded = (biblia_roll_u256 % 100) < 50;
+                        biblia_discarded = (biblia_roll_u256.low % 100) < 50;
                         if biblia_discarded {
                             InventoryImpl::remove_item_from_inventory(
                                 ref store, session_id, BIBLIA_ITEM_ID,
@@ -343,11 +343,7 @@ pub mod Play {
                 session.spins_remaining = (session.spins_remaining + 1) / 2;
             }
 
-            loop {
-                let threshold = get_level_threshold(session.level);
-                if session.score < threshold {
-                    break;
-                }
+            while session.score >= get_level_threshold(session.level) {
                 session.level += 1;
                 session.tickets += 1;
                 session.spins_remaining = DEFAULT_SPINS;
@@ -765,8 +761,9 @@ pub mod Play {
                     @PlayerSessionEntry { player, index: ps_idx, session_id },
                 );
 
+            let sm = store.session_market(session_id);
             crate::helpers::market::MarketImpl::refresh_market(
-                ref store, session_id, player,
+                ref store, sm, session_id, player,
             );
             store.emit_session_created(session_id, player, true);
             session_id
@@ -825,10 +822,11 @@ pub mod Play {
                             .span(),
                     );
                     let charm_roll_u256: u256 = charm_seed.into();
-                    let charm_roll: u32 = (charm_roll_u256 % 100).try_into().unwrap();
+                    let charm_roll_low: u128 = charm_roll_u256.low;
+                    let charm_roll: u32 = (charm_roll_low % 100).try_into().unwrap();
 
                     if charm_roll < total_chance {
-                        let rarity_roll: u32 = ((charm_roll_u256 / 100) % 100).try_into().unwrap();
+                        let rarity_roll: u32 = ((charm_roll_low / 100) % 100).try_into().unwrap();
                         let rarity: u8 = if rarity_roll < 3 {
                             2
                         } else if rarity_roll < 15 {

@@ -120,7 +120,7 @@ export default function InlineInventoryPanel({
                 if (targetSymbol === 'anti-coin') {
                     return `-${value} coin weight`;
                 }
-                return targetSymbol ? `+${value}% ${targetSymbol} chance` : `+${value}% symbol chance`;
+                return targetSymbol ? `+${value} ${targetSymbol} weight` : `+${value} symbol weight`;
             case 3: return targetSymbol ? `+${value} pts per ${targetSymbol}` : `+${value} pts per symbol`;
             case 4: return `+${value} instant spins`;
             case 5: return `+${value}% level progress`;

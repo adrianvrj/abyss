@@ -134,7 +134,10 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         const val = item.effect_value;
         switch (item.effect_type) {
             case ItemEffectType.DirectScoreBonus: return `+${val} pts to ${item.target_symbol}`;
-            case ItemEffectType.SymbolProbabilityBoost: return `+${val}% chance ${item.target_symbol}`;
+            case ItemEffectType.SymbolProbabilityBoost:
+                return item.target_symbol === 'anti-coin'
+                    ? `-${val} coin weight`
+                    : `+${val} ${item.target_symbol} weight`;
             case ItemEffectType.PatternMultiplierBoost: return `+${val}% patterns`;
             case ItemEffectType.ScoreMultiplier: return `+${val}% score`;
             case ItemEffectType.SpinBonus: return `+${val} instant spins`;

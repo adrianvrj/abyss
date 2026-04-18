@@ -264,7 +264,9 @@ export async function getItemInfo(itemId: number): Promise<ContractItem> {
     return null;
   });
   const fallback = STATIC_ITEM_DEFINITIONS[itemId];
-  const preferStaticDescription = new Set([2, 8, 17, 26, 27, 31, 32, 35, 36, 41]).has(itemId);
+  const preferStaticDescription =
+    fallback?.effect_type === ItemEffectType.SymbolProbabilityBoost ||
+    new Set([2, 8, 17, 26, 27, 31, 32, 35, 36, 41]).has(itemId);
 
   const resolvedName = item?.name || fallback?.name || `Item #${itemId}`;
   const resolvedDescription = preferStaticDescription

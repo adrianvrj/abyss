@@ -27,11 +27,11 @@ export interface GameConfig {
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
     symbols: [
-        { type: 'seven', points: 7, probability: 10 },
+        { type: 'seven', points: 7, probability: 13 },
         { type: 'diamond', points: 5, probability: 15 },
         { type: 'cherry', points: 4, probability: 20 },
         { type: 'coin', points: 3, probability: 25 },
-        { type: 'lemon', points: 2, probability: 24 },
+        { type: 'lemon', points: 2, probability: 30 },
         { type: 'six', points: 0, probability: 0 }, // Only appears on 666
     ],
     patternMultipliers: [

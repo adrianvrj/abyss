@@ -23,6 +23,7 @@ const INVENTORY_LIMIT = 7;
 const MAX_ITEM_ID = 41;
 const MAX_CHARM_ID = 20;
 const PRACTICE_CHARM_APPEAR_CHANCE = 10;
+const RETIRED_MARKET_ITEM_IDS = new Set<number>([10, 19, 23, 24, 39]);
 const RELIC_EFFECT_RANDOM_JACKPOT = 0;
 const RELIC_EFFECT_DOUBLE_NEXT_SPIN = 2;
 const RELIC_EFFECT_RESET_SPINS = 3;
@@ -372,7 +373,7 @@ function generateMarketItems(
       itemId = next.value + 1;
     }
 
-    if (!excludedIds.has(itemId) && !pickedIds.has(itemId)) {
+    if (!RETIRED_MARKET_ITEM_IDS.has(itemId) && !excludedIds.has(itemId) && !pickedIds.has(itemId)) {
       pickedIds.add(itemId);
     }
     attempts += 1;
@@ -395,7 +396,7 @@ function generateMarketItems(
     }
 
     for (let itemId = 1; itemId <= MAX_ITEM_ID && pickedIds.size < MARKET_SLOT_COUNT; itemId += 1) {
-      if (!excludedIds.has(itemId) && !pickedIds.has(itemId)) {
+      if (!RETIRED_MARKET_ITEM_IDS.has(itemId) && !excludedIds.has(itemId) && !pickedIds.has(itemId)) {
         pickedIds.add(itemId);
       }
     }

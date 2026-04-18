@@ -30,7 +30,7 @@ pub fn generate_grid_from_random(
     let luck_bias_threshold = luck_bias_chance * 1000;
 
     let (p7, pd, pc, p_coin, pl) = probability_bonuses;
-    let prob_seven = 10 + p7;
+    let prob_seven = 13 + p7;
     let prob_diamond = 15 + pd;
     let prob_cherry = 20 + pc;
     let raw_prob_coin = 25 + p_coin;
@@ -39,7 +39,7 @@ pub fn generate_grid_from_random(
     } else {
         raw_prob_coin - coin_probability_penalty
     };
-    let prob_lemon = 24 + pl;
+    let prob_lemon = 30 + pl;
     let total_prob = prob_seven + prob_diamond + prob_cherry + prob_coin + prob_lemon;
     let thresh_seven = prob_seven;
     let thresh_diamond = thresh_seven + prob_diamond;
@@ -50,12 +50,13 @@ pub fn generate_grid_from_random(
     while i != 15 {
         let position_seed = poseidon_hash_pair(random_word, i.into());
         let seed_value: u256 = position_seed.into();
+        let seed_low: u128 = seed_value.low;
 
         // Luck bias: chance to copy symbol from adjacent cell
         let mut symbol: u8 = 0;
 
         if luck_bias_threshold > 0 && i > 0 {
-            let luck_window: u32 = (seed_value % 100000).try_into().unwrap();
+            let luck_window: u32 = (seed_low % 100000).try_into().unwrap();
             if luck_window < luck_bias_threshold {
                 let copy_from = get_pattern_neighbor(i);
                 symbol = *grid.at(copy_from);
@@ -64,7 +65,7 @@ pub fn generate_grid_from_random(
 
         // If no luck bias applied, use normal random symbol
         if symbol == 0 {
-            let symbol_roll: u32 = (seed_value % total_prob.into()).try_into().unwrap();
+            let symbol_roll: u32 = (seed_low % total_prob.into()).try_into().unwrap();
             symbol =
                 if symbol_roll < thresh_seven {
                     SymbolType::SEVEN
@@ -94,7 +95,7 @@ pub fn generate_grid_from_random(
     // Check for 666 based on level probability
     let roll_666_seed = poseidon_hash_pair(random_word, 999.into());
     let roll_666: u256 = roll_666_seed.into();
-    let is_666 = (roll_666 % 1000) < probability_666.into();
+    let is_666 = (roll_666.low % 1000) < probability_666.into();
 
     (grid, is_666, is_jackpot)
 }
@@ -117,7 +118,7 @@ pub fn get_pattern_neighbor(index: u32) -> u32 {
 /// Generate a jackpot grid (all 15 cells same symbol).
 pub fn generate_jackpot_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
     let symbol_roll: u256 = random_word.into();
-    let symbol: u8 = ((symbol_roll % 5) + 1).try_into().unwrap();
+    let symbol: u8 = ((symbol_roll.low % 5) + 1).try_into().unwrap();
     let mut grid: Array<u8> = array![];
     let mut i: u32 = 0;
     while i != 15 {
@@ -137,7 +138,7 @@ pub fn generate_666_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
         } else {
             let symbol_seed = poseidon_hash_pair(random_word, i.into());
             let symbol_roll: u256 = symbol_seed.into();
-            let symbol: u8 = ((symbol_roll % 8) + 1).try_into().unwrap();
+            let symbol: u8 = ((symbol_roll.low % 8) + 1).try_into().unwrap();
             grid.append(symbol);
         }
         i += 1;
