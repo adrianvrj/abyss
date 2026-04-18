@@ -197,6 +197,13 @@ export default function InlineMarketPanel({
             return;
         }
 
+        const practiceCharmMap = new Map<number, CharmInfo>();
+        practiceMarketItems.forEach((item) => {
+            if (isCharmItem(item.item_id) && item.charmInfo) {
+                practiceCharmMap.set(item.item_id, item.charmInfo);
+            }
+        });
+
         setLoading(false);
         setMarketData({
             refresh_count: practiceRefreshCount,
@@ -208,6 +215,7 @@ export default function InlineMarketPanel({
             item_slot_6: practiceMarketItems[5]?.item_id ?? 0,
         });
         setMarketItems(practiceMarketItems);
+        setCharmInfoMap(practiceCharmMap);
         setOwnedItemIds(new Set(practiceOwnedItems.map((item) => item.item_id)));
         setPurchasedInCurrentMarket(new Set(practicePurchasedSlots));
         setCurrentItemIndex((prev) =>

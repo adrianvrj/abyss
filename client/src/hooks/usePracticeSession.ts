@@ -1,4 +1,5 @@
 import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
+import { getPracticeEffectiveLuck } from "@/lib/practiceEngine";
 import { Pattern } from "@/utils/patternDetector";
 import { ContractItem } from "@/utils/abyssContract";
 import { usePractice } from "@/context/practice";
@@ -69,7 +70,7 @@ export function usePracticeSession() {
   const [relicIndex, setRelicIndex] = useState(0);
   const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
   const [isSelling, setIsSelling] = useState(false);
-  const [currentLuck] = useState<number | undefined>(0);
+  const currentLuck = run ? getPracticeEffectiveLuck(run) : 0;
   const [lastMarketEvent, setLastMarketEvent] = useState<null>(null);
 
   const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
