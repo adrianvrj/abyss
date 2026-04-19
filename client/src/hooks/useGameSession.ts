@@ -5,7 +5,7 @@ import { Pattern, detectPatterns, ScoreBonuses } from '@/utils/patternDetector';
 import { applyPatternModifiers } from '@/lib/patternMath';
 import {
     getSessionItems, getItemInfo, ItemEffectType, ContractItem,
-    getCharmInfo, CharmInfo, getSessionMarket, getSessionLuck, getSessionChipPayout,
+    getCharmInfo, CharmInfo, getSessionMarket, getSessionLuck,
     getSessionChipBonusUnits,
     isCharmItem, getCharmIdFromItemId
 } from '@/utils/abyssContract';
@@ -234,27 +234,21 @@ export function useGameSession(sessionId: string | null) {
     }, []);
 
     const resolveChipPayout = useCallback(async (
-        targetSessionId: number,
+        _targetSessionId: number,
         fallbackScore: number,
         fallbackBonusUnits = 0,
     ) => {
         try {
-            const payout = await getSessionChipPayout(targetSessionId);
-            return Number(payout / 1_000_000_000_000_000_000n);
-        } catch (error) {
-            console.warn('Failed to resolve session chip payout from chain, using config fallback', error);
-            try {
-                const { emissionRate, boostMultiplier } = await loadChipEconomyConfig();
-                return calculateChipPayout(
-                    fallbackScore,
-                    fallbackBonusUnits,
-                    emissionRate,
-                    boostMultiplier,
-                );
-            } catch (configError) {
-                console.warn('Failed to resolve chip economy config, using minimal fallback', configError);
-                return calculateChipPayout(fallbackScore, fallbackBonusUnits);
-            }
+            const { emissionRate, boostMultiplier } = await loadChipEconomyConfig();
+            return calculateChipPayout(
+                fallbackScore,
+                fallbackBonusUnits,
+                emissionRate,
+                boostMultiplier,
+            );
+        } catch (configError) {
+            console.warn('Failed to resolve chip economy config, using minimal fallback', configError);
+            return calculateChipPayout(fallbackScore, fallbackBonusUnits);
         }
     }, [calculateChipPayout, loadChipEconomyConfig]);
 

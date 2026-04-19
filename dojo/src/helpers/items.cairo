@@ -29,7 +29,7 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
     } else if item_id == 8 {
         (2, 8, 'diamond')
     } else if item_id == 9 {
-        (4, 1, '')
+        (4, 2, '')
     } else if item_id == 10 {
         (4, 2, '')
     } else if item_id == 11 {
@@ -617,11 +617,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 9,
                 name: 'Devil Onion',
-                description: '+1 instant spin',
+                description: '+2 instant spins',
                 price: 1,
                 sell_price: 1,
                 effect_type: 4,
-                effect_value: 1,
+                effect_value: 2,
                 target_symbol: '',
             },
         );
