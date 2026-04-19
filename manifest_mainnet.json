@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x2091f4a0a2ea8a1ac6023c415eaf2668f6e69d4e386675202eea4cb81b55058",
+      "class_hash": "0x490d539c3de82299f0a3ec267354184f187fbf156bc0ea21bfe84b250bc9e2c",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -120,6 +120,7 @@
         "create_session",
         "claim_beast_session",
         "mint_session",
+        "equip_charms",
         "request_spin",
         "end_session",
         "claim_chips",
@@ -4345,6 +4346,22 @@
             {
               "name": "quantity",
               "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "equip_charms",
+          "inputs": [
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "charm_ids",
+              "type": "core::array::Span::<core::integer::u32>"
             }
           ],
           "outputs": [],

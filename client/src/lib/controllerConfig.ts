@@ -42,6 +42,7 @@ export const sessionPolicies: SessionPolicies = {
       methods: [
         { entrypoint: "create_session" },
         { entrypoint: "mint_session" },
+        { entrypoint: "equip_charms" },
         { entrypoint: "request_spin" },
         { entrypoint: "end_session" },
         { entrypoint: "claim_chips" },

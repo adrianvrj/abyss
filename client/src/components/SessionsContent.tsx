@@ -5,7 +5,7 @@ import { useController } from "@/hooks/useController";
 import { useAbyssGame } from "@/hooks/useAbyssGame";
 import { useBundles } from "@/context/bundles";
 import { useAbyssActions } from "@/hooks/actions";
-import { getSetupAddress } from "@/config";
+import { DEFAULT_CHAIN_ID, getCharmAddress, getSetupAddress } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +13,11 @@ import { BundleApi } from "@/api/torii/bundle";
 import { useEntities } from "@/context/entities";
 import { useChipPrice } from "@/hooks/useChipPrice";
 import { BreakevenBreakdown } from "@/components/BreakevenBreakdown";
+import { CharmLoadoutModal } from "@/components/modals/CharmLoadoutModal";
+import { useCharmLoadout } from "@/hooks/useCharmLoadout";
+import { getCharmMetadata, getPlayerCharms } from "@/api/rpc/relic";
+import { STATIC_CHARM_DEFINITIONS } from "@/lib/charmCatalog";
+import { Sparkles, Flame } from "lucide-react";
 
 interface SessionInfo {
     sessionId: number;
@@ -20,6 +25,7 @@ interface SessionInfo {
     score: number;
     spinsRemaining: number;
     isActive: boolean;
+    totalSpins: number;
 }
 
 const styles = {
@@ -222,11 +228,13 @@ export function SessionsContent() {
     const {
         getPlayerSessions,
         getSessionData,
+        getSessionItems,
         getAvailableBeastSessions,
         claimBeastSession,
         isReady,
     } = useAbyssGame(account);
-    const { claimFreeSessionBundle } = useAbyssActions();
+    const { claimFreeSessionBundle, equipCharms } = useAbyssActions();
+    const charmLoadout = useCharmLoadout(account?.address);
     const { bundles, status: bundlesStatus, refresh: refreshBundles } = useBundles();
 
     const [sessions, setSessions] = useState<SessionInfo[]>([]);
@@ -236,6 +244,14 @@ export function SessionsContent() {
     const { client, config } = useEntities();
     const { chipsPerUsdc, isLoading: isLoadingPrice } = useChipPrice();
     const [beastSessions, setBeastSessions] = useState(0);
+    const [configuringSession, setConfiguringSession] = useState<SessionInfo | null>(null);
+    const [isPrerunLoadoutOpen, setIsPrerunLoadoutOpen] = useState(false);
+    const [ownedCharmIds, setOwnedCharmIds] = useState<number[]>([]);
+    const [sessionCharmIds, setSessionCharmIds] = useState<number[]>([]);
+    const [isSealingLoadout, setIsSealingLoadout] = useState(false);
+    const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
+    const charmAddress = getCharmAddress(chainId);
+    const charmsEnabled = Boolean(charmAddress && charmAddress !== "0x0");
     const shareMessage =
         "I'm minting my free Abyss game session!\n🎟️ @abyssdotfun\nhttps://play.abyssgame.fun";
 
@@ -307,6 +323,7 @@ export function SessionsContent() {
                     score: data.score,
                     spinsRemaining: data.spinsRemaining,
                     isActive: data.isActive,
+                    totalSpins: data.totalSpins,
                 } as SessionInfo;
             });
 
@@ -334,6 +351,97 @@ export function SessionsContent() {
     const handleSelectSession = useCallback((sessionId: number) => {
         navigate(`/game?sessionId=${sessionId}`);
     }, [navigate]);
+
+    const loadOwnedCharms = useCallback(async () => {
+        if (!charmsEnabled || !account?.address) return;
+        try {
+            const tokenIds = await getPlayerCharms(chainId, charmAddress, account.address);
+            const ids = new Set<number>();
+            for (const tokenId of tokenIds) {
+                try {
+                    const metadata = await getCharmMetadata(chainId, charmAddress, tokenId);
+                    const cid = Number(metadata?.charmId ?? 0);
+                    if (cid > 0) ids.add(cid);
+                } catch {
+                    /* ignore single charm errors */
+                }
+            }
+            setOwnedCharmIds(Array.from(ids));
+        } catch (error) {
+            console.warn("Failed to load owned charms:", error);
+        }
+    }, [account?.address, chainId, charmAddress, charmsEnabled]);
+
+    useEffect(() => {
+        loadOwnedCharms();
+    }, [loadOwnedCharms]);
+
+    const handleOpenLoadout = useCallback(
+        async (session: SessionInfo) => {
+            setConfiguringSession(session);
+            setSessionCharmIds([]);
+
+            try {
+                const items = await getSessionItems(session.sessionId);
+                const equippedCharms = items
+                    .filter((item) => item.item_id >= 1000)
+                    .map((item) => item.item_id - 1000);
+                setSessionCharmIds(equippedCharms);
+
+                if (session.totalSpins === 0) {
+                    charmLoadout.set(equippedCharms);
+                }
+            } catch (error) {
+                console.warn("Failed to load session charms:", error);
+            }
+
+            loadOwnedCharms();
+        },
+        [charmLoadout, getSessionItems, loadOwnedCharms],
+    );
+
+    const handleCloseLoadout = useCallback(() => {
+        setConfiguringSession(null);
+        setSessionCharmIds([]);
+    }, []);
+
+    const handleSealLoadout = useCallback(async () => {
+        if (!configuringSession) return;
+        setIsSealingLoadout(true);
+        try {
+            await equipCharms(configuringSession.sessionId, charmLoadout.loadout);
+            setSessionCharmIds(charmLoadout.loadout);
+            await loadSessions();
+            setConfiguringSession(null);
+        } finally {
+            setIsSealingLoadout(false);
+        }
+    }, [charmLoadout.loadout, configuringSession, equipCharms, loadSessions]);
+
+    const handleOpenPrerunLoadout = useCallback(() => {
+        setIsPrerunLoadoutOpen(true);
+        loadOwnedCharms();
+    }, [loadOwnedCharms]);
+
+    const handleClosePrerunLoadout = useCallback(() => {
+        setIsPrerunLoadoutOpen(false);
+    }, []);
+
+    const handleSealPrerunLoadout = useCallback(async () => {
+        setIsPrerunLoadoutOpen(false);
+    }, []);
+
+    const equipPendingLoadout = useCallback(
+        async (sessionId: number) => {
+            if (!charmsEnabled || charmLoadout.loadout.length === 0) return;
+            try {
+                await equipCharms(sessionId, charmLoadout.loadout);
+            } catch (error) {
+                console.warn("Failed to auto-equip pre-run charm loadout:", error);
+            }
+        },
+        [charmLoadout.loadout, charmsEnabled, equipCharms],
+    );
 
     const handleCreateSessionClick = useCallback(async () => {
         if (!account) {
@@ -410,6 +518,7 @@ export function SessionsContent() {
                         );
 
                         if (createdSessionId !== undefined) {
+                            await equipPendingLoadout(createdSessionId);
                             await loadSessions();
                             navigate(`/game?sessionId=${createdSessionId}`);
                             return;
@@ -426,7 +535,7 @@ export function SessionsContent() {
         } finally {
             setIsCreating(false);
         }
-    }, [account, bundles, chain?.id, connector, getPlayerSessions, loadSessions, navigate, refreshBundles]);
+    }, [account, bundles, chain?.id, connector, equipPendingLoadout, getPlayerSessions, loadSessions, navigate, refreshBundles]);
 
     const handleBack = useCallback(() => {
         navigate("/");
@@ -453,6 +562,7 @@ export function SessionsContent() {
                 );
 
                 if (createdSessionId !== undefined) {
+                    await equipPendingLoadout(createdSessionId);
                     await loadSessions();
                     navigate(`/game?sessionId=${createdSessionId}`);
                     return;
@@ -463,7 +573,7 @@ export function SessionsContent() {
 
             await loadSessions();
         },
-        [account, getPlayerSessions, loadSessions, navigate],
+        [account, equipPendingLoadout, getPlayerSessions, loadSessions, navigate],
     );
 
     const handleShareOnX = useCallback(async () => {
@@ -540,6 +650,7 @@ export function SessionsContent() {
 
                     if (createdSessionId !== undefined) {
                         console.log("[ABYSS_BUNDLE] New session found:", createdSessionId);
+                        await equipPendingLoadout(createdSessionId);
                         await loadSessions();
                         setIsCreating(false);
                         navigate(`/game?sessionId=${createdSessionId}`);
@@ -563,6 +674,7 @@ export function SessionsContent() {
         bundles,
         chain?.id,
         connector,
+        equipPendingLoadout,
         getPlayerSessions,
         loadSessions,
         navigate,
@@ -604,6 +716,131 @@ export function SessionsContent() {
             </div>
 
             <div style={styles.content}>
+                {/* Pre-run Charm Loadout */}
+                {charmsEnabled && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                            border: "1px solid rgba(255, 132, 28, 0.35)",
+                            borderRadius: 12,
+                            background: "#0a0402",
+                            padding: "12px 14px",
+                            boxShadow: "0 0 0 1px rgba(255,132,28,0.08) inset",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 10,
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    fontFamily: "'PressStart2P', monospace",
+                                    fontSize: 10,
+                                    color: "#FF841C",
+                                    letterSpacing: 1,
+                                    textTransform: "uppercase",
+                                }}
+                            >
+                                <Sparkles size={12} />
+                                Charm Loadout
+                            </div>
+                            <span
+                                style={{
+                                    fontFamily: "'PressStart2P', monospace",
+                                    fontSize: 8,
+                                    color: charmLoadout.loadout.length > 0 ? "#4ADE80" : "rgba(255,255,255,0.45)",
+                                    letterSpacing: 0.5,
+                                    border: "1px solid rgba(255,132,28,0.35)",
+                                    borderRadius: 999,
+                                    padding: "3px 8px",
+                                    background: "#120700",
+                                }}
+                            >
+                                {charmLoadout.loadout.length}/{charmLoadout.maxCharms}
+                            </span>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "stretch", gap: 10 }}>
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(3, 1fr)",
+                                    gap: 6,
+                                    flex: 1,
+                                }}
+                            >
+                                {Array.from({ length: charmLoadout.maxCharms }).map((_, idx) => {
+                                    const charmId = charmLoadout.loadout[idx];
+                                    const def = charmId ? STATIC_CHARM_DEFINITIONS[charmId] : null;
+                                    return (
+                                        <div
+                                            key={`pre-slot-${idx}`}
+                                            style={{
+                                                height: 44,
+                                                border: def
+                                                    ? "1px solid rgba(255, 132, 28, 0.5)"
+                                                    : "1px dashed rgba(255, 132, 28, 0.25)",
+                                                borderRadius: 6,
+                                                background: "#000",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                overflow: "hidden",
+                                            }}
+                                        >
+                                            {def ? (
+                                                <img
+                                                    src={def.image}
+                                                    alt={def.name}
+                                                    style={{
+                                                        width: "70%",
+                                                        height: "70%",
+                                                        objectFit: "contain",
+                                                        imageRendering: "pixelated",
+                                                    }}
+                                                />
+                                            ) : (
+                                                <Flame size={14} color="rgba(255, 132, 28, 0.35)" />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <motion.button
+                                onClick={handleOpenPrerunLoadout}
+                                whileHover={{ borderColor: "#FF841C", color: "#FF841C" }}
+                                whileTap={{ scale: 0.97 }}
+                                style={{
+                                    background: "#160900",
+                                    border: "1px solid rgba(255, 132, 28, 0.5)",
+                                    borderRadius: 6,
+                                    padding: "0 14px",
+                                    fontFamily: "'PressStart2P', monospace",
+                                    fontSize: 9,
+                                    color: "rgba(255, 132, 28, 0.9)",
+                                    letterSpacing: 1,
+                                    cursor: "pointer",
+                                    textTransform: "uppercase",
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {charmLoadout.loadout.length === 0 ? "BIND >" : "EDIT >"}
+                            </motion.button>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Create New Session */}
                 <motion.button
                     style={{
@@ -723,46 +960,107 @@ export function SessionsContent() {
                         <p style={styles.noSessions}>no active runs</p>
                     ) : (
                         <AnimatePresence>
-                            {sessions.map((session) => (
-                                <motion.div
-                                    key={session.sessionId}
-                                    style={styles.sessionCard}
-                                    onClick={() => handleSelectSession(session.sessionId)}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    whileHover={styles.sessionCardHover}
-                                    whileTap={{ scale: 0.98 }}
-                                >
-                                    <div style={styles.sessionInfo}>
-                                        <span style={styles.sessionId}>
-                                            RUN #{session.sessionId}
-                                        </span>
-                                        <div style={styles.sessionStats}>
-                                            <div style={styles.stat}>
-                                                <span style={styles.statValue}>{session.level}</span>
-                                                <span style={styles.statLabel}>LEVEL</span>
-                                            </div>
-                                            <div style={styles.stat}>
-                                                <span style={styles.statValue}>{session.score}</span>
-                                                <span style={styles.statLabel}>SCORE</span>
-                                            </div>
-                                            <div style={styles.stat}>
-                                                <span style={{
-                                                    ...styles.statValue,
-                                                    ...(session.spinsRemaining <= 1 ? styles.spinsWarning : {}),
-                                                }}>
-                                                    {session.spinsRemaining}
-                                                </span>
-                                                <span style={styles.statLabel}>SPINS</span>
+                            {sessions.map((session) => {
+                                const isFresh = session.totalSpins === 0;
+                                const showCharms = charmAddress && charmAddress !== "0x0";
+                                return (
+                                    <motion.div
+                                        key={session.sessionId}
+                                        style={{ ...styles.sessionCard, marginBottom: 12 }}
+                                        onClick={() => handleSelectSession(session.sessionId)}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        whileHover={styles.sessionCardHover}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <div style={styles.sessionInfo}>
+                                            <span style={styles.sessionId}>
+                                                RUN #{session.sessionId}
+                                            </span>
+                                            <div style={styles.sessionStats}>
+                                                <div style={styles.stat}>
+                                                    <span style={styles.statValue}>{session.level}</span>
+                                                    <span style={styles.statLabel}>LEVEL</span>
+                                                </div>
+                                                <div style={styles.stat}>
+                                                    <span style={styles.statValue}>{session.score}</span>
+                                                    <span style={styles.statLabel}>SCORE</span>
+                                                </div>
+                                                <div style={styles.stat}>
+                                                    <span style={{
+                                                        ...styles.statValue,
+                                                        ...(session.spinsRemaining <= 1 ? styles.spinsWarning : {}),
+                                                    }}>
+                                                        {session.spinsRemaining}
+                                                    </span>
+                                                    <span style={styles.statLabel}>SPINS</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                        {showCharms && (
+                                            <motion.button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOpenLoadout(session);
+                                                }}
+                                                whileHover={{ scale: 1.03, borderColor: "#FF841C" }}
+                                                whileTap={{ scale: 0.97 }}
+                                                style={{
+                                                    marginTop: 12,
+                                                    width: "100%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: 8,
+                                                    background: isFresh
+                                                        ? "linear-gradient(90deg, rgba(255,132,28,0.12), rgba(255,132,28,0.04))"
+                                                        : "rgba(0,0,0,0.4)",
+                                                    border: `1px solid ${isFresh ? "rgba(255,132,28,0.5)" : "rgba(255,255,255,0.12)"}`,
+                                                    borderRadius: 6,
+                                                    padding: "10px 12px",
+                                                    fontFamily: "'PressStart2P', monospace",
+                                                    fontSize: 9,
+                                                    color: isFresh ? "#FF841C" : "rgba(255,255,255,0.55)",
+                                                    letterSpacing: 1,
+                                                    cursor: "pointer",
+                                                }}
+                                            >
+                                                <Sparkles size={11} />
+                                                {isFresh ? "CHARM LOADOUT" : "VIEW CHARMS"}
+                                            </motion.button>
+                                        )}
+                                    </motion.div>
+                                );
+                            })}
                         </AnimatePresence>
                     )}
                 </div>
             </div>
+
+            <CharmLoadoutModal
+                isOpen={configuringSession !== null}
+                onClose={handleCloseLoadout}
+                ownedCharmIds={ownedCharmIds}
+                loadout={charmLoadout.loadout}
+                onToggle={charmLoadout.toggle}
+                onClear={charmLoadout.clear}
+                onSeal={handleSealLoadout}
+                isLocked={(configuringSession?.totalSpins ?? 0) > 0}
+                isSubmitting={isSealingLoadout}
+                alreadyEquippedIds={sessionCharmIds}
+            />
+
+            <CharmLoadoutModal
+                isOpen={isPrerunLoadoutOpen}
+                onClose={handleClosePrerunLoadout}
+                ownedCharmIds={ownedCharmIds}
+                loadout={charmLoadout.loadout}
+                onToggle={charmLoadout.toggle}
+                onClear={charmLoadout.clear}
+                onSeal={handleSealPrerunLoadout}
+                isLocked={false}
+                isSubmitting={false}
+            />
         </div>
     );
 }

@@ -26,6 +26,7 @@ pub trait IPlay<T> {
     fn create_session(ref self: T, player: ContractAddress, payment_token: ContractAddress) -> u32;
     fn claim_beast_session(ref self: T, player: ContractAddress) -> u32;
     fn mint_session(ref self: T, player: ContractAddress, quantity: u32);
+    fn equip_charms(ref self: T, session_id: u32, charm_ids: Span<u32>);
     fn request_spin(ref self: T, session_id: u32);
     fn end_session(ref self: T, session_id: u32);
     fn claim_chips(ref self: T, session_id: u32);
@@ -197,6 +198,59 @@ pub mod Play {
             }
 
             store.set_config(@config);
+        }
+
+        fn equip_charms(ref self: ContractState, session_id: u32, charm_ids: Span<u32>) {
+            let caller = get_caller_address();
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+
+            let mut session = store.session(session_id);
+            assert(session.player_address == caller, 'Not session owner');
+            assert(session.is_active, 'Session not active');
+            assert(session.total_spins == 0, 'Charms locked after first spin');
+            assert(charm_ids.len() <= 3, 'Max 3 charms');
+
+            // Clear any existing session charms (idempotent re-equip before first spin)
+            let mut existing = store.session_charms(session_id);
+            let mut k: u32 = 0;
+            while k < existing.count {
+                store
+                    .set_session_charm_entry(
+                        @crate::models::index::SessionCharmEntry {
+                            session_id, index: k, charm_id: 0,
+                        },
+                    );
+                k += 1;
+            }
+            existing.count = 0;
+            store.set_session_charms(@existing);
+
+            // Validate ownership against CharmNFT and reject duplicates
+            let owned = crate::helpers::market::MarketImpl::get_owned_charm_ids(@store, caller);
+            let owned_span = owned.span();
+
+            let mut seen: Array<u32> = array![];
+            let mut i: u32 = 0;
+            while i < charm_ids.len() {
+                let charm_id = *charm_ids.at(i);
+                assert(charm_id > 0, 'Invalid charm id');
+                assert(
+                    crate::helpers::market::MarketImpl::has_value(owned_span, charm_id),
+                    'Charm not owned',
+                );
+                assert(
+                    !crate::helpers::market::MarketImpl::has_value(seen.span(), charm_id),
+                    'Duplicate charm',
+                );
+                seen.append(charm_id);
+
+                InventoryImpl::add_charm_to_session(ref store, session_id, charm_id);
+                i += 1;
+            }
+
+            session.luck = InventoryImpl::calculate_base_luck(@store, session_id);
+            store.set_session(@session);
         }
 
         fn request_spin(ref self: ContractState, session_id: u32) {
