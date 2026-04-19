@@ -5,9 +5,9 @@ use crate::constants::{
 };
 use crate::helpers::grid::generate_grid_from_random;
 use crate::models::index::{
-    Config, Item, MarketSlotPurchased, Session, SessionCharmEntry, SessionCharms,
-    SessionChipBonus, SessionInventory, SessionItemEntry, SessionItemIndex, SessionMarket,
-    SpinResult,
+    Config, Item, MarketSlotPurchased, Session, SessionCharmEntry, SessionCharmLoadout,
+    SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry, SessionItemIndex,
+    SessionMarket, SpinResult,
 };
 use crate::store::StoreTrait;
 use crate::systems::market::{IMarketDispatcher, IMarketDispatcherTrait};
@@ -122,6 +122,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
         TestResource::Model(declared_class_hash("m_SessionItemEntry")),
         TestResource::Model(declared_class_hash("m_SessionCharms")),
         TestResource::Model(declared_class_hash("m_SessionCharmEntry")),
+        TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
         TestResource::Event(declared_class_hash("e_SpinCompleted")),
         TestResource::Contract(declared_class_hash("Play")),
         TestResource::Contract(declared_class_hash("Collection")),
@@ -378,6 +379,8 @@ fn refresh_market_profile_world() -> (dojo::world::WorldStorage, ContractAddress
         TestResource::Model(declared_class_hash("m_SpinResult")),
         TestResource::Model(declared_class_hash("m_SessionItemIndex")),
         TestResource::Model(declared_class_hash("m_SessionCharms")),
+        TestResource::Model(declared_class_hash("m_SessionCharmEntry")),
+        TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
         TestResource::Event(declared_class_hash("e_MarketRefreshed")),
         TestResource::Contract(declared_class_hash("Market")),
     ];
@@ -564,4 +567,160 @@ fn profile_refresh_market_world_path() {
     }
 
     assert(checksum != 0, 'refresh market guard');
+}
+
+fn is_charm_item(item_id: u32) -> bool {
+    item_id >= 1001 && item_id <= 1100
+}
+
+fn loadout_contains(
+    loadout: SessionCharmLoadout, charm_item_id: u32,
+) -> bool {
+    if charm_item_id < 1001 {
+        return false;
+    }
+    let charm_id = charm_item_id - 1000;
+    loadout.charm_id_1 == charm_id
+        || loadout.charm_id_2 == charm_id
+        || loadout.charm_id_3 == charm_id
+}
+
+fn assert_no_charms_in_market(market: SessionMarket) {
+    assert(!is_charm_item(market.item_slot_1), 'slot1 charm leak');
+    assert(!is_charm_item(market.item_slot_2), 'slot2 charm leak');
+    assert(!is_charm_item(market.item_slot_3), 'slot3 charm leak');
+    assert(!is_charm_item(market.item_slot_4), 'slot4 charm leak');
+    assert(!is_charm_item(market.item_slot_5), 'slot5 charm leak');
+    assert(!is_charm_item(market.item_slot_6), 'slot6 charm leak');
+}
+
+fn assert_charms_limited_to_loadout(market: SessionMarket, loadout: SessionCharmLoadout) {
+    let slots = array![
+        market.item_slot_1,
+        market.item_slot_2,
+        market.item_slot_3,
+        market.item_slot_4,
+        market.item_slot_5,
+        market.item_slot_6,
+    ];
+    let mut i: u32 = 0;
+    while i < slots.len() {
+        let slot = *slots.at(i);
+        if is_charm_item(slot) {
+            assert(loadout_contains(loadout, slot), 'charm outside loadout');
+        }
+        i += 1;
+    };
+}
+
+#[test]
+fn refresh_market_empty_loadout_never_rolls_charms() {
+    let (mut world, market_address) = refresh_market_profile_world();
+    let player: ContractAddress = 0xC11A5.try_into().unwrap();
+    let market = IMarketDispatcher { contract_address: market_address };
+
+    seed_refresh_market_profile_static_models(ref world);
+    start_cheat_caller_address(market_address, player);
+
+    let iterations: u32 = 12;
+    let mut i: u32 = 0;
+    while i != iterations {
+        let session_id = 1000 + i;
+        seed_refresh_market_profile_session(ref world, session_id, player);
+        // No SessionCharmLoadout written → read returns zero-initialised defaults.
+        market.refresh_market(session_id);
+
+        let store = StoreTrait::new(world);
+        let refreshed = store.session_market(session_id);
+        assert_no_charms_in_market(refreshed);
+        i += 1;
+    };
+}
+
+#[test]
+fn refresh_market_explicit_empty_loadout_never_rolls_charms() {
+    let (mut world, market_address) = refresh_market_profile_world();
+    let player: ContractAddress = 0xC11A6.try_into().unwrap();
+    let market = IMarketDispatcher { contract_address: market_address };
+
+    seed_refresh_market_profile_static_models(ref world);
+    start_cheat_caller_address(market_address, player);
+
+    let iterations: u32 = 12;
+    let mut i: u32 = 0;
+    while i != iterations {
+        let session_id = 2000 + i;
+        seed_refresh_market_profile_session(ref world, session_id, player);
+        world
+            .write_model_test(
+                @SessionCharmLoadout {
+                    session_id, charm_id_1: 0, charm_id_2: 0, charm_id_3: 0,
+                },
+            );
+        market.refresh_market(session_id);
+
+        let store = StoreTrait::new(world);
+        let refreshed = store.session_market(session_id);
+        assert_no_charms_in_market(refreshed);
+        i += 1;
+    };
+}
+
+#[test]
+fn refresh_market_populated_loadout_only_rolls_loadout_charms() {
+    let (mut world, market_address) = refresh_market_profile_world();
+    let player: ContractAddress = 0xC11A7.try_into().unwrap();
+    let market = IMarketDispatcher { contract_address: market_address };
+
+    seed_refresh_market_profile_static_models(ref world);
+    start_cheat_caller_address(market_address, player);
+
+    let loadout = SessionCharmLoadout {
+        session_id: 0, charm_id_1: 3, charm_id_2: 7, charm_id_3: 15,
+    };
+
+    let iterations: u32 = 24;
+    let mut i: u32 = 0;
+    let mut charm_sightings: u32 = 0;
+    while i != iterations {
+        let session_id = 3000 + i;
+        seed_refresh_market_profile_session(ref world, session_id, player);
+        world
+            .write_model_test(
+                @SessionCharmLoadout {
+                    session_id,
+                    charm_id_1: loadout.charm_id_1,
+                    charm_id_2: loadout.charm_id_2,
+                    charm_id_3: loadout.charm_id_3,
+                },
+            );
+        market.refresh_market(session_id);
+
+        let store = StoreTrait::new(world);
+        let refreshed = store.session_market(session_id);
+        let session_loadout = store.session_charm_loadout(session_id);
+        assert_charms_limited_to_loadout(refreshed, session_loadout);
+
+        let slots = array![
+            refreshed.item_slot_1,
+            refreshed.item_slot_2,
+            refreshed.item_slot_3,
+            refreshed.item_slot_4,
+            refreshed.item_slot_5,
+            refreshed.item_slot_6,
+        ];
+        let mut k: u32 = 0;
+        while k < slots.len() {
+            if is_charm_item(*slots.at(k)) {
+                charm_sightings += 1;
+            }
+            k += 1;
+        };
+
+        i += 1;
+    };
+
+    // Sanity: across 24 refreshes with MARKET_CHARM_APPEAR_CHANCE non-zero we should
+    // see the charm branch fire at least once. If this ever flakes, bump iterations.
+    assert(charm_sightings > 0, 'loadout charms never rolled');
 }

@@ -279,6 +279,20 @@ pub struct SessionCharmEntry {
     pub charm_id: u32,
 }
 
+// Pre-run charm loadout: whitelist of charm IDs allowed to appear in the
+// market during this session. Does NOT grant luck or retriggers — it only
+// restricts the market's charm candidate pool. Empty (all zeros) means no
+// charms will roll in the market at all for this run.
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct SessionCharmLoadout {
+    #[key]
+    pub session_id: u32,
+    pub charm_id_1: u32,
+    pub charm_id_2: u32,
+    pub charm_id_3: u32,
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TOKEN PAIR IDS - Oracle price feed mapping
 // ═══════════════════════════════════════════════════════════════════════════

@@ -205,26 +205,11 @@ pub mod Play {
             let world = self.world(@NAMESPACE());
             let mut store = StoreTrait::new(world);
 
-            let mut session = store.session(session_id);
+            let session = store.session(session_id);
             assert(session.player_address == caller, 'Not session owner');
             assert(session.is_active, 'Session not active');
             assert(session.total_spins == 0, 'Charms locked after first spin');
             assert(charm_ids.len() <= 3, 'Max 3 charms');
-
-            // Clear any existing session charms (idempotent re-equip before first spin)
-            let mut existing = store.session_charms(session_id);
-            let mut k: u32 = 0;
-            while k < existing.count {
-                store
-                    .set_session_charm_entry(
-                        @crate::models::index::SessionCharmEntry {
-                            session_id, index: k, charm_id: 0,
-                        },
-                    );
-                k += 1;
-            }
-            existing.count = 0;
-            store.set_session_charms(@existing);
 
             // Validate ownership against CharmNFT and reject duplicates
             let owned = crate::helpers::market::MarketImpl::get_owned_charm_ids(@store, caller);
@@ -244,13 +229,19 @@ pub mod Play {
                     'Duplicate charm',
                 );
                 seen.append(charm_id);
-
-                InventoryImpl::add_charm_to_session(ref store, session_id, charm_id);
                 i += 1;
             }
 
-            session.luck = InventoryImpl::calculate_base_luck(@store, session_id);
-            store.set_session(@session);
+            // Write loadout as a market whitelist. Missing slots default to 0.
+            let c1 = if charm_ids.len() > 0 { *charm_ids.at(0) } else { 0 };
+            let c2 = if charm_ids.len() > 1 { *charm_ids.at(1) } else { 0 };
+            let c3 = if charm_ids.len() > 2 { *charm_ids.at(2) } else { 0 };
+            store
+                .set_session_charm_loadout(
+                    @crate::models::index::SessionCharmLoadout {
+                        session_id, charm_id_1: c1, charm_id_2: c2, charm_id_3: c3,
+                    },
+                );
         }
 
         fn request_spin(ref self: ContractState, session_id: u32) {

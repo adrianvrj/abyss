@@ -16,9 +16,9 @@ use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, MarketSlotPurchased, PlayerSessionEntry, PlayerSessions,
-    Session, SessionCharmEntry, SessionCharms, SessionInventory, SessionItemEntry, SessionItemIndex,
-    SessionMarket, SessionChipBonus, SessionItemPurchaseCount, SpinResult, TokenPairId,
-    XShareSessionClaim,
+    Session, SessionCharmEntry, SessionCharmLoadout, SessionCharms, SessionInventory,
+    SessionItemEntry, SessionItemIndex, SessionMarket, SessionChipBonus, SessionItemPurchaseCount,
+    SpinResult, TokenPairId, XShareSessionClaim,
 };
 
 #[derive(Copy, Drop)]
@@ -284,6 +284,14 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_session_charm_entry(mut self: Store, entry: @SessionCharmEntry) {
         self.world.write_model(entry)
+    }
+
+    fn session_charm_loadout(self: @Store, session_id: u32) -> SessionCharmLoadout {
+        self.world.read_model(session_id)
+    }
+
+    fn set_session_charm_loadout(mut self: Store, loadout: @SessionCharmLoadout) {
+        self.world.write_model(loadout)
     }
 
     // ═══════════════════════════════════════════════════════════════════

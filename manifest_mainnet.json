@@ -97,7 +97,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x4d00e40482390188e02b1611137b7c87532cf86bfa4c331162975d9474ba98e",
+      "class_hash": "0x4ef377a965260f390f067a11541c6ecef65d36c52a1e697bbdbdf35ff550db1",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x490d539c3de82299f0a3ec267354184f187fbf156bc0ea21bfe84b250bc9e2c",
+      "class_hash": "0x20279ff2ce085f5294bd20aa33694fb60da66de480d69d26325f157c954ef96",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -129,7 +129,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x6717962e90f849dc202b0f9fd66c8754836cf1900226ebcb6cc612f4deb87f",
+      "class_hash": "0x5602d6c009ac9a9c72901723bf3887bc0ba0b5d461de1ee5c608e333ca0cfd5",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -710,6 +710,33 @@
       "class_hash": "0x61a19bcb2c04c8e8e88d064c625525684bb53767317bd718adc8e8f9e98e621",
       "tag": "ABYSS-SessionCharmEntry",
       "selector": "0xcf15c0c8483f27768d99981a7793e2529a6b1866f069c29944b59eeb060562"
+    },
+    {
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "charm_id_1",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "charm_id_2",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "charm_id_3",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0xcfdfab858b7c1a61c8f8d01a73f17fdb9631d2dd073323e02ed3d14aebb456",
+      "tag": "ABYSS-SessionCharmLoadout",
+      "selector": "0x280f1682cee7e4d2424c51b194c7a1dc25c9b67659bb76ac953f3d893182504"
     },
     {
       "members": [
@@ -3420,6 +3447,46 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::models::index::SessionCharmLoadout",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_1",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_2",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_3",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::SessionCharmLoadoutValue",
+      "members": [
+        {
+          "name": "charm_id_1",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_2",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_3",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::models::index::SessionCharms",
       "members": [
         {
@@ -4021,6 +4088,12 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_SessionCharmEntry::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::models::index::m_SessionCharmLoadout::Event",
       "kind": "enum",
       "variants": []
     },

@@ -146,10 +146,23 @@ pub impl MarketImpl of MarketTrait {
         player: ContractAddress,
     ) -> crate::models::index::SessionMarket {
         let nonce = sm.refresh_count;
-        let owned_charm_ids = Self::get_owned_charm_ids(@store, player);
+        // Loadout acts as the candidate pool. Empty loadout → no charms in the market.
+        let loadout = store.session_charm_loadout(session_id);
+        let mut loadout_charm_ids: Array<u32> = array![];
+        if loadout.charm_id_1 > 0 {
+            loadout_charm_ids.append(loadout.charm_id_1);
+        }
+        if loadout.charm_id_2 > 0
+            && !Self::has_value(loadout_charm_ids.span(), loadout.charm_id_2) {
+            loadout_charm_ids.append(loadout.charm_id_2);
+        }
+        if loadout.charm_id_3 > 0
+            && !Self::has_value(loadout_charm_ids.span(), loadout.charm_id_3) {
+            loadout_charm_ids.append(loadout.charm_id_3);
+        }
         // Only fetch session charms when we might actually consult them — charm candidates
-        // are only generated when the player owns charms via the NFT contract.
-        let session_charm_ids: Array<u32> = if owned_charm_ids.len() > 0 {
+        // are only generated when the loadout is non-empty.
+        let session_charm_ids: Array<u32> = if loadout_charm_ids.len() > 0 {
             crate::helpers::inventory::InventoryImpl::collect_session_charm_ids(
                 @store, session_id,
             )
@@ -169,7 +182,7 @@ pub impl MarketImpl of MarketTrait {
                     Self::generate_market_slot_item(
                         session_id,
                         player,
-                        owned_charm_ids.span(),
+                        loadout_charm_ids.span(),
                         session_charm_ids.span(),
                         recent_items.span(),
                         slot,
