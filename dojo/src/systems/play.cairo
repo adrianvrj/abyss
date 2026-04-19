@@ -442,6 +442,7 @@ pub mod Play {
                         score_cherry: session.score_cherry,
                         score_coin: session.score_coin,
                         score_lemon: session.score_lemon,
+                        chip_bonus_units: session_chip_bonus.bonus_units,
                     },
                 );
             if biblia_used {

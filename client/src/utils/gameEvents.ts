@@ -15,6 +15,7 @@ export interface SpinCompletedEvent {
     bibliaUsed: boolean;
     currentLuck: number;
     symbolScores: number[];
+    chipBonusUnits: number;
 }
 
 export interface ItemPurchasedEvent {
@@ -292,7 +293,8 @@ function parseSpinCompletedEvent(
                 feltToNumber(eventData[offset + 11], 4),
                 feltToNumber(eventData[offset + 12], 3),
                 feltToNumber(eventData[offset + 13], 2),
-            ]
+            ],
+            chipBonusUnits: eventData.length > offset + 14 ? feltToNumber(eventData[offset + 14]) : 0,
         };
     } catch (e) {
         console.error('Failed to parse SpinCompleted event:', e);

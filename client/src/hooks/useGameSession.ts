@@ -757,7 +757,7 @@ export function useGameSession(sessionId: string | null) {
                 setBlocked666(spin.is666);
                 const resolvedCurrentLuck = await getSessionLuck(Number(sessionId)).catch(() => spin.currentLuck);
                 if (resolvedCurrentLuck !== undefined) setCurrentLuck(resolvedCurrentLuck);
-                setDiamondChipBonusUnits(await resolveDiamondChipBonusUnits(Number(sessionId)));
+                setDiamondChipBonusUnits(spin.chipBonusUnits);
 
                 if (spin.is666) {
                     setScoreResetPreviousScore(score);
@@ -868,18 +868,16 @@ export function useGameSession(sessionId: string | null) {
 
                     if (spin.spinsRemaining <= 0) {
                         playSound('game-over');
-                        // Use receipt data for final tally to avoid Torii/Chain indexing lag
-                        const receiptFinalScore = spin.is666 ? 0 : (score + spin.scoreGained);
-                        const receiptTotalScore = spin.newTotalScore;
+                        // Receipt is the authoritative source for final tally —
+                        // React state `score` can lag behind and Torii/RPC may be stale.
+                        const finalBalance = spin.is666 ? 0 : spin.newTotalScore;
+                        const finalLifetimeScore = spin.newTotalScore;
+                        const finalDiamondBonus = spin.chipBonusUnits;
 
                         // Still fetch session for background sync/other fields
                         const latestSession = await loadSessionData('spin:event-path:game-over');
                         await captureGameOverBuild();
 
-                        // Prioritize receipt results over potentially stale Torii state
-                        const finalBalance = Math.max(receiptFinalScore, latestSession?.score || 0);
-                        const finalLifetimeScore = Math.max(receiptTotalScore, latestSession?.totalScore || 0);
-                        const finalDiamondBonus = await resolveDiamondChipBonusUnits(Number(sessionId));
                         setDiamondChipBonusUnits(finalDiamondBonus);
                         const earnedChips = await resolveChipPayout(
                             Number(sessionId),

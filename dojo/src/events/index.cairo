@@ -43,6 +43,8 @@ pub struct SpinCompleted {
     pub score_cherry: u32,
     pub score_coin: u32,
     pub score_lemon: u32,
+    // Chip bonus (e.g., diamond chip bonus units accumulated)
+    pub chip_bonus_units: u32,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

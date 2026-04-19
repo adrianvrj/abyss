@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0xdd89fdfefcf146e74f30fafc4860f0884bb252a6f615adcfdff6b4b19a0cfd",
+      "class_hash": "0x2091f4a0a2ea8a1ac6023c415eaf2668f6e69d4e386675202eea4cb81b55058",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -158,7 +158,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x7d7f75fdf7a5748d40335f8c741ffc32130ed708b00d90fbb3698283c84cd90",
+      "class_hash": "0x40a6487b9f226cc6f3c62e1f0aa34b21a665e9e4bede800bafa762f6df35a1a",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -1570,9 +1570,14 @@
           "name": "score_lemon",
           "type": "core::integer::u32",
           "key": false
+        },
+        {
+          "name": "chip_bonus_units",
+          "type": "core::integer::u32",
+          "key": false
         }
       ],
-      "class_hash": "0xed39c4ad068cf78099b1951ab3fa163688b7fdabe75b60044b75ab160d6bc",
+      "class_hash": "0x6ba909ade776cd0759a75449ca80cc1235aabad327a8550216493545f55e570",
       "tag": "ABYSS-SpinCompleted",
       "selector": "0x6cc9b3e14b07cf6ea1d434d90a986c4f06058fb7df7f36083daea14a9409977"
     }
@@ -2200,6 +2205,10 @@
         {
           "name": "score_lemon",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "chip_bonus_units",
+          "type": "core::integer::u32"
         }
       ]
     },
@@ -2321,6 +2330,10 @@
         },
         {
           "name": "score_lemon",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "chip_bonus_units",
           "type": "core::integer::u32"
         }
       ]
