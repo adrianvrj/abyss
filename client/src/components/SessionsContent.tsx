@@ -30,11 +30,15 @@ interface SessionInfo {
 
 const styles = {
     container: {
-        minHeight: "100vh",
+        height: "100vh",
+        maxHeight: "100dvh",
+        width: "100%",
         display: "flex",
         flexDirection: "column" as const,
         alignItems: "center",
         padding: "48px 24px",
+        overflowY: "auto" as const,
+        overflowX: "hidden" as const,
     },
     title: {
         fontFamily: "var(--font-title)",
@@ -716,6 +720,35 @@ export function SessionsContent() {
             </div>
 
             <div style={styles.content}>
+                {/* Create New Session */}
+                <motion.button
+                    style={{
+                        ...styles.newSessionButton,
+                        opacity: isCreating ? 0.6 : 1,
+                    }}
+                    onClick={handleCreateSessionClick}
+                    disabled={isCreating}
+                    whileHover={{ color: "#FF841C" }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    {isCreating ? (
+                        <span>
+                            &gt; OPENING...{" "}
+                            <motion.span
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 0.5, repeat: Infinity, ease: "linear" }}
+                                style={{ display: "inline-block" }}
+                            >
+                                ⟳
+                            </motion.span>
+                        </span>
+                    ) : bundlesStatus === "loading" ? (
+                        <span>&gt; LOADING RUN...</span>
+                    ) : (
+                        <span>&gt; NEW RUN</span>
+                    )}
+                </motion.button>
+
                 {/* Pre-run Charm Loadout */}
                 {charmsEnabled && (
                     <motion.div
@@ -840,35 +873,6 @@ export function SessionsContent() {
                         </div>
                     </motion.div>
                 )}
-
-                {/* Create New Session */}
-                <motion.button
-                    style={{
-                        ...styles.newSessionButton,
-                        opacity: isCreating ? 0.6 : 1,
-                    }}
-                    onClick={handleCreateSessionClick}
-                    disabled={isCreating}
-                    whileHover={{ color: "#FF841C" }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    {isCreating ? (
-                        <span>
-                            &gt; OPENING...{" "}
-                            <motion.span
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 0.5, repeat: Infinity, ease: "linear" }}
-                                style={{ display: "inline-block" }}
-                            >
-                                ⟳
-                            </motion.span>
-                        </span>
-                    ) : bundlesStatus === "loading" ? (
-                        <span>&gt; LOADING RUN...</span>
-                    ) : (
-                        <span>&gt; NEW RUN</span>
-                    )}
-                </motion.button>
 
                 {config && (() => {
                     const sessionBundle =
