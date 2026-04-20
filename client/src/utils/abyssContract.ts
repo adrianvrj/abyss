@@ -1,4 +1,5 @@
-import { shortString } from "starknet";
+import { lookupAddresses } from "@cartridge/controller";
+import { num, shortString } from "starknet";
 import {
   getAvailableBeastSessions as readAvailableBeastSessions,
   getCharmDropChance as readCharmDropChance,
@@ -388,13 +389,34 @@ export async function getLeaderboard(
   chainId: bigint | string = DEFAULT_CHAIN_ID,
 ): Promise<LeaderboardEntry[]> {
   const entries = await LeaderboardApi.fetchAll(chainId);
-  return entries.map((entry) => ({
+  const mapped: LeaderboardEntry[] = entries.map((entry) => ({
     player_address: entry.player,
     username: entry.username,
     games_played: entry.gamesPlayed,
     best_score: entry.bestScore,
     total_score: entry.totalScore,
   }));
+
+  const missingUsername = mapped.filter((e) => !e.username?.trim());
+  if (missingUsername.length === 0) {
+    return mapped;
+  }
+
+  try {
+    const unique = [...new Set(missingUsername.map((e) => e.player_address))];
+    const nameByAddress = await lookupAddresses(unique);
+    return mapped.map((e) => {
+      const existing = e.username?.trim();
+      if (existing) {
+        return e;
+      }
+      const key = num.toHex(e.player_address);
+      const resolved = nameByAddress.get(key);
+      return resolved ? { ...e, username: resolved } : e;
+    });
+  } catch {
+    return mapped;
+  }
 }
 
 export async function getAvailableBeastSessions(playerAddress: string): Promise<number> {
