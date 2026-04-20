@@ -610,7 +610,7 @@ function parseNormalizedEvents(
                 continue;
             }
 
-            if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 29) {
+            if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 30) {
                 result.spinCompleted = parseSpinCompletedEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
             } else if (emitterAddress === marketAddress && dojoEvent.fieldValues.length === 7) {
                 const parsed = parseItemPurchasedEvent(dojoEvent.fieldValues);
