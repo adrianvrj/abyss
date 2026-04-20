@@ -366,7 +366,9 @@ export function useGameSession(sessionId: string | null) {
             return getItemInfo(pi.item_id);
         }));
 
-        return items.filter((item): item is ContractItem => item !== null);
+        return items
+            .filter((item): item is ContractItem => item !== null)
+            .filter((item) => item.effect_type !== ItemEffectType.SpinBonus);
     }, []);
 
     const getLocalBuildItems = useCallback(() => {
@@ -376,6 +378,9 @@ export function useGameSession(sessionId: string | null) {
 
         for (const item of [...initialInventoryItems, ...optimisticItems]) {
             if (!item || hidden.has(item.item_id) || seen.has(item.item_id)) {
+                continue;
+            }
+            if (item.effect_type === ItemEffectType.SpinBonus) {
                 continue;
             }
 
@@ -395,6 +400,10 @@ export function useGameSession(sessionId: string | null) {
     }, []);
 
     const registerInventoryItemAcquired = useCallback((item: ContractItem) => {
+        // Instant-spin market items apply on-chain only; never show as inventory slots.
+        if (item.effect_type === ItemEffectType.SpinBonus) {
+            return;
+        }
         setHiddenItems((prev) => prev.filter((hiddenItemId) => hiddenItemId !== item.item_id));
         setOptimisticItems((prev) => {
             const next = prev.filter((existing) => existing.item_id !== item.item_id);

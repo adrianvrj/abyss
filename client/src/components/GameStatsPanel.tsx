@@ -65,9 +65,13 @@ export default function GameStatsPanel({
 
     useEffect(() => {
         const ownedIds = new Set(fetchedItems.map(i => i.item_id));
-        const uniqueOptimistic = optimisticItems.filter(i => !ownedIds.has(i.item_id));
+        const uniqueOptimistic = optimisticItems.filter(
+            (i) => !ownedIds.has(i.item_id) && i.effect_type !== ItemEffectType.SpinBonus,
+        );
         const allItems = [...fetchedItems, ...uniqueOptimistic];
-        const filteredItems = allItems.filter(i => !hiddenItemIds.includes(i.item_id));
+        const filteredItems = allItems.filter(
+            (i) => !hiddenItemIds.includes(i.item_id) && i.effect_type !== ItemEffectType.SpinBonus,
+        );
         setItems(filteredItems);
     }, [fetchedItems, optimisticItems, hiddenItemIds]);
 
@@ -152,7 +156,8 @@ export default function GameStatsPanel({
                 return;
             }
 
-            setFetchedItems(itemDetails.filter(Boolean));
+            const resolved = itemDetails.filter((item): item is ContractItem => item != null);
+            setFetchedItems(resolved.filter((i) => i.effect_type !== ItemEffectType.SpinBonus));
         } catch (err) {
             console.error('Failed to load items for stats panel:', err);
         }

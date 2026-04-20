@@ -4,6 +4,7 @@ import {
     getItemInfo,
     ContractItem,
     getCharmInfo,
+    ItemEffectType,
 } from '@/utils/abyssContract';
 import { getItemImage } from '@/utils/itemImages';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -40,6 +41,8 @@ export default function InlineInventoryPanel({
     practiceMode = false,
     practiceItems = [],
 }: InlineInventoryPanelProps) {
+    const isPersistedInventoryItem = (item: ContractItem) => item.effect_type !== ItemEffectType.SpinBonus;
+
     const { account } = useAccount();
     const [, setLoading] = useState(!initialInventory.length);
     const [ownedItems, setOwnedItems] = useState<ContractItem[]>(initialInventory);
@@ -97,7 +100,7 @@ export default function InlineInventoryPanel({
             }
 
             setOwnedItems(items.filter((i): i is ContractItem => (
-                i !== null && !hiddenItemIds.includes(i.item_id)
+                i !== null && !hiddenItemIds.includes(i.item_id) && isPersistedInventoryItem(i)
             )));
         } catch (error) {
             console.error("Failed to load inventory:", error);
@@ -139,10 +142,14 @@ export default function InlineInventoryPanel({
     }
 
     const ownedIds = new Set(ownedItems.map(i => i.item_id));
-    const uniqueOptimisticItems = optimisticItems.filter(i => !ownedIds.has(i.item_id));
+    const uniqueOptimisticItems = optimisticItems.filter(
+        (i) => !ownedIds.has(i.item_id) && isPersistedInventoryItem(i),
+    );
     const allItems = [...ownedItems, ...uniqueOptimisticItems];
 
-    let displayItems = allItems.filter(item => !hiddenItemIds?.includes(item.item_id));
+    let displayItems = allItems.filter(
+        (item) => !hiddenItemIds?.includes(item.item_id) && isPersistedInventoryItem(item),
+    );
 
     if (bibliaBroken) {
         const idx = displayItems.findIndex(i => i.item_id === 40);

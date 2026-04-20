@@ -52,3 +52,9 @@ export const SEPOLIA_CHAIN_ID = shortString.encodeShortString("SN_SEPOLIA");
 export const MAINNET_CHAIN_ID = shortString.encodeShortString("SN_MAIN");
 
 export const NAMESPACE = "ABYSS";
+
+/** Client app (Vite) — play the game */
+export const PLAY_GAME_URL = "https://play.abyssgame.fun";
+
+/** Pixel logo (matches `client` menu + `public/images/abyss-logo.png`) */
+export const ABYSS_LOGO_SRC = "/images/abyss-logo.png";
