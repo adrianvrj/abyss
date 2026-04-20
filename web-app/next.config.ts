@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/patch-notes/items",
+        destination: "/patch-notes/1",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [{
       protocol: 'https',

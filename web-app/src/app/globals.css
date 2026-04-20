@@ -168,3 +168,407 @@ img {
     background-image: url('/images/bg-mobile.png');
   }
 }
+
+/* Allow scrolling on patch-notes routes (body defaults to overflow: hidden) */
+body:has(.patch-notes-page),
+body:has(.patch-notes-index-page) {
+  overflow: auto;
+  height: auto;
+  min-height: 100dvh;
+}
+
+/* Patch notes page — readable prose, Abyss accents */
+.patch-notes-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  padding-bottom: 4rem;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #e8e8e8;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 132, 28, 0.12), transparent),
+    #050508;
+}
+
+.patch-notes-inner {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.patch-notes-page h1 {
+  font-family: var(--font-body);
+  font-size: clamp(1.1rem, 3vw, 1.35rem);
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+  margin-bottom: 0.75rem;
+}
+
+.patch-notes-page .patch-notes-sub {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-bottom: 2rem;
+}
+
+.patch-notes-page h2 {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: var(--color-primary);
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(255, 132, 28, 0.25);
+}
+
+.patch-notes-page h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f5f5f5;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.patch-notes-page p,
+.patch-notes-page li {
+  margin: 0.5rem 0;
+}
+
+.patch-notes-page ul {
+  margin: 0.5rem 0 0.75rem 1.25rem;
+}
+
+.patch-notes-page strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.patch-notes-page .legend {
+  background: rgba(255, 132, 28, 0.06);
+  border: 1px solid rgba(255, 132, 28, 0.2);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  margin: 1.25rem 0;
+  font-size: 0.9rem;
+}
+
+.patch-notes-page .item-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.55rem 0;
+  font-size: 0.88rem;
+}
+
+.patch-notes-page .item-line-thumb {
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter:
+    drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35))
+    drop-shadow(0 0 18px rgba(255, 132, 28, 0.14));
+  animation: patch-notes-item-float 5.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.patch-notes-page .item-line-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.patch-notes-page .item-line-copy {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.patch-notes-page .patch-notes-tldr-list {
+  list-style: none;
+  margin: 0.5rem 0 0.75rem 0;
+  padding: 0;
+}
+
+.patch-notes-page .patch-notes-tldr-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0.7rem 0;
+}
+
+.patch-notes-page .patch-notes-tldr-list .patch-notes-tldr-pill {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.patch-notes-page .patch-notes-tldr-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.patch-notes-page .patch-notes-tldr-thumb {
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter:
+    drop-shadow(0 3px 8px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 10px rgba(255, 132, 28, 0.1));
+  animation: patch-notes-tldr-float 4.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.patch-notes-page .patch-notes-tldr-list li > span:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.patch-notes-page .badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-family: var(--font-body);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.patch-notes-page .badge-active {
+  background: rgba(74, 222, 128, 0.15);
+  color: #86efac;
+}
+
+.patch-notes-page .badge-retired {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+
+.patch-notes-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  color: var(--color-primary);
+  margin-bottom: 1.5rem;
+}
+
+.patch-notes-back:hover {
+  text-decoration: underline;
+}
+
+.patch-notes-breadcrumb {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.patch-notes-breadcrumb a {
+  color: var(--color-primary);
+}
+
+.patch-notes-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.patch-notes-breadcrumb-current {
+  color: #d4d4d8;
+}
+
+/* ─── Patch notes index (changelog-style list) ─── */
+.patch-notes-index-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  padding-bottom: 4rem;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #e8e8e8;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% -25%, rgba(255, 132, 28, 0.14), transparent),
+    #050508;
+}
+
+.patch-notes-index-inner {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.patch-notes-index-header {
+  margin-bottom: 2rem;
+}
+
+.patch-notes-index-eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin-bottom: 0.6rem;
+}
+
+.patch-notes-index-header h1 {
+  font-family: var(--font-body);
+  font-size: clamp(1.25rem, 4vw, 1.65rem);
+  color: #fafafa;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.65rem;
+}
+
+.patch-notes-index-lede {
+  font-size: 0.95rem;
+  color: #a3a3a3;
+  max-width: 34rem;
+}
+
+.patch-notes-index-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.patch-notes-index-card {
+  display: block;
+  padding: 1.15rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 132, 28, 0.18);
+  background: rgba(12, 12, 14, 0.85);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.patch-notes-index-card:hover {
+  border-color: rgba(255, 132, 28, 0.45);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 132, 28, 0.12);
+}
+
+.patch-notes-index-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.patch-notes-index-card-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.patch-notes-index-num {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  color: #737373;
+  letter-spacing: 0.04em;
+}
+
+.patch-notes-index-card-meta time {
+  font-size: 0.78rem;
+  color: #737373;
+  font-variant-numeric: tabular-nums;
+}
+
+.patch-notes-index-pill {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+
+.patch-notes-index-pill--balance {
+  background: rgba(255, 132, 28, 0.15);
+  color: #fdba74;
+}
+
+.patch-notes-index-pill--economy {
+  background: rgba(52, 211, 153, 0.12);
+  color: #6ee7b7;
+}
+
+.patch-notes-index-pill--features {
+  background: rgba(96, 165, 250, 0.12);
+  color: #93c5fd;
+}
+
+.patch-notes-index-card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f5f5f5;
+  margin: 0 0 0.45rem;
+}
+
+.patch-notes-index-card-summary {
+  font-size: 0.88rem;
+  color: #a3a3a3;
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+}
+
+.patch-notes-index-card-cta {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  color: var(--color-primary);
+}
+
+.patch-notes-index-card:hover .patch-notes-index-card-cta {
+  color: #ffb86c;
+}
+
+.patch-notes-index-footer {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: #525252;
+}
+
+@keyframes patch-notes-item-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes patch-notes-tldr-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patch-notes-page .item-line-thumb,
+  .patch-notes-page .patch-notes-tldr-thumb {
+    animation: none;
+  }
+}
