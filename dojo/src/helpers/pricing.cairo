@@ -5,13 +5,39 @@ const LEGENDARY_RELIC_QUOTE_UNITS: u32 = 60;
 const MYTHIC_RELIC_QUOTE_UNITS: u32 = 80;
 
 fn pow10_u256(exp: u32) -> u256 {
-    let mut result: u256 = 1;
-    let mut i: u32 = 0;
-    while i < exp {
-        result *= 10;
-        i += 1;
+    // Match-based lookup covers every ERC20 decimals value we ship against
+    // (USDC: 6, most others: 18). Fall back to the iterative path only for
+    // unexpected decimals.
+    match exp {
+        0 => 1,
+        1 => 10,
+        2 => 100,
+        3 => 1_000,
+        4 => 10_000,
+        5 => 100_000,
+        6 => 1_000_000,
+        7 => 10_000_000,
+        8 => 100_000_000,
+        9 => 1_000_000_000,
+        10 => 10_000_000_000,
+        11 => 100_000_000_000,
+        12 => 1_000_000_000_000,
+        13 => 10_000_000_000_000,
+        14 => 100_000_000_000_000,
+        15 => 1_000_000_000_000_000,
+        16 => 10_000_000_000_000_000,
+        17 => 100_000_000_000_000_000,
+        18 => 1_000_000_000_000_000_000,
+        _ => {
+            let mut result: u256 = 1_000_000_000_000_000_000;
+            let mut i: u32 = 18;
+            while i != exp {
+                result *= 10;
+                i += 1;
+            }
+            result
+        },
     }
-    result
 }
 
 pub fn fixed_quote_amount_from_units(units: u32, quote_decimals: u8) -> u256 {

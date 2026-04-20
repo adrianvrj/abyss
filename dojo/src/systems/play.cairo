@@ -87,7 +87,7 @@ pub mod Play {
     use crate::types::effect::RelicEffectType;
     use super::*;
 
-    const LEADERBOARD_ID: felt252 = 1;
+    const LEADERBOARD_ID: felt252 = 2;
     const BIBLIA_ITEM_ID: u32 = 40;
     const CASH_OUT_ITEM_ID: u32 = 41;
 
@@ -645,7 +645,10 @@ pub mod Play {
             let world = self.world(@NAMESPACE());
             let store = StoreTrait::new(world);
             let session = store.session(session_id);
-            let effective_luck = InventoryImpl::calculate_effective_luck(@store, session_id);
+            let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
+            let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
+                @store, session_id, charm_ids.span(), @session,
+            );
             let mut total_chance = (session.score / 125) + effective_luck;
             if total_chance > 50 {
                 total_chance = 50;
@@ -855,8 +858,14 @@ pub mod Play {
                 }
 
                 if config.charm_nft != zero_addr {
-                    let effective_luck = InventoryImpl::calculate_effective_luck(
+                    // Session is already loaded in scope — reuse it via the *_with_charm_ids
+                    // variant to avoid a redundant Session model read inside
+                    // `calculate_effective_luck`.
+                    let charm_ids = InventoryImpl::collect_session_charm_ids(
                         @store, session_id,
+                    );
+                    let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
+                        @store, session_id, charm_ids.span(), @session,
                     );
                     let mut total_chance = (session.score / 125) + effective_luck;
                     if total_chance > 50 {

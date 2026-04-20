@@ -464,6 +464,12 @@ pub impl InventoryImpl of InventoryTrait {
         calculate_base_luck_from_charm_ids(charm_ids.span())
     }
 
+    /// Variant that takes an already-collected charm id span, saving a second
+    /// storage sweep when the caller has also computed effective luck.
+    fn calculate_base_luck_with_charm_ids(charm_ids: Span<u32>) -> u32 {
+        calculate_base_luck_from_charm_ids(charm_ids)
+    }
+
     /// Calculate effective luck for the next spin
     fn calculate_effective_luck(store: @Store, session_id: u32) -> u32 {
         let session = store.session(session_id);
@@ -479,6 +485,29 @@ pub impl InventoryImpl of InventoryTrait {
             session.score,
             session.level,
             session.blocked_666_this_session,
+        )
+    }
+
+    /// Variant of `calculate_effective_luck` that reuses a pre-collected charm id span and
+    /// an already-loaded session. This lets callers that need both luck AND one of those
+    /// inputs avoid an extra charm-entry storage sweep or session re-read.
+    fn calculate_effective_luck_with_charm_ids(
+        store: @Store,
+        session_id: u32,
+        charm_ids: Span<u32>,
+        session: @crate::models::index::Session,
+    ) -> u32 {
+        let last_spin = store.spin_result(session_id);
+        let items = store.session_item_index(session_id);
+
+        calculate_effective_luck_from_charm_ids(
+            charm_ids,
+            last_spin.patterns_count,
+            *session.spins_remaining,
+            items.count,
+            *session.score,
+            *session.level,
+            *session.blocked_666_this_session,
         )
     }
 
@@ -583,11 +612,16 @@ pub impl InventoryImpl of InventoryTrait {
         store.set_inventory(@inv);
 
         if inv.quantity == 0 {
-            // Remove from session_item_entry index
+            // Remove from session_item_entry index.
+            // We cache `count` in a local so the loop bound isn't re-read from the struct
+            // on every iteration, and we switch the termination to `!=` since the loop
+            // traverses at most `count` entries. We also only write an entry when the
+            // shifted id differs from what's already there, avoiding a no-op storage write.
             let mut item_idx = store.session_item_index(session_id);
+            let count = item_idx.count;
             let mut found_idx: Option<u32> = Option::None;
             let mut i: u32 = 0;
-            while i < item_idx.count {
+            while i != count {
                 if store.session_item_entry(session_id, i).item_id == item_id {
                     found_idx = Option::Some(i);
                     break;
@@ -596,22 +630,23 @@ pub impl InventoryImpl of InventoryTrait {
             }
 
             if let Option::Some(idx) = found_idx {
-                // Shift remaining items
+                let last_writable = count - 1;
                 let mut j = idx;
-                while j < item_idx.count - 1 {
+                while j != last_writable {
                     let next_item_id = store.session_item_entry(session_id, j + 1).item_id;
-                    store
-                        .set_session_item_entry(
-                            @crate::models::index::SessionItemEntry {
-                                session_id, index: j, item_id: next_item_id,
-                            },
-                        );
+                    let current_item_id = store.session_item_entry(session_id, j).item_id;
+                    if next_item_id != current_item_id {
+                        store
+                            .set_session_item_entry(
+                                @crate::models::index::SessionItemEntry {
+                                    session_id, index: j, item_id: next_item_id,
+                                },
+                            );
+                    }
                     j += 1;
                 }
-                // Decrement count
-                item_idx.count -= 1;
+                item_idx.count = last_writable;
                 store.set_session_item_index(@item_idx);
-                // Clear the last entry (optional but clean)
             }
         }
     }

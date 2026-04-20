@@ -1,5 +1,5 @@
 use core::num::traits::Zero;
-use core::poseidon::poseidon_hash_span;
+use core::poseidon::hades_permutation;
 use starknet::ContractAddress;
 use crate::constants::{MARKET_CHARM_APPEAR_CHANCE, TOTAL_ITEMS};
 use crate::interfaces::charm_nft::ICharmDispatcherTrait;
@@ -8,6 +8,11 @@ use crate::store::{Store, StoreTrait};
 #[generate_trait]
 pub impl MarketImpl of MarketTrait {
     fn is_retired_market_item(item_id: u32) -> bool {
+        // Retired ids are sparsely clustered between 10 and 39. Short-circuit the common
+        // case (everything else) before running the 5 equality checks.
+        if item_id < 10 || item_id > 39 {
+            return false;
+        }
         item_id == 10 || item_id == 19 || item_id == 23 || item_id == 24 || item_id == 39
     }
 
@@ -63,8 +68,13 @@ pub impl MarketImpl of MarketTrait {
     }
 
     /// Generate a random item ID for a market slot.
+    ///
+    /// Uses two chained `hades_permutation` calls (each 2-input) instead of
+    /// `poseidon_hash_span` over a 3-element array. Equivalent entropy for our purposes
+    /// (session_id/slot/nonce are all u32) and skips the span allocation + length prelude.
     fn generate_random_item_id(session_id: u32, slot: u32, nonce: u32) -> u32 {
-        let seed = poseidon_hash_span(array![session_id.into(), slot.into(), nonce.into()].span());
+        let (s0, _, _) = hades_permutation(session_id.into(), slot.into(), 2);
+        let (seed, _, _) = hades_permutation(s0, nonce.into(), 2);
         let roll: u256 = seed.into();
         let item_id: u32 = (roll.low % TOTAL_ITEMS.into()).try_into().unwrap() + 1;
         item_id
@@ -107,9 +117,12 @@ pub impl MarketImpl of MarketTrait {
         slot: u32,
         nonce: u32,
     ) -> u32 {
-        let seed = poseidon_hash_span(
-            array![session_id.into(), player.into(), slot.into(), nonce.into()].span(),
-        );
+        // Chain three hades_permutation calls instead of poseidon_hash_span over a 4-element
+        // span. Each permutation mixes 2 inputs into a full-strength state; chaining
+        // preserves entropy while avoiding the span allocation and length-preamble cost.
+        let (s0, _, _) = hades_permutation(session_id.into(), player.into(), 2);
+        let (s1, _, _) = hades_permutation(s0, slot.into(), 2);
+        let (seed, _, _) = hades_permutation(s1, nonce.into(), 2);
         let roll: u256 = seed.into();
         let roll_low: u128 = roll.low;
 

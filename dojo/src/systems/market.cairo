@@ -130,6 +130,13 @@ pub mod Market {
                 );
 
             // 6. Event Emission
+            // Reuse the in-scope `session` (already reflects all mutations above, since we
+            // just wrote it) instead of letting `calculate_effective_luck` re-read it from
+            // storage. Also pass the charm ids we collect once to skip a second index sweep.
+            let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
+            let current_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
+                @store, session_id, charm_ids.span(), @session,
+            );
             store
                 .emit_item_purchased(
                     @ItemPurchased {
@@ -141,7 +148,7 @@ pub mod Market {
                         new_spins: session.spins_remaining,
                         new_tickets: session.tickets,
                         is_charm,
-                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                        current_luck,
                     },
                 );
         }
@@ -195,6 +202,10 @@ pub mod Market {
                 store.set_session(@session);
             }
 
+            let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
+            let current_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
+                @store, session_id, charm_ids.span(), @session,
+            );
             store
                 .emit_item_sold(
                     @ItemSold {
@@ -204,7 +215,7 @@ pub mod Market {
                         sell_price: sell_price * quantity,
                         new_score: session.score,
                         new_tickets: session.tickets,
-                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                        current_luck,
                     },
                 );
         }
@@ -232,7 +243,10 @@ pub mod Market {
                 ref store, sm, session_id, caller,
             );
 
-            // Emit refresh event
+            let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
+            let current_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
+                @store, session_id, charm_ids.span(), @session,
+            );
             store
                 .emit_market_refreshed(
                     @MarketRefreshed {
@@ -245,7 +259,7 @@ pub mod Market {
                         slot_4: refreshed_market.item_slot_4,
                         slot_5: refreshed_market.item_slot_5,
                         slot_6: refreshed_market.item_slot_6,
-                        current_luck: InventoryImpl::calculate_effective_luck(@store, session_id),
+                        current_luck,
                     },
                 );
         }

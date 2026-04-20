@@ -2,6 +2,16 @@ import { initGrpcClient } from "@/api/torii/client";
 
 type ChainLike = bigint | string | undefined | null;
 
+// Bumped to 2 to wipe the leaderboard for a new season. When bumping again, keep
+// this in sync with `LEADERBOARD_ID` in `dojo/src/systems/play.cairo` and update
+// `LEADERBOARD_SEASON_START` below (or the `VITE_LEADERBOARD_SEASON_START` env var)
+// to the approximate Unix-seconds timestamp of the `Play` contract upgrade so the
+// error-path session fallback doesn't surface pre-season scores.
+const LEADERBOARD_ID = Number(import.meta.env.VITE_LEADERBOARD_ID ?? "2");
+const LEADERBOARD_SEASON_START = Number(
+  import.meta.env.VITE_LEADERBOARD_SEASON_START ?? "1776643200",
+);
+
 type SqlValue = string | number | bigint | null | undefined;
 
 type RawLeaderboardScoreRow = {
@@ -182,10 +192,10 @@ export const LeaderboardApi = {
 
     try {
       const rows = (await client.executeSql(submittedScoresQuery)) as RawLeaderboardScoreRow[];
-      const leaderboardRows = rows.filter((row) => toNumberish(row.leaderboard_id) === 1);
-      if (leaderboardRows.length > 0) {
-        return aggregate(leaderboardRows);
-      }
+      const leaderboardRows = rows.filter(
+        (row) => toNumberish(row.leaderboard_id) === LEADERBOARD_ID,
+      );
+      return aggregate(leaderboardRows);
     } catch (error) {
       console.warn("LeaderboardScore SQL unavailable, falling back to Session rows:", error);
     }
@@ -204,6 +214,11 @@ export const LeaderboardApi = {
     `;
 
     const rows = (await client.executeSql(sessionsQuery)) as RawLeaderboardScoreRow[];
-    return aggregate(rows.filter((row) => toNumberish(row.score) > 0));
+    return aggregate(
+      rows.filter((row) => {
+        if (toNumberish(row.score) <= 0) return false;
+        return toNumberish(row.timestamp) >= LEADERBOARD_SEASON_START;
+      }),
+    );
   },
 };

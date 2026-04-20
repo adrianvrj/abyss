@@ -11,95 +11,128 @@ pub fn get_item_purchase_price(item_id: u32, base_price: u32, purchase_count: u3
 }
 
 /// Returns only the hot-path item metadata needed during spin execution.
+/// Dispatched via a balanced binary split (avg ~log2(41) ≈ 5 comparisons vs 20 linear).
 pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
-    if item_id == 1 {
-        (3, 14, 'seven')
-    } else if item_id == 2 {
-        (3, 2, 'diamond')
-    } else if item_id == 3 {
-        (3, 1, 'cherry')
-    } else if item_id == 4 {
-        (3, 1, 'lemon')
-    } else if item_id == 5 {
-        (1, 20, '')
-    } else if item_id == 6 {
-        (1, 40, '')
-    } else if item_id == 7 {
-        (2, 6, 'seven')
-    } else if item_id == 8 {
-        (2, 8, 'diamond')
-    } else if item_id == 9 {
-        (4, 2, '')
-    } else if item_id == 10 {
-        (4, 2, '')
-    } else if item_id == 11 {
-        (2, 12, 'seven')
-    } else if item_id == 12 {
-        (2, 8, 'cherry')
-    } else if item_id == 13 {
-        (3, 3, 'cherry')
-    } else if item_id == 14 {
-        (3, 2, 'lemon')
-    } else if item_id == 15 {
-        (1, 60, '')
-    } else if item_id == 16 {
-        (2, 14, 'cherry')
-    } else if item_id == 17 {
-        (2, 8, 'anti-coin')
-    } else if item_id == 18 {
-        (4, 3, '')
-    } else if item_id == 19 {
-        (2, 4, 'anti-coin')
-    } else if item_id == 20 {
-        (3, 4, 'cherry')
-    } else if item_id == 21 {
-        (1, 90, '')
-    } else if item_id == 22 {
-        (1, 120, '')
-    } else if item_id == 23 {
-        (4, 4, '')
-    } else if item_id == 24 {
-        (1, 150, '')
-    } else if item_id == 25 {
-        (3, 21, 'seven')
-    } else if item_id == 26 {
-        (3, 3, 'diamond')
-    } else if item_id == 27 {
-        (2, 14, 'diamond')
-    } else if item_id == 28 {
-        (2, 20, 'cherry')
-    } else if item_id == 29 {
-        (2, 5, 'lemon')
-    } else if item_id == 30 {
-        (3, 3, 'lemon')
-    } else if item_id == 31 {
-        (2, 11, 'anti-coin')
-    } else if item_id == 32 {
-        (2, 20, 'anti-coin')
-    } else if item_id == 33 {
-        (3, 28, 'seven')
-    } else if item_id == 34 {
-        (2, 16, 'seven')
-    } else if item_id == 35 {
-        (3, 4, 'diamond')
-    } else if item_id == 36 {
-        (2, 20, 'diamond')
-    } else if item_id == 37 {
-        (2, 6, 'lemon')
-    } else if item_id == 38 {
-        (3, 4, 'lemon')
-    } else if item_id == 39 {
-        (2, 6, 'anti-coin')
-    } else if item_id == 40 {
-        (6, 1, 'six')
-    } else if item_id == 41 {
-        (11, 1, 'six')
+    if item_id <= 20 {
+        if item_id <= 10 {
+            if item_id <= 5 {
+                if item_id == 1 {
+                    (3, 14, 'seven')
+                } else if item_id == 2 {
+                    (3, 2, 'diamond')
+                } else if item_id == 3 {
+                    (3, 1, 'cherry')
+                } else if item_id == 4 {
+                    (3, 1, 'lemon')
+                } else {
+                    (1, 20, '')
+                }
+            } else {
+                if item_id == 6 {
+                    (1, 40, '')
+                } else if item_id == 7 {
+                    (2, 6, 'seven')
+                } else if item_id == 8 {
+                    (2, 8, 'diamond')
+                } else if item_id == 9 {
+                    (4, 2, '')
+                } else {
+                    (4, 2, '')
+                }
+            }
+        } else {
+            if item_id <= 15 {
+                if item_id == 11 {
+                    (2, 12, 'seven')
+                } else if item_id == 12 {
+                    (2, 8, 'cherry')
+                } else if item_id == 13 {
+                    (3, 3, 'cherry')
+                } else if item_id == 14 {
+                    (3, 2, 'lemon')
+                } else {
+                    (1, 60, '')
+                }
+            } else {
+                if item_id == 16 {
+                    (2, 14, 'cherry')
+                } else if item_id == 17 {
+                    (2, 8, 'anti-coin')
+                } else if item_id == 18 {
+                    (4, 3, '')
+                } else if item_id == 19 {
+                    (2, 4, 'anti-coin')
+                } else {
+                    (3, 4, 'cherry')
+                }
+            }
+        }
     } else {
-        (0, 0, '')
+        if item_id <= 30 {
+            if item_id <= 25 {
+                if item_id == 21 {
+                    (1, 90, '')
+                } else if item_id == 22 {
+                    (1, 120, '')
+                } else if item_id == 23 {
+                    (4, 4, '')
+                } else if item_id == 24 {
+                    (1, 150, '')
+                } else {
+                    (3, 21, 'seven')
+                }
+            } else {
+                if item_id == 26 {
+                    (3, 3, 'diamond')
+                } else if item_id == 27 {
+                    (2, 14, 'diamond')
+                } else if item_id == 28 {
+                    (2, 20, 'cherry')
+                } else if item_id == 29 {
+                    (2, 5, 'lemon')
+                } else {
+                    (3, 3, 'lemon')
+                }
+            }
+        } else {
+            if item_id <= 35 {
+                if item_id == 31 {
+                    (2, 11, 'anti-coin')
+                } else if item_id == 32 {
+                    (2, 20, 'anti-coin')
+                } else if item_id == 33 {
+                    (3, 28, 'seven')
+                } else if item_id == 34 {
+                    (2, 16, 'seven')
+                } else {
+                    (3, 4, 'diamond')
+                }
+            } else {
+                if item_id == 36 {
+                    (2, 20, 'diamond')
+                } else if item_id == 37 {
+                    (2, 6, 'lemon')
+                } else if item_id == 38 {
+                    (3, 4, 'lemon')
+                } else if item_id == 39 {
+                    (2, 6, 'anti-coin')
+                } else if item_id == 40 {
+                    (6, 1, 'six')
+                } else if item_id == 41 {
+                    (11, 1, 'six')
+                } else {
+                    (0, 0, '')
+                }
+            }
+        }
     }
 }
 
+/// Only 6 item ids carry a diamond-chip bonus. Fast-reject everything else with a range check.
 pub fn get_item_diamond_chip_bonus(item_id: u32) -> u32 {
+    if item_id < 2 || item_id > 36 {
+        return 0;
+    }
     if item_id == 2 || item_id == 8 {
         1
     } else if item_id == 26 || item_id == 27 {

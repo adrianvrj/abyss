@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
-      "class_hash": "0x7eab86cf0165a6fb67dadce850cba36d6a5e6ee9fde13af73963caf30cd7264",
+      "class_hash": "0x23a9e502a12615cfe734671b88783874d6bea44297b3347fed727c9cc6d19b2",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -97,7 +97,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x4ef377a965260f390f067a11541c6ecef65d36c52a1e697bbdbdf35ff550db1",
+      "class_hash": "0x49d6972a81cfdfd9399d18bfa65ba54d67916a6efb018836a781359626d42b1",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x20279ff2ce085f5294bd20aa33694fb60da66de480d69d26325f157c954ef96",
+      "class_hash": "0x139c7a76579a92dc1e3a76f55a926a9993e04d8cf2c4b277cf931636875fbda",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -129,7 +129,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x5602d6c009ac9a9c72901723bf3887bc0ba0b5d461de1ee5c608e333ca0cfd5",
+      "class_hash": "0x7b3122eb528731546c8b8b6e0a1fffc992c1f5e125d725bcd29fa533979aab3",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -142,7 +142,7 @@
     },
     {
       "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
-      "class_hash": "0x3082a52427819a6b7f28aefdb9d26334f27ea671b4c0914efa0f67bfc8b4690",
+      "class_hash": "0x223ef82c149c07b6b4339dd5169d0439e8d0075e7e263ccd4ed3c9e0e16d659",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
