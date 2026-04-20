@@ -31,7 +31,7 @@ pub fn get_relic_type_info(relic_id: u32) -> RelicTypeInfo {
                 luck: 1,
             },
             price_wei: 44_444_000_000_000_000_000_000,
-            max_supply: 5,
+            max_supply: 30,
         };
     } else if relic_id == 2 {
         return RelicTypeInfo {
@@ -52,7 +52,7 @@ pub fn get_relic_type_info(relic_id: u32) -> RelicTypeInfo {
                 luck: 0,
             },
             price_wei: 33_333_000_000_000_000_000_000,
-            max_supply: 7,
+            max_supply: 40,
         };
     } else if relic_id == 3 {
         return RelicTypeInfo {
@@ -73,7 +73,7 @@ pub fn get_relic_type_info(relic_id: u32) -> RelicTypeInfo {
                 luck: 0,
             },
             price_wei: 22_222_000_000_000_000_000_000,
-            max_supply: 10,
+            max_supply: 60,
         };
     } else if relic_id == 4 {
         return RelicTypeInfo {
@@ -94,7 +94,7 @@ pub fn get_relic_type_info(relic_id: u32) -> RelicTypeInfo {
                 luck: 0,
             },
             price_wei: 15_555_000_000_000_000_000_000,
-            max_supply: 10,
+            max_supply: 60,
         };
     } else {
         return RelicTypeInfo {
@@ -115,7 +115,7 @@ pub fn get_relic_type_info(relic_id: u32) -> RelicTypeInfo {
                 luck: 0,
             },
             price_wei: 11_111_000_000_000_000_000_000,
-            max_supply: 10,
+            max_supply: 100,
         };
     }
 }

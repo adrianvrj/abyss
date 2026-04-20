@@ -142,7 +142,7 @@
     },
     {
       "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
-      "class_hash": "0x223ef82c149c07b6b4339dd5169d0439e8d0075e7e263ccd4ed3c9e0e16d659",
+      "class_hash": "0x3c6036714bf3491c9cad67328033ccdf5d7e3c03ca4338d9cbc939de9567ec5",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
