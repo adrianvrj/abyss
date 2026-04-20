@@ -56,7 +56,36 @@ function decodeShortString(value: string | bigint | undefined) {
   }
 }
 
+const configCache = new Map<string, Promise<RpcGameConfig>>();
+const levelThresholdCache = new Map<string, Promise<number>>();
+const probability666Cache = new Map<string, Promise<number>>();
+
+function chainKey(chainId: ChainLike): string {
+  return chainId === null || chainId === undefined ? "default" : String(chainId);
+}
+
+export function invalidateGameConfigCache(chainId?: ChainLike) {
+  if (chainId === undefined) {
+    configCache.clear();
+  } else {
+    configCache.delete(chainKey(chainId));
+  }
+}
+
 export async function getGameConfig(chainId: ChainLike): Promise<RpcGameConfig> {
+  const key = chainKey(chainId);
+  const cached = configCache.get(key);
+  if (cached) return cached;
+
+  const promise = fetchGameConfig(chainId).catch((error) => {
+    configCache.delete(key);
+    throw error;
+  });
+  configCache.set(key, promise);
+  return promise;
+}
+
+async function fetchGameConfig(chainId: ChainLike): Promise<RpcGameConfig> {
   const provider = getRpcProvider(chainId);
   const playAddress = getPlayAddress(chainId);
   const result = await provider.callContract({
@@ -132,27 +161,47 @@ export async function getUsdCostInToken(
 }
 
 export async function getLevelThreshold(chainId: ChainLike, level: number) {
-  const provider = getRpcProvider(chainId);
-  const playAddress = getPlayAddress(chainId);
-  const result = await provider.callContract({
-    contractAddress: playAddress,
-    entrypoint: "get_level_threshold",
-    calldata: [level.toString()],
-  });
+  const key = `${chainKey(chainId)}:${level}`;
+  const cached = levelThresholdCache.get(key);
+  if (cached) return cached;
 
-  return Number(result[0] ?? 0);
+  const promise = (async () => {
+    const provider = getRpcProvider(chainId);
+    const playAddress = getPlayAddress(chainId);
+    const result = await provider.callContract({
+      contractAddress: playAddress,
+      entrypoint: "get_level_threshold",
+      calldata: [level.toString()],
+    });
+    return Number(result[0] ?? 0);
+  })().catch((error) => {
+    levelThresholdCache.delete(key);
+    throw error;
+  });
+  levelThresholdCache.set(key, promise);
+  return promise;
 }
 
 export async function get666Probability(chainId: ChainLike, level: number) {
-  const provider = getRpcProvider(chainId);
-  const playAddress = getPlayAddress(chainId);
-  const result = await provider.callContract({
-    contractAddress: playAddress,
-    entrypoint: "get_666_probability",
-    calldata: [level.toString()],
-  });
+  const key = `${chainKey(chainId)}:${level}`;
+  const cached = probability666Cache.get(key);
+  if (cached) return cached;
 
-  return Number(result[0] ?? 0);
+  const promise = (async () => {
+    const provider = getRpcProvider(chainId);
+    const playAddress = getPlayAddress(chainId);
+    const result = await provider.callContract({
+      contractAddress: playAddress,
+      entrypoint: "get_666_probability",
+      calldata: [level.toString()],
+    });
+    return Number(result[0] ?? 0);
+  })().catch((error) => {
+    probability666Cache.delete(key);
+    throw error;
+  });
+  probability666Cache.set(key, promise);
+  return promise;
 }
 
 export async function getSessionLuck(chainId: ChainLike, sessionId: number) {

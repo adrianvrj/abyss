@@ -755,8 +755,7 @@ export function useGameSession(sessionId: string | null) {
                 setSpinsRemaining(spin.spinsRemaining);
                 setIsSessionActive(spin.isActive);
                 setBlocked666(spin.is666);
-                const resolvedCurrentLuck = await getSessionLuck(Number(sessionId)).catch(() => spin.currentLuck);
-                if (resolvedCurrentLuck !== undefined) setCurrentLuck(resolvedCurrentLuck);
+                if (spin.currentLuck !== undefined) setCurrentLuck(spin.currentLuck);
                 setDiamondChipBonusUnits(spin.chipBonusUnits);
 
                 if (spin.is666) {
@@ -783,9 +782,11 @@ export function useGameSession(sessionId: string | null) {
                 setRelicCooldownRemaining(prev => Math.max(0, prev - 1));
                 setIsSpinning(false);
 
-                const th = await getLevelThreshold(spin.newLevel);
+                const [th, prob] = await Promise.all([
+                    getLevelThreshold(spin.newLevel),
+                    get666Probability(spin.newLevel),
+                ]);
                 setThreshold(th);
-                const prob = await get666Probability(spin.newLevel);
                 setRisk(prob / 10);
                 if (DEBUG_SPIN_SYNC) {
                     const latestSession = await getSessionData(Number(sessionId));
