@@ -112,6 +112,15 @@ export function PatchNotesContent() {
       <h2>TL;DR</h2>
       <ul className="patch-notes-tldr-list">
         <li>
+          <span>
+            <strong>Charm loadout &amp; market:</strong> you can set up to <strong>three charm NFTs</strong>{" "}
+            in your loadout; on each shop refresh, those charms (if you don&apos;t already have them
+            active in the run) can appear as buyable offers in the <strong>market</strong> alongside
+            standard items. This is separate from equipping <strong>one relic NFT</strong> per session
+            for its activated ability.
+          </span>
+        </li>
+        <li>
           <TldrItem itemId={41} name="Tricky Dice" />
           <span>
             <strong>New:</strong> <strong>Tricky Dice</strong> — Buy 4 · Sell 2 · cash-out on next
