@@ -20,7 +20,7 @@ const RELIC_METADATA: Record<string, {
         rarity: "Mythic",
         effect_type: "Random Jackpot",
         effect_description: "Forces a random jackpot on your next spin.",
-        cooldown: 13,
+        cooldown: 15,
     },
     "2": {
         name: "Phantom",
@@ -29,7 +29,7 @@ const RELIC_METADATA: Record<string, {
         rarity: "Mythic",
         effect_type: "Reset Spins",
         effect_description: "Resets your run back to max spins when activated.",
-        cooldown: 10,
+        cooldown: 15,
     },
     "3": {
         name: "Lucky the Dealer",

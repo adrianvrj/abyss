@@ -30,8 +30,8 @@ const RELIC_EFFECT_RESET_SPINS = 3;
 const RELIC_EFFECT_FREE_MARKET_REFRESH = 4;
 
 const PRACTICE_RELIC_COOLDOWNS: Record<number, number> = {
-  1: 13,
-  2: 10,
+  1: 15,
+  2: 15,
   3: 9,
   4: 9,
   5: 9,

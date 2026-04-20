@@ -18,7 +18,7 @@ const RELIC_METADATA: Record<string, any> = {
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Force Random Jackpot" },
-            { trait_type: "Cooldown", value: 13, display_type: "number" },
+            { trait_type: "Cooldown", value: 15, display_type: "number" },
             { trait_type: "Stat: Luck", value: 1, display_type: "number" },
             { trait_type: "Stat: Vitality", value: 1, display_type: "number" }
         ]
@@ -30,7 +30,7 @@ const RELIC_METADATA: Record<string, any> = {
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
             { trait_type: "Effect", value: "Reset Spins" },
-            { trait_type: "Cooldown", value: 10, display_type: "number" },
+            { trait_type: "Cooldown", value: 15, display_type: "number" },
             { trait_type: "Stat: Wisdom", value: 1, display_type: "number" }
         ]
     },

@@ -14,8 +14,8 @@ interface OwnedRelic {
 }
 
 const PRACTICE_RELICS: OwnedRelic[] = [
-  { tokenId: 1n, relicId: 1, name: "Mortis", cooldown: 13 },
-  { tokenId: 2n, relicId: 2, name: "Phantom", cooldown: 10 },
+  { tokenId: 1n, relicId: 1, name: "Mortis", cooldown: 15 },
+  { tokenId: 2n, relicId: 2, name: "Phantom", cooldown: 15 },
   { tokenId: 3n, relicId: 3, name: "Lucky the Dealer", cooldown: 9 },
   { tokenId: 4n, relicId: 4, name: "Scorcher", cooldown: 9 },
   { tokenId: 5n, relicId: 5, name: "Inferno", cooldown: 9 },
