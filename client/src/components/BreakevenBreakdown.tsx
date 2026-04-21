@@ -17,11 +17,12 @@ function getLevelThreshold(level: number): number {
   if (level === 4) return 800;
   if (level === 5) return 1800;
   if (level === 6) return 4200;
-  if (level === 7) return 8200;
-  if (level === 8) return 14500;
-  if (level === 9) return 24000;
-  if (level === 10) return 36000;
-  return 36000 + ((level - 10) * 12000);
+  if (level === 7) return 8500;
+  if (level === 8) return 15500;
+  if (level === 9) return 29000;
+  if (level === 10) return 52000;
+  if (level === 11) return 80000;
+  return 80000 + ((level - 11) * 40000);
 }
 
 function getChipsAtLevel(level: number, effectiveRate: number): number {

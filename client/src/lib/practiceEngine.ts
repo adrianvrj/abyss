@@ -1,9 +1,6 @@
 import { STATIC_ITEM_DEFINITIONS } from "@/lib/itemCatalog";
-import { getStaticCharmDefinition } from "@/lib/charmCatalog";
 import {
   getCharmLuckEntries,
-  mergeCharmDisplayData,
-  type CharmContractMetadata,
   type CharmLuckContext,
 } from "@/lib/charmRules";
 import { applyPatternModifiers } from "@/lib/patternMath";
@@ -21,8 +18,6 @@ const CASH_OUT_ITEM_ID = 41;
 const MARKET_SLOT_COUNT = 6;
 const INVENTORY_LIMIT = 7;
 const MAX_ITEM_ID = 41;
-const MAX_CHARM_ID = 20;
-const PRACTICE_CHARM_APPEAR_CHANCE = 10;
 const RETIRED_MARKET_ITEM_IDS = new Set<number>([10, 19, 23, 24, 39]);
 const RELIC_EFFECT_RANDOM_JACKPOT = 0;
 const RELIC_EFFECT_DOUBLE_NEXT_SPIN = 2;
@@ -35,29 +30,6 @@ const PRACTICE_RELIC_COOLDOWNS: Record<number, number> = {
   3: 9,
   4: 9,
   5: 9,
-};
-
-const PRACTICE_CHARM_METADATA: Record<number, CharmContractMetadata> = {
-  1: { charmId: 1, name: "Whisper Stone", description: "Luck +3", effectType: 7, effectValue: 3, effectValue2: 0, conditionType: 0, rarity: 0, shopCost: 1 },
-  2: { charmId: 2, name: "Faded Coin", description: "Luck +4", effectType: 7, effectValue: 4, effectValue2: 0, conditionType: 0, rarity: 0, shopCost: 1 },
-  3: { charmId: 3, name: "Broken Mirror", description: "No pat +5", effectType: 10, effectValue: 5, effectValue2: 0, conditionType: 1, rarity: 0, shopCost: 1 },
-  4: { charmId: 4, name: "Dusty Hourglass", description: "Low spins +8", effectType: 10, effectValue: 8, effectValue2: 0, conditionType: 2, rarity: 0, shopCost: 1 },
-  5: { charmId: 5, name: "Cracked Skull", description: "Luck +5", effectType: 7, effectValue: 5, effectValue2: 0, conditionType: 0, rarity: 0, shopCost: 1 },
-  6: { charmId: 6, name: "Rusty Key", description: "Per item +3", effectType: 10, effectValue: 3, effectValue2: 0, conditionType: 3, rarity: 0, shopCost: 1 },
-  7: { charmId: 7, name: "Moth Wing", description: "Luck +6", effectType: 7, effectValue: 6, effectValue2: 0, conditionType: 0, rarity: 0, shopCost: 1 },
-  8: { charmId: 8, name: "Bone Dice", description: "Low score +8", effectType: 10, effectValue: 8, effectValue2: 0, conditionType: 4, rarity: 0, shopCost: 1 },
-  9: { charmId: 9, name: "Soul Fragment", description: "Luck +10", effectType: 7, effectValue: 10, effectValue2: 0, conditionType: 0, rarity: 1, shopCost: 2 },
-  10: { charmId: 10, name: "Cursed Pendant", description: "H3 x2", effectType: 8, effectValue: 2, effectValue2: 1, conditionType: 0, rarity: 1, shopCost: 2 },
-  11: { charmId: 11, name: "Shadow Lantern", description: "+8 base, lvl5 +8", effectType: 7, effectValue: 8, effectValue2: 8, conditionType: 5, rarity: 1, shopCost: 2 },
-  12: { charmId: 12, name: "Ethereal Chain", description: "Pattern +6", effectType: 10, effectValue: 6, effectValue2: 0, conditionType: 0, rarity: 1, shopCost: 2 },
-  13: { charmId: 13, name: "Void Compass", description: "+1 spin +15", effectType: 9, effectValue: 1, effectValue2: 15, conditionType: 0, rarity: 1, shopCost: 3 },
-  14: { charmId: 14, name: "Demon's Tooth", description: "Diag x2", effectType: 8, effectValue: 2, effectValue2: 3, conditionType: 0, rarity: 1, shopCost: 3 },
-  15: { charmId: 15, name: "Abyssal Eye", description: "Luck +20", effectType: 7, effectValue: 20, effectValue2: 0, conditionType: 0, rarity: 2, shopCost: 4 },
-  16: { charmId: 16, name: "Phoenix Feather", description: "+2 spin +10", effectType: 9, effectValue: 2, effectValue2: 10, conditionType: 0, rarity: 2, shopCost: 4 },
-  17: { charmId: 17, name: "Reaper's Mark", description: "NoJP x2", effectType: 8, effectValue: 2, effectValue2: 0, conditionType: 0, rarity: 2, shopCost: 5 },
-  18: { charmId: 18, name: "Chaos Orb", description: "Block666 +80", effectType: 10, effectValue: 80, effectValue2: 0, conditionType: 6, rarity: 2, shopCost: 5 },
-  19: { charmId: 19, name: "Soul Abyss", description: "Luck +30", effectType: 7, effectValue: 30, effectValue2: 0, conditionType: 0, rarity: 2, shopCost: 6 },
-  20: { charmId: 20, name: "Void Heart", description: "+1 spin +50", effectType: 9, effectValue: 1, effectValue2: 50, conditionType: 0, rarity: 2, shopCost: 7 },
 };
 
 export interface PracticeRunState {
@@ -180,43 +152,6 @@ function buildPracticeItem(itemId: number): ContractItem {
   };
 }
 
-function buildPracticeCharmItem(charmId: number): ContractItem {
-  const metadata = PRACTICE_CHARM_METADATA[charmId];
-  const staticDefinition = getStaticCharmDefinition(charmId);
-  const charmInfo = mergeCharmDisplayData({
-    charmId,
-    staticDefinition,
-    apiMetadata: null,
-    metadata,
-  });
-
-  if (!charmInfo) {
-    return {
-      item_id: 1000 + charmId,
-      name: `Charm #${charmId}`,
-      description: "",
-      price: 0,
-      sell_price: 0,
-      effect_type: ItemEffectType.CharmEffect,
-      effect_value: 0,
-      target_symbol: "",
-    };
-  }
-
-  return {
-    item_id: 1000 + charmId,
-    name: charmInfo.name,
-    description: charmInfo.description,
-    price: charmInfo.shop_cost,
-    sell_price: Math.floor(charmInfo.shop_cost / 2),
-    effect_type: ItemEffectType.CharmEffect,
-    effect_value: charmInfo.luck,
-    target_symbol: `${charmInfo.rarity}|||${charmInfo.effect}`,
-    image: charmInfo.image,
-    charmInfo,
-  };
-}
-
 function getCharmMetadataFromItem(item: ContractItem) {
   return item.charmInfo?.metadata ?? null;
 }
@@ -260,11 +195,12 @@ export function getPracticeLevelThreshold(level: number) {
   if (level === 4) return 800;
   if (level === 5) return 1800;
   if (level === 6) return 4200;
-  if (level === 7) return 8200;
-  if (level === 8) return 14500;
-  if (level === 9) return 24000;
-  if (level === 10) return 36000;
-  return 36000 + ((level - 10) * 12000);
+  if (level === 7) return 8500;
+  if (level === 8) return 15500;
+  if (level === 9) return 29000;
+  if (level === 10) return 52000;
+  if (level === 11) return 80000;
+  return 80000 + ((level - 11) * 40000);
 }
 
 export function getPractice666Probability(level: number) {
@@ -333,46 +269,16 @@ function buildWeightedSymbols(items: ContractItem[]) {
 function generateMarketItems(
   rngState: number,
   previousItems: ContractItem[] = [],
-  inventoryItems: ContractItem[] = [],
 ) {
   let nextState = rngState;
   const pickedIds = new Set<number>();
   const excludedIds = new Set<number>(previousItems.map((item) => item.item_id));
-  const ownedCharmIds = new Set(
-    inventoryItems
-      .filter((item) => item.item_id >= 1000)
-      .map((item) => item.item_id - 1000),
-  );
   let attempts = 0;
 
   while (pickedIds.size < MARKET_SLOT_COUNT && attempts < 200) {
-    let itemId = 0;
-    const charmRoll = takeRandomInt(nextState, 100);
-    nextState = charmRoll.nextState;
-
-    if (charmRoll.value < PRACTICE_CHARM_APPEAR_CHANCE) {
-      const availableCharmIds = Array.from(
-        { length: MAX_CHARM_ID },
-        (_, index) => index + 1,
-      ).filter(
-        (charmId) =>
-          !ownedCharmIds.has(charmId) &&
-          !excludedIds.has(1000 + charmId) &&
-          !pickedIds.has(1000 + charmId),
-      );
-
-      if (availableCharmIds.length > 0) {
-        const charmPick = takeRandomInt(nextState, availableCharmIds.length);
-        nextState = charmPick.nextState;
-        itemId = 1000 + availableCharmIds[charmPick.value];
-      }
-    }
-
-    if (itemId === 0) {
-      const next = takeRandomInt(nextState, MAX_ITEM_ID);
-      nextState = next.nextState;
-      itemId = next.value + 1;
-    }
+    const next = takeRandomInt(nextState, MAX_ITEM_ID);
+    nextState = next.nextState;
+    const itemId = next.value + 1;
 
     if (!RETIRED_MARKET_ITEM_IDS.has(itemId) && !excludedIds.has(itemId) && !pickedIds.has(itemId)) {
       pickedIds.add(itemId);
@@ -381,21 +287,6 @@ function generateMarketItems(
   }
 
   if (pickedIds.size < MARKET_SLOT_COUNT) {
-    for (
-      let charmId = 1;
-      charmId <= MAX_CHARM_ID && pickedIds.size < MARKET_SLOT_COUNT;
-      charmId += 1
-    ) {
-      const charmItemId = 1000 + charmId;
-      if (
-        !ownedCharmIds.has(charmId) &&
-        !excludedIds.has(charmItemId) &&
-        !pickedIds.has(charmItemId)
-      ) {
-        pickedIds.add(charmItemId);
-      }
-    }
-
     for (let itemId = 1; itemId <= MAX_ITEM_ID && pickedIds.size < MARKET_SLOT_COUNT; itemId += 1) {
       if (!RETIRED_MARKET_ITEM_IDS.has(itemId) && !excludedIds.has(itemId) && !pickedIds.has(itemId)) {
         pickedIds.add(itemId);
@@ -405,9 +296,7 @@ function generateMarketItems(
 
   return {
     nextState,
-    items: Array.from(pickedIds).map((itemId) =>
-      itemId >= 1000 ? buildPracticeCharmItem(itemId - 1000) : buildPracticeItem(itemId),
-    ),
+    items: Array.from(pickedIds).map((itemId) => buildPracticeItem(itemId)),
   };
 }
 
@@ -526,7 +415,7 @@ function getDiamondChipBonusUnits(items: ContractItem[]) {
 
 export function createPracticeRun(runId: number, seed: number): PracticeRunState {
   const normalizedSeed = toNonZeroSeed(seed);
-  const market = generateMarketItems(normalizedSeed, [], []);
+  const market = generateMarketItems(normalizedSeed, []);
 
   return withDerivedState({
     id: runId,
@@ -812,7 +701,7 @@ export function refreshPracticeMarket(state: PracticeRunState): PracticeRefreshO
     return null;
   }
 
-  const market = generateMarketItems(state.rngState, state.marketItems, state.inventoryItems);
+  const market = generateMarketItems(state.rngState, state.marketItems);
   const nextState = withDerivedState({
     ...state,
     rngState: market.nextState,
@@ -898,7 +787,7 @@ export function activatePracticeRelic(state: PracticeRunState): PracticeRelicAct
   }
 
   if (relicId === 5) {
-    const market = generateMarketItems(state.rngState, state.marketItems, state.inventoryItems);
+    const market = generateMarketItems(state.rngState, state.marketItems);
     const nextState = withDerivedState({
       ...state,
       rngState: market.nextState,

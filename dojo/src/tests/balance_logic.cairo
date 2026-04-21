@@ -180,11 +180,12 @@ fn test_level_thresholds_match_balance_patch() {
     assert(get_level_threshold(4) == 800, 'level 4 threshold');
     assert(get_level_threshold(5) == 1800, 'level 5 threshold');
     assert(get_level_threshold(6) == 4200, 'level 6 threshold');
-    assert(get_level_threshold(7) == 8200, 'level 7 threshold');
-    assert(get_level_threshold(8) == 14500, 'level 8 threshold');
-    assert(get_level_threshold(9) == 24000, 'level 9 threshold');
-    assert(get_level_threshold(10) == 36000, 'level 10 threshold');
-    assert(get_level_threshold(11) == 48000, 'level 11 threshold');
+    assert(get_level_threshold(7) == 8500, 'level 7 threshold');
+    assert(get_level_threshold(8) == 15500, 'level 8 threshold');
+    assert(get_level_threshold(9) == 29000, 'level 9 threshold');
+    assert(get_level_threshold(10) == 52000, 'level 10 threshold');
+    assert(get_level_threshold(11) == 80000, 'level 11 threshold');
+    assert(get_level_threshold(12) == 120000, 'level 12 threshold');
 }
 
 #[test]

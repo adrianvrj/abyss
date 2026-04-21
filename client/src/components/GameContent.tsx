@@ -235,7 +235,7 @@ function GameStage({
                                 onItemClick={(item) => game.setItemToSell(item)}
                                 refreshTrigger={game.marketRefreshTrigger}
                                 optimisticItems={game.optimisticItems}
-                                onOpenRelics={practiceMode ? undefined : (() => setShowRelicModal(true))}
+                                onOpenRelics={() => setShowRelicModal(true)}
                                 sellingItemId={game.isSelling && game.itemToSell ? game.itemToSell.item_id : undefined}
                                 hiddenItemIds={game.hiddenItems}
                                 bibliaBroken={game.bibliaBroken}
@@ -360,12 +360,14 @@ function GameStage({
                         {/* Mobile Relic Controls */}
                         {activeMobileTab === 'home' && (
                             <div className="mobile-floating-controls">
-                                <button
-                                    className="mobile-relic-btn equip-btn"
-                                    onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
-                                >
-                                    <Gem size={24} color="#FF841C" />
-                                </button>
+                                {(
+                                    <button
+                                        className="mobile-relic-btn equip-btn"
+                                        onClick={(e) => { e.stopPropagation(); setShowRelicModal(true); }}
+                                    >
+                                        <Gem size={24} color="#FF841C" />
+                                    </button>
+                                )}
                                 {game.equippedRelic && (
                                     <button
                                         className="mobile-relic-btn activate-btn"
@@ -532,7 +534,7 @@ function GameStage({
                 />
             )}
 
-            {game.showCharmAnimation && game.mintedCharmInfo && (
+            {!practiceMode && game.showCharmAnimation && game.mintedCharmInfo && (
                 <CharmMintAnimation
                     charmId={game.mintedCharmInfo.charm_id}
                     charmName={game.mintedCharmInfo.name}

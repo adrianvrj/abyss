@@ -20,6 +20,7 @@ const PRACTICE_RELICS: OwnedRelic[] = [
   { tokenId: 4n, relicId: 4, name: "Scorcher", cooldown: 9 },
   { tokenId: 5n, relicId: 5, name: "Inferno", cooldown: 9 },
 ];
+
 const EMPTY_ITEMS: ContractItem[] = [];
 const EMPTY_PATTERNS: Pattern[] = [];
 const CHIP_SCORE_DIVISOR = 20;
@@ -61,8 +62,6 @@ export function usePracticeSession() {
   const [showBibliaAnimation, setShowBibliaAnimation] = useState(false);
   const [bibliaDiscarded, setBibliaDiscarded] = useState(true);
   const [bibliaBroken, setBibliaBroken] = useState(false);
-  const [showCharmAnimation, setShowCharmAnimation] = useState(false);
-  const [mintedCharmInfo, setMintedCharmInfo] = useState<any>(null);
   const [showRelicActivation, setShowRelicActivation] = useState(false);
   const [showScoreResetAnimation, setShowScoreResetAnimation] = useState(false);
   const [scoreResetPreviousScore, setScoreResetPreviousScore] = useState(0);
@@ -419,8 +418,8 @@ export function usePracticeSession() {
     showBibliaAnimation,
     bibliaDiscarded,
     bibliaBroken,
-    showCharmAnimation,
-    mintedCharmInfo,
+    showCharmAnimation: false,
+    mintedCharmInfo: null,
     showRelicActivation,
     showScoreResetAnimation,
     scoreResetPreviousScore,
@@ -429,8 +428,12 @@ export function usePracticeSession() {
     luckyScoreBoostBonus,
     showCashOutAnimation,
     setShowBibliaAnimation,
-    setShowCharmAnimation,
-    setMintedCharmInfo,
+    setShowCharmAnimation: useCallback((_value: boolean) => {
+      return;
+    }, []),
+    setMintedCharmInfo: useCallback((_value: any) => {
+      return;
+    }, []),
     setShowRelicActivation,
     setShowScoreResetAnimation,
     setShowLuckyScoreBoostAnimation,
