@@ -13,11 +13,11 @@ const DEFAULT_RELIC_ADDRESS = manifest.contracts.find(
 const RELIC_METADATA: Record<string, any> = {
     "1": {
         name: "Mortis",
-        description: "Gentleman of Death - Forces a random jackpot",
+        description: "Gentleman of Death - Forces one random jackpot per session",
         image: `${BASE_URL}/images/relics/mortis.png`,
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
-            { trait_type: "Effect", value: "Force Random Jackpot" },
+            { trait_type: "Effect", value: "Force Random Jackpot (1/session)" },
             { trait_type: "Cooldown", value: 15, display_type: "number" },
             { trait_type: "Stat: Luck", value: 1, display_type: "number" },
             { trait_type: "Stat: Vitality", value: 1, display_type: "number" }

@@ -344,10 +344,11 @@ export function usePracticeSession() {
   }, []);
 
   const equippedRelic = PRACTICE_RELICS.find((relic) => relic.relicId === (run?.equippedRelicId ?? 0)) ?? null;
+  const isRelicSpent = (run?.equippedRelicId ?? 0) === 1 && Boolean(run?.relicUsedThisSession);
 
   const handleActivateRelic = useCallback(async () => {
     const currentRun = runRef.current;
-    if (!currentRun || !equippedRelic || currentRun.relicCooldownRemaining > 0) {
+    if (!currentRun || !equippedRelic || currentRun.relicCooldownRemaining > 0 || ((currentRun.equippedRelicId ?? 0) === 1 && currentRun.relicUsedThisSession)) {
       return;
     }
 
@@ -436,6 +437,7 @@ export function usePracticeSession() {
     setShowCashOutAnimation,
     setGameOverReason,
     equippedRelic,
+    isRelicSpent,
     ownedRelics: PRACTICE_RELICS,
     isActivatingRelic: false,
     isEquippingRelic: false,

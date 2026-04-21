@@ -20,8 +20,8 @@ interface RelicModalProps {
 
 const RELIC_DATA: Record<number, { effect: string; flavor: string; rarity: string; rarityColor: string }> = {
     1: {
-        effect: 'FORCE RANDOM JACKPOT',
-        flavor: 'Bends the next spin toward a loaded miracle.',
+        effect: 'FORCE RANDOM JACKPOT · 1 USE / SESSION',
+        flavor: 'Bends one spin toward a loaded miracle, then goes dormant for the run.',
         rarity: 'MYTHIC',
         rarityColor: '#FF4444',
     },
@@ -118,8 +118,8 @@ export default function RelicModal({
 
                                     <div className="relic-meta-grid">
                                         <div className="relic-meta-box">
-                                            <span className="relic-meta-label">COOLDOWN</span>
-                                            <span className="relic-meta-value">{currentRelic.cooldown} SPINS</span>
+                                            <span className="relic-meta-label">{currentRelic.relicId === 1 ? 'LIMIT' : 'COOLDOWN'}</span>
+                                            <span className="relic-meta-value">{currentRelic.relicId === 1 ? '1 / SESSION' : `${currentRelic.cooldown} SPINS`}</span>
                                         </div>
                                         <div className="relic-meta-box">
                                             <span className="relic-meta-label">TOKEN</span>

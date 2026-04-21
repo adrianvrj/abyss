@@ -90,6 +90,9 @@ pub mod Relic {
             // relic_last_used_spin uses 0 as "never used" and stores activations as
             // total_spins + 1 so activating before the first spin can still enter cooldown.
             let current_spin_marker = session.total_spins + 1;
+            if metadata.relic_id == 1 {
+                assert(session.relic_last_used_spin == 0, 'Mortis already used');
+            }
             assert(
                 session.relic_last_used_spin == 0
                     || current_spin_marker >= session.relic_last_used_spin

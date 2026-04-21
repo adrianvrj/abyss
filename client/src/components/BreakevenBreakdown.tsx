@@ -12,16 +12,16 @@ const CHIP_SCORE_DIVISOR = 20;
 
 function getLevelThreshold(level: number): number {
   if (level <= 1) return 66;
-  if (level === 2) return 222;
+  if (level === 2) return 180;
   if (level === 3) return 333;
-  if (level === 4) return 666;
-  if (level === 5) return 1500;
-  if (level === 6) return 3500;
-  if (level === 7) return 7000;
-  if (level === 8) return 12000;
-  if (level === 9) return 20000;
-  if (level === 10) return 30000;
-  return 40000 + ((level - 10) * 20000);
+  if (level === 4) return 800;
+  if (level === 5) return 1800;
+  if (level === 6) return 4200;
+  if (level === 7) return 8200;
+  if (level === 8) return 14500;
+  if (level === 9) return 24000;
+  if (level === 10) return 36000;
+  return 36000 + ((level - 10) * 12000);
 }
 
 function getChipsAtLevel(level: number, effectiveRate: number): number {

@@ -4,6 +4,7 @@ use crate::helpers::items::{
     get_item_runtime_effect,
 };
 use crate::helpers::relic_types::get_relic_type_info;
+use crate::helpers::scoring::get_level_threshold;
 use crate::models::index::Item;
 use crate::systems::play::{get_chip_payout_amount, get_total_chip_units};
 
@@ -169,6 +170,21 @@ fn test_relic_cooldowns_match_balance_patch() {
     assert(mortis.cooldown_spins == 15, 'mortis cooldown');
     assert(phantom.cooldown_spins == 15, 'phantom cooldown');
     assert(lucky.cooldown_spins == 9, 'lucky cooldown');
+}
+
+#[test]
+fn test_level_thresholds_match_balance_patch() {
+    assert(get_level_threshold(1) == 66, 'level 1 threshold');
+    assert(get_level_threshold(2) == 180, 'level 2 threshold');
+    assert(get_level_threshold(3) == 333, 'level 3 threshold');
+    assert(get_level_threshold(4) == 800, 'level 4 threshold');
+    assert(get_level_threshold(5) == 1800, 'level 5 threshold');
+    assert(get_level_threshold(6) == 4200, 'level 6 threshold');
+    assert(get_level_threshold(7) == 8200, 'level 7 threshold');
+    assert(get_level_threshold(8) == 14500, 'level 8 threshold');
+    assert(get_level_threshold(9) == 24000, 'level 9 threshold');
+    assert(get_level_threshold(10) == 36000, 'level 10 threshold');
+    assert(get_level_threshold(11) == 48000, 'level 11 threshold');
 }
 
 #[test]

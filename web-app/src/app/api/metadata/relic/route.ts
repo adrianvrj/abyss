@@ -15,11 +15,11 @@ const RELIC_METADATA: Record<string, {
 }> = {
     "1": {
         name: "Mortis",
-        description: "Gentleman of Death - Forces a random jackpot.",
+        description: "Gentleman of Death - Forces one random jackpot per session.",
         image: `${BASE_URL}/images/relics/mortis.png`,
         rarity: "Mythic",
         effect_type: "Random Jackpot",
-        effect_description: "Forces a random jackpot on your next spin.",
+        effect_description: "Forces a random jackpot on your next spin. Limited to one use per session.",
         cooldown: 15,
     },
     "2": {

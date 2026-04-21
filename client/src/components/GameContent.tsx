@@ -370,16 +370,19 @@ function GameStage({
                                     <button
                                         className="mobile-relic-btn activate-btn"
                                         onClick={(e) => { e.stopPropagation(); game.handleActivateRelic(); }}
-                                        disabled={game.relicCooldownRemaining > 0}
+                                        disabled={game.relicCooldownRemaining > 0 || game.isRelicSpent}
                                     >
                                         <img
                                             src={`/images/relics/${game.equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
                                             alt={game.equippedRelic.name}
                                             width={48} height={48}
-                                            style={{ objectFit: 'cover', borderRadius: '50%', border: '2px solid #FF841C', filter: game.relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none' }}
+                                            style={{ objectFit: 'cover', borderRadius: '50%', border: '2px solid #FF841C', filter: game.relicCooldownRemaining > 0 || game.isRelicSpent ? 'grayscale(100%)' : 'none' }}
                                         />
                                         {game.relicCooldownRemaining > 0 && (
                                             <div className="mobile-relic-cooldown">{game.relicCooldownRemaining}</div>
+                                        )}
+                                        {game.isRelicSpent && (
+                                            <div className="mobile-relic-cooldown">X</div>
                                         )}
                                     </button>
                                 )}
@@ -412,19 +415,24 @@ function GameStage({
                             <button
                                 className="sidebar-btn equipped-relic"
                                 onClick={(e) => { e.stopPropagation(); game.handleActivateRelic(); }}
-                                title={game.relicCooldownRemaining > 0 ? `Cooldown: ${game.relicCooldownRemaining} spins` : `Activate ${game.equippedRelic.name}`}
-                                disabled={game.relicCooldownRemaining > 0}
-                                style={{ position: 'relative', padding: 0, overflow: 'hidden', opacity: game.relicCooldownRemaining > 0 ? 0.5 : 1, cursor: game.relicCooldownRemaining > 0 ? 'not-allowed' : 'pointer' }}
+                                title={game.isRelicSpent ? `${game.equippedRelic.name} spent this session` : game.relicCooldownRemaining > 0 ? `Cooldown: ${game.relicCooldownRemaining} spins` : `Activate ${game.equippedRelic.name}`}
+                                disabled={game.relicCooldownRemaining > 0 || game.isRelicSpent}
+                                style={{ position: 'relative', padding: 0, overflow: 'hidden', opacity: game.relicCooldownRemaining > 0 || game.isRelicSpent ? 0.5 : 1, cursor: game.relicCooldownRemaining > 0 || game.isRelicSpent ? 'not-allowed' : 'pointer' }}
                             >
                                 <img
                                     src={`/images/relics/${game.equippedRelic.name.toLowerCase().replace(/ /g, '_')}.png`}
                                     alt={game.equippedRelic.name}
                                     width={32} height={32}
-                                    style={{ objectFit: 'cover', borderRadius: '6px', filter: game.relicCooldownRemaining > 0 ? 'grayscale(100%)' : 'none' }}
+                                    style={{ objectFit: 'cover', borderRadius: '6px', filter: game.relicCooldownRemaining > 0 || game.isRelicSpent ? 'grayscale(100%)' : 'none' }}
                                 />
                                 {game.relicCooldownRemaining > 0 && (
                                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontFamily: "'PressStart2P', monospace", color: '#FF841C' }}>
                                         {game.relicCooldownRemaining}
+                                    </div>
+                                )}
+                                {game.isRelicSpent && (
+                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontFamily: "'PressStart2P', monospace", color: '#FF841C' }}>
+                                        X
                                     </div>
                                 )}
                             </button>

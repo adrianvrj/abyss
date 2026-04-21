@@ -182,6 +182,7 @@ export function useGameSession(sessionId: string | null) {
     const [isActivatingRelic, setIsActivatingRelic] = useState(false);
     const [isEquippingRelic, setIsEquippingRelic] = useState(false);
     const [relicCooldownRemaining, setRelicCooldownRemaining] = useState(0);
+    const [isRelicSpent, setIsRelicSpent] = useState(false);
     const [relicIndex, setRelicIndex] = useState(0);
     const [scoreMultiplier, setScoreMultiplier] = useState(1);
 
@@ -603,7 +604,11 @@ export function useGameSession(sessionId: string | null) {
                         name: RELIC_NAMES[relicId] || `Relic #${relicId}`,
                         cooldown
                     });
+                    const mortisSpent = relicId === 1 && data.relicLastUsedSpin > 0;
+                    setIsRelicSpent(mortisSpent);
                     if (data.relicLastUsedSpin === 0) {
+                        setRelicCooldownRemaining(0);
+                    } else if (mortisSpent) {
                         setRelicCooldownRemaining(0);
                     } else {
                         setRelicCooldownRemaining(
@@ -616,6 +621,7 @@ export function useGameSession(sessionId: string | null) {
             } else {
                 setEquippedRelic(null);
                 setRelicCooldownRemaining(0);
+                setIsRelicSpent(false);
             }
 
             return data;
@@ -1063,14 +1069,19 @@ export function useGameSession(sessionId: string | null) {
     }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
 
     const handleActivateRelic = useCallback(async () => {
-        if (!equippedRelic || !sessionId || isActivatingRelic || relicCooldownRemaining > 0) return;
+        if (!equippedRelic || !sessionId || isActivatingRelic || relicCooldownRemaining > 0 || isRelicSpent) return;
         setIsActivatingRelic(true);
         try {
             const shouldEndSession = equippedRelic.relicId === 4;
             const events = await activateRelic(Number(sessionId), equippedRelic.relicId);
             const mintedCharm = await resolveMintedCharmInfo(events?.charmMinted);
             setShowRelicActivation(!shouldEndSession);
-            setRelicCooldownRemaining(equippedRelic.cooldown);
+            if (equippedRelic.relicId === 1) {
+                setIsRelicSpent(true);
+                setRelicCooldownRemaining(0);
+            } else {
+                setRelicCooldownRemaining(equippedRelic.cooldown);
+            }
 
             if (events?.relicActivated) {
                 const { relicActivated } = events;
@@ -1130,7 +1141,7 @@ export function useGameSession(sessionId: string | null) {
         } finally {
             setIsActivatingRelic(false);
         }
-    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, activateRelic, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo, loadSessionData, resolveChipPayout]);
+    }, [equippedRelic, sessionId, isActivatingRelic, relicCooldownRemaining, isRelicSpent, activateRelic, getLastSpinResult, captureGameOverBuild, score, resolveMintedCharmInfo, loadSessionData, resolveChipPayout]);
 
     const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {
         if (!sessionId || equippedRelic) return;
@@ -1139,6 +1150,7 @@ export function useGameSession(sessionId: string | null) {
             await equipRelic(Number(sessionId), relic.tokenId);
             setEquippedRelic(relic);
             setRelicCooldownRemaining(0);
+            setIsRelicSpent(false);
         } catch (err) {
             console.error(err);
         } finally {
@@ -1209,7 +1221,7 @@ export function useGameSession(sessionId: string | null) {
 
         // Relics
         equippedRelic, ownedRelics, isActivatingRelic, isEquippingRelic,
-        relicCooldownRemaining, relicIndex, setRelicIndex,
+        relicCooldownRemaining, isRelicSpent, relicIndex, setRelicIndex,
 
         // Inline panel state
         itemToSell, setItemToSell, isSelling, hiddenItems,

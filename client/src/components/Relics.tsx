@@ -17,8 +17,8 @@ const RELICS = [
     {
         id: 1,
         name: "Mortis",
-        description: "Gentleman of Death - Forces a random jackpot",
-        effect: "Force Random Jackpot",
+        description: "Gentleman of Death - Forces one random jackpot per session",
+        effect: "Force Random Jackpot (1/session)",
         price: 44444,
         maxSupply: 30,
         rarity: "Mythic",
