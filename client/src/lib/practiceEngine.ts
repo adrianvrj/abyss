@@ -211,12 +211,12 @@ export function getPractice666Probability(level: number) {
     return (level - 2) * 20;
   }
   if (level <= 8) {
-    return 60 + ((level - 5) * 40);
+    return 60 + ((level - 5) * 30);
   }
   if (level <= 10) {
-    return 180 + ((level - 8) * 70);
+    return 160 + ((level - 8) * 50);
   }
-  return 320 + ((level - 10) * 100);
+  return 260 + ((level - 10) * 70);
 }
 
 export function getPracticeRefreshCost(refreshCount: number) {

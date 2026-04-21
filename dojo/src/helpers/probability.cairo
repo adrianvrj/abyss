@@ -6,10 +6,10 @@ pub fn get_666_probability(level: u32) -> u32 {
     } else if level <= 5 {
         (level - 2) * 20
     } else if level <= 8 {
-        60 + ((level - 5) * 40)
+        60 + ((level - 5) * 30)
     } else if level <= 10 {
-        180 + ((level - 8) * 70)
+        160 + ((level - 8) * 50)
     } else {
-        320 + ((level - 10) * 100)
+        260 + ((level - 10) * 70)
     }
 }

@@ -212,12 +212,12 @@ fn test_level_thresholds_match_balance_patch() {
 fn test_666_probability_ramps_harder_in_late_game() {
     assert(get_666_probability(2) == 0, 'level 2 666');
     assert(get_666_probability(5) == 60, 'level 5 666');
-    assert(get_666_probability(6) == 100, 'level 6 666');
-    assert(get_666_probability(8) == 180, 'level 8 666');
-    assert(get_666_probability(9) == 250, 'level 9 666');
-    assert(get_666_probability(10) == 320, 'level 10 666');
-    assert(get_666_probability(11) == 420, 'level 11 666');
-    assert(get_666_probability(12) == 520, 'level 12 666');
+    assert(get_666_probability(6) == 90, 'level 6 666');
+    assert(get_666_probability(8) == 150, 'level 8 666');
+    assert(get_666_probability(9) == 210, 'level 9 666');
+    assert(get_666_probability(10) == 260, 'level 10 666');
+    assert(get_666_probability(11) == 330, 'level 11 666');
+    assert(get_666_probability(12) == 400, 'level 12 666');
 }
 
 #[test]
