@@ -1,9 +1,15 @@
 /// Get 666 probability for a given level (per 1000).
-/// (level - 2) * 2% = (level - 2) * 20 per mille
+/// Early levels ramp gently, then late game accelerates hard.
 pub fn get_666_probability(level: u32) -> u32 {
     if level <= 2 {
         0
-    } else {
+    } else if level <= 5 {
         (level - 2) * 20
+    } else if level <= 8 {
+        60 + ((level - 5) * 40)
+    } else if level <= 10 {
+        180 + ((level - 8) * 70)
+    } else {
+        320 + ((level - 10) * 100)
     }
 }

@@ -190,24 +190,33 @@ function getItemPurchasePrice(item: ContractItem, bibliaPurchaseCount: number) {
 
 export function getPracticeLevelThreshold(level: number) {
   if (level <= 1) return 66;
-  if (level === 2) return 180;
-  if (level === 3) return 333;
-  if (level === 4) return 800;
-  if (level === 5) return 1800;
-  if (level === 6) return 4200;
-  if (level === 7) return 8500;
-  if (level === 8) return 15500;
-  if (level === 9) return 29000;
-  if (level === 10) return 52000;
-  if (level === 11) return 80000;
-  return 80000 + ((level - 11) * 40000);
+  if (level === 2) return 220;
+  if (level === 3) return 450;
+  if (level === 4) return 1000;
+  if (level === 5) return 2200;
+  if (level === 6) return 5000;
+  if (level === 7) return 9500;
+  if (level === 8) return 17000;
+  if (level === 9) return 24500;
+  if (level === 10) return 42000;
+  if (level === 11) return 70000;
+  return 70000 + ((level - 11) * 50000);
 }
 
 export function getPractice666Probability(level: number) {
   if (level <= 2) {
     return 0;
   }
-  return (level - 2) * 20;
+  if (level <= 5) {
+    return (level - 2) * 20;
+  }
+  if (level <= 8) {
+    return 60 + ((level - 5) * 40);
+  }
+  if (level <= 10) {
+    return 180 + ((level - 8) * 70);
+  }
+  return 320 + ((level - 10) * 100);
 }
 
 export function getPracticeRefreshCost(refreshCount: number) {

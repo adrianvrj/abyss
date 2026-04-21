@@ -102,12 +102,12 @@ pub const LEADERBOARD_SIZE: u32 = 10;
 
 // Level thresholds
 pub const LEVEL_1_THRESHOLD: u32 = 66;
-pub const LEVEL_2_THRESHOLD: u32 = 180;
-pub const LEVEL_3_THRESHOLD: u32 = 333;
-pub const LEVEL_4_THRESHOLD: u32 = 800;
-pub const LEVEL_5_THRESHOLD: u32 = 1800;
-pub const LEVEL_6_THRESHOLD: u32 = 4200;
-pub const LEVEL_7_THRESHOLD: u32 = 8500;
-pub const LEVEL_8_THRESHOLD: u32 = 15500;
-pub const LEVEL_9_THRESHOLD: u32 = 29000;
-pub const LEVEL_10_THRESHOLD: u32 = 52000;
+pub const LEVEL_2_THRESHOLD: u32 = 220;
+pub const LEVEL_3_THRESHOLD: u32 = 450;
+pub const LEVEL_4_THRESHOLD: u32 = 1000;
+pub const LEVEL_5_THRESHOLD: u32 = 2200;
+pub const LEVEL_6_THRESHOLD: u32 = 5000;
+pub const LEVEL_7_THRESHOLD: u32 = 9500;
+pub const LEVEL_8_THRESHOLD: u32 = 17000;
+pub const LEVEL_9_THRESHOLD: u32 = 24500;
+pub const LEVEL_10_THRESHOLD: u32 = 42000;

@@ -168,11 +168,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 7,
                 name: 'Nerd Glasses',
-                description: '+5% seven probability',
+                description: '+6% seven probability',
                 price: 1,
                 sell_price: 0,
                 effect_type: 2,
-                effect_value: 5,
+                effect_value: 6,
                 target_symbol: 'seven',
             },
         );
@@ -182,11 +182,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 11,
                 name: 'Ghost Mask',
-                description: '+8% seven probability',
+                description: '+9% seven probability',
                 price: 3,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 8,
+                effect_value: 9,
                 target_symbol: 'seven',
             },
         );
@@ -224,11 +224,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 34,
                 name: 'Devil Train',
-                description: '+9% seven probability',
+                description: '+10% seven probability',
                 price: 4,
                 sell_price: 2,
                 effect_type: 2,
-                effect_value: 9,
+                effect_value: 10,
                 target_symbol: 'seven',
             },
         );
@@ -338,11 +338,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 12,
                 name: 'Skull',
-                description: '+8% cherry probability',
+                description: '+7% cherry probability',
                 price: 1,
                 sell_price: 0,
                 effect_type: 2,
-                effect_value: 8,
+                effect_value: 7,
                 target_symbol: 'cherry',
             },
         );
@@ -366,11 +366,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 16,
                 name: 'Weird Hand',
-                description: '+14% cherry probability',
+                description: '+13% cherry probability',
                 price: 2,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 14,
+                effect_value: 13,
                 target_symbol: 'cherry',
             },
         );
@@ -394,11 +394,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 28,
                 name: 'Devil Head',
-                description: '+20% cherry probability',
+                description: '+19% cherry probability',
                 price: 4,
                 sell_price: 2,
                 effect_type: 2,
-                effect_value: 20,
+                effect_value: 19,
                 target_symbol: 'cherry',
             },
         );
@@ -494,11 +494,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 17,
                 name: 'Golden Globe',
-                description: '-8 coin weight',
+                description: '-7 coin weight',
                 price: 1,
                 sell_price: 0,
                 effect_type: 2,
-                effect_value: 8,
+                effect_value: 7,
                 target_symbol: 'anti-coin',
             },
         );
@@ -522,11 +522,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 31,
                 name: 'Beer Can',
-                description: '-11 coin weight',
+                description: '-12 coin weight',
                 price: 2,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 11,
+                effect_value: 12,
                 target_symbol: 'anti-coin',
             },
         );
@@ -536,11 +536,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 32,
                 name: 'Memory Card',
-                description: '-20 coin weight',
+                description: '-17 coin weight',
                 price: 3,
                 sell_price: 2,
                 effect_type: 2,
-                effect_value: 20,
+                effect_value: 17,
                 target_symbol: 'anti-coin',
             },
         );
