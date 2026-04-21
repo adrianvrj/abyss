@@ -115,10 +115,23 @@ pub fn get_pattern_neighbor(index: u32) -> u32 {
     }
 }
 
-/// Generate a jackpot grid (all 15 cells same symbol).
+/// Forced jackpot (e.g. Mortis): one symbol for all 15 cells, **not** uniform.
+/// Weights out of 100: seven 8, diamond 12, cherry 15, coin 25, lemon 40 (lemon highest).
 pub fn generate_jackpot_grid(random_word: felt252) -> (Array<u8>, bool, bool) {
     let symbol_roll: u256 = random_word.into();
-    let symbol: u8 = ((symbol_roll.low % 5) + 1).try_into().unwrap();
+    let roll: u32 = (symbol_roll.low % 100).try_into().unwrap();
+    // Cumulative thresholds on [0, 100)
+    let symbol: u8 = if roll < 8 {
+        SymbolType::SEVEN
+    } else if roll < 20 {
+        SymbolType::DIAMOND
+    } else if roll < 35 {
+        SymbolType::CHERRY
+    } else if roll < 60 {
+        SymbolType::COIN
+    } else {
+        SymbolType::LEMON
+    };
     let mut grid: Array<u8> = array![];
     let mut i: u32 = 0;
     while i != 15 {

@@ -83,12 +83,12 @@ fn test_lemon_and_meta_shift_item_definitions_match_patch() {
     assert(fake_coin.price == 3, 'fake coin price');
     assert(fake_coin.effect_value == 6, 'fake coin value');
     assert(chilly_pepper.effect_value == 14, 'chilly pepper value');
-    assert(nerd_glasses.effect_value == 6, 'nerd glasses value');
-    assert(ghost_mask.effect_value == 12, 'ghost mask value');
+    assert(nerd_glasses.effect_value == 5, 'nerd glasses value');
+    assert(ghost_mask.effect_value == 8, 'ghost mask value');
     assert(hockey_mask.effect_value == 21, 'hockey mask value');
     assert(ticket.effect_value == 28, 'ticket value');
     assert(devil_train.price == 4, 'devil train price');
-    assert(devil_train.effect_value == 16, 'devil train value');
+    assert(devil_train.effect_value == 9, 'devil train value');
     assert(skull.effect_value == 8, 'skull value');
     assert(pig_bank.effect_value == 3, 'pig bank value');
     assert(weird_hand.effect_value == 14, 'weird hand value');

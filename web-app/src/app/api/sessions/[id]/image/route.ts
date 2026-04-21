@@ -60,14 +60,32 @@ export async function GET(
         return new Response('Play contract not found', { status: 500 });
     }
 
-    try {
-        const result = await provider.callContract({
-            contractAddress: playAddress,
-            entrypoint: 'get_session',
-            calldata: [id],
-        });
+    const sessionIdNum = Number.parseInt(id, 10);
+    if (!Number.isFinite(sessionIdNum) || sessionIdNum < 0) {
+        return new Response('Invalid session id', { status: 400 });
+    }
 
-        const session = parseSession(result);
+    try {
+        const sessionIdArg = String(sessionIdNum);
+        const [sessionRaw, luckRaw] = await Promise.all([
+            provider.callContract({
+                contractAddress: playAddress,
+                entrypoint: 'get_session',
+                calldata: [sessionIdArg],
+            }),
+            provider.callContract({
+                contractAddress: playAddress,
+                entrypoint: 'get_session_luck',
+                calldata: [sessionIdArg],
+            }).catch(() => null as string[] | null),
+        ]);
+
+        const session = parseSession(sessionRaw);
+        // Raw `session.luck` is often 0; in-game HUD uses effective luck (charms, items).
+        const effectiveLuck =
+            luckRaw?.[0] !== undefined && luckRaw[0] !== ''
+                ? Number(BigInt(luckRaw[0]))
+                : session.luck;
         const status = session.isActive ? 'RUN ACTIVE' : 'GAME OVER';
         const title = `ABYSS SESSION #${session.sessionId}`;
 
@@ -83,14 +101,15 @@ export async function GET(
   <text x="680" y="410" fill="#ff8a1c" font-size="34" font-family="monospace">TOTAL SPINS</text>
   <text x="680" y="500" fill="#ff8a1c" font-size="104" font-family="monospace">${session.totalSpins}</text>
   <text x="80" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">SCORE ${session.score}</text>
-  <text x="320" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">LUCK ${session.luck}</text>
+  <text x="320" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">LUCK ${effectiveLuck}</text>
   <text x="540" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">CLAIMED ${session.chipsClaimed ? 'YES' : 'NO'}</text>
 </svg>`;
 
         return new Response(svg, {
             headers: {
                 'Content-Type': 'image/svg+xml; charset=utf-8',
-                'Cache-Control': 'public, max-age=60, s-maxage=60',
+                // Session stats change every spin; short TTL limits stale OG/social previews.
+                'Cache-Control': 'public, max-age=0, must-revalidate, s-maxage=120',
             },
         });
     } catch (error) {

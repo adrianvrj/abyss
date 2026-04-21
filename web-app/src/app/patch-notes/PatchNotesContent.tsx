@@ -182,10 +182,10 @@ export function PatchNotesContent() {
         <strong>Chilly Pepper</strong> — Buy 1 · Sell 0 · <strong>+14</strong> seven score
       </ItemLine>
       <ItemLine itemId={7} name="Nerd Glasses">
-        <strong>Nerd Glasses</strong> — Buy 1 · Sell 0 · <strong>+6%</strong> seven prob
+        <strong>Nerd Glasses</strong> — Buy 1 · Sell 0 · <strong>+5%</strong> seven prob
       </ItemLine>
       <ItemLine itemId={11} name="Ghost Mask">
-        <strong>Ghost Mask</strong> — Buy 3 · Sell 1 · <strong>+12%</strong> seven prob
+        <strong>Ghost Mask</strong> — Buy 3 · Sell 1 · <strong>+8%</strong> seven prob
       </ItemLine>
       <ItemLine itemId={25} name="Hockey Mask">
         <strong>Hockey Mask</strong> — Buy 2 · Sell 1 · <strong>+21</strong> seven score
@@ -194,7 +194,7 @@ export function PatchNotesContent() {
         <strong>Ticket</strong> — Buy 3 · Sell 2 · <strong>+28</strong> seven score
       </ItemLine>
       <ItemLine itemId={34} name="Devil Train">
-        <strong>Devil Train</strong> — Buy 4 · Sell 2 · <strong>+16%</strong> seven prob
+        <strong>Devil Train</strong> — Buy 4 · Sell 2 · <strong>+9%</strong> seven prob
       </ItemLine>
 
       <h2>Diamond run — active · CHIP tier on diamond patterns</h2>

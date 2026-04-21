@@ -31,7 +31,7 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
                 if item_id == 6 {
                     (1, 40, '')
                 } else if item_id == 7 {
-                    (2, 6, 'seven')
+                    (2, 5, 'seven')
                 } else if item_id == 8 {
                     (2, 8, 'diamond')
                 } else if item_id == 9 {
@@ -43,7 +43,7 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
         } else {
             if item_id <= 15 {
                 if item_id == 11 {
-                    (2, 12, 'seven')
+                    (2, 8, 'seven')
                 } else if item_id == 12 {
                     (2, 8, 'cherry')
                 } else if item_id == 13 {
@@ -103,7 +103,7 @@ pub fn get_item_runtime_effect(item_id: u32) -> (u8, u32, felt252) {
                 } else if item_id == 33 {
                     (3, 28, 'seven')
                 } else if item_id == 34 {
-                    (2, 16, 'seven')
+                    (2, 9, 'seven')
                 } else {
                     (3, 4, 'diamond')
                 }
@@ -168,11 +168,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 7,
                 name: 'Nerd Glasses',
-                description: '+6% seven probability',
+                description: '+5% seven probability',
                 price: 1,
                 sell_price: 0,
                 effect_type: 2,
-                effect_value: 6,
+                effect_value: 5,
                 target_symbol: 'seven',
             },
         );
@@ -182,11 +182,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 11,
                 name: 'Ghost Mask',
-                description: '+12% seven probability',
+                description: '+8% seven probability',
                 price: 3,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 12,
+                effect_value: 8,
                 target_symbol: 'seven',
             },
         );
@@ -224,11 +224,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 34,
                 name: 'Devil Train',
-                description: '+16% seven probability',
+                description: '+9% seven probability',
                 price: 4,
                 sell_price: 2,
                 effect_type: 2,
-                effect_value: 16,
+                effect_value: 9,
                 target_symbol: 'seven',
             },
         );
