@@ -1075,7 +1075,7 @@ export function useGameSession(sessionId: string | null) {
             const shouldEndSession = equippedRelic.relicId === 4;
             const events = await activateRelic(Number(sessionId), equippedRelic.relicId);
             const mintedCharm = await resolveMintedCharmInfo(events?.charmMinted);
-            setShowRelicActivation(!shouldEndSession && equippedRelic.relicId !== 2);
+            setShowRelicActivation(!shouldEndSession);
             if (equippedRelic.relicId === 1) {
                 setIsRelicSpent(true);
                 setRelicCooldownRemaining(0);

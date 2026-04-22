@@ -372,9 +372,7 @@ export function usePracticeSession() {
       return;
     }
 
-    if (outcome.relicId !== 2) {
-      setShowRelicActivation(true);
-    }
+    setShowRelicActivation(true);
   }, [activateRelic, calculatePracticeChipPayout, equippedRelic]);
 
   const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {
