@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
-      "class_hash": "0x23a9e502a12615cfe734671b88783874d6bea44297b3347fed727c9cc6d19b2",
+      "class_hash": "0x2f2edc21184b7cb9014647f96c501deb55d6036556f1a22ee040a5cc3649443",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -97,7 +97,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x49d6972a81cfdfd9399d18bfa65ba54d67916a6efb018836a781359626d42b1",
+      "class_hash": "0xfdc1799ad0c0664c817ebabad9d8048d506a2c458b61de235396ffee325899",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x139c7a76579a92dc1e3a76f55a926a9993e04d8cf2c4b277cf931636875fbda",
+      "class_hash": "0x3b8445e51c69e5b43c08fb13f9f7088dc9c7571cef3dda5569af01a920dd552",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -129,7 +129,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x7b3122eb528731546c8b8b6e0a1fffc992c1f5e125d725bcd29fa533979aab3",
+      "class_hash": "0xb9775448052b185c80c9832b4a0d07dc53b53c85809604728ee78ba738ee16",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -159,7 +159,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x40a6487b9f226cc6f3c62e1f0aa34b21a665e9e4bede800bafa762f6df35a1a",
+      "class_hash": "0xe10468e8ad4a632aa46e3e3ce7f464d04fe9c399eab4246c514f7254c76cfb",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",

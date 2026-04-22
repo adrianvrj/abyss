@@ -21,9 +21,9 @@ pub fn generate_grid_from_random(
     let mut is_jackpot = true;
     let mut first_symbol: u8 = 0;
 
-    // Cap luck bias at 50% to prevent guaranteed patterns
-    let luck_bias_chance: u32 = if luck > 50 {
-        50
+    // Cap luck bias at 55% to prevent guaranteed patterns
+    let luck_bias_chance: u32 = if luck > 55 {
+        55
     } else {
         luck
     };

@@ -35,8 +35,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/whisper_stone.png`,
         rarity: "Common",
         effect_type: "LuckBoost",
-        effect_description: "+3 luck permanently",
-        luck_value: 3,
+        effect_description: "+10 luck permanently",
+        luck_value: 10,
         shop_cost: 1
     },
     "2": {
@@ -45,8 +45,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/faded_coin.png`,
         rarity: "Common",
         effect_type: "LuckBoost",
-        effect_description: "+4 luck permanently",
-        luck_value: 4,
+        effect_description: "+12 luck permanently",
+        luck_value: 12,
         shop_cost: 1
     },
     "3": {
@@ -55,8 +55,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/broken_mirror.png`,
         rarity: "Common",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+5 luck when last spin had no patterns",
-        luck_value: 5,
+        effect_description: "+18 luck when last spin had no patterns",
+        luck_value: 18,
         shop_cost: 1
     },
     "4": {
@@ -65,8 +65,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/dusty_hourglass.png`,
         rarity: "Common",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+8 luck when ≤2 spins remaining",
-        luck_value: 8,
+        effect_description: "+20 luck when ≤3 spins remaining",
+        luck_value: 20,
         shop_cost: 1
     },
     "5": {
@@ -75,8 +75,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/cracked_skull.png`,
         rarity: "Common",
         effect_type: "LuckBoost",
-        effect_description: "+5 luck permanently",
-        luck_value: 5,
+        effect_description: "+14 luck permanently",
+        luck_value: 14,
         shop_cost: 1
     },
     "6": {
@@ -85,8 +85,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/rusty_key.png`,
         rarity: "Common",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+3 luck per item in inventory",
-        luck_value: 3,
+        effect_description: "+8 luck per item in inventory",
+        luck_value: 8,
         shop_cost: 1
     },
     "7": {
@@ -95,8 +95,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/moth_wing.png`,
         rarity: "Common",
         effect_type: "LuckBoost",
-        effect_description: "+6 luck permanently",
-        luck_value: 6,
+        effect_description: "+16 luck permanently",
+        luck_value: 16,
         shop_cost: 1
     },
     "8": {
@@ -105,8 +105,8 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/bone_dice.png`,
         rarity: "Common",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+8 luck when score < 100",
-        luck_value: 8,
+        effect_description: "+22 luck when score < 180",
+        luck_value: 22,
         shop_cost: 1
     },
 
@@ -119,9 +119,9 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/soul_fragment.png`,
         rarity: "Rare",
         effect_type: "LuckBoost",
-        effect_description: "+10 luck permanently",
-        luck_value: 10,
-        shop_cost: 2
+        effect_description: "+24 luck permanently",
+        luck_value: 24,
+        shop_cost: 1
     },
     "10": {
         name: "Cursed Pendant",
@@ -139,9 +139,9 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/shadow_lantern.png`,
         rarity: "Rare",
         effect_type: "LuckBoost",
-        effect_description: "+8 luck, +8 more at level 5+",
-        luck_value: 16,
-        shop_cost: 2
+        effect_description: "+14 luck, +18 more at level 4+",
+        luck_value: 14,
+        shop_cost: 1
     },
     "12": {
         name: "Ethereal Chain",
@@ -149,9 +149,9 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/ethereal_chain.png`,
         rarity: "Rare",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+6 luck per pattern in last spin",
-        luck_value: 6,
-        shop_cost: 2
+        effect_description: "+12 luck per pattern in last spin",
+        luck_value: 12,
+        shop_cost: 1
     },
     "13": {
         name: "Void Compass",
@@ -159,9 +159,9 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/void_compass.png`,
         rarity: "Rare",
         effect_type: "ExtraSpinWithLuck",
-        effect_description: "+1 spin with +15 luck",
-        luck_value: 15,
-        shop_cost: 3
+        effect_description: "+2 spins with +25 luck",
+        luck_value: 25,
+        shop_cost: 2
     },
     "14": {
         name: "Demon's Tooth",
@@ -183,9 +183,9 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/abyssal_eye.png`,
         rarity: "Epic",
         effect_type: "LuckBoost",
-        effect_description: "+20 luck permanently",
-        luck_value: 20,
-        shop_cost: 4
+        effect_description: "+38 luck permanently",
+        luck_value: 38,
+        shop_cost: 3
     },
     "16": {
         name: "Phoenix Feather",
@@ -193,9 +193,9 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/phoenix_feather.png`,
         rarity: "Epic",
         effect_type: "ExtraSpinWithLuck",
-        effect_description: "+2 spins with +10 luck each",
-        luck_value: 10,
-        shop_cost: 4
+        effect_description: "+3 spins with +20 luck",
+        luck_value: 20,
+        shop_cost: 3
     },
     "17": {
         name: "Reaper's Mark",
@@ -205,7 +205,7 @@ const CHARM_METADATA: Record<string, {
         effect_type: "PatternRetrigger",
         effect_description: "All non-jackpot patterns trigger twice",
         luck_value: 0,
-        shop_cost: 5
+        shop_cost: 4
     },
     "18": {
         name: "Chaos Orb",
@@ -213,9 +213,9 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/chaos_orb.png`,
         rarity: "Epic",
         effect_type: "ConditionalLuckBoost",
-        effect_description: "+80 luck if 666 was blocked this session",
-        luck_value: 80,
-        shop_cost: 5
+        effect_description: "+12 luck, +140 more if 666 was blocked this session",
+        luck_value: 12,
+        shop_cost: 4
     },
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -227,19 +227,19 @@ const CHARM_METADATA: Record<string, {
         image: `${BASE_URL}/images/charms/soul_of_abyss.png`,
         rarity: "Legendary",
         effect_type: "LuckBoost + PatternRetrigger",
-        effect_description: "+30 luck, Jackpot patterns trigger twice",
-        luck_value: 30,
-        shop_cost: 6
+        effect_description: "+45 luck, Jackpot patterns trigger twice",
+        luck_value: 45,
+        shop_cost: 5
     },
     "20": {
         name: "Void Heart",
         description: "The ultimate soul charm. Reality bends to your will.",
         image: `${BASE_URL}/images/charms/void_heart.png`,
         rarity: "Legendary",
-        effect_type: "ExtraSpinWithLuck + Combo",
-        effect_description: "+25 luck, +1 spin with +50 luck, patterns 1.5x",
-        luck_value: 75,
-        shop_cost: 7
+        effect_type: "ExtraSpinWithLuck",
+        effect_description: "+2 spins with +80 luck",
+        luck_value: 80,
+        shop_cost: 5
     }
 };
 

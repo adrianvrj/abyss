@@ -83,7 +83,7 @@ pub const JACKPOT_THREE_SEVENS: u32 = 3;
 pub const MARKET_SLOTS: u32 = 6;
 pub const BASE_REFRESH_COST: u32 = 50;
 pub const TOTAL_ITEMS: u32 = 41;
-pub const MARKET_CHARM_APPEAR_CHANCE: u32 = 10;
+pub const MARKET_CHARM_APPEAR_CHANCE: u32 = 22;
 
 // CHIP token
 pub const CHIP_DECIMALS: u32 = 18;

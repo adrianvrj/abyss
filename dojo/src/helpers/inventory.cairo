@@ -297,6 +297,10 @@ pub impl InventoryImpl of InventoryTrait {
             let charm_meta = get_charm_type_info(charm_id);
             let val = charm_meta.effect_value;
 
+            if charm_id == 18 {
+                base_luck += 12;
+            }
+
             if charm_meta.effect_type == CharmEffectType::LuckBoost {
                 base_luck += val;
             } else if charm_meta.effect_type == CharmEffectType::ExtraSpinWithLuck {
@@ -335,7 +339,7 @@ pub impl InventoryImpl of InventoryTrait {
                 }
             } else if charm_meta.condition_type == CharmConditionType::LowSpinsRemaining {
                 low_spins_bonus += val;
-                if session.spins_remaining <= 2 {
+                if session.spins_remaining <= 3 {
                     conditional_luck += val;
                 }
             } else if charm_meta.condition_type == CharmConditionType::PerItemInInventory {
@@ -343,14 +347,14 @@ pub impl InventoryImpl of InventoryTrait {
                 conditional_luck += persistent_item_count * val;
             } else if charm_meta.condition_type == CharmConditionType::LowScore {
                 low_score_bonus += val;
-                if session.score < 100 {
+                if session.score < 180 {
                     conditional_luck += val;
                 }
             } else if charm_meta.condition_type == CharmConditionType::HighLevel {
                 let high_level_conditional_bonus =
                     if charm_meta.effect_value_2 > 0 { charm_meta.effect_value_2 } else { val };
                 high_level_bonus += high_level_conditional_bonus;
-                if session.level >= 5 {
+                if session.level >= 4 {
                     conditional_luck += high_level_conditional_bonus;
                 }
             } else if charm_meta.condition_type == CharmConditionType::Blocked666 {
@@ -417,14 +421,14 @@ pub impl InventoryImpl of InventoryTrait {
         if last_spin_patterns == 0 {
             luck += spin_modifiers.no_pattern_bonus;
         }
-        if spins_remaining <= 2 {
+        if spins_remaining <= 3 {
             luck += spin_modifiers.low_spins_bonus;
         }
         luck += item_count * spin_modifiers.per_item_bonus;
-        if score < 100 {
+        if score < 180 {
             luck += spin_modifiers.low_score_bonus;
         }
-        if level >= 5 {
+        if level >= 4 {
             luck += spin_modifiers.high_level_bonus;
         }
         if blocked_666_this_session {

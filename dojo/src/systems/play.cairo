@@ -649,9 +649,9 @@ pub mod Play {
             let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
                 @store, session_id, charm_ids.span(), @session,
             );
-            let mut total_chance = (session.score / 125) + effective_luck;
-            if total_chance > 50 {
-                total_chance = 50;
+            let mut total_chance = (session.score / 90) + effective_luck;
+            if total_chance > 70 {
+                total_chance = 70;
             }
             total_chance
         }
@@ -867,9 +867,9 @@ pub mod Play {
                     let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
                         @store, session_id, charm_ids.span(), @session,
                     );
-                    let mut total_chance = (session.score / 125) + effective_luck;
-                    if total_chance > 50 {
-                        total_chance = 50;
+                    let mut total_chance = (session.score / 90) + effective_luck;
+                    if total_chance > 70 {
+                        total_chance = 70;
                     }
 
                     let charm_seed = poseidon_hash_span(

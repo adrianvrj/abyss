@@ -126,12 +126,16 @@ export function describeCharmEffect(metadata: CharmContractMetadata | null) {
     return `${formatPositiveLuck(metadata.effectValue)}, jackpot patterns trigger twice`;
   }
 
+  if (metadata.charmId === 18) {
+    return `+12 Luck, +${metadata.effectValue} more if 666 was blocked this session`;
+  }
+
   if (metadata.effectType === CharmEffectType.LuckBoost) {
     if (
       metadata.conditionType === CharmConditionType.HighLevel &&
       metadata.effectValue2 > 0
     ) {
-      return `${formatPositiveLuck(metadata.effectValue)}, +${metadata.effectValue2} more at level 5+`;
+      return `${formatPositiveLuck(metadata.effectValue)}, +${metadata.effectValue2} more at level 4+`;
     }
 
     return formatPositiveLuck(metadata.effectValue);
@@ -167,15 +171,15 @@ export function describeCharmEffect(metadata: CharmContractMetadata | null) {
     case CharmConditionType.NoPatternLastSpin:
       return `${formatPositiveLuck(metadata.effectValue)} if last spin had no patterns`;
     case CharmConditionType.LowSpinsRemaining:
-      return `${formatPositiveLuck(metadata.effectValue)} if spins remaining <= 2`;
+      return `${formatPositiveLuck(metadata.effectValue)} if spins remaining <= 3`;
     case CharmConditionType.PerItemInInventory:
       return `${formatPositiveLuck(metadata.effectValue)} per item in inventory`;
     case CharmConditionType.LowScore:
-      return `${formatPositiveLuck(metadata.effectValue)} if score < 100`;
+      return `${formatPositiveLuck(metadata.effectValue)} if score < 180`;
     case CharmConditionType.HighLevel:
       return metadata.effectValue2 > 0
-        ? `${formatPositiveLuck(metadata.effectValue)}, +${metadata.effectValue2} more at level 5+`
-        : `${formatPositiveLuck(metadata.effectValue)} at level 5+`;
+        ? `${formatPositiveLuck(metadata.effectValue)}, +${metadata.effectValue2} more at level 4+`
+        : `${formatPositiveLuck(metadata.effectValue)} at level 4+`;
     case CharmConditionType.Blocked666:
       return `${formatPositiveLuck(metadata.effectValue)} if 666 was blocked this session`;
     default:
@@ -216,7 +220,7 @@ export function getCharmLuckEntries(
       }
       break;
     case CharmConditionType.LowSpinsRemaining:
-      if (context.spinsRemaining <= 2 && metadata.effectValue > 0) {
+      if (context.spinsRemaining <= 3 && metadata.effectValue > 0) {
         entries.push({ label: "Low Spins Remaining", value: metadata.effectValue });
       }
       break;
@@ -229,15 +233,15 @@ export function getCharmLuckEntries(
       }
       break;
     case CharmConditionType.LowScore:
-      if (context.score < 100 && metadata.effectValue > 0) {
+      if (context.score < 180 && metadata.effectValue > 0) {
         entries.push({ label: "Low Score", value: metadata.effectValue });
       }
       break;
     case CharmConditionType.HighLevel: {
       const conditionalValue =
         metadata.effectValue2 > 0 ? metadata.effectValue2 : metadata.effectValue;
-      if (context.level >= 5 && conditionalValue > 0) {
-        entries.push({ label: "Level 5+", value: conditionalValue });
+      if (context.level >= 4 && conditionalValue > 0) {
+        entries.push({ label: "Level 4+", value: conditionalValue });
       }
       break;
     }

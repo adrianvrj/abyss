@@ -41,9 +41,9 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         1,
         'Whisper Stone',
-        'Luck +3',
+        'Luck +10',
         CharmEffectType::LuckBoost,
-        3,
+        10,
         0,
         CharmConditionType::None,
         0,
@@ -52,9 +52,9 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         2,
         'Faded Coin',
-        'Luck +4',
+        'Luck +12',
         CharmEffectType::LuckBoost,
-        4,
+        12,
         0,
         CharmConditionType::None,
         0,
@@ -63,9 +63,9 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         3,
         'Broken Mirror',
-        'No pat +5',
+        'No pat +18',
         CharmEffectType::ConditionalLuckBoost,
-        5,
+        18,
         0,
         CharmConditionType::NoPatternLastSpin,
         0,
@@ -74,9 +74,9 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         4,
         'Dusty Hourglass',
-        'Low spins +8',
+        'Low spins +20',
         CharmEffectType::ConditionalLuckBoost,
-        8,
+        20,
         0,
         CharmConditionType::LowSpinsRemaining,
         0,
@@ -85,9 +85,9 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         5,
         'Cracked Skull',
-        'Luck +5',
+        'Luck +14',
         CharmEffectType::LuckBoost,
-        5,
+        14,
         0,
         CharmConditionType::None,
         0,
@@ -96,23 +96,23 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         6,
         'Rusty Key',
-        'Per item +3',
+        'Per item +8',
         CharmEffectType::ConditionalLuckBoost,
-        3,
+        8,
         0,
         CharmConditionType::PerItemInInventory,
         0,
         1,
     );
     assert_charm_meta(
-        7, 'Moth Wing', 'Luck +6', CharmEffectType::LuckBoost, 6, 0, CharmConditionType::None, 0, 1,
+        7, 'Moth Wing', 'Luck +16', CharmEffectType::LuckBoost, 16, 0, CharmConditionType::None, 0, 1,
     );
     assert_charm_meta(
         8,
         'Bone Dice',
-        'Low score +8',
+        'Low score +22',
         CharmEffectType::ConditionalLuckBoost,
-        8,
+        22,
         0,
         CharmConditionType::LowScore,
         0,
@@ -121,13 +121,13 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         9,
         'Soul Fragment',
-        'Luck +10',
+        'Luck +24',
         CharmEffectType::LuckBoost,
-        10,
+        24,
         0,
         CharmConditionType::None,
         1,
-        2,
+        1,
     );
     assert_charm_meta(
         10,
@@ -143,35 +143,35 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         11,
         'Shadow Lantern',
-        '+8 base, lvl5 +8',
+        '+14 base, lvl4 +18',
         CharmEffectType::LuckBoost,
-        8,
-        8,
+        14,
+        18,
         CharmConditionType::HighLevel,
         1,
-        2,
+        1,
     );
     assert_charm_meta(
         12,
         'Ethereal Chain',
-        'Pattern +6',
+        'Pattern +12',
         CharmEffectType::ConditionalLuckBoost,
-        6,
+        12,
         0,
         CharmConditionType::None,
         1,
-        2,
+        1,
     );
     assert_charm_meta(
         13,
         'Void Compass',
-        '+1 spin +15',
+        '+2 spin +25',
         CharmEffectType::ExtraSpinWithLuck,
-        1,
-        15,
+        2,
+        25,
         CharmConditionType::None,
         1,
-        3,
+        2,
     );
     assert_charm_meta(
         14,
@@ -187,24 +187,24 @@ fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
         15,
         'Abyssal Eye',
-        'Luck +20',
+        'Luck +38',
         CharmEffectType::LuckBoost,
-        20,
+        38,
         0,
         CharmConditionType::None,
         2,
-        4,
+        3,
     );
     assert_charm_meta(
         16,
         'Phoenix Feather',
-        '+2 spin +10',
+        '+3 spin +20',
         CharmEffectType::ExtraSpinWithLuck,
-        2,
-        10,
+        3,
+        20,
         CharmConditionType::None,
         2,
-        4,
+        3,
     );
     assert_charm_meta(
         17,
@@ -215,40 +215,40 @@ fn test_all_charm_metadata_definitions() {
         0,
         CharmConditionType::None,
         2,
-        5,
+        4,
     );
     assert_charm_meta(
         18,
         'Chaos Orb',
-        'Block666 +80',
+        '+12 base, block666 +140',
         CharmEffectType::ConditionalLuckBoost,
-        80,
+        140,
         0,
         CharmConditionType::Blocked666,
         2,
-        5,
+        4,
     );
     assert_charm_meta(
         19,
         'Soul Abyss',
-        'Luck +30',
+        'Luck +45',
         CharmEffectType::LuckBoost,
-        30,
+        45,
         0,
         CharmConditionType::None,
         2,
-        6,
+        5,
     );
     assert_charm_meta(
         20,
         'Void Heart',
-        '+1 spin +50',
+        '+2 spin +80',
         CharmEffectType::ExtraSpinWithLuck,
-        1,
-        50,
+        2,
+        80,
         CharmConditionType::None,
         2,
-        7,
+        5,
     );
 }
 
@@ -264,21 +264,21 @@ fn test_charm_ids_grouped_by_rarity() {
 fn test_base_luck_only_counts_persistent_sources() {
     let charm_ids = array![1, 11, 12, 13, 18, 19, 20];
     let luck = calculate_base_luck_from_charm_ids(charm_ids.span());
-    assert(luck == 106, 'unexpected base luck');
+    assert(luck == 186, 'unexpected base luck');
 }
 
 #[test]
 fn test_effective_luck_applies_conditional_charm_rules() {
     let charm_ids = array![3, 4, 6, 8, 11, 12, 18];
     let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 2, 4, 80, 5, true);
-    assert(luck == 129, 'unexpected effective luck');
+    assert(luck == 276, 'unexpected effective luck');
 }
 
 #[test]
 fn test_ethereal_chain_uses_last_spin_pattern_count() {
     let charm_ids = array![12];
     let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 3, 4, 2, 200, 2, false);
-    assert(luck == 18, 'unexpected chain luck');
+    assert(luck == 36, 'unexpected chain luck');
 }
 
 #[test]
@@ -289,17 +289,52 @@ fn test_ethereal_chain_gives_no_bonus_without_patterns() {
 }
 
 #[test]
-fn test_dusty_hourglass_applies_at_two_spins_remaining() {
+fn test_dusty_hourglass_applies_at_three_spins_remaining() {
     let charm_ids = array![4];
-    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 2, 0, 200, 2, false);
-    assert(luck == 8, 'hourglass at two');
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 3, 0, 200, 2, false);
+    assert(luck == 20, 'hourglass at three');
 }
 
 #[test]
-fn test_dusty_hourglass_does_not_apply_above_two_spins() {
+fn test_dusty_hourglass_does_not_apply_above_three_spins() {
     let charm_ids = array![4];
-    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 3, 0, 200, 2, false);
-    assert(luck == 0, 'hourglass above two');
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 0, 200, 2, false);
+    assert(luck == 0, 'hourglass above three');
+}
+
+#[test]
+fn test_shadow_lantern_applies_bonus_at_level_four() {
+    let charm_ids = array![11];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 0, 200, 4, false);
+    assert(luck == 32, 'lantern at four');
+}
+
+#[test]
+fn test_bone_dice_uses_new_score_threshold() {
+    let charm_ids = array![8];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 0, 179, 2, false);
+    assert(luck == 22, 'bone dice below threshold');
+}
+
+#[test]
+fn test_bone_dice_stops_at_or_above_new_score_threshold() {
+    let charm_ids = array![8];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 0, 180, 2, false);
+    assert(luck == 0, 'bone dice above threshold');
+}
+
+#[test]
+fn test_chaos_orb_keeps_base_luck_without_blocked_666() {
+    let charm_ids = array![18];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 0, 200, 2, false);
+    assert(luck == 12, 'chaos orb base luck');
+}
+
+#[test]
+fn test_chaos_orb_adds_blocked_666_bonus() {
+    let charm_ids = array![18];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 0, 200, 2, true);
+    assert(luck == 152, 'chaos orb blocked bonus');
 }
 
 #[test]
@@ -316,8 +351,8 @@ fn test_extra_spin_charms_can_be_summed_for_reset_logic() {
         i += 1;
     }
 
-    assert(spin_bonus == 3, 'bad charm spin bonus');
-    assert(5 + spin_bonus == 8, 'bad reset total');
+    assert(spin_bonus == 5, 'bad charm spin bonus');
+    assert(5 + spin_bonus == 10, 'bad reset total');
 }
 
 #[test]
