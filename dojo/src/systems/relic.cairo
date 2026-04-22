@@ -11,9 +11,10 @@ pub trait IRelic<T> {
 
 #[dojo::contract]
 pub mod Relic {
-    use starknet::get_caller_address;
-    use crate::constants::{DEFAULT_SPINS, NAMESPACE};
-    use crate::events::index::{MarketRefreshed, RelicActivated};
+    use starknet::{ContractAddress, get_caller_address};
+    use core::poseidon::poseidon_hash_span;
+    use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
+    use crate::events::index::{MarketRefreshed, PhantomActivated, RelicActivated};
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::market::MarketImpl;
     use crate::interfaces::relic_nft::{IRelicDispatcherTrait, IRelicERC721DispatcherTrait};
@@ -29,6 +30,21 @@ pub mod Relic {
     enum Event {}
 
     fn dojo_init(ref self: ContractState) {}
+
+    fn roll_phantom_bonus_spins(session_id: u32, caller: ContractAddress, current_spin_marker: u32) -> u32 {
+        let seed = poseidon_hash_span(
+            array![session_id.into(), caller.into(), current_spin_marker.into(), 2.into()].span(),
+        );
+        let roll_u256: u256 = seed.into();
+        let roll: u32 = (roll_u256.low % 100).try_into().unwrap();
+        if roll < 40 {
+            1
+        } else if roll < 80 {
+            2
+        } else {
+            3
+        }
+    }
 
     #[abi(embed_v0)]
     impl RelicImpl of IRelic<ContractState> {
@@ -112,7 +128,19 @@ pub mod Relic {
             } else if effect == RelicEffectType::DoubleNextSpin {
                 session.relic_pending_effect = RelicEffectType::DoubleNextSpin;
             } else if effect == RelicEffectType::ResetSpins {
-                session.spins_remaining = DEFAULT_SPINS;
+                let bonus_spins = roll_phantom_bonus_spins(session_id, caller, current_spin_marker);
+                let next_spins = session.spins_remaining + bonus_spins;
+                session.spins_remaining =
+                    if next_spins > MAX_CURRENT_SPINS { MAX_CURRENT_SPINS } else { next_spins };
+                store
+                    .emit_phantom_activated(
+                        @PhantomActivated {
+                            session_id,
+                            player: caller,
+                            bonus_spins,
+                            new_spins: session.spins_remaining,
+                        },
+                    );
             } else if effect == RelicEffectType::FreeMarketRefresh {
                 let mut sm = store.session_market(session_id);
                 sm.refresh_count += 1;

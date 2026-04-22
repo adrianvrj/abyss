@@ -1075,7 +1075,7 @@ export function useGameSession(sessionId: string | null) {
             const shouldEndSession = equippedRelic.relicId === 4;
             const events = await activateRelic(Number(sessionId), equippedRelic.relicId);
             const mintedCharm = await resolveMintedCharmInfo(events?.charmMinted);
-            setShowRelicActivation(!shouldEndSession);
+            setShowRelicActivation(!shouldEndSession && equippedRelic.relicId !== 2);
             if (equippedRelic.relicId === 1) {
                 setIsRelicSpent(true);
                 setRelicCooldownRemaining(0);
@@ -1096,7 +1096,12 @@ export function useGameSession(sessionId: string | null) {
                     setPendingRelicEffect(eType);
                 } else if (eType === 3) {
                     setPendingRelicEffect(null);
-                    await loadSessionData('relic:reset-spins');
+                    const phantomActivated = events?.phantomActivated;
+                    if (phantomActivated?.newSpins !== undefined) {
+                        setSpinsRemaining(phantomActivated.newSpins);
+                    } else {
+                        await loadSessionData('relic:reset-spins');
+                    }
                 } else if (eType === 4) {
                     setPendingRelicEffect(null);
                 } else {

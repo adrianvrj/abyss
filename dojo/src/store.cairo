@@ -8,15 +8,15 @@ use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
     BibliaDiscarded, CashOutResolved, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed,
-    RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
+    PhantomActivated, RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
 use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
-    BeastSessionsUsed, Config, Item, MarketSlotPurchased, PlayerSessionEntry, PlayerSessions,
-    Session, SessionCharmEntry, SessionCharmLoadout, SessionCharms, SessionInventory,
+    BeastSessionsUsed, Config, Item, MarketSlotPurchased, PendingCharmLoadout, PlayerSessionEntry,
+    PlayerSessions, Session, SessionCharmEntry, SessionCharmLoadout, SessionCharms, SessionInventory,
     SessionItemEntry, SessionItemIndex, SessionMarket, SessionChipBonus, SessionItemPurchaseCount,
     SpinResult, TokenPairId, XShareSessionClaim,
 };
@@ -294,6 +294,14 @@ pub impl StoreImpl of StoreTrait {
         self.world.write_model(loadout)
     }
 
+    fn pending_charm_loadout(self: @Store, player: ContractAddress) -> PendingCharmLoadout {
+        self.world.read_model(player)
+    }
+
+    fn set_pending_charm_loadout(mut self: Store, loadout: @PendingCharmLoadout) {
+        self.world.write_model(loadout)
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Token Pair IDs
     // ═══════════════════════════════════════════════════════════════════
@@ -363,6 +371,10 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_relic_activated(mut self: Store, event: @RelicActivated) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_phantom_activated(mut self: Store, event: @PhantomActivated) {
         self.world.emit_event(event);
     }
 

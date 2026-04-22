@@ -132,10 +132,10 @@ export default function InlineInventoryPanel({
             case 7: {
                 if (targetSymbol && targetSymbol.includes('|||')) {
                     const [rarity, effectText] = targetSymbol.split('|||');
-                    const displayEffect = effectText || `+${value}% LUCK`;
+                    const displayEffect = effectText || `+${value} LUCK`;
                     return `${rarity} | ${displayEffect}`;
                 }
-                return `${targetSymbol} | +${value}% LUCK`;
+                return `${targetSymbol} | +${value} LUCK`;
             }
             default: return item.description || `Effect: ${value}`;
         }

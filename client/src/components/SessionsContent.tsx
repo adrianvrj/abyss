@@ -237,7 +237,7 @@ export function SessionsContent() {
         claimBeastSession,
         isReady,
     } = useAbyssGame(account);
-    const { claimFreeSessionBundle, equipCharms } = useAbyssActions();
+    const { claimFreeSessionBundle, equipCharms, setPendingCharmLoadout } = useAbyssActions();
     const charmLoadout = useCharmLoadout(account?.address);
     const { bundles, status: bundlesStatus, refresh: refreshBundles } = useBundles();
 
@@ -250,6 +250,7 @@ export function SessionsContent() {
     const [beastSessions, setBeastSessions] = useState(0);
     const [configuringSession, setConfiguringSession] = useState<SessionInfo | null>(null);
     const [isPrerunLoadoutOpen, setIsPrerunLoadoutOpen] = useState(false);
+    const [isSavingPrerunLoadout, setIsSavingPrerunLoadout] = useState(false);
     const [ownedCharmIds, setOwnedCharmIds] = useState<number[]>([]);
     const [sessionCharmIds, setSessionCharmIds] = useState<number[]>([]);
     const [isSealingLoadout, setIsSealingLoadout] = useState(false);
@@ -432,20 +433,14 @@ export function SessionsContent() {
     }, []);
 
     const handleSealPrerunLoadout = useCallback(async () => {
-        setIsPrerunLoadoutOpen(false);
-    }, []);
-
-    const equipPendingLoadout = useCallback(
-        async (sessionId: number) => {
-            if (!charmsEnabled || charmLoadout.loadout.length === 0) return;
-            try {
-                await equipCharms(sessionId, charmLoadout.loadout);
-            } catch (error) {
-                console.warn("Failed to auto-equip pre-run charm loadout:", error);
-            }
-        },
-        [charmLoadout.loadout, charmsEnabled, equipCharms],
-    );
+        setIsSavingPrerunLoadout(true);
+        try {
+            await setPendingCharmLoadout(charmLoadout.loadout);
+            setIsPrerunLoadoutOpen(false);
+        } finally {
+            setIsSavingPrerunLoadout(false);
+        }
+    }, [charmLoadout.loadout, setPendingCharmLoadout]);
 
     const handleCreateSessionClick = useCallback(async () => {
         if (!account) {
@@ -522,7 +517,6 @@ export function SessionsContent() {
                         );
 
                         if (createdSessionId !== undefined) {
-                            await equipPendingLoadout(createdSessionId);
                             await loadSessions();
                             navigate(`/game?sessionId=${createdSessionId}`);
                             return;
@@ -539,7 +533,7 @@ export function SessionsContent() {
         } finally {
             setIsCreating(false);
         }
-    }, [account, bundles, chain?.id, connector, equipPendingLoadout, getPlayerSessions, loadSessions, navigate, refreshBundles]);
+    }, [account, bundles, chain?.id, connector, getPlayerSessions, loadSessions, navigate, refreshBundles]);
 
     const handleBack = useCallback(() => {
         navigate("/");
@@ -566,7 +560,6 @@ export function SessionsContent() {
                 );
 
                 if (createdSessionId !== undefined) {
-                    await equipPendingLoadout(createdSessionId);
                     await loadSessions();
                     navigate(`/game?sessionId=${createdSessionId}`);
                     return;
@@ -577,7 +570,7 @@ export function SessionsContent() {
 
             await loadSessions();
         },
-        [account, equipPendingLoadout, getPlayerSessions, loadSessions, navigate],
+        [account, getPlayerSessions, loadSessions, navigate],
     );
 
     const handleShareOnX = useCallback(async () => {
@@ -654,7 +647,6 @@ export function SessionsContent() {
 
                     if (createdSessionId !== undefined) {
                         console.log("[ABYSS_BUNDLE] New session found:", createdSessionId);
-                        await equipPendingLoadout(createdSessionId);
                         await loadSessions();
                         setIsCreating(false);
                         navigate(`/game?sessionId=${createdSessionId}`);
@@ -678,7 +670,6 @@ export function SessionsContent() {
         bundles,
         chain?.id,
         connector,
-        equipPendingLoadout,
         getPlayerSessions,
         loadSessions,
         navigate,
@@ -1063,7 +1054,7 @@ export function SessionsContent() {
                 onClear={charmLoadout.clear}
                 onSeal={handleSealPrerunLoadout}
                 isLocked={false}
-                isSubmitting={false}
+                isSubmitting={isSavingPrerunLoadout}
             />
         </div>
     );

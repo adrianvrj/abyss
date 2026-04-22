@@ -26,8 +26,8 @@ const RELIC_DATA: Record<number, { effect: string; flavor: string; rarity: strin
         rarityColor: '#FF4444',
     },
     2: {
-        effect: 'RESET TO MAX SPINS',
-        flavor: 'Pulls the run backward and restores its breath.',
+        effect: 'GAIN 1-3 SPINS',
+        flavor: 'Flickers extra chances into the run.',
         rarity: 'MYTHIC',
         rarityColor: '#FF4444',
     },

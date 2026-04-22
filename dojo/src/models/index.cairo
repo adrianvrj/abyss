@@ -293,6 +293,16 @@ pub struct SessionCharmLoadout {
     pub charm_id_3: u32,
 }
 
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct PendingCharmLoadout {
+    #[key]
+    pub player: ContractAddress,
+    pub charm_id_1: u32,
+    pub charm_id_2: u32,
+    pub charm_id_3: u32,
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TOKEN PAIR IDS - Oracle price feed mapping
 // ═══════════════════════════════════════════════════════════════════════════

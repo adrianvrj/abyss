@@ -21,11 +21,21 @@ pub fn get_chip_payout_amount(
         * chip_boost_multiplier.into()) * 1_000_000_000_000_000_000
 }
 
+#[inline(always)]
+pub fn get_charm_drop_chance_from_score_and_luck(score: u32, effective_luck: u32) -> u32 {
+    let mut total_chance = (score / 140) + (effective_luck / 2);
+    if total_chance > 60 {
+        total_chance = 60;
+    }
+    total_chance
+}
+
 #[starknet::interface]
 pub trait IPlay<T> {
     fn create_session(ref self: T, player: ContractAddress, payment_token: ContractAddress) -> u32;
     fn claim_beast_session(ref self: T, player: ContractAddress) -> u32;
     fn mint_session(ref self: T, player: ContractAddress, quantity: u32);
+    fn set_pending_charm_loadout(ref self: T, charm_ids: Span<u32>);
     fn equip_charms(ref self: T, session_id: u32, charm_ids: Span<u32>);
     fn request_spin(ref self: T, session_id: u32);
     fn end_session(ref self: T, session_id: u32);
@@ -198,6 +208,44 @@ pub mod Play {
             }
 
             store.set_config(@config);
+        }
+
+        fn set_pending_charm_loadout(ref self: ContractState, charm_ids: Span<u32>) {
+            let caller = get_caller_address();
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+
+            assert(charm_ids.len() <= 3, 'Max 3 charms');
+
+            let owned = crate::helpers::market::MarketImpl::get_owned_charm_ids(@store, caller);
+            let owned_span = owned.span();
+
+            let mut seen: Array<u32> = array![];
+            let mut i: u32 = 0;
+            while i < charm_ids.len() {
+                let charm_id = *charm_ids.at(i);
+                assert(charm_id > 0, 'Invalid charm id');
+                assert(
+                    crate::helpers::market::MarketImpl::has_value(owned_span, charm_id),
+                    'Charm not owned',
+                );
+                assert(
+                    !crate::helpers::market::MarketImpl::has_value(seen.span(), charm_id),
+                    'Duplicate charm',
+                );
+                seen.append(charm_id);
+                i += 1;
+            }
+
+            let c1 = if charm_ids.len() > 0 { *charm_ids.at(0) } else { 0 };
+            let c2 = if charm_ids.len() > 1 { *charm_ids.at(1) } else { 0 };
+            let c3 = if charm_ids.len() > 2 { *charm_ids.at(2) } else { 0 };
+            store
+                .set_pending_charm_loadout(
+                    @crate::models::index::PendingCharmLoadout {
+                        player: caller, charm_id_1: c1, charm_id_2: c2, charm_id_3: c3,
+                    },
+                );
         }
 
         fn equip_charms(ref self: ContractState, session_id: u32, charm_ids: Span<u32>) {
@@ -649,11 +697,7 @@ pub mod Play {
             let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
                 @store, session_id, charm_ids.span(), @session,
             );
-            let mut total_chance = (session.score / 90) + effective_luck;
-            if total_chance > 70 {
-                total_chance = 70;
-            }
-            total_chance
+            get_charm_drop_chance_from_score_and_luck(session.score, effective_luck)
         }
 
         fn get_chips_to_claim(self: @ContractState, session_id: u32) -> u256 {
@@ -810,6 +854,23 @@ pub mod Play {
                     @PlayerSessionEntry { player, index: ps_idx, session_id },
                 );
 
+            let pending_loadout = store.pending_charm_loadout(player);
+            store
+                .set_session_charm_loadout(
+                    @crate::models::index::SessionCharmLoadout {
+                        session_id,
+                        charm_id_1: pending_loadout.charm_id_1,
+                        charm_id_2: pending_loadout.charm_id_2,
+                        charm_id_3: pending_loadout.charm_id_3,
+                    },
+                );
+            store
+                .set_pending_charm_loadout(
+                    @crate::models::index::PendingCharmLoadout {
+                        player, charm_id_1: 0, charm_id_2: 0, charm_id_3: 0,
+                    },
+                );
+
             let sm = store.session_market(session_id);
             crate::helpers::market::MarketImpl::refresh_market(
                 ref store, sm, session_id, player,
@@ -867,10 +928,9 @@ pub mod Play {
                     let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
                         @store, session_id, charm_ids.span(), @session,
                     );
-                    let mut total_chance = (session.score / 90) + effective_luck;
-                    if total_chance > 70 {
-                        total_chance = 70;
-                    }
+                    let total_chance = get_charm_drop_chance_from_score_and_luck(
+                        session.score, effective_luck,
+                    );
 
                     let charm_seed = poseidon_hash_span(
                         array![session_id.into(), random_word, session.player_address.into()]

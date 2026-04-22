@@ -125,6 +125,17 @@ pub struct RelicActivated {
 
 #[dojo::event]
 #[derive(Copy, Drop, Serde)]
+pub struct PhantomActivated {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub bonus_spins: u32,
+    pub new_spins: u32,
+}
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
 pub struct RelicEquipped {
     #[key]
     pub session_id: u32,

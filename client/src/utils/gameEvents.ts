@@ -53,6 +53,12 @@ export interface RelicActivatedEvent {
     currentLuck: number;
 }
 
+export interface PhantomActivatedEvent {
+    sessionId: number;
+    bonusSpins: number;
+    newSpins: number;
+}
+
 export interface RelicEquippedEvent {
     sessionId: number;
     relicTokenId: bigint;
@@ -84,6 +90,7 @@ export interface ParsedEvents {
     itemsSold: ItemSoldEvent[];
     marketRefreshed: MarketRefreshedEvent | null;
     relicActivated: RelicActivatedEvent | null;
+    phantomActivated: PhantomActivatedEvent | null;
     relicEquipped: RelicEquippedEvent | null;
     charmMinted: CharmMintedEvent | null;
     bibliaDiscarded: BibliaDiscardedEvent | null;
@@ -116,6 +123,7 @@ const EVENT_SELECTORS = {
     ItemSold: hash.getSelectorFromName('ItemSold'),
     MarketRefreshed: hash.getSelectorFromName('MarketRefreshed'),
     RelicActivated: hash.getSelectorFromName('RelicActivated'),
+    PhantomActivated: hash.getSelectorFromName('PhantomActivated'),
     RelicEquipped: hash.getSelectorFromName('RelicEquipped'),
     CharmMinted: hash.getSelectorFromName('CharmMinted'),
     BibliaDiscarded: hash.getSelectorFromName('BibliaDiscarded'),
@@ -392,6 +400,21 @@ function parseRelicActivatedEvent(eventData: Array<string | bigint | number>): R
     }
 }
 
+function parsePhantomActivatedEvent(eventData: Array<string | bigint | number>): PhantomActivatedEvent | null {
+    if (!eventData || eventData.length < 2) return null;
+
+    try {
+        return {
+            sessionId: 0,
+            bonusSpins: feltToNumber(eventData[0]),
+            newSpins: feltToNumber(eventData[1]),
+        };
+    } catch (e) {
+        console.error('Failed to parse PhantomActivated event:', e);
+        return null;
+    }
+}
+
 /**
  * Parse RelicEquipped event
  */
@@ -503,6 +526,7 @@ export function hasParsedEvents(events: ParsedEvents): boolean {
         events.spinCompleted ||
         events.marketRefreshed ||
         events.relicActivated ||
+        events.phantomActivated ||
         events.relicEquipped ||
         events.charmMinted ||
         events.bibliaDiscarded ||
@@ -522,6 +546,7 @@ function parseNormalizedEvents(
         itemsSold: [],
         marketRefreshed: null,
         relicActivated: null,
+        phantomActivated: null,
         relicEquipped: null,
         charmMinted: null,
         bibliaDiscarded: null,
@@ -577,6 +602,12 @@ function parseNormalizedEvents(
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.RelicActivated);
                 result.relicActivated = parsed;
+            }
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.PhantomActivated) >= 0) {
+            const parsed = parsePhantomActivatedEvent(event.data);
+            if (parsed) {
+                parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.PhantomActivated);
+                result.phantomActivated = parsed;
             }
         } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.RelicEquipped) >= 0) {
             const parsed = parseRelicEquippedEvent(event.data);
@@ -644,6 +675,12 @@ function parseNormalizedEvents(
                     maybeEquipped.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.RelicEquipped);
                     result.relicEquipped = maybeEquipped;
                 }
+            } else if (emitterAddress === relicAddress && dojoEvent.fieldValues.length === 2) {
+                const parsed = parsePhantomActivatedEvent(dojoEvent.fieldValues);
+                if (parsed) {
+                    parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.PhantomActivated);
+                    result.phantomActivated = parsed;
+                }
             } else if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 4) {
                 const parsed = parseCharmMintedEvent(dojoEvent.fieldValues);
                 if (parsed) {
@@ -688,6 +725,7 @@ export function parseReceiptEvents(
             itemsSold: [],
             marketRefreshed: null,
             relicActivated: null,
+            phantomActivated: null,
             relicEquipped: null,
             charmMinted: null,
             bibliaDiscarded: null,

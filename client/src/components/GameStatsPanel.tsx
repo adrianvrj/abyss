@@ -3,6 +3,8 @@ import { DEFAULT_GAME_CONFIG, SYMBOL_INFO, SymbolType, SymbolConfig, PatternMult
 import { getSessionItems, getItemInfo, getSessionLuck, ContractItem, ItemEffectType, isCharmItem, getCharmIdFromItemId, getCharmInfo } from '@/utils/abyssContract';
 import {
     getCharmLuckEntries,
+    getLuckPercent,
+    MAX_FORTUNE_FOR_MAX_SPIN_LUCK,
 } from '@/lib/charmRules';
 import {
     getPatternBonusMap,
@@ -123,7 +125,8 @@ export default function GameStatsPanel({
     const canDeriveCharmLuck =
         charmItems.length > 0 &&
         charmItems.every(item => Boolean(item.charmInfo?.metadata));
-    const displayedLuck = canDeriveCharmLuck ? luckBreakdown.total : luck;
+    const displayedLuck = luck;
+    const displayedLuckPercent = getLuckPercent(displayedLuck);
     const luckTooltip = canDeriveCharmLuck ? luckBreakdown.sources.join('\n') : undefined;
 
     async function loadItems() {
@@ -387,9 +390,33 @@ export default function GameStatsPanel({
                             fontFamily: "'PressStart2P', monospace",
                             fontSize: '14px',
                             color: '#FFEA00',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
                         }}>
-                            +{displayedLuck}
+                            <span>{displayedLuckPercent}%</span>
+                            <span style={{
+                                fontSize: '9px',
+                                color: 'rgba(255, 255, 255, 0.45)',
+                            }}>
+                                {Math.min(displayedLuck, MAX_FORTUNE_FOR_MAX_SPIN_LUCK)}/{MAX_FORTUNE_FOR_MAX_SPIN_LUCK}
+                            </span>
                         </div>
+                    </div>
+                    <div style={{
+                        marginTop: '8px',
+                        height: '8px',
+                        borderRadius: '999px',
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        overflow: 'hidden',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}>
+                        <div style={{
+                            width: `${displayedLuckPercent}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #FFD54A 0%, #FF8A1C 100%)',
+                            boxShadow: '0 0 14px rgba(255, 170, 0, 0.35)',
+                        }} />
                     </div>
                 </div>
             )}

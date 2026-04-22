@@ -25,11 +25,11 @@ const RELIC_METADATA: Record<string, any> = {
     },
     "2": {
         name: "Phantom",
-        description: "The Timeless Specter - Resets to max spins",
+        description: "The Timeless Specter - Grants 1-3 spins",
         image: `${BASE_URL}/images/relics/phantom.png`,
         attributes: [
             { trait_type: "Rarity", value: "Mythic" },
-            { trait_type: "Effect", value: "Reset Spins" },
+            { trait_type: "Effect", value: "Gain 1-3 Spins" },
             { trait_type: "Cooldown", value: 15, display_type: "number" },
             { trait_type: "Stat: Wisdom", value: 1, display_type: "number" }
         ]

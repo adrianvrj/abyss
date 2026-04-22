@@ -169,6 +169,7 @@ export function usePracticeSession() {
     setGameOverReason(null);
     setShowBibliaAnimation(false);
     setBibliaBroken(false);
+    setShowRelicActivation(false);
     setShowScoreResetAnimation(false);
     setScoreResetPreviousScore(0);
     setShowLuckyScoreBoostAnimation(false);
@@ -371,7 +372,9 @@ export function usePracticeSession() {
       return;
     }
 
-    setShowRelicActivation(true);
+    if (outcome.relicId !== 2) {
+      setShowRelicActivation(true);
+    }
   }, [activateRelic, calculatePracticeChipPayout, equippedRelic]);
 
   const handleEquipRelic = useCallback(async (relic: OwnedRelic) => {

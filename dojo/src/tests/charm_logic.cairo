@@ -2,6 +2,8 @@ use crate::helpers::charm_types::{
     calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
     get_charm_ids_by_rarity, get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
 };
+use crate::helpers::grid::normalize_spin_luck;
+use crate::systems::play::get_charm_drop_chance_from_score_and_luck;
 use crate::types::effect::{CharmConditionType, CharmEffectType};
 
 fn assert_charm_meta(
@@ -328,6 +330,21 @@ fn test_chaos_orb_keeps_base_luck_without_blocked_666() {
     let charm_ids = array![18];
     let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 0, 200, 2, false);
     assert(luck == 12, 'chaos orb base luck');
+}
+
+#[test]
+fn test_spin_luck_normalizes_from_raw_fortune() {
+    assert(normalize_spin_luck(0) == 0, 'zero fortune');
+    assert(normalize_spin_luck(80) == 34, 'void heart fortune');
+    assert(normalize_spin_luck(140) == 60, 'full spin luck');
+    assert(normalize_spin_luck(276) == 60, 'spin luck cap');
+}
+
+#[test]
+fn test_charm_drop_chance_is_more_conservative() {
+    assert(get_charm_drop_chance_from_score_and_luck(1000, 20) == 17, 'mid run chance');
+    assert(get_charm_drop_chance_from_score_and_luck(2000, 40) == 34, 'strong run chance');
+    assert(get_charm_drop_chance_from_score_and_luck(5000, 140) == 60, 'drop chance cap');
 }
 
 #[test]

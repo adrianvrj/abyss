@@ -74,8 +74,27 @@ export interface CharmPatternRetriggerBonuses {
   jackpot: number;
 }
 
+export const MAX_SPIN_LUCK = 60;
+export const MAX_FORTUNE_FOR_MAX_SPIN_LUCK = 140;
+
 function pluralize(value: number, singular: string, plural = `${singular}s`) {
   return value === 1 ? singular : plural;
+}
+
+export function convertFortuneToSpinLuck(fortune: number) {
+  const cappedFortune = Math.min(
+    Math.max(0, fortune),
+    MAX_FORTUNE_FOR_MAX_SPIN_LUCK,
+  );
+  return Math.floor((cappedFortune * MAX_SPIN_LUCK) / MAX_FORTUNE_FOR_MAX_SPIN_LUCK);
+}
+
+export function getLuckPercent(fortune: number) {
+  const cappedFortune = Math.min(
+    Math.max(0, fortune),
+    MAX_FORTUNE_FOR_MAX_SPIN_LUCK,
+  );
+  return Math.floor((cappedFortune * 100) / MAX_FORTUNE_FOR_MAX_SPIN_LUCK);
 }
 
 function formatPositiveLuck(value: number) {
@@ -207,21 +226,27 @@ export function getCharmLuckEntries(
   }
 
   if (metadata.charmId === 12 && context.lastSpinPatternCount > 0) {
-    entries.push({
-      label: "Last Spin Patterns",
-      value: context.lastSpinPatternCount * metadata.effectValue,
-    });
+      entries.push({
+        label: "Last Spin Patterns",
+        value: context.lastSpinPatternCount * metadata.effectValue,
+      });
   }
 
   switch (metadata.conditionType) {
     case CharmConditionType.NoPatternLastSpin:
       if (context.lastSpinPatternCount === 0 && metadata.effectValue > 0) {
-        entries.push({ label: "No Pattern Last Spin", value: metadata.effectValue });
+        entries.push({
+          label: "No Pattern Last Spin",
+          value: metadata.effectValue,
+        });
       }
       break;
     case CharmConditionType.LowSpinsRemaining:
       if (context.spinsRemaining <= 3 && metadata.effectValue > 0) {
-        entries.push({ label: "Low Spins Remaining", value: metadata.effectValue });
+        entries.push({
+          label: "Low Spins Remaining",
+          value: metadata.effectValue,
+        });
       }
       break;
     case CharmConditionType.PerItemInInventory:

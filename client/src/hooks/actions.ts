@@ -136,6 +136,28 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     [account, executeCalls, playAddress],
   );
 
+  const setPendingCharmLoadout = useCallback(
+    async (charmIds: number[]) => {
+      if (!account) {
+        throw new Error("Wallet not connected");
+      }
+      if (charmIds.length > 3) {
+        throw new Error("Max 3 charms per session");
+      }
+
+      return executeCalls([
+        {
+          contractAddress: playAddress,
+          entrypoint: "set_pending_charm_loadout",
+          calldata: CallData.compile([
+            charmIds.map((id) => id.toString()),
+          ]),
+        },
+      ]);
+    },
+    [account, executeCalls, playAddress],
+  );
+
   const createSession = useCallback(
     async (paymentToken?: string) => {
       if (!account) {
@@ -368,6 +390,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     relicAddress,
     createSession,
     claimFreeSessionBundle,
+    setPendingCharmLoadout,
     equipCharms,
     requestSpin,
     buyItem,

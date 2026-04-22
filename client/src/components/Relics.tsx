@@ -29,8 +29,8 @@ const RELICS = [
     {
         id: 2,
         name: "Phantom",
-        description: "The Timeless Specter - Resets to Max Spins",
-        effect: "Reset to Max Spins",
+        description: "The Timeless Specter - Grants 1-3 spins",
+        effect: "Gain 1-3 Spins",
         price: 33333,
         maxSupply: 40,
         rarity: "Mythic",

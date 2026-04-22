@@ -1,6 +1,7 @@
 import { STATIC_ITEM_DEFINITIONS } from "@/lib/itemCatalog";
 import {
   getCharmLuckEntries,
+  convertFortuneToSpinLuck,
   type CharmLuckContext,
 } from "@/lib/charmRules";
 import { applyPatternModifiers } from "@/lib/patternMath";
@@ -122,6 +123,15 @@ function takeRandomInt(current: number, maxExclusive: number) {
   };
 }
 
+function rollPracticePhantomBonusSpins(current: number) {
+  const roll = takeRandomInt(current, 100);
+  const bonusSpins = roll.value < 40 ? 1 : roll.value < 80 ? 2 : 3;
+  return {
+    nextState: roll.nextState,
+    bonusSpins,
+  };
+}
+
 function buildPracticeItem(itemId: number): ContractItem {
   const definition = STATIC_ITEM_DEFINITIONS[itemId];
 
@@ -178,6 +188,10 @@ export function getPracticeEffectiveLuck(state: PracticeRunState, items = state.
     const entries = getCharmLuckEntries(getCharmMetadataFromItem(item), context);
     return sum + entries.reduce((entrySum, entry) => entrySum + entry.value, 0);
   }, 0);
+}
+
+export function getPracticeSpinLuck(state: PracticeRunState, items = state.inventoryItems) {
+  return convertFortuneToSpinLuck(getPracticeEffectiveLuck(state, items));
 }
 
 function getItemPurchasePrice(item: ContractItem, bibliaPurchaseCount: number) {
@@ -333,7 +347,7 @@ function generateSpinGrid(
   const grid: number[] = [];
   let isJackpot = true;
   let firstSymbol = 0;
-  const luckBiasThreshold = Math.min(luck, 50) * 100;
+  const luckBiasThreshold = convertFortuneToSpinLuck(luck) * 1000;
 
   for (let index = 0; index < 15; index += 1) {
     let symbol = 0;
@@ -763,14 +777,23 @@ export function activatePracticeRelic(state: PracticeRunState): PracticeRelicAct
   }
 
   if (relicId === 2) {
+    const phantomRoll = rollPracticePhantomBonusSpins(state.rngState);
+    const nextSpins = Math.min(MAX_CURRENT_SPINS, state.spinsRemaining + phantomRoll.bonusSpins);
     const nextState = withDerivedState({
       ...state,
-      spinsRemaining: DEFAULT_SPINS,
+      rngState: phantomRoll.nextState,
+      spinsRemaining: nextSpins,
       relicCooldownRemaining: cooldown,
       pendingRelicEffect: null,
       sessionRevision: state.sessionRevision + 1,
     });
-    return { nextState, relicId, effectType: RELIC_EFFECT_RESET_SPINS, endedRun: false, refreshedMarket: false };
+    return {
+      nextState,
+      relicId,
+      effectType: RELIC_EFFECT_RESET_SPINS,
+      endedRun: false,
+      refreshedMarket: false,
+    };
   }
 
   if (relicId === 3) {

@@ -35,7 +35,7 @@ fn test_spin_consumable_runtime_values_match_balance_patch() {
     assert(pyramid.price == 2, 'pyramid price');
     assert(devil_onion.sell_price == 1, 'devil onion sell');
     assert(pyramid.sell_price == 2, 'pyramid sell');
-    assert(devil_onion_spins == 1, 'devil onion spins');
+    assert(devil_onion_spins == 2, 'devil onion spins');
     assert(pyramid_spins == 3, 'pyramid spins');
 }
 
@@ -189,6 +189,7 @@ fn test_relic_cooldowns_match_balance_patch() {
 
     assert(mortis.cooldown_spins == 15, 'mortis cooldown');
     assert(phantom.cooldown_spins == 15, 'phantom cooldown');
+    assert(phantom.description == 'Gain 1-3 spins', 'phantom description');
     assert(lucky.cooldown_spins == 9, 'lucky cooldown');
 }
 

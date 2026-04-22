@@ -38,7 +38,7 @@ pub fn get_relic_type_info(relic_id: u32) -> RelicTypeInfo {
             metadata: RelicMetadata {
                 relic_id,
                 name: 'Phantom',
-                description: 'Reset spins',
+                description: 'Gain 1-3 spins',
                 effect_type: RelicEffectType::ResetSpins,
                 cooldown_spins: 15,
                 rarity: 3,

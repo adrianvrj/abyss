@@ -111,7 +111,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x3b8445e51c69e5b43c08fb13f9f7088dc9c7571cef3dda5569af01a920dd552",
+      "class_hash": "0xa07088f36b23a08651c369ada0434225f703e8db5eabb5dd4e7eea1db9b797",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -120,6 +120,7 @@
         "create_session",
         "claim_beast_session",
         "mint_session",
+        "set_pending_charm_loadout",
         "equip_charms",
         "request_spin",
         "end_session",
@@ -129,7 +130,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0xb9775448052b185c80c9832b4a0d07dc53b53c85809604728ee78ba738ee16",
+      "class_hash": "0x450ae254d2f59b71ad1e970fb77c1f9a99dea7e271681de960356048b00953a",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -142,7 +143,7 @@
     },
     {
       "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
-      "class_hash": "0x7115a53c40b0cecde1a25994c3248cb8d1546aca490f156dc24a50dc659ca85",
+      "class_hash": "0x40c2cdefedb0ea9cb5697af2e975759aa25e476eb6099038d2e812323eac831",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
@@ -532,6 +533,33 @@
       "class_hash": "0x29122741412b14ba1dc2449ebb0aa946ddb6c0d88860f9e977ee4345dbd878d",
       "tag": "ABYSS-MarketSlotPurchased",
       "selector": "0x51d7c28ed172a697204807e3733bf00e1851ba16d52dba5f7a52b6ff3dd0994"
+    },
+    {
+      "members": [
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "charm_id_1",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "charm_id_2",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "charm_id_3",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x1f5182ca9153db6380031a9fa94e5f04c2c59098708c4c0a500e1d2a750d6b9",
+      "tag": "ABYSS-PendingCharmLoadout",
+      "selector": "0x571e002a0e0de8bead4a885ee11f0743c5150abbf8db5c9df5e6bd413df65f8"
     },
     {
       "members": [
@@ -1332,6 +1360,33 @@
           "key": true
         },
         {
+          "name": "bonus_spins",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "new_spins",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x4f94dfef655a86eef8e6fed0efead47b8bfe6b417943d953ef576557194bac5",
+      "tag": "ABYSS-PhantomActivated",
+      "selector": "0x5880ec77618ddb0df0a96641b542ffe572356b06f87f18d792f3c1248650b24"
+    },
+    {
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
           "name": "relic_id",
           "type": "core::integer::u32",
           "key": false
@@ -1940,6 +1995,42 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::events::index::PhantomActivated",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "bonus_spins",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "new_spins",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::PhantomActivatedValue",
+      "members": [
+        {
+          "name": "bonus_spins",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "new_spins",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::events::index::RelicActivated",
       "members": [
         {
@@ -2399,6 +2490,12 @@
     {
       "type": "event",
       "name": "abyss_game::events::index::e_MarketRefreshed::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::events::index::e_PhantomActivated::Event",
       "kind": "enum",
       "variants": []
     },
@@ -3273,6 +3370,46 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::models::index::PendingCharmLoadout",
+      "members": [
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "charm_id_1",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_2",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_3",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::PendingCharmLoadoutValue",
+      "members": [
+        {
+          "name": "charm_id_1",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_2",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "charm_id_3",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::models::index::PlayerSessionEntry",
       "members": [
         {
@@ -4069,6 +4206,12 @@
     },
     {
       "type": "event",
+      "name": "abyss_game::models::index::m_PendingCharmLoadout::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
       "name": "abyss_game::models::index::m_PlayerSessionEntry::Event",
       "kind": "enum",
       "variants": []
@@ -4419,6 +4562,18 @@
             {
               "name": "quantity",
               "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_pending_charm_loadout",
+          "inputs": [
+            {
+              "name": "charm_ids",
+              "type": "core::array::Span::<core::integer::u32>"
             }
           ],
           "outputs": [],

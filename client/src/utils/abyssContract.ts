@@ -144,7 +144,9 @@ async function fetchCharmApiMetadata(charmId: number): Promise<CharmApiMetadata 
     background_color: backgroundColor,
     effect: typeof getAttribute("Effect") === "string" ? String(getAttribute("Effect")) : undefined,
     luck:
-      typeof getAttribute("Luck Value") !== "undefined"
+      typeof getAttribute("Spin Luck Value") !== "undefined"
+        ? Number(getAttribute("Spin Luck Value"))
+        : typeof getAttribute("Luck Value") !== "undefined"
         ? Number(getAttribute("Luck Value"))
         : undefined,
     shopCost:

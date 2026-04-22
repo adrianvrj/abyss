@@ -42,6 +42,7 @@ export {
   type ItemSoldEvent,
   type MarketRefreshedEvent,
   type RelicActivatedEvent,
+  type PhantomActivatedEvent,
   type RelicEquippedEvent,
   type CharmMintedEvent,
   type BibliaDiscardedEvent,

@@ -15,7 +15,7 @@ pub mod Market {
     use starknet::get_caller_address;
     use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
     use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshed};
-    use crate::helpers::inventory::InventoryImpl;
+use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::items::{BIBLIA_ITEM_ID, get_item_purchase_price};
     use crate::helpers::market::MarketImpl;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;

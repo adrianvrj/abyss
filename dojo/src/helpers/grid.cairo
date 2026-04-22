@@ -1,10 +1,22 @@
 use core::poseidon::hades_permutation;
 use crate::types::symbol::SymbolType;
 
+pub const MAX_SPIN_LUCK: u32 = 60;
+pub const MAX_FORTUNE_FOR_MAX_SPIN_LUCK: u32 = 140;
+
 #[inline(always)]
 fn poseidon_hash_pair(x: felt252, y: felt252) -> felt252 {
     let (s0, _, _) = hades_permutation(x, y, 2);
     s0
+}
+
+pub fn normalize_spin_luck(luck: u32) -> u32 {
+    let capped_fortune = if luck > MAX_FORTUNE_FOR_MAX_SPIN_LUCK {
+        MAX_FORTUNE_FOR_MAX_SPIN_LUCK
+    } else {
+        luck
+    };
+    (capped_fortune * MAX_SPIN_LUCK) / MAX_FORTUNE_FOR_MAX_SPIN_LUCK
 }
 
 /// Generate a slot grid from a VRF random word with luck bias and probability bonuses.
@@ -21,12 +33,8 @@ pub fn generate_grid_from_random(
     let mut is_jackpot = true;
     let mut first_symbol: u8 = 0;
 
-    // Cap luck bias at 55% to prevent guaranteed patterns
-    let luck_bias_chance: u32 = if luck > 55 {
-        55
-    } else {
-        luck
-    };
+    // Convert raw fortune into the real spin-facing luck stat.
+    let luck_bias_chance: u32 = normalize_spin_luck(luck);
     let luck_bias_threshold = luck_bias_chance * 1000;
 
     let (p7, pd, pc, p_coin, pl) = probability_bonuses;

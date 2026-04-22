@@ -82,10 +82,11 @@ export async function GET(
 
         const session = parseSession(sessionRaw);
         // Raw `session.luck` is often 0; in-game HUD uses effective luck (charms, items).
-        const effectiveLuck =
+        const currentLuck =
             luckRaw?.[0] !== undefined && luckRaw[0] !== ''
                 ? Number(BigInt(luckRaw[0]))
                 : session.luck;
+        const luckPercent = Math.floor((Math.min(currentLuck, 140) * 100) / 140);
         const status = session.isActive ? 'RUN ACTIVE' : 'GAME OVER';
         const title = `ABYSS SESSION #${session.sessionId}`;
 
@@ -101,7 +102,7 @@ export async function GET(
   <text x="680" y="410" fill="#ff8a1c" font-size="34" font-family="monospace">TOTAL SPINS</text>
   <text x="680" y="500" fill="#ff8a1c" font-size="104" font-family="monospace">${session.totalSpins}</text>
   <text x="80" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">SCORE ${session.score}</text>
-  <text x="320" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">LUCK ${effectiveLuck}</text>
+  <text x="320" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">LUCK ${luckPercent}%</text>
   <text x="540" y="570" fill="#ff8a1c" font-size="24" font-family="monospace">CLAIMED ${session.chipsClaimed ? 'YES' : 'NO'}</text>
 </svg>`;
 

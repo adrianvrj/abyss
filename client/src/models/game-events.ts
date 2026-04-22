@@ -48,6 +48,12 @@ export interface RelicActivatedEvent {
   currentLuck: number;
 }
 
+export interface PhantomActivatedEvent {
+  sessionId: number;
+  bonusSpins: number;
+  newSpins: number;
+}
+
 export interface RelicEquippedEvent {
   sessionId: number;
   relicTokenId: bigint;
@@ -79,6 +85,7 @@ export interface ParsedGameEvents {
   itemsSold: ItemSoldEvent[];
   marketRefreshed: MarketRefreshedEvent | null;
   relicActivated: RelicActivatedEvent | null;
+  phantomActivated: PhantomActivatedEvent | null;
   relicEquipped: RelicEquippedEvent | null;
   charmMinted: CharmMintedEvent | null;
   bibliaDiscarded: BibliaDiscardedEvent | null;

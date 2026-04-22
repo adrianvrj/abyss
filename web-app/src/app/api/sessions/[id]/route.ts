@@ -58,13 +58,25 @@ export async function GET(
     }
 
     try {
-        const result = await provider.callContract({
-            contractAddress: playAddress,
-            entrypoint: 'get_session',
-            calldata: [id],
-        });
+        const [result, spinLuckRaw] = await Promise.all([
+            provider.callContract({
+                contractAddress: playAddress,
+                entrypoint: 'get_session',
+                calldata: [id],
+            }),
+            provider.callContract({
+                contractAddress: playAddress,
+                entrypoint: 'get_session_luck',
+                calldata: [id],
+            }).catch(() => null as string[] | null),
+        ]);
 
         const session = parseSession(result);
+        const currentLuck =
+            spinLuckRaw?.[0] !== undefined && spinLuckRaw[0] !== ''
+                ? Number(BigInt(spinLuckRaw[0]))
+                : session.luck;
+        const luckPercent = Math.floor((Math.min(currentLuck, 140) * 100) / 140);
 
         return NextResponse.json({
             name: `Abyss Session #${session.sessionId}`,
@@ -81,7 +93,8 @@ export async function GET(
                 { trait_type: 'Tickets', value: session.tickets, display_type: 'number' },
                 { trait_type: 'Spins Remaining', value: session.spinsRemaining, display_type: 'number' },
                 { trait_type: 'Total Spins', value: session.totalSpins, display_type: 'number' },
-                { trait_type: 'Luck', value: session.luck, display_type: 'number' },
+                { trait_type: 'Luck', value: currentLuck, display_type: 'number' },
+                { trait_type: 'Luck Progress', value: luckPercent, display_type: 'number' },
                 { trait_type: 'Mode', value: session.isCompetitive ? 'Competitive' : 'Standard' },
                 { trait_type: 'Status', value: session.isActive ? 'Active' : 'Game Over' },
                 { trait_type: 'Chips Claimed', value: session.chipsClaimed ? 'Yes' : 'No' },
