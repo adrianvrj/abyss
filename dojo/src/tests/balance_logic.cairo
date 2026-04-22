@@ -186,11 +186,13 @@ fn test_relic_cooldowns_match_balance_patch() {
     let mortis = get_relic_type_info(1).metadata;
     let phantom = get_relic_type_info(2).metadata;
     let lucky = get_relic_type_info(3).metadata;
+    let inferno = get_relic_type_info(5).metadata;
 
     assert(mortis.cooldown_spins == 15, 'mortis cooldown');
-    assert(phantom.cooldown_spins == 15, 'phantom cooldown');
+    assert(phantom.cooldown_spins == 13, 'phantom cooldown');
     assert(phantom.description == 'Gain 1-3 spins', 'phantom description');
     assert(lucky.cooldown_spins == 9, 'lucky cooldown');
+    assert(inferno.cooldown_spins == 7, 'inferno cooldown');
 }
 
 #[test]

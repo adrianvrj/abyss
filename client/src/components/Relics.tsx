@@ -35,7 +35,7 @@ const RELICS = [
         maxSupply: 40,
         rarity: "Mythic",
         image: "/images/relics/phantom.png",
-        cooldown: 15,
+        cooldown: 13,
         stats: { wisdom: 1 },
     },
     {
@@ -71,7 +71,7 @@ const RELICS = [
         maxSupply: 100,
         rarity: "Legendary",
         image: "/images/relics/inferno.png",
-        cooldown: 9,
+        cooldown: 7,
         stats: { dexterity: 1 },
     },
 ];

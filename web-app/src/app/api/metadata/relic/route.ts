@@ -29,7 +29,7 @@ const RELIC_METADATA: Record<string, {
         rarity: "Mythic",
         effect_type: "Spin Gain",
         effect_description: "Gain 1-3 Spins",
-        cooldown: 15,
+        cooldown: 13,
     },
     "3": {
         name: "Lucky the Dealer",
@@ -56,7 +56,7 @@ const RELIC_METADATA: Record<string, {
         rarity: "Legendary",
         effect_type: "Market Refresh",
         effect_description: "Instantly refreshes the market inventory for free.",
-        cooldown: 9,
+        cooldown: 7,
     }
 };
 
