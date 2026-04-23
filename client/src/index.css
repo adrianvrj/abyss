@@ -1,15 +1,28 @@
 @font-face {
   font-family: 'Ramagothic';
-  src: url('/fonts/ramagothicbold.ttf') format('truetype');
-  font-weight: bold;
+  src: local('Rama Gothic E Bold'), local('Ramagothic Bold'),
+    url('/fonts/ramagothicbold.ttf') format('truetype');
+  font-weight: 400 700;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
   font-family: 'PressStart2P';
-  src: url('/fonts/PressStart2P.ttf') format('truetype');
-  font-weight: normal;
+  src: local('Press Start 2P'),
+    url('/fonts/PressStart2P.ttf') format('truetype');
+  font-weight: 400;
   font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  src: local('Press Start 2P'),
+    url('/fonts/PressStart2P.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 :root {
@@ -21,7 +34,7 @@
   --color-primary-glow: rgba(255, 132, 28, 0.6);
 
   /* Fonts */
-  --font-title: 'Ramagothic', 'Press Start 2P', sans-serif;
+  --font-title: 'Ramagothic', 'PressStart2P', 'Press Start 2P', sans-serif;
   --font-body: 'PressStart2P', 'Courier New', monospace;
 
   /* Spacing */
@@ -57,7 +70,7 @@ body {
   overflow: hidden;
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
+  background-attachment: scroll;
 }
 
 /* Mobile background */
@@ -160,7 +173,7 @@ img {
   overflow: hidden;
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
+  background-attachment: scroll;
 }
 
 @media (max-width: 768px) {

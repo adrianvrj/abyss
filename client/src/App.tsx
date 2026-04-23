@@ -1,6 +1,7 @@
 import { Suspense, useEffect, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Providers } from "@/components/providers";
+import { AssetPreloaderProvider } from "@/components/providers/AssetPreloaderProvider";
 import ChipBalanceBadge from "@/components/ChipBalanceBadge";
 import ControllerButton from "@/components/ControllerButton";
 import { DEFAULT_CHAIN_ID, getToriiUrl, getWorldAddress } from "@/config";
@@ -40,6 +41,14 @@ function MenuLoading() {
 }
 
 const GameContent = lazy(() => import("@/components/GameContent").then(m => ({ default: m.GameContent })));
+
+function GameRoute() {
+  return (
+    <AssetPreloaderProvider>
+      <GameContent />
+    </AssetPreloaderProvider>
+  );
+}
 
 function App() {
   useEffect(() => {
@@ -85,11 +94,11 @@ function App() {
           <Routes>
             <Route path="/" element={<MenuContent />} />
             <Route path="/sessions" element={<SessionsContent />} />
-            <Route path="/practice" element={<GameContent />} />
+            <Route path="/practice" element={<GameRoute />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/relics" element={<Relics />} />
             <Route path="/charms" element={<Charms />} />
-            <Route path="/game" element={<GameContent />} />
+            <Route path="/game" element={<GameRoute />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

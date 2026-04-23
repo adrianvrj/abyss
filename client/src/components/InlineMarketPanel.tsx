@@ -13,7 +13,7 @@ import {
 import { getItemImage } from '@/utils/itemImages';
 import { SYMBOL_INFO } from '@/utils/GameConfig';
 import { CHIP_TOKEN_IMAGE_URL } from '@/lib/constants';
-import { RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
 import { useAccount } from '@starknet-react/core';
 
 const DEBUG_MARKET_SYNC =
@@ -95,7 +95,6 @@ export default function InlineMarketPanel({
     const [purchasedInCurrentMarket, setPurchasedInCurrentMarket] = useState<Set<number>>(new Set());
     const [refreshing, setRefreshing] = useState(false);
     const [purchasingSlot, setPurchasingSlot] = useState<number | null>(null);
-    const [currentItemIndex, setCurrentItemIndex] = useState(0);
     const latestMarketRequestRef = useRef(0);
 
     const {
@@ -218,9 +217,6 @@ export default function InlineMarketPanel({
         setCharmInfoMap(practiceCharmMap);
         setOwnedItemIds(new Set(practiceOwnedItems.map((item) => item.item_id)));
         setPurchasedInCurrentMarket(new Set(practicePurchasedSlots));
-        setCurrentItemIndex((prev) =>
-            practiceMarketItems.length === 0 ? 0 : Math.min(prev, practiceMarketItems.length - 1),
-        );
     }, [practiceMode, practiceMarketItems, practiceOwnedItems, practicePurchasedSlots, practiceRefreshCount]);
 
     useEffect(() => {
@@ -372,7 +368,6 @@ export default function InlineMarketPanel({
         const pricedItems = await applySessionItemPrices(items);
         setMarketItems(pricedItems);
         setCharmInfoMap(charmMap);
-        setCurrentItemIndex(0);
     }
 
     async function handleRefresh() {
@@ -498,24 +493,7 @@ export default function InlineMarketPanel({
         }
     }
 
-    const handleNext = () => setCurrentItemIndex(prev => (prev + 1) % marketItems.length);
-    const handlePrev = () => setCurrentItemIndex(prev => (prev - 1 + marketItems.length) % marketItems.length);
-
-    const currentItem = marketItems[currentItemIndex];
-    const currentSlotLabel = currentItemIndex + 1;
-    const isCurrentCharm = currentItem ? isCharmItem(currentItem.item_id) : false;
-    const isCurrentSpinConsumable =
-        currentItem ? currentItem.effect_type === ItemEffectType.SpinBonus : false;
     const visibleInventoryCount = Array.from(ownedItemIds).filter((itemId) => itemId < 1000).length;
-    const isOwned = currentItem
-        ? ownedItemIds.has(currentItem.item_id) && !hiddenItemIds.includes(currentItem.item_id)
-        : false;
-    const wasPurchased = purchasedInCurrentMarket.has(currentItemIndex);
-    const isInventoryFull =
-        visibleInventoryCount >= 7 && !isOwned && !isCurrentCharm && !isCurrentSpinConsumable;
-    const currentItemPrice = getDisplayedPrice(currentItem);
-    const canAfford = currentItem ? currentTickets >= currentItemPrice : false;
-    const canPurchase = currentItem && !isOwned && !wasPurchased && !isInventoryFull && canAfford && purchasingSlot === null;
 
     function getEffectDetails(item: ContractItem): string {
         if (item.description && item.description.length > 0) return item.description;
@@ -685,9 +663,9 @@ export default function InlineMarketPanel({
     }
 
     return (
-        <div className={`inline-market-panel ${isCurrentCharm ? 'charm-mode' : ''}`}>
-            <div className={`panel-header ${isCurrentCharm ? 'charm-header' : ''}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{isCurrentCharm ? 'CHARM' : 'MARKET'}</span>
+        <div className="inline-market-panel">
+            <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>MARKET</span>
                 <div className="ticket-balance" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '16px', color: '#fff' }}>{currentTickets}</span>
                     <img src="/images/ticket.png" alt="Tickets" width={28} height={14} loading="lazy" />
@@ -777,107 +755,86 @@ export default function InlineMarketPanel({
             </div>
 
             <div className="mobile-market-view">
-                <div className={`item-display ${isCurrentCharm ? 'charm-display' : ''}`} style={{ position: 'relative', overflow: 'hidden' }}>
+                <div className="mobile-market-grid">
                     {marketItems.map((item, index) => {
-                        const isVisible = index === currentItemIndex;
                         const isPurchasedSlot = purchasedInCurrentMarket.has(index);
                         const isItemCharm = isCharmItem(item.item_id);
                         const charmInfo = charmInfoMap.get(item.item_id);
+                        const itemPrice = getDisplayedPrice(item);
+                        const isOwned =
+                            ownedItemIds.has(item.item_id) && !hiddenItemIds.includes(item.item_id);
+                        const isSpinConsumable = item.effect_type === ItemEffectType.SpinBonus;
+                        const isInventoryFull =
+                            visibleInventoryCount >= 7 && !isOwned && !isItemCharm && !isSpinConsumable;
+                        const canAfford = currentTickets >= itemPrice;
+                        const isPurchasing = purchasingSlot === index;
+                        const canPurchase =
+                            !isOwned
+                            && !isPurchasedSlot
+                            && !isInventoryFull
+                            && canAfford
+                            && purchasingSlot === null;
+                        const mobileImage = isItemCharm && charmInfo
+                            ? charmInfo.image
+                            : getItemImage(item.item_id);
+                        const mobileEffect = isItemCharm && charmInfo
+                            ? (charmInfo.effect || charmInfo.description)
+                            : renderEffectDisplay(item);
 
                         return (
-                            <div key={`${item.item_id}-${index}`} style={{
-                                display: isVisible ? 'flex' : 'none',
-                                width: '100%',
-                                height: '100%',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                {isPurchasedSlot ? (
-                                    <div className="sold-state">
-                                        <div className="item-image sold">
-                                            <img
-                                                src={isItemCharm && charmInfo ? charmInfo.image : getItemImage(item.item_id)}
-                                                alt={item.name}
-                                                width={180}
-                                                height={180}
-                                                loading="lazy"
-                                                style={{ objectFit: 'contain', filter: 'grayscale(100%) opacity(0.3)' }}
-                                            />
-                                        </div>
-                                        <div className="sold-badge">SOLD</div>
+                            <div
+                                key={`${item.item_id}-${index}`}
+                                className={`mobile-market-card ${isPurchasedSlot ? 'sold' : ''}`}
+                            >
+                                <div className="mobile-market-image-frame">
+                                    <img
+                                        src={mobileImage}
+                                        alt={item.name}
+                                        width={88}
+                                        height={88}
+                                        loading="lazy"
+                                        style={{
+                                            objectFit: 'contain',
+                                            filter: isPurchasedSlot ? 'grayscale(100%) opacity(0.3)' : 'none',
+                                        }}
+                                    />
+                                </div>
+
+                                {isItemCharm && charmInfo?.rarity && (
+                                    <div className="mobile-charm-rarity" style={{ color: getRarityColor(charmInfo.rarity) }}>
+                                        {charmInfo.rarity.toUpperCase()}
                                     </div>
-                                ) : isItemCharm && charmInfo ? (
-                                    <>
-                                        <div className="charm-image">
-                                            <img
-                                                src={charmInfo.image}
-                                                alt={charmInfo.name}
-                                                width={140}
-                                                height={140}
-                                                loading="lazy"
-                                                style={{ objectFit: 'contain' }}
-                                            />
-                                        </div>
-                                        {charmInfo.rarity && (
-                                            <div className="charm-rarity" style={{ color: getRarityColor(charmInfo.rarity) }}>
-                                                {charmInfo.rarity.toUpperCase()}
-                                            </div>
-                                        )}
-                                        <div className="item-name charm-name">{charmInfo.name}</div>
-                                        <div className="charm-effect">{charmInfo.effect || charmInfo.description}</div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="item-image">
-                                            <img
-                                                src={getItemImage(item.item_id)}
-                                                alt={item.name}
-                                                width={180}
-                                                height={180}
-                                                loading="lazy"
-                                                style={{ objectFit: 'contain' }}
-                                            />
-                                        </div>
-                                        <div className="item-name">{item.name}</div>
-                                        <div className="effect-badge">{renderEffectDisplay(item, true)}</div>
-                                    </>
                                 )}
+
+                                <div className="mobile-market-name">{item.name}</div>
+                                <div className="mobile-market-effect">{mobileEffect}</div>
+
+                                <button
+                                    className={`mobile-market-buy buy-btn ${!canPurchase ? 'disabled' : ''}`}
+                                    onClick={() => canPurchase && handleBuy(index, item)}
+                                    disabled={!canPurchase}
+                                >
+                                    {isPurchasing ? '...' : (
+                                        isPurchasedSlot ? 'SOLD' :
+                                            isOwned ? 'OWNED' :
+                                                isInventoryFull ? 'FULL' :
+                                                    !canAfford ? (
+                                                        <span className="desktop-buy-copy">
+                                                            <span>NEED {itemPrice}</span>
+                                                            <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
+                                                        </span>
+                                                    ) : (
+                                                        <span className="desktop-buy-copy">
+                                                            <span>BUY {itemPrice}</span>
+                                                            <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
+                                                        </span>
+                                                    )
+                                    )}
+                                </button>
                             </div>
                         );
                     })}
                 </div>
-
-                <div className="carousel-nav">
-                    <button onClick={handlePrev}><ChevronLeft /></button>
-                    <span>{currentSlotLabel}/{marketItems.length}</span>
-                    <button onClick={handleNext}><ChevronRight /></button>
-                </div>
-
-                <button
-                    className={`buy-btn ${(!canPurchase || wasPurchased) ? 'disabled' : ''}`}
-                    onClick={() => canPurchase && !wasPurchased && handleBuy(currentItemIndex, currentItem!)}
-                    disabled={!canPurchase || wasPurchased}
-                >
-                    {wasPurchased ? "SOLD" : (
-                        purchasingSlot === currentItemIndex ? "..." : (
-                            isOwned ? "OWNED" :
-                                isInventoryFull ? "FULL" :
-                                    !currentItem ? "..." :
-                                        !canAfford ? (
-                                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                NEED {currentItemPrice || '...'}
-                                                <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
-                                            </span>
-                                        ) : (
-                                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                BUY {currentItemPrice || '...'}
-                                                <img src="/images/ticket.png" alt="Tickets" width={18} height={9} loading="lazy" />
-                                            </span>
-                                        )
-                        )
-                    )}
-                </button>
 
                 <button
                     className="refresh-btn"
@@ -932,76 +889,67 @@ const styles = `
         text-align: center;
         padding: 40px 0;
     }
-    .item-display {
-        background: rgba(0, 0, 0, 0.5);
-        border-radius: 8px;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 300px;
-        justify-content: center;
-    }
-    .item-image {
-        margin-bottom: 15px;
-    }
-    .item-name {
-        font-family: 'PressStart2P', monospace;
-        font-size: 11px;
-        color: #fff;
-        text-align: center;
-        margin-bottom: 8px;
-    }
-    .effect-badge {
-        background: #FF841C;
-        color: #000;
-        font-family: 'PressStart2P', monospace;
-        font-size: 9px;
-        padding: 5px 10px;
-        border-radius: 4px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .sold-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        position: relative;
-    }
-    .sold-badge {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-family: 'PressStart2P', monospace;
-        font-size: 20px;
-        color: #FF841C;
-        text-shadow: 0 0 10px rgba(255, 132, 28, 0.5);
-    }
-    .carousel-nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+    .mobile-market-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
-    .carousel-nav button {
-        background: transparent;
-        border: 2px solid #FF841C;
-        border-radius: 4px;
-        color: #FF841C;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 6px 10px;
-        transition: all 0.2s;
+    .mobile-market-card {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 132, 28, 0.18);
+        border-radius: 14px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 220px;
     }
-    .carousel-nav button:hover {
-        background: #FF841C22;
+    .mobile-market-card.sold {
+        opacity: 0.8;
     }
-    .carousel-nav span {
+    .mobile-market-image-frame {
+        min-height: 92px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mobile-market-name {
         font-family: 'PressStart2P', monospace;
+        font-size: 9px;
+        color: #fff;
+        line-height: 1.5;
+        text-align: center;
+        min-height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mobile-market-effect {
+        font-family: 'PressStart2P', monospace;
+        font-size: 7px;
+        line-height: 1.55;
+        color: #d2d2d2;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    .mobile-market-effect .desktop-effect-inline,
+    .mobile-market-effect .compact-effect {
+        color: #fff;
+    }
+    .mobile-charm-rarity {
+        font-family: 'PressStart2P', monospace;
+        font-size: 7px;
+        text-align: center;
+        letter-spacing: 0.08em;
+    }
+    .mobile-market-buy {
+        margin-top: auto;
+        min-height: 42px;
+        border-radius: 10px;
         font-size: 8px;
-        color: #666;
     }
     .buy-btn {
         width: 100%;
@@ -1016,7 +964,7 @@ const styles = `
         transition: all 0.2s;
     }
     .buy-btn:hover:not(.disabled) {
-        background: #FFa04C;
+        background: #FF841C;
     }
     .buy-btn.disabled {
         background: #444;
@@ -1121,29 +1069,6 @@ const styles = `
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
     }
-    .charm-image {
-        width: 160px;
-        height: 160px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 12px;
-    }
-    .charm-rarity {
-        font-family: 'PressStart2P', monospace;
-        font-size: 8px;
-        margin-bottom: 6px;
-    }
-    .charm-effect {
-        font-family: 'PressStart2P', monospace;
-        font-size: 8px;
-        color: #000;
-        text-align: center;
-        padding: 6px 10px;
-        background: #FF841C;
-        border-radius: 4px;
-        margin-top: 4px;
-    }
     @media (max-width: 1024px) {
         .inline-market-panel {
             width: 100%;
@@ -1157,56 +1082,13 @@ const styles = `
         .mobile-market-view {
             flex: 1;
             min-height: 0;
+            overflow-y: auto;
+            padding-right: 2px;
         }
         .panel-header {
             font-size: 11px;
             padding: 0 0 10px;
             flex: 0 0 auto;
-        }
-        .item-display {
-            flex: 1;
-            width: 100%;
-            height: auto;
-            min-height: 0;
-            margin: 0;
-            padding: 24px 16px;
-            background: rgba(0, 0, 0, 0.36);
-            border: 1px solid rgba(255, 132, 28, 0.16);
-            gap: 12px;
-        }
-        .item-image, .charm-image {
-            margin-bottom: 0;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 0;
-            width: 100%;
-        }
-        .item-image img, .charm-image img {
-            width: auto;
-            height: auto;
-            max-width: min(72%, 240px);
-            max-height: 100%;
-            object-fit: contain;
-        }
-        .item-name {
-            font-size: 13px;
-            line-height: 1.5;
-            flex: 0 0 auto;
-        }
-        .effect-badge, .charm-effect {
-            font-size: 9px;
-            line-height: 1.6;
-            padding: 6px 10px;
-            text-align: center;
-            background: transparent;
-            color: #fff;
-            flex: 0 0 auto;
-        }
-        .effect-badge .compact-effect,
-        .effect-badge .desktop-effect-inline {
-            color: #fff;
         }
         .buy-btn, .refresh-btn {
             min-height: 50px;
@@ -1214,15 +1096,56 @@ const styles = `
             font-size: 9px;
             border-radius: 12px;
         }
-        .carousel-nav button {
-            min-width: 56px;
-            min-height: 48px;
-            padding: 10px 14px;
-            font-size: 18px;
-            border-radius: 12px;
+        .mobile-market-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
         }
-        .carousel-nav span {
+        .mobile-market-card {
+            min-height: 246px;
+            padding: 12px;
+            gap: 10px;
+        }
+        .mobile-market-image-frame {
+            min-height: 110px;
+        }
+        .mobile-market-image-frame img {
+            width: auto;
+            height: auto;
+            max-width: min(88%, 112px);
+            max-height: 110px;
+            object-fit: contain;
+        }
+        .mobile-market-name {
             font-size: 9px;
+            min-height: 34px;
+        }
+        .mobile-market-effect {
+            font-size: 7px;
+            min-height: 44px;
+        }
+    }
+    @media (max-width: 420px) {
+        .mobile-market-grid {
+            gap: 10px;
+        }
+        .mobile-market-card {
+            min-height: 224px;
+            padding: 10px;
+        }
+        .mobile-market-image-frame {
+            min-height: 92px;
+        }
+        .mobile-market-image-frame img {
+            max-width: min(86%, 88px);
+            max-height: 92px;
+        }
+        .mobile-market-name {
+            font-size: 8px;
+            min-height: 28px;
+        }
+        .mobile-market-effect {
+            font-size: 6px;
+            min-height: 34px;
         }
     }
     @media (min-width: 1025px) {
