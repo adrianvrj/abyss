@@ -884,14 +884,26 @@ export function useGameSession(sessionId: string | null) {
 
                     if (spin.spinsRemaining <= 0) {
                         playSound('game-over');
-                        // Receipt is the authoritative source for final tally —
-                        // React state `score` can lag behind and Torii/RPC may be stale.
-                        const finalBalance = spin.is666 ? 0 : spin.newTotalScore;
-                        const finalLifetimeScore = spin.newTotalScore;
+                        // `newTotalScore` is the lifetime/leaderboard score. The final
+                        // session balance shown in game over and used for CHIP payout is
+                        // `session.score`, which can be lower after market spending.
+                        const fallbackFinalBalance = spin.is666 ? 0 : score + spin.scoreGained;
                         const finalDiamondBonus = spin.chipBonusUnits;
 
                         // Still fetch session for background sync/other fields
                         const latestSession = await loadSessionData('spin:event-path:game-over');
+                        const latestSessionMatchesSpin =
+                            latestSession &&
+                            latestSession.totalScore === spin.newTotalScore &&
+                            latestSession.level === spin.newLevel &&
+                            latestSession.spinsRemaining === spin.spinsRemaining &&
+                            latestSession.isActive === spin.isActive;
+                        const finalBalance = latestSessionMatchesSpin
+                            ? latestSession.score
+                            : fallbackFinalBalance;
+                        const finalLifetimeScore = latestSessionMatchesSpin
+                            ? latestSession.totalScore
+                            : spin.newTotalScore;
                         await captureGameOverBuild();
 
                         setDiamondChipBonusUnits(finalDiamondBonus);
