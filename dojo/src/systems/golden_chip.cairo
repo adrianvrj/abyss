@@ -183,6 +183,17 @@ pub mod GoldenChip {
         token_id
     }
 
+    fn assert_admin(self: @ContractState) {
+        let caller = get_caller_address();
+        if self.accesscontrol.has_role(DEFAULT_ADMIN_ROLE, caller) {
+            return;
+        }
+
+        let world = self.world(@NAMESPACE());
+        let store = StoreTrait::new(world);
+        assert(caller == store.config().admin, 'Caller is missing role');
+    }
+
     fn dojo_init(ref self: ContractState) {
         let world = self.world(@NAMESPACE());
         self.erc721.initializer("Abyss Golden Chip", "GCHIP", "");
@@ -252,7 +263,7 @@ pub mod GoldenChip {
         }
 
         fn admin_mint(ref self: ContractState, to: ContractAddress, quantity: u32) {
-            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert_admin(@self);
             assert(quantity > 0, 'Invalid quantity');
 
             let current_supply: u32 = self.next_token_id.read().try_into().unwrap();
@@ -311,19 +322,19 @@ pub mod GoldenChip {
         }
 
         fn set_max_supply(ref self: ContractState, max_supply: u32) {
-            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert_admin(@self);
             let current_supply: u32 = self.next_token_id.read().try_into().unwrap();
             assert(max_supply >= current_supply, 'Below current supply');
             self.max_supply.write(max_supply);
         }
 
         fn set_base_uri(ref self: ContractState, base_uri: ByteArray) {
-            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert_admin(@self);
             self.base_uri.write(base_uri);
         }
 
         fn set_mint_price(ref self: ContractState, price: u256) {
-            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            assert_admin(@self);
             self.mint_price.write(price);
         }
     }

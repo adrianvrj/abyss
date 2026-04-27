@@ -97,7 +97,7 @@
     },
     {
       "address": "0x5c375d8908c6e4d29520208a6c28ffe6b0564406137f8debff2b36ac1150ffe",
-      "class_hash": "0x14a362f4e08f894edf66e59f267499c0a6e949d0fd8f79a7a34371690745115",
+      "class_hash": "0x1ba0432d98efd3a174367898f4bdac51bc21a2def10745032c5f4cd2305e272",
       "init_calldata": [],
       "tag": "ABYSS-GoldenChip",
       "selector": "0x666f73eb680fb8aa6ccd8a10331295177fd70b71ec1745e8bbe7c1db3ed5437",

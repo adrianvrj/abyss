@@ -10,6 +10,7 @@ import {
   getPlayAddress,
   getRelicAddress,
   getRelicNftAddress,
+  getGoldenChipAddress,
   getSetupAddress,
   getTreasuryAddress,
   getWorldAddress,
@@ -20,6 +21,7 @@ export const CONTRACTS = {
   PLAY: getPlayAddress(DEFAULT_CHAIN_ID),
   MARKET: getMarketAddress(DEFAULT_CHAIN_ID),
   RELIC: getRelicAddress(DEFAULT_CHAIN_ID),
+  GOLDEN_CHIP: getGoldenChipAddress(DEFAULT_CHAIN_ID),
   TREASURY: getTreasuryAddress(DEFAULT_CHAIN_ID),
   COLLECTION: getCollectionAddress(DEFAULT_CHAIN_ID),
   SETUP_REGISTRY: getSetupAddress(DEFAULT_CHAIN_ID),
@@ -39,6 +41,10 @@ export const CONTRACTS = {
   X_SHARE_BUNDLE_ID:
     import.meta.env.VITE_X_SHARE_BUNDLE_ID !== undefined
       ? Number(import.meta.env.VITE_X_SHARE_BUNDLE_ID)
+      : null,
+  GOLDEN_CHIP_BUNDLE_ID:
+    import.meta.env.VITE_GOLDEN_CHIP_BUNDLE_ID !== undefined
+      ? Number(import.meta.env.VITE_GOLDEN_CHIP_BUNDLE_ID)
       : null,
   CARTRIDGE_VRF:
     import.meta.env.VITE_CARTRIDGE_VRF ??

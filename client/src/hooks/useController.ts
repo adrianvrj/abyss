@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     useAccount,
     useConnect,
@@ -10,6 +10,7 @@ export interface UseControllerReturn {
     account: ReturnType<typeof useAccount>["account"];
     connector: ReturnType<typeof useAccount>["connector"];
     address: string | undefined;
+    delegateAddress: string | null;
     username: string | null;
     isConnecting: boolean;
     isConnected: boolean;
@@ -21,6 +22,7 @@ export interface UseControllerReturn {
 
 export function useController(): UseControllerReturn {
     const { address, status, account, connector } = useAccount();
+    const [delegateAddress, setDelegateAddress] = useState<string | null>(null);
     const { connectAsync, connectors } = useConnect();
     const { disconnect: starknetDisconnect } = useDisconnect();
 
@@ -39,10 +41,40 @@ export function useController(): UseControllerReturn {
         starknetDisconnect();
     }, [starknetDisconnect]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadDelegate = async () => {
+            if (status !== "connected" || !connector) {
+                setDelegateAddress(null);
+                return;
+            }
+
+            try {
+                const delegate =
+                    await ((connector as any)?.delegateAccount?.() ??
+                        (connector as any)?.controller?.delegateAccount?.());
+                if (!cancelled) {
+                    setDelegateAddress(delegate ?? null);
+                }
+            } catch {
+                if (!cancelled) {
+                    setDelegateAddress(null);
+                }
+            }
+        };
+
+        loadDelegate();
+        return () => {
+            cancelled = true;
+        };
+    }, [connector, status]);
+
     return {
         account,
         connector,
         address,
+        delegateAddress,
         username: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null,
         isConnecting: status === "connecting",
         isConnected: status === "connected",

@@ -167,3 +167,7 @@ export function getCharmAddress(chainId?: ChainLike) {
 export function getRelicNftAddress(chainId?: ChainLike) {
   return getContractAddress(chainId, NAMESPACE, "RelicNFT");
 }
+
+export function getGoldenChipAddress(chainId?: ChainLike) {
+  return getContractAddress(chainId, NAMESPACE, "GoldenChip");
+}
