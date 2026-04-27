@@ -67,19 +67,6 @@ pub impl MarketImpl of MarketTrait {
         owned_charm_ids
     }
 
-    /// Generate a random item ID for a market slot.
-    ///
-    /// Uses two chained `hades_permutation` calls (each 2-input) instead of
-    /// `poseidon_hash_span` over a 3-element array. Equivalent entropy for our purposes
-    /// (session_id/slot/nonce are all u32) and skips the span allocation + length prelude.
-    fn generate_random_item_id(session_id: u32, slot: u32, nonce: u32) -> u32 {
-        let (s0, _, _) = hades_permutation(session_id.into(), slot.into(), 2);
-        let (seed, _, _) = hades_permutation(s0, nonce.into(), 2);
-        let roll: u256 = seed.into();
-        let item_id: u32 = (roll.low % TOTAL_ITEMS.into()).try_into().unwrap() + 1;
-        item_id
-    }
-
     /// Calculate refresh cost based on refresh count.
     fn get_refresh_cost(refresh_count: u32) -> u32 {
         2 + ((refresh_count * (refresh_count + 3)) / 2)
@@ -87,25 +74,58 @@ pub impl MarketImpl of MarketTrait {
 
     fn get_recent_market_items(market: crate::models::index::SessionMarket) -> Array<u32> {
         let mut recent_items: Array<u32> = array![];
-        let slots = array![
-            market.item_slot_1,
-            market.item_slot_2,
-            market.item_slot_3,
-            market.item_slot_4,
-            market.item_slot_5,
-            market.item_slot_6,
-        ];
 
-        let mut i: u32 = 0;
-        while i < slots.len() {
-            let item_id = *slots.at(i);
-            if item_id > 0 && !Self::has_value(recent_items.span(), item_id) {
-                recent_items.append(item_id);
-            }
-            i += 1;
+        if market.item_slot_1 > 0 {
+            recent_items.append(market.item_slot_1);
+        }
+        if market.item_slot_2 > 0 && !Self::has_value(recent_items.span(), market.item_slot_2) {
+            recent_items.append(market.item_slot_2);
+        }
+        if market.item_slot_3 > 0 && !Self::has_value(recent_items.span(), market.item_slot_3) {
+            recent_items.append(market.item_slot_3);
+        }
+        if market.item_slot_4 > 0 && !Self::has_value(recent_items.span(), market.item_slot_4) {
+            recent_items.append(market.item_slot_4);
+        }
+        if market.item_slot_5 > 0 && !Self::has_value(recent_items.span(), market.item_slot_5) {
+            recent_items.append(market.item_slot_5);
+        }
+        if market.item_slot_6 > 0 && !Self::has_value(recent_items.span(), market.item_slot_6) {
+            recent_items.append(market.item_slot_6);
         }
 
         recent_items
+    }
+
+    fn has_generated_value(
+        generated_count: u32,
+        slot_1: u32,
+        slot_2: u32,
+        slot_3: u32,
+        slot_4: u32,
+        slot_5: u32,
+        slot_6: u32,
+        target: u32,
+    ) -> bool {
+        if generated_count > 0 && slot_1 == target {
+            return true;
+        }
+        if generated_count > 1 && slot_2 == target {
+            return true;
+        }
+        if generated_count > 2 && slot_3 == target {
+            return true;
+        }
+        if generated_count > 3 && slot_4 == target {
+            return true;
+        }
+        if generated_count > 4 && slot_5 == target {
+            return true;
+        }
+        if generated_count > 5 && slot_6 == target {
+            return true;
+        }
+        false
     }
 
     fn generate_market_slot_item(
@@ -117,19 +137,17 @@ pub impl MarketImpl of MarketTrait {
         slot: u32,
         nonce: u32,
     ) -> u32 {
-        // Chain three hades_permutation calls instead of poseidon_hash_span over a 4-element
-        // span. Each permutation mixes 2 inputs into a full-strength state; chaining
-        // preserves entropy while avoiding the span allocation and length-preamble cost.
         let (s0, _, _) = hades_permutation(session_id.into(), player.into(), 2);
         let (s1, _, _) = hades_permutation(s0, slot.into(), 2);
         let (seed, _, _) = hades_permutation(s1, nonce.into(), 2);
         let roll: u256 = seed.into();
         let roll_low: u128 = roll.low;
 
-        if owned_charm_ids.len() > 0 {
+        let owned_charm_count = owned_charm_ids.len();
+        if owned_charm_count > 0 {
             let charm_roll: u32 = (roll_low % 100).try_into().unwrap();
             if charm_roll < MARKET_CHARM_APPEAR_CHANCE {
-                let charm_index: u32 = ((roll_low / 100) % owned_charm_ids.len().into())
+                let charm_index: u32 = ((roll_low / 100) % owned_charm_count.into())
                     .try_into()
                     .unwrap();
                 let charm_id = *owned_charm_ids.at(charm_index);
@@ -142,7 +160,7 @@ pub impl MarketImpl of MarketTrait {
             }
         }
 
-        let item_id = Self::generate_random_item_id(session_id, slot + 1, nonce);
+        let item_id: u32 = (roll_low % TOTAL_ITEMS.into()).try_into().unwrap() + 1;
         if Self::is_retired_market_item(item_id) || Self::has_value(excluded_ids, item_id) {
             return 0;
         }
@@ -184,7 +202,13 @@ pub impl MarketImpl of MarketTrait {
         };
         let recent_items = Self::get_recent_market_items(sm);
 
-        let mut generated_items: Array<u32> = array![];
+        let mut generated_count: u32 = 0;
+        let mut item_slot_1: u32 = 0;
+        let mut item_slot_2: u32 = 0;
+        let mut item_slot_3: u32 = 0;
+        let mut item_slot_4: u32 = 0;
+        let mut item_slot_5: u32 = 0;
+        let mut item_slot_6: u32 = 0;
         let mut slot: u32 = 0;
         while slot != 6 {
             let mut attempts: u32 = 0;
@@ -202,31 +226,73 @@ pub impl MarketImpl of MarketTrait {
                         nonce + (attempts * 100),
                     );
 
-                if candidate != 0 && !Self::has_value(generated_items.span(), candidate) {
+                if candidate != 0
+                    && !Self::has_generated_value(
+                        generated_count,
+                        item_slot_1,
+                        item_slot_2,
+                        item_slot_3,
+                        item_slot_4,
+                        item_slot_5,
+                        item_slot_6,
+                        candidate,
+                    ) {
                     break;
                 }
                 attempts += 1;
             }
 
-            if candidate == 0 || Self::has_value(generated_items.span(), candidate) {
+            if candidate == 0
+                || Self::has_generated_value(
+                    generated_count,
+                    item_slot_1,
+                    item_slot_2,
+                    item_slot_3,
+                    item_slot_4,
+                    item_slot_5,
+                    item_slot_6,
+                    candidate,
+                ) {
                 candidate = 1;
                 while candidate <= TOTAL_ITEMS
                     && (Self::has_value(recent_items.span(), candidate)
-                        || Self::has_value(generated_items.span(), candidate)) {
+                        || Self::has_generated_value(
+                            generated_count,
+                            item_slot_1,
+                            item_slot_2,
+                            item_slot_3,
+                            item_slot_4,
+                            item_slot_5,
+                            item_slot_6,
+                            candidate,
+                        )) {
                     candidate += 1;
                 }
             }
 
-            generated_items.append(candidate);
+            if slot == 0 {
+                item_slot_1 = candidate;
+            } else if slot == 1 {
+                item_slot_2 = candidate;
+            } else if slot == 2 {
+                item_slot_3 = candidate;
+            } else if slot == 3 {
+                item_slot_4 = candidate;
+            } else if slot == 4 {
+                item_slot_5 = candidate;
+            } else {
+                item_slot_6 = candidate;
+            }
+            generated_count += 1;
             slot += 1;
         }
 
-        sm.item_slot_1 = *generated_items.at(0);
-        sm.item_slot_2 = *generated_items.at(1);
-        sm.item_slot_3 = *generated_items.at(2);
-        sm.item_slot_4 = *generated_items.at(3);
-        sm.item_slot_5 = *generated_items.at(4);
-        sm.item_slot_6 = *generated_items.at(5);
+        sm.item_slot_1 = item_slot_1;
+        sm.item_slot_2 = item_slot_2;
+        sm.item_slot_3 = item_slot_3;
+        sm.item_slot_4 = item_slot_4;
+        sm.item_slot_5 = item_slot_5;
+        sm.item_slot_6 = item_slot_6;
 
         store.set_session_market(@sm);
 

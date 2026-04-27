@@ -6,6 +6,7 @@ pub use store::{Store, StoreImpl, StoreTrait};
 pub mod systems {
     pub mod charm;
     pub mod collection_system;
+    pub mod golden_chip;
     pub mod market;
     pub mod play;
     pub mod relic;
@@ -58,10 +59,11 @@ pub mod components {
 }
 
 #[cfg(test)]
-pub mod tests {
-    pub mod balance_logic;
-    pub mod charm_logic;
-    pub mod pattern_logic;
-    pub mod setup;
-    pub mod spin_profile;
+    pub mod tests {
+        pub mod balance_logic;
+        pub mod charm_logic;
+        pub mod golden_chip;
+        pub mod pattern_logic;
+        pub mod setup;
+        pub mod spin_profile;
 }

@@ -43,6 +43,10 @@ pub fn RELIC_BASE_URI() -> ByteArray {
     METADATA_URL() + "/api/relics/"
 }
 
+pub fn GOLDEN_CHIP_BASE_URI() -> ByteArray {
+    METADATA_URL() + "/api/golden-chip/"
+}
+
 pub const WORLD_RESOURCE: felt252 = 0;
 
 // Session defaults
@@ -91,6 +95,12 @@ pub const CHIP_SCORE_DIVISOR: u32 = 20;
 pub const DEFAULT_CHIP_EMISSION_RATE: u32 = 1; // 1 CHIP per 20 score
 pub const DEFAULT_CHIP_BOOST_MULTIPLIER: u32 = 1;
 pub const CHIP_TOTAL_SUPPLY: u256 = 10_000_000_000_000_000_000_000_000;
+
+// Golden Chip NFT
+pub const GOLDEN_CHIP_MINT_PRICE: u256 = 150_000_000;
+pub const GOLDEN_CHIP_INITIAL_SUPPLY: u32 = 200;
+pub const GOLDEN_CHIP_WEEKLY_RUNS: u32 = 2;
+pub const GOLDEN_CHIP_WEEK_SECONDS: u64 = 604800;
 
 // Revenue distribution (out of 100)
 pub const REVENUE_PRIZE_PCT: u32 = 70;

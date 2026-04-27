@@ -134,9 +134,13 @@ use crate::helpers::inventory::InventoryImpl;
             // just wrote it) instead of letting `calculate_effective_luck` re-read it from
             // storage. Also pass the charm ids we collect once to skip a second index sweep.
             let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
-            let current_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
-                @store, session_id, charm_ids.span(), @session,
-            );
+            let current_luck = if charm_ids.len() == 0 {
+                0
+            } else {
+                InventoryImpl::calculate_effective_luck_with_charm_ids(
+                    @store, session_id, charm_ids.span(), @session,
+                )
+            };
             store
                 .emit_item_purchased(
                     @ItemPurchased {
@@ -203,9 +207,13 @@ use crate::helpers::inventory::InventoryImpl;
             }
 
             let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
-            let current_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
-                @store, session_id, charm_ids.span(), @session,
-            );
+            let current_luck = if charm_ids.len() == 0 {
+                0
+            } else {
+                InventoryImpl::calculate_effective_luck_with_charm_ids(
+                    @store, session_id, charm_ids.span(), @session,
+                )
+            };
             store
                 .emit_item_sold(
                     @ItemSold {
@@ -244,9 +252,13 @@ use crate::helpers::inventory::InventoryImpl;
             );
 
             let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
-            let current_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
-                @store, session_id, charm_ids.span(), @session,
-            );
+            let current_luck = if charm_ids.len() == 0 {
+                0
+            } else {
+                InventoryImpl::calculate_effective_luck_with_charm_ids(
+                    @store, session_id, charm_ids.span(), @session,
+                )
+            };
             store
                 .emit_market_refreshed(
                     @MarketRefreshed {

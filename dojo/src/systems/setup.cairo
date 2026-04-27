@@ -77,6 +77,14 @@ pub trait ISetup<T> {
         image_uri: ByteArray,
         allower: ContractAddress,
     ) -> u32;
+    fn register_golden_chip_bundle(
+        ref self: T,
+        referral_percentage: u8,
+        payment_token: ContractAddress,
+        payment_receiver: ContractAddress,
+        image_uri: ByteArray,
+        allower: ContractAddress,
+    ) -> u32;
     fn update_bundle(
         ref self: T,
         bundle_id: u32,
@@ -103,6 +111,9 @@ pub mod Setup {
     use dojo::world::WorldStorageTrait;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use crate::components::purchase::PurchaseComponent;
     use crate::constants::{
@@ -117,6 +128,9 @@ pub mod Setup {
     use crate::models::index::{Config, Item, TokenPairId};
     use crate::store::StoreTrait;
     use crate::systems::charm::NAME as CHARM_NAME;
+    use crate::systems::golden_chip::{
+        IGoldenChipDispatcher, IGoldenChipDispatcherTrait, NAME as GOLDEN_CHIP_NAME,
+    };
     use crate::systems::play::{IPlayDispatcher, IPlayDispatcherTrait, NAME as PLAY_NAME};
     use crate::systems::relic_nft_contract::NAME as RELIC_NFT_NAME;
     use crate::systems::token::NAME as CHIP_NAME;
@@ -144,6 +158,7 @@ pub mod Setup {
         accesscontrol: AccessControlComponent::Storage,
         #[substorage(v0)]
         src5: SRC5Component::Storage,
+        golden_chip_bundles: Map<u32, bool>,
     }
 
     #[event]
@@ -168,6 +183,19 @@ pub mod Setup {
         ) {
             let mut contract_state = self.get_contract_mut();
             let world = contract_state.world(@NAMESPACE());
+            let is_golden_chip_bundle = contract_state
+                .golden_chip_bundles
+                .entry(bundle_id)
+                .read();
+            if is_golden_chip_bundle {
+                assert(recipient == get_caller_address(), 'GoldenChip: recipient mismatch');
+
+                let golden_chip_address = world
+                    .dns_address(@GOLDEN_CHIP_NAME())
+                    .expect('GoldenChip not found!');
+                let golden_chip = IGoldenChipDispatcher { contract_address: golden_chip_address };
+                golden_chip.consume_weekly_runs(recipient, quantity);
+            }
             contract_state.purchase.execute(world, bundle_id, quantity);
 
             let play_address = world.dns_address(@PLAY_NAME()).expect('Play contract not found!');
@@ -252,6 +280,26 @@ pub mod Setup {
             .jsonify()
     }
 
+    fn golden_chip_session_bundle_metadata(
+        quote_token: ContractAddress, chip_token: ContractAddress, image_uri: ByteArray,
+    ) -> ByteArray {
+        let item = BundleItemTrait::new(
+            name: "Golden Chip Weekly Run",
+            description: "Claim a weekly free Abyss run with a Golden Chip",
+            image_uri: image_uri.clone(),
+        );
+
+        BundleMetadataTrait::new(
+            name: "Golden Chip Weekly Runs",
+            description: "Golden Chip holders can claim up to 2 free Abyss runs per week",
+            image_uri: image_uri,
+            items: array![item].span(),
+            tokens: session_payment_tokens(quote_token, chip_token),
+            conditions: array![].span(),
+        )
+            .jsonify()
+    }
+
     fn register_session_bundle_internal(
         ref self: ContractState,
         referral_percentage: u8,
@@ -284,6 +332,37 @@ pub mod Setup {
                 metadata,
                 allower,
             )
+    }
+
+    fn register_golden_chip_bundle_internal(
+        ref self: ContractState,
+        referral_percentage: u8,
+        image_uri: ByteArray,
+        allower: ContractAddress,
+    ) -> u32 {
+        let world = self.world(@NAMESPACE());
+        let store = StoreTrait::new(world);
+        let config = store.config();
+        let payment_token = config.quote_token;
+        let payment_receiver = get_contract_address();
+        let metadata = golden_chip_session_bundle_metadata(
+            payment_token, config.chip_token, image_uri,
+        );
+
+        let bundle_id = self
+            .bundle
+            .register(
+                world,
+                referral_percentage,
+                true,
+                0,
+                payment_token,
+                payment_receiver,
+                metadata,
+                allower,
+            );
+        self.golden_chip_bundles.entry(bundle_id).write(true);
+        bundle_id
     }
 
     fn register_bundle_internal(
@@ -835,6 +914,20 @@ pub mod Setup {
             register_session_bundle_internal(
                 ref self, referral_percentage, false, price, image_uri, allower, true,
             )
+        }
+
+        fn register_golden_chip_bundle(
+            ref self: ContractState,
+            referral_percentage: u8,
+            payment_token: ContractAddress,
+            payment_receiver: ContractAddress,
+            image_uri: ByteArray,
+            allower: ContractAddress,
+        ) -> u32 {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            let _ = payment_token;
+            let _ = payment_receiver;
+            register_golden_chip_bundle_internal(ref self, referral_percentage, image_uri, allower)
         }
 
         fn update_bundle(
