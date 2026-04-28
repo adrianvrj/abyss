@@ -19,7 +19,7 @@ export async function GET(
     return NextResponse.json({
         name: `Golden Chip #${tokenId}`,
         description: 'Grants the holder 2 free Abyss runs per week.',
-        image: `${BASE_URL}/images/golden-chip.png`,
+        image: `${BASE_URL}/images/golden-chip.gif`,
         external_url: BASE_URL,
         attributes: [
             { trait_type: 'Benefit', value: '2 free runs weekly' },
