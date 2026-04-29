@@ -7,7 +7,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { useAccount } from "@starknet-react/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SessionApi } from "@/api/torii/session";
 import { subscribeEntities } from "@/api/torii/subscribe";
@@ -20,6 +19,7 @@ import type {
   SpinResult,
 } from "@/models";
 import { useEntities } from "@/context/entities";
+import { useController } from "@/hooks/useController";
 
 type SessionsProviderProps = {
   children: React.ReactNode;
@@ -59,7 +59,7 @@ function mergeInventory(
 }
 
 export function SessionsProvider({ children }: SessionsProviderProps) {
-  const { address } = useAccount();
+  const { address } = useController();
   const { client, chainId } = useEntities();
   const queryClient = useQueryClient();
   const entriesSubscriptionRef = useRef<torii.Subscription | null>(null);

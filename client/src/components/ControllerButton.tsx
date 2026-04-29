@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useConnect } from "@starknet-react/core";
 import { useLocation } from "react-router-dom";
 import { useController } from "@/hooks/useController";
 
+type ProfileController = {
+    openProfile?: () => void;
+    openSettings?: () => void;
+};
+
+type ProfileConnector = {
+    openProfile?: () => void;
+    controller?: ProfileController | null;
+};
+
 export default function ControllerButton() {
-    const { isConnected, address } = useController();
+    const { isConnected, address, connector } = useController();
     const { pathname } = useLocation();
     const [isMobile, setIsMobile] = useState(false);
 
@@ -18,23 +27,20 @@ export default function ControllerButton() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const { connectors } = useConnect();
-    const controllerConnector = connectors.find(c => c.id === "controller");
-
     const handleOpenController = useCallback(() => {
         try {
-            const connector = controllerConnector as any;
-            if (connector?.controller?.openProfile) {
-                connector.controller.openProfile();
-            } else if (connector?.openProfile) {
-                connector.openProfile();
-            } else if (connector?.controller?.openSettings) {
-                connector.controller.openSettings();
+            const controllerConnector = connector as ProfileConnector | null;
+            if (controllerConnector?.controller?.openProfile) {
+                controllerConnector.controller.openProfile();
+            } else if (controllerConnector?.openProfile) {
+                controllerConnector.openProfile();
+            } else if (controllerConnector?.controller?.openSettings) {
+                controllerConnector.controller.openSettings();
             }
         } catch (e) {
             console.log("Controller profile not available:", e);
         }
-    }, [controllerConnector]);
+    }, [connector]);
 
     const displayAddress = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "Profile";
 
@@ -72,4 +78,3 @@ export default function ControllerButton() {
         </div>
     );
 }
-

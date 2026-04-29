@@ -14,7 +14,7 @@ import { getItemImage } from '@/utils/itemImages';
 import { SYMBOL_INFO } from '@/utils/GameConfig';
 import { CHIP_TOKEN_IMAGE_URL } from '@/lib/constants';
 import { RotateCw } from 'lucide-react';
-import { useAccount } from '@starknet-react/core';
+import { useController } from '@/hooks/useController';
 
 const DEBUG_MARKET_SYNC =
     import.meta.env.DEV || import.meta.env.VITE_ABYSS_DEBUG_MARKET === 'true';
@@ -86,7 +86,7 @@ export default function InlineMarketPanel({
     onPracticeRefresh,
     onPracticeBuy,
 }: InlineMarketPanelProps) {
-    const { account } = useAccount();
+    const { account } = useController();
     const [loading, setLoading] = useState(!initialItems.length);
     const [marketData, setMarketData] = useState<SessionMarket | null>(null);
     const [marketItems, setMarketItems] = useState<ContractItem[]>(initialItems);

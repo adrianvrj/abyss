@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAccount, useNetwork } from '@starknet-react/core';
+import { useNetwork } from '@starknet-react/core';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
+import { useController } from '@/hooks/useController';
 import { Pattern, detectPatterns, ScoreBonuses } from '@/utils/patternDetector';
 import { applyPatternModifiers } from '@/lib/patternMath';
 import {
@@ -111,7 +112,7 @@ export interface OwnedRelic {
 }
 
 export function useGameSession(sessionId: string | null) {
-    const { account } = useAccount();
+    const { account } = useController();
     const { chain } = useNetwork();
     const {
         isReady,

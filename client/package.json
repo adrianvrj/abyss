@@ -29,6 +29,7 @@
     "react-dom": "^19.2.4",
     "react-router-dom": "^6.30.3",
     "starknet": "^8.9.2",
+    "starkzap": "^3.0.0",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {

@@ -4,7 +4,7 @@ import { getItemImage } from '@/utils/itemImages';
 import ModalWrapper from './ModalWrapper';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
-import { useAccount } from '@starknet-react/core';
+import { useController } from '@/hooks/useController';
 
 interface InventoryModalProps {
     sessionId: number;
@@ -14,7 +14,7 @@ interface InventoryModalProps {
 }
 
 export default function InventoryModal({ sessionId, currentScore, onClose, onUpdateScore }: InventoryModalProps) {
-    const { account } = useAccount();
+    const { account } = useController();
     const { sellItem } = useAbyssGame(account);
 
     const [loading, setLoading] = useState(true);

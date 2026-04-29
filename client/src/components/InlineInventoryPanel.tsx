@@ -8,7 +8,7 @@ import {
 } from '@/utils/abyssContract';
 import { getItemImage } from '@/utils/itemImages';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAccount } from '@starknet-react/core';
+import { useController } from '@/hooks/useController';
 
 interface InlineInventoryPanelProps {
     sessionId: number;
@@ -43,7 +43,7 @@ export default function InlineInventoryPanel({
 }: InlineInventoryPanelProps) {
     const isPersistedInventoryItem = (item: ContractItem) => item.effect_type !== ItemEffectType.SpinBonus;
 
-    const { account } = useAccount();
+    const { account } = useController();
     const [, setLoading] = useState(!initialInventory.length);
     const [ownedItems, setOwnedItems] = useState<ContractItem[]>(initialInventory);
     const [hoveredItem, setHoveredItem] = useState<ContractItem | null>(null);

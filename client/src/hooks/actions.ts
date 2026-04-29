@@ -1,4 +1,4 @@
-import { useAccount, useNetwork, useConnect } from "@starknet-react/core";
+import { useNetwork } from "@starknet-react/core";
 import { useCallback, useMemo } from "react";
 import { CallData } from "starknet";
 import ControllerConnector from "@cartridge/connector/controller";
@@ -14,6 +14,7 @@ import {
 } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
 import { parseReceiptEvents } from "@/utils/gameEvents";
+import { useController } from "@/hooks/useController";
 
 type ExecuteCall = {
   contractAddress: string;
@@ -44,8 +45,7 @@ function toUint256(value: bigint) {
 }
 
 export function useAbyssActions(accountOverride?: AccountLike | null) {
-  const { account: connectedAccount } = useAccount();
-  const { connector } = useConnect();
+  const { account: connectedAccount, connector } = useController();
   const { chain } = useNetwork();
   const account = (
     accountOverride ??

@@ -13,7 +13,7 @@ import { getItemImage } from '@/utils/itemImages';
 import ModalWrapper from './ModalWrapper';
 import { RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
-import { useAccount } from '@starknet-react/core';
+import { useController } from '@/hooks/useController';
 
 interface MarketModalProps {
     sessionId: number;
@@ -23,7 +23,7 @@ interface MarketModalProps {
 }
 
 export default function MarketModal({ sessionId, currentScore, onClose, onUpdateScore }: MarketModalProps) {
-    const { account } = useAccount();
+    const { account } = useController();
     const { buyItem, refreshMarket } = useAbyssGame(account);
 
     const [loading, setLoading] = useState(true);

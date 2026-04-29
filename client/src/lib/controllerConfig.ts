@@ -124,9 +124,9 @@ export function buildControllerOptions(defaultChainId: string): ControllerOption
     chains: [{ rpcUrl: CONTROLLER_RPC_URL }],
     namespace: NAMESPACE,
     slot: cartridgeSlot,
-    shouldOverridePresetPolicies: false,
-    policies: sessionPolicies,
-    ...(CONTROLLER_PRESET ? { preset: CONTROLLER_PRESET } : {}),
+    ...(CONTROLLER_PRESET
+      ? { preset: CONTROLLER_PRESET }
+      : { policies: sessionPolicies }),
   };
 }
 
@@ -152,13 +152,17 @@ export async function ensureControllerSession(
   const controllerConnector = connector as ControllerConnector | null | undefined;
   const controller = controllerConnector?.controller;
 
+  if (CONTROLLER_PRESET) {
+    writeStoredSessionVersion(address, CONTROLLER_SESSION_VERSION);
+    return;
+  }
+
   if (!controller?.updateSession) {
     return;
   }
 
   await controller.updateSession({
     policies: sessionPolicies,
-    ...(CONTROLLER_PRESET ? { preset: CONTROLLER_PRESET } : {}),
   });
 
   writeStoredSessionVersion(address, CONTROLLER_SESSION_VERSION);
