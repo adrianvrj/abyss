@@ -30,6 +30,39 @@ interface SessionInfo {
     totalSpins: number;
 }
 
+const GOLDEN_CHIP_WEEK_SECONDS = 604800;
+
+function getGoldenChipResetMs(nowMs = Date.now()) {
+    const nowSeconds = Math.floor(nowMs / 1000);
+    const nextEpoch = Math.floor(nowSeconds / GOLDEN_CHIP_WEEK_SECONDS) + 1;
+    return nextEpoch * GOLDEN_CHIP_WEEK_SECONDS * 1000;
+}
+
+function formatGoldenChipResetCountdown(resetMs: number, nowMs: number) {
+    const totalSeconds = Math.max(0, Math.ceil((resetMs - nowMs) / 1000));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+    if (days > 0) {
+        return `${days}d ${hours}h ${minutes}m`;
+    }
+
+    return `${hours}h ${minutes}m`;
+}
+
+function isZeroAddress(address: string | null | undefined) {
+    if (!address) {
+        return true;
+    }
+
+    try {
+        return BigInt(address) === 0n;
+    } catch {
+        return address === "0x0";
+    }
+}
+
 const styles = {
     container: {
         height: "100vh",
@@ -187,6 +220,16 @@ const styles = {
         lineHeight: 1.7,
         color: "rgba(255,255,255,0.72)",
     },
+    perkCountdown: {
+        border: "1px solid rgba(255, 211, 106, 0.28)",
+        borderRadius: "6px",
+        background: "#120A00",
+        color: "#FFD36A",
+        fontFamily: "'PressStart2P', monospace",
+        fontSize: "9px",
+        lineHeight: 1.6,
+        padding: "8px 10px",
+    },
     perkAction: {
         alignSelf: "flex-start" as const,
         background: "#160900",
@@ -287,11 +330,15 @@ export function SessionsContent() {
     const [goldenChipBalance, setGoldenChipBalance] = useState(0n);
     const [delegateGoldenChipBalance, setDelegateGoldenChipBalance] = useState(0n);
     const [goldenChipRuns, setGoldenChipRuns] = useState(0);
+    const [nowMs, setNowMs] = useState(() => Date.now());
     const charmAddress = getCharmAddress(chainId);
     const charmsEnabled = Boolean(charmAddress && charmAddress !== "0x0");
     const hasControllerGoldenChip = goldenChipBalance > 0n || goldenChipRuns > 0;
     const hasDelegateGoldenChip = delegateGoldenChipBalance > 0n;
     const hasAnyGoldenChip = hasControllerGoldenChip || hasDelegateGoldenChip;
+    const showGoldenChipResetCountdown = hasAnyGoldenChip && goldenChipRuns <= 0;
+    const goldenChipResetMs = getGoldenChipResetMs(nowMs);
+    const goldenChipResetCountdown = formatGoldenChipResetCountdown(goldenChipResetMs, nowMs);
     const shareMessage =
         "I'm minting my free Abyss game session!\n🎟️ @abyssdotfun\nhttps://play.abyssgame.fun";
 
@@ -303,6 +350,19 @@ export function SessionsContent() {
     }, [isConnected, navigate]);
 
     useEffect(() => {
+        if (!showGoldenChipResetCountdown) {
+            return;
+        }
+
+        setNowMs(Date.now());
+        const interval = window.setInterval(() => {
+            setNowMs(Date.now());
+        }, 60_000);
+
+        return () => window.clearInterval(interval);
+    }, [showGoldenChipResetCountdown]);
+
+    useEffect(() => {
         if (!account?.address || !client) {
             return;
         }
@@ -310,20 +370,12 @@ export function SessionsContent() {
         const checkIssuance = async () => {
              const shareBundle = findShareBundle(bundles);
 
-            console.log("[ABYSS_BUNDLE] checkIssuance:", {
-                foundShareBundle: !!shareBundle,
-                shareBundleId: shareBundle?.id,
-                accountAddress: account.address,
-            });
-
             if (shareBundle) {
                 try {
                     const issuance = await BundleApi.fetchIssuance(client, shareBundle.id, account.address);
-                    console.log("[ABYSS_BUNDLE] issuance result:", issuance);
                     
                     // If the record exists at all in BundleIssuance, it means it's been handled
                     if (issuance) {
-                        console.log("[ABYSS_BUNDLE] Marking as claimed due to BundleIssuance existence");
                         setIsClaimed(true);
                     }
                 } catch (error) {
@@ -343,7 +395,13 @@ export function SessionsContent() {
 
         setIsLoading(true);
         try {
-            console.log("Loading sessions for:", account.address);
+            const delegateCandidate = delegateAddress;
+            const delegateGoldenChipAddress =
+                delegateCandidate &&
+                !isZeroAddress(delegateCandidate) &&
+                delegateCandidate.toLowerCase() !== account.address.toLowerCase()
+                    ? delegateCandidate
+                    : null;
             const [sessionIds, availableBeastSessions, goldenBalance, delegateGoldenBalance, availableGoldenRuns] = await Promise.all([
                 getPlayerSessions(account.address),
                 getAvailableBeastSessions(account.address),
@@ -351,8 +409,8 @@ export function SessionsContent() {
                     console.warn("Failed to load Controller Golden Chip balance:", error);
                     return 0n;
                 }),
-                delegateAddress && delegateAddress.toLowerCase() !== account.address.toLowerCase()
-                    ? getGoldenChipBalance(chainId, delegateAddress).catch((error) => {
+                delegateGoldenChipAddress
+                    ? getGoldenChipBalance(chainId, delegateGoldenChipAddress).catch((error) => {
                         console.warn("Failed to load delegate Golden Chip balance:", error);
                         return 0n;
                     })
@@ -362,14 +420,12 @@ export function SessionsContent() {
                     return 0;
                 }),
             ]);
-            console.log("Session IDs found:", sessionIds);
             setBeastSessions(availableBeastSessions);
             setGoldenChipBalance(goldenBalance);
             setDelegateGoldenChipBalance(delegateGoldenBalance);
             setGoldenChipRuns(availableGoldenRuns);
             const sessionPromises = sessionIds.map(async (id: number) => {
                 const data = await getSessionData(id);
-                console.log("Session data for", id, ":", data);
                 if (!data) return null;
                 return {
                     sessionId: id,
@@ -532,18 +588,6 @@ export function SessionsContent() {
                 };
             }
 
-            console.log("Opening session flow for:", account.address);
-            console.log("Session bundle selection:", {
-                configuredBundleId: CONTRACTS.SESSION_BUNDLE_ID,
-                selectedBundleId: sessionBundle?.id,
-                selectedBundlePrice: sessionBundle?.price?.toString(),
-                allBundles: availableBundles.map((bundle) => ({
-                    id: bundle.id,
-                    price: bundle.price.toString(),
-                    paymentToken: bundle.paymentToken,
-                })),
-            });
-
             if (!sessionBundle) {
                 console.error("No session bundle found; refusing to fallback to paid create_session.");
                 await loadSessions();
@@ -632,22 +676,10 @@ export function SessionsContent() {
         let availableBundles = bundles;
         let shareBundle = findShareBundle(availableBundles);
 
-        console.log("[ABYSS_BUNDLE] Initial search:", {
-            found: !!shareBundle,
-            shareBundleId: shareBundle?.id,
-            availableCount: availableBundles.length,
-        });
-
         if (!shareBundle) {
-            console.log("[ABYSS_BUNDLE] Refreshing bundles...");
             const refreshed = await refreshBundles();
             availableBundles = refreshed ?? availableBundles;
             shareBundle = findShareBundle(availableBundles);
-
-            console.log("[ABYSS_BUNDLE] After refresh:", {
-                found: !!shareBundle,
-                shareBundleId: shareBundle?.id,
-            });
         }
 
         if (!shareBundle) {
@@ -661,27 +693,17 @@ export function SessionsContent() {
 
         setIsCreating(true);
         try {
-            console.log("[ABYSS_BUNDLE] Selected bundle for claim:", {
-                id: shareBundle.id,
-                price: shareBundle.price.toString(),
-                metadata: shareBundle.metadata, // This is the gold mine for debugging
-            });
-
             const referralLink = `https://play.abyssgame.fun?ref=${account.address}`;
             const previousSessionIds = await getPlayerSessions(account.address);
             
-            console.log("[ABYSS_BUNDLE] Invoking claimFreeSessionBundle...");
             await claimFreeSessionBundle(shareBundle.id, referralLink, async () => {
-                console.log("[ABYSS_BUNDLE] Social claim success! Starting session poll...");
                 for (let attempt = 1; attempt <= 20; attempt += 1) {
-                    console.log(`[ABYSS_BUNDLE] Polling for new session... attempt ${attempt}/20`);
                     const nextSessionIds = await getPlayerSessions(account.address);
                     const createdSessionId = nextSessionIds.find(
                         (sessionId) => !previousSessionIds.includes(sessionId),
                     );
 
                     if (createdSessionId !== undefined) {
-                        console.log("[ABYSS_BUNDLE] New session found:", createdSessionId);
                         await loadSessions();
                         setIsCreating(false);
                         navigate(`/game?sessionId=${createdSessionId}`);
@@ -1016,11 +1038,18 @@ export function SessionsContent() {
                         </div>
                         <div style={styles.perkBody}>
                             {hasControllerGoldenChip
-                                ? "Your Controller has Golden Chip weekly runs available. Claim one run at a time through Cartridge."
+                                ? goldenChipRuns > 0
+                                    ? "Your Controller has Golden Chip weekly runs available. Claim one run at a time through Cartridge."
+                                    : "Your Golden Chip weekly runs are claimed for this cycle."
                                 : hasDelegateGoldenChip
                                     ? "Golden Chip detected on your owner wallet. Transfer it to your Controller account to claim runs in-game."
                                     : "No Golden Chip detected on this Controller account."}
                         </div>
+                        {showGoldenChipResetCountdown && (
+                            <div style={styles.perkCountdown}>
+                                Resets in {goldenChipResetCountdown}
+                            </div>
+                        )}
                         <motion.button
                             style={{
                                 ...styles.perkAction,
