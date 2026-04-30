@@ -1,13 +1,16 @@
 import type * as torii from "@dojoengine/torii-wasm";
 import {
   BeastSessionsUsedModel,
+  PendingCharmLoadoutModel,
   PlayerSessionEntryModel,
   SessionInventoryModel,
   SessionMarketModel,
   SessionModel,
   SpinResultModel,
   type BeastSessionsUsed,
+  type PendingCharmLoadout,
   type PlayerSessionEntry,
+  type RawPendingCharmLoadout,
   type RawBeastSessionsUsed,
   type RawPlayerSessionEntry,
   type RawSession,
@@ -30,6 +33,7 @@ export const SessionApi = {
     market: (sessionId: number) => ["session-market", sessionId] as const,
     inventory: (sessionId: number) => ["session-inventory", sessionId] as const,
     beastSessions: (address: string) => ["beast-sessions", address] as const,
+    pendingCharmLoadout: (address: string) => ["pending-charm-loadout", address] as const,
   },
   playerEntriesQuery(address: string) {
     return buildModelQuery(
@@ -65,6 +69,13 @@ export const SessionApi = {
   beastSessionsQuery(address: string) {
     return buildModelQuery(
       BeastSessionsUsedModel.getModelName(),
+      [address],
+      1,
+    );
+  },
+  pendingCharmLoadoutQuery(address: string) {
+    return buildModelQuery(
+      PendingCharmLoadoutModel.getModelName(),
       [address],
       1,
     );
@@ -117,6 +128,13 @@ export const SessionApi = {
       (raw) => BeastSessionsUsedModel.parse(raw as RawBeastSessionsUsed),
     )[0];
   },
+  parsePendingCharmLoadout(entities: torii.Entity[]) {
+    return parseEntities(
+      entities,
+      modelKey(PendingCharmLoadoutModel.getModelName()),
+      (raw) => PendingCharmLoadoutModel.parse(raw as RawPendingCharmLoadout),
+    )[0];
+  },
   async fetchPlayerEntries(
     client: torii.ToriiClient,
     address: string,
@@ -158,5 +176,12 @@ export const SessionApi = {
   ): Promise<BeastSessionsUsed | undefined> {
     const result = await client.getEntities(this.beastSessionsQuery(address).build());
     return this.parseBeastSessions(result.items);
+  },
+  async fetchPendingCharmLoadout(
+    client: torii.ToriiClient,
+    address: string,
+  ): Promise<PendingCharmLoadout | undefined> {
+    const result = await client.getEntities(this.pendingCharmLoadoutQuery(address).build());
+    return this.parsePendingCharmLoadout(result.items);
   },
 };

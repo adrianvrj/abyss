@@ -96,8 +96,28 @@
       ]
     },
     {
+      "address": "0x5c375d8908c6e4d29520208a6c28ffe6b0564406137f8debff2b36ac1150ffe",
+      "class_hash": "0x1ba0432d98efd3a174367898f4bdac51bc21a2def10745032c5f4cd2305e272",
+      "init_calldata": [],
+      "tag": "ABYSS-GoldenChip",
+      "selector": "0x666f73eb680fb8aa6ccd8a10331295177fd70b71ec1745e8bbe7c1db3ed5437",
+      "systems": [
+        "dojo_init",
+        "mint",
+        "admin_mint",
+        "consume_weekly_runs",
+        "set_max_supply",
+        "set_base_uri",
+        "set_mint_price",
+        "upgrade",
+        "grant_role",
+        "revoke_role",
+        "renounce_role"
+      ]
+    },
+    {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0xfdc1799ad0c0664c817ebabad9d8048d506a2c458b61de235396ffee325899",
+      "class_hash": "0x54c5c814a16e5aee93c86d022022b76f2c69806821fbb9214b53b185c3244aa",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -111,7 +131,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0xa07088f36b23a08651c369ada0434225f703e8db5eabb5dd4e7eea1db9b797",
+      "class_hash": "0x2c810532703e678d5b7afd99eecc22ac8cdd31ffed08c801a48ff9625315f9c",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -130,7 +150,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x450ae254d2f59b71ad1e970fb77c1f9a99dea7e271681de960356048b00953a",
+      "class_hash": "0x44ec753f5a93fb75d02e981f9786d0d98277ef17e935320c185130e28f868b6",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -160,7 +180,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0xe10468e8ad4a632aa46e3e3ce7f464d04fe9c399eab4246c514f7254c76cfb",
+      "class_hash": "0x1e0ac5bfd5e6461593ee16caa92f39952a4293e8df4a8e9fe64100a67ef3acd",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -200,6 +220,7 @@
         "register_bundle",
         "register_default_session_bundle",
         "register_free_social_bundle",
+        "register_golden_chip_bundle",
         "update_bundle",
         "update_bundle_metadata",
         "admin_mint_session",
@@ -4441,6 +4462,181 @@
       ]
     },
     {
+      "type": "event",
+      "name": "abyss_game::systems::golden_chip::GoldenChip::Event",
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "UpgradeableEvent",
+          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+          "kind": "nested"
+        },
+        {
+          "name": "WorldProviderEvent",
+          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+          "kind": "nested"
+        },
+        {
+          "name": "ERC721Event",
+          "type": "openzeppelin_token::erc721::erc721::ERC721Component::Event",
+          "kind": "flat"
+        },
+        {
+          "name": "AccessControlEvent",
+          "type": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::Event",
+          "kind": "flat"
+        },
+        {
+          "name": "SRC5Event",
+          "type": "openzeppelin_introspection::src5::SRC5Component::Event",
+          "kind": "flat"
+        }
+      ]
+    },
+    {
+      "type": "interface",
+      "name": "abyss_game::systems::golden_chip::IGoldenChip",
+      "items": [
+        {
+          "type": "function",
+          "name": "mint",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "admin_mint",
+          "inputs": [
+            {
+              "name": "to",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "quantity",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "consume_weekly_runs",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "quantity",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "get_available_weekly_runs",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_weekly_claimed",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "epoch",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_mint_price",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_max_supply",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "set_max_supply",
+          "inputs": [
+            {
+              "name": "max_supply",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_base_uri",
+          "inputs": [
+            {
+              "name": "base_uri",
+              "type": "core::byte_array::ByteArray"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_mint_price",
+          "inputs": [
+            {
+              "name": "price",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        }
+      ]
+    },
+    {
       "type": "interface",
       "name": "abyss_game::systems::market::IMarket",
       "items": [
@@ -5627,6 +5823,38 @@
             {
               "name": "price",
               "type": "core::integer::u256"
+            },
+            {
+              "name": "payment_token",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "payment_receiver",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "image_uri",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "allower",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "register_golden_chip_bundle",
+          "inputs": [
+            {
+              "name": "referral_percentage",
+              "type": "core::integer::u8"
             },
             {
               "name": "payment_token",

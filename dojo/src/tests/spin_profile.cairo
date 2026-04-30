@@ -5,9 +5,9 @@ use crate::constants::{
 };
 use crate::helpers::grid::generate_grid_from_random;
 use crate::models::index::{
-    Config, Item, MarketSlotPurchased, Session, SessionCharmEntry, SessionCharmLoadout,
-    SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry, SessionItemIndex,
-    SessionMarket, SpinResult,
+    Config, Item, MarketSlotPurchased, PendingCharmLoadout, Session, SessionCharmEntry,
+    SessionCharmLoadout, SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry,
+    SessionItemIndex, SessionMarket, SpinResult,
 };
 use crate::store::StoreTrait;
 use crate::systems::market::{IMarketDispatcher, IMarketDispatcherTrait};
@@ -17,7 +17,7 @@ use core::option::OptionTrait;
 use core::result::ResultTrait;
 use core::traits::TryInto;
 use dojo::model::ModelStorageTest;
-use dojo::utils::selector_from_names;
+use dojo::utils::{bytearray_hash, selector_from_names};
 use dojo::world::WorldStorageTrait;
 use dojo_cairo_test::world::{
     ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait, spawn_test_world,
@@ -107,6 +107,172 @@ fn declared_class_hash(name: ByteArray) -> ClassHash {
     let declared = declare(name).unwrap();
     let contract_class = declared.contract_class();
     (*contract_class).class_hash
+}
+
+fn charm_loadout_session_world(
+) -> (dojo::world::WorldStorage, ContractAddress) {
+    let world_class_hash = declared_class_hash("world");
+    let resources = array![
+        TestResource::Model(declared_class_hash("m_Config")),
+        TestResource::Model(declared_class_hash("m_Session")),
+        TestResource::Model(declared_class_hash("m_SessionMarket")),
+        TestResource::Model(declared_class_hash("m_MarketSlotPurchased")),
+        TestResource::Model(declared_class_hash("m_PlayerSessions")),
+        TestResource::Model(declared_class_hash("m_PlayerSessionEntry")),
+        TestResource::Model(declared_class_hash("m_SessionChipBonus")),
+        TestResource::Model(declared_class_hash("m_SessionItemPurchaseCount")),
+        TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
+        TestResource::Model(declared_class_hash("m_PendingCharmLoadout")),
+        TestResource::Event(declared_class_hash("e_SessionCreated")),
+        TestResource::Event(declared_class_hash("e_MarketRefreshed")),
+        TestResource::Contract(declared_class_hash("Collection")),
+        TestResource::Contract(declared_class_hash("Play")),
+        TestResource::Contract(declared_class_hash("Treasury")),
+    ];
+
+    let world = spawn_test_world(
+        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
+            .span(),
+    );
+
+    let collection_def = ContractDefTrait::new(@NAMESPACE(), @"Collection")
+        .with_owner_of([bytearray_hash(@NAMESPACE())].span());
+    let play_def = ContractDefTrait::new(@NAMESPACE(), @"Play")
+        .with_writer_of(
+            array![
+                selector_from_names(@NAMESPACE(), @"Config"),
+                selector_from_names(@NAMESPACE(), @"Session"),
+                selector_from_names(@NAMESPACE(), @"SessionMarket"),
+                selector_from_names(@NAMESPACE(), @"MarketSlotPurchased"),
+                selector_from_names(@NAMESPACE(), @"PlayerSessions"),
+                selector_from_names(@NAMESPACE(), @"PlayerSessionEntry"),
+                selector_from_names(@NAMESPACE(), @"SessionChipBonus"),
+                selector_from_names(@NAMESPACE(), @"SessionItemPurchaseCount"),
+                selector_from_names(@NAMESPACE(), @"SessionCharmLoadout"),
+                selector_from_names(@NAMESPACE(), @"PendingCharmLoadout"),
+                selector_from_names(@NAMESPACE(), @"SessionCreated"),
+                selector_from_names(@NAMESPACE(), @"MarketRefreshed"),
+            ]
+                .span(),
+        );
+    let treasury_def = ContractDefTrait::new(@NAMESPACE(), @"Treasury");
+    world.sync_perms_and_inits(array![collection_def, play_def, treasury_def].span());
+
+    let play_address = world.dns_address(@"Play").expect('Play not found');
+    (world, play_address)
+}
+
+fn seed_charm_loadout_session_config(ref world: dojo::world::WorldStorage) {
+    world
+        .write_model_test(
+            @Config {
+                world_resource: WORLD_RESOURCE,
+                admin: 0.try_into().unwrap(),
+                vrf: 0.try_into().unwrap(),
+                pragma_oracle: 0.try_into().unwrap(),
+                quote_token: 0.try_into().unwrap(),
+                chip_token: 0.try_into().unwrap(),
+                charm_nft: 0.try_into().unwrap(),
+                relic_nft: 0.try_into().unwrap(),
+                beast_nft: 0.try_into().unwrap(),
+                treasury: 0.try_into().unwrap(),
+                team: 0.try_into().unwrap(),
+                seven_points: DEFAULT_SCORE_SEVEN,
+                seven_prob: 10,
+                diamond_points: DEFAULT_SCORE_DIAMOND,
+                diamond_prob: 10,
+                cherry_points: DEFAULT_SCORE_CHERRY,
+                cherry_prob: 10,
+                coin_points: DEFAULT_SCORE_COIN,
+                coin_prob: 10,
+                lemon_points: DEFAULT_SCORE_LEMON,
+                lemon_prob: 10,
+                six_points: 0,
+                six_prob: 0,
+                pattern_h3_mult: 0,
+                pattern_h4_mult: 0,
+                pattern_h5_mult: 0,
+                pattern_v3_mult: 0,
+                pattern_d3_mult: 0,
+                probability_666: 0,
+                chip_emission_rate: 0,
+                chip_boost_multiplier: 0,
+                entry_price_usd: 0,
+                total_sessions: 0,
+                total_competitive_sessions: 0,
+                total_items: 40,
+                burn_percentage: 0,
+                treasury_percentage: 0,
+                team_percentage: 0,
+                ekubo_router: 0.try_into().unwrap(),
+                pool_fee: 0,
+                pool_tick_spacing: 0,
+                pool_extension: 0.try_into().unwrap(),
+                pool_sqrt: 0,
+            },
+        );
+}
+
+fn assert_loadout(loadout: SessionCharmLoadout, c1: u32, c2: u32, c3: u32) {
+    assert(loadout.charm_id_1 == c1, 'bad loadout charm 1');
+    assert(loadout.charm_id_2 == c2, 'bad loadout charm 2');
+    assert(loadout.charm_id_3 == c3, 'bad loadout charm 3');
+}
+
+#[test]
+fn pending_charm_loadout_persists_across_new_sessions() {
+    let (mut world, play_address) = charm_loadout_session_world();
+    let player: ContractAddress = 0xCAFE.try_into().unwrap();
+    let play = IPlayDispatcher { contract_address: play_address };
+
+    seed_charm_loadout_session_config(ref world);
+    world
+        .write_model_test(
+            @PendingCharmLoadout {
+                player, charm_id_1: 3, charm_id_2: 7, charm_id_3: 15,
+            },
+        );
+    start_cheat_caller_address(play_address, player);
+
+    let first_session_id = play.create_session(player, 0.try_into().unwrap());
+    let second_session_id = play.create_session(player, 0.try_into().unwrap());
+
+    let store = StoreTrait::new(world);
+    assert_loadout(store.session_charm_loadout(first_session_id), 3, 7, 15);
+    assert_loadout(store.session_charm_loadout(second_session_id), 3, 7, 15);
+    let pending = store.pending_charm_loadout(player);
+    assert(pending.charm_id_1 == 3, 'pending charm 1 cleared');
+    assert(pending.charm_id_2 == 7, 'pending charm 2 cleared');
+    assert(pending.charm_id_3 == 15, 'pending charm 3 cleared');
+}
+
+#[test]
+fn empty_pending_charm_loadout_clears_future_sessions() {
+    let (mut world, play_address) = charm_loadout_session_world();
+    let player: ContractAddress = 0xC1EA.try_into().unwrap();
+    let play = IPlayDispatcher { contract_address: play_address };
+
+    seed_charm_loadout_session_config(ref world);
+    world
+        .write_model_test(
+            @PendingCharmLoadout {
+                player, charm_id_1: 3, charm_id_2: 7, charm_id_3: 15,
+            },
+        );
+    start_cheat_caller_address(play_address, player);
+
+    let first_session_id = play.create_session(player, 0.try_into().unwrap());
+    let empty: Array<u32> = array![];
+    play.set_pending_charm_loadout(empty.span());
+    let second_session_id = play.create_session(player, 0.try_into().unwrap());
+
+    let store = StoreTrait::new(world);
+    assert_loadout(store.session_charm_loadout(first_session_id), 3, 7, 15);
+    assert_loadout(store.session_charm_loadout(second_session_id), 0, 0, 0);
+    let pending = store.pending_charm_loadout(player);
+    assert(pending.charm_id_1 == 0, 'pending charm 1 not clear');
+    assert(pending.charm_id_2 == 0, 'pending charm 2 not clear');
+    assert(pending.charm_id_3 == 0, 'pending charm 3 not clear');
 }
 
 fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, ContractAddress) {

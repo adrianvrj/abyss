@@ -131,7 +131,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x4c353de79543a4b003e1b10a38be1269d0e3694e715f1f0ff41b09ef7117050",
+      "class_hash": "0x2c810532703e678d5b7afd99eecc22ac8cdd31ffed08c801a48ff9625315f9c",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",

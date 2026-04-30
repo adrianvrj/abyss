@@ -267,7 +267,8 @@ export function SessionsContent() {
         isReady,
     } = useAbyssGame(account);
     const { claimFreeSessionBundle, equipCharms, setPendingCharmLoadout } = useAbyssActions();
-    const charmLoadout = useCharmLoadout(account?.address);
+    const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
+    const charmLoadout = useCharmLoadout(account?.address, chainId);
     const { bundles, status: bundlesStatus, refresh: refreshBundles } = useBundles();
 
     const [sessions, setSessions] = useState<SessionInfo[]>([]);
@@ -286,7 +287,6 @@ export function SessionsContent() {
     const [goldenChipBalance, setGoldenChipBalance] = useState(0n);
     const [delegateGoldenChipBalance, setDelegateGoldenChipBalance] = useState(0n);
     const [goldenChipRuns, setGoldenChipRuns] = useState(0);
-    const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
     const charmAddress = getCharmAddress(chainId);
     const charmsEnabled = Boolean(charmAddress && charmAddress !== "0x0");
     const hasControllerGoldenChip = goldenChipBalance > 0n || goldenChipRuns > 0;

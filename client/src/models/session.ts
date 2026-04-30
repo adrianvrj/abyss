@@ -12,6 +12,7 @@ export const SESSION_MARKET_MODEL_NAME = "SessionMarket";
 export const SESSION_INVENTORY_MODEL_NAME = "SessionInventory";
 export const PLAYER_SESSION_ENTRY_MODEL_NAME = "PlayerSessionEntry";
 export const BEAST_SESSIONS_USED_MODEL_NAME = "BeastSessionsUsed";
+export const PENDING_CHARM_LOADOUT_MODEL_NAME = "PendingCharmLoadout";
 
 export interface RawSession {
   session_id: PrimitiveValue<string>;
@@ -144,6 +145,18 @@ export interface RawBeastSessionsUsed {
 export interface BeastSessionsUsed {
   player: string;
   count: number;
+}
+
+export interface RawPendingCharmLoadout {
+  player: PrimitiveValue<string>;
+  charm_id_1: PrimitiveValue<string>;
+  charm_id_2: PrimitiveValue<string>;
+  charm_id_3: PrimitiveValue<string>;
+}
+
+export interface PendingCharmLoadout {
+  player: string;
+  charmIds: number[];
 }
 
 export const SessionModel = {
@@ -300,3 +313,24 @@ export const BeastSessionsUsedModel = {
   },
 };
 
+export const PendingCharmLoadoutModel = {
+  getModelName() {
+    return PENDING_CHARM_LOADOUT_MODEL_NAME;
+  },
+  parse(
+    data: RawPendingCharmLoadout | undefined | null,
+  ): PendingCharmLoadout | undefined {
+    if (!data) {
+      return undefined;
+    }
+
+    return {
+      player: toAddress(data.player),
+      charmIds: [
+        toNumber(data.charm_id_1),
+        toNumber(data.charm_id_2),
+        toNumber(data.charm_id_3),
+      ].filter((id) => id > 0),
+    };
+  },
+};

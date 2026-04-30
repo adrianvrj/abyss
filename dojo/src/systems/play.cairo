@@ -864,12 +864,6 @@ pub mod Play {
                         charm_id_3: pending_loadout.charm_id_3,
                     },
                 );
-            store
-                .set_pending_charm_loadout(
-                    @crate::models::index::PendingCharmLoadout {
-                        player, charm_id_1: 0, charm_id_2: 0, charm_id_3: 0,
-                    },
-                );
 
             let sm = store.session_market(session_id);
             crate::helpers::market::MarketImpl::refresh_market(
