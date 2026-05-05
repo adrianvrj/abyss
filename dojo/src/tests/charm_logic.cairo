@@ -41,6 +41,50 @@ fn assert_u32_array_eq(actual: Array<u32>, expected: Array<u32>) {
     };
 }
 
+fn assert_reroll_odds_row(
+    rarity_1: u8,
+    rarity_2: u8,
+    rarity_3: u8,
+    common: u32,
+    rare: u32,
+    epic: u32,
+    legendary: u32,
+) {
+    assert(common + rare + epic + legendary == 100, 'bad odds sum');
+    let rare_start = common;
+    let epic_start = common + rare;
+    let legendary_start = common + rare + epic;
+
+    if common > 0 {
+        assert_eq!(get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, 0), 0);
+        assert_eq!(
+            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, common - 1), 0,
+        );
+    }
+    if rare > 0 {
+        assert_eq!(
+            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, rare_start), 1,
+        );
+        assert_eq!(
+            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, epic_start - 1), 1,
+        );
+    }
+    if epic > 0 {
+        assert_eq!(
+            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, epic_start), 2,
+        );
+        assert_eq!(
+            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, legendary_start - 1), 2,
+        );
+    }
+    if legendary > 0 {
+        assert_eq!(
+            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, legendary_start), 3,
+        );
+        assert_eq!(get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, 99), 3);
+    }
+}
+
 #[test]
 fn test_all_charm_metadata_definitions() {
     assert_charm_meta(
@@ -272,29 +316,47 @@ fn test_charm_forge_price_is_4444_chip() {
 }
 
 #[test]
-fn test_charm_reroll_uses_lowest_rarity_for_mixed_inputs() {
-    assert_eq!(get_charm_reroll_base_rarity(2, 1, 3), 1);
-    assert_eq!(get_charm_reroll_base_rarity(3, 3, 2), 2);
-    assert_eq!(get_charm_reroll_base_rarity(0, 3, 1), 0);
+fn test_charm_reroll_base_rarity_uses_median_anchor() {
+    assert_eq!(get_charm_reroll_base_rarity(2, 1, 3), 2);
+    assert_eq!(get_charm_reroll_base_rarity(3, 3, 2), 3);
+    assert_eq!(get_charm_reroll_base_rarity(0, 3, 1), 1);
 }
 
 #[test]
-fn test_charm_reroll_common_odds_boundaries() {
-    assert_eq!(get_charm_reroll_result_rarity(0, 0), 0);
-    assert_eq!(get_charm_reroll_result_rarity(0, 79), 0);
-    assert_eq!(get_charm_reroll_result_rarity(0, 80), 1);
-    assert_eq!(get_charm_reroll_result_rarity(0, 97), 1);
-    assert_eq!(get_charm_reroll_result_rarity(0, 98), 2);
+fn test_charm_reroll_composition_odds_boundaries_without_legendary_inputs() {
+    assert_reroll_odds_row(0, 0, 0, 80, 18, 2, 0);
+    assert_reroll_odds_row(0, 0, 1, 55, 40, 5, 0);
+    assert_reroll_odds_row(0, 1, 1, 15, 75, 10, 0);
+    assert_reroll_odds_row(1, 1, 1, 0, 76, 24, 0);
+    assert_reroll_odds_row(0, 0, 2, 45, 35, 20, 0);
+    assert_reroll_odds_row(0, 1, 2, 10, 65, 25, 0);
+    assert_reroll_odds_row(1, 1, 2, 0, 55, 45, 0);
+    assert_reroll_odds_row(0, 2, 2, 5, 30, 65, 0);
+    assert_reroll_odds_row(1, 2, 2, 0, 12, 88, 0);
+    assert_reroll_odds_row(2, 2, 2, 0, 0, 95, 5);
 }
 
 #[test]
-fn test_charm_reroll_rare_epic_legendary_odds_boundaries() {
-    assert_eq!(get_charm_reroll_result_rarity(1, 74), 1);
-    assert_eq!(get_charm_reroll_result_rarity(1, 75), 2);
-    assert_eq!(get_charm_reroll_result_rarity(2, 0), 2);
-    assert_eq!(get_charm_reroll_result_rarity(2, 99), 2);
-    assert_eq!(get_charm_reroll_result_rarity(3, 0), 3);
-    assert_eq!(get_charm_reroll_result_rarity(3, 99), 3);
+fn test_charm_reroll_composition_odds_boundaries_with_legendary_inputs() {
+    assert_reroll_odds_row(0, 0, 3, 35, 35, 25, 5);
+    assert_reroll_odds_row(0, 1, 3, 8, 57, 30, 5);
+    assert_reroll_odds_row(1, 1, 3, 0, 45, 50, 5);
+    assert_reroll_odds_row(0, 2, 3, 5, 20, 65, 10);
+    assert_reroll_odds_row(1, 2, 3, 0, 10, 78, 12);
+    assert_reroll_odds_row(2, 2, 3, 0, 0, 84, 16);
+    assert_reroll_odds_row(0, 3, 3, 0, 20, 60, 20);
+    assert_reroll_odds_row(1, 3, 3, 0, 5, 65, 30);
+    assert_reroll_odds_row(2, 3, 3, 0, 0, 58, 42);
+    assert_reroll_odds_row(3, 3, 3, 0, 0, 0, 100);
+}
+
+#[test]
+fn test_charm_reroll_mixed_inputs_no_longer_use_lowest_rarity_model() {
+    assert_eq!(get_charm_reroll_result_rarity(0, 1, 1, 14), 0);
+    assert_eq!(get_charm_reroll_result_rarity(0, 1, 1, 15), 1);
+    assert_eq!(get_charm_reroll_result_rarity(0, 1, 1, 89), 1);
+    assert_eq!(get_charm_reroll_result_rarity(0, 1, 1, 90), 2);
+    assert_eq!(get_charm_reroll_result_rarity(1, 0, 1, 80), 1);
 }
 
 #[test]

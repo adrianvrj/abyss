@@ -8,33 +8,95 @@ pub const CHARM_FORGE_PRICE_CHIP: u256 = 4_444_000_000_000_000_000_000;
 const CHARM_FORGE_BURN_PERCENTAGE: u256 = 90;
 const HUNDRED: u256 = 100;
 
-pub fn get_charm_reroll_base_rarity(rarity_1: u8, rarity_2: u8, rarity_3: u8) -> u8 {
-    let mut base = rarity_1;
-    if rarity_2 < base {
-        base = rarity_2;
+fn sort_charm_reroll_rarities(rarity_1: u8, rarity_2: u8, rarity_3: u8) -> (u8, u8, u8) {
+    let mut low = rarity_1;
+    let mut mid = rarity_2;
+    let mut high = rarity_3;
+
+    if mid < low {
+        let tmp = low;
+        low = mid;
+        mid = tmp;
     }
-    if rarity_3 < base {
-        base = rarity_3;
+    if high < mid {
+        let tmp = mid;
+        mid = high;
+        high = tmp;
     }
-    base
+    if mid < low {
+        let tmp = low;
+        low = mid;
+        mid = tmp;
+    }
+
+    (low, mid, high)
 }
 
-pub fn get_charm_reroll_result_rarity(base_rarity: u8, roll: u32) -> u8 {
-    if base_rarity == 0 {
-        if roll < 80 {
-            0
-        } else if roll < 98 {
-            1
-        } else {
-            2
-        }
-    } else if base_rarity == 1 {
-        if roll < 75 {
-            1
-        } else {
-            2
-        }
-    } else if base_rarity == 2 {
+pub fn get_charm_reroll_base_rarity(rarity_1: u8, rarity_2: u8, rarity_3: u8) -> u8 {
+    let (_, anchor, _) = sort_charm_reroll_rarities(rarity_1, rarity_2, rarity_3);
+    anchor
+}
+
+fn get_charm_reroll_cumulative_odds(rarity_1: u8, rarity_2: u8, rarity_3: u8) -> (
+    u32, u32, u32,
+) {
+    let (low, mid, high) = sort_charm_reroll_rarities(rarity_1, rarity_2, rarity_3);
+
+    if low == 0 && mid == 0 && high == 0 {
+        (80, 98, 100)
+    } else if low == 0 && mid == 0 && high == 1 {
+        (55, 95, 100)
+    } else if low == 0 && mid == 1 && high == 1 {
+        (15, 90, 100)
+    } else if low == 1 && mid == 1 && high == 1 {
+        (0, 76, 100)
+    } else if low == 0 && mid == 0 && high == 2 {
+        (45, 80, 100)
+    } else if low == 0 && mid == 1 && high == 2 {
+        (10, 75, 100)
+    } else if low == 1 && mid == 1 && high == 2 {
+        (0, 55, 100)
+    } else if low == 0 && mid == 2 && high == 2 {
+        (5, 35, 100)
+    } else if low == 1 && mid == 2 && high == 2 {
+        (0, 12, 100)
+    } else if low == 2 && mid == 2 && high == 2 {
+        (0, 0, 95)
+    } else if low == 0 && mid == 0 && high == 3 {
+        (35, 70, 95)
+    } else if low == 0 && mid == 1 && high == 3 {
+        (8, 65, 95)
+    } else if low == 1 && mid == 1 && high == 3 {
+        (0, 45, 95)
+    } else if low == 0 && mid == 2 && high == 3 {
+        (5, 25, 90)
+    } else if low == 1 && mid == 2 && high == 3 {
+        (0, 10, 88)
+    } else if low == 2 && mid == 2 && high == 3 {
+        (0, 0, 84)
+    } else if low == 0 && mid == 3 && high == 3 {
+        (0, 20, 80)
+    } else if low == 1 && mid == 3 && high == 3 {
+        (0, 5, 70)
+    } else if low == 2 && mid == 3 && high == 3 {
+        (0, 0, 58)
+    } else {
+        (0, 0, 0)
+    }
+}
+
+pub fn get_charm_reroll_result_rarity(
+    rarity_1: u8, rarity_2: u8, rarity_3: u8, roll: u32,
+) -> u8 {
+    let (common_max, rare_max, epic_max) = get_charm_reroll_cumulative_odds(
+        rarity_1, rarity_2, rarity_3,
+    );
+
+    if roll < common_max {
+        0
+    } else if roll < rare_max {
+        1
+    } else if roll < epic_max {
         2
     } else {
         3
@@ -299,7 +361,9 @@ pub mod Charm {
             );
             let seed_u256: u256 = seed.into();
             let roll: u32 = (seed_u256.low % 100).try_into().unwrap();
-            let result_rarity = get_charm_reroll_result_rarity(base_rarity, roll);
+            let result_rarity = get_charm_reroll_result_rarity(
+                meta_1.rarity, meta_2.rarity, meta_3.rarity, roll,
+            );
 
             self.erc721.burn(token_id_1);
             self.erc721.burn(token_id_2);

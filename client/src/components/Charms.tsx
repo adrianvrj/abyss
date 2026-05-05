@@ -37,18 +37,29 @@ const RARITY_ORDER: Record<string, number> = {
     Legendary: 3,
 };
 
-const ODDS_BY_BASE: Record<string, Array<{ rarity: string; chance: number }>> = {
-    Common: [
-        { rarity: "Common", chance: 80 },
-        { rarity: "Rare", chance: 18 },
-        { rarity: "Epic", chance: 2 },
-    ],
-    Rare: [
-        { rarity: "Rare", chance: 75 },
-        { rarity: "Epic", chance: 25 },
-    ],
-    Epic: [{ rarity: "Epic", chance: 100 }],
-    Legendary: [{ rarity: "Legendary", chance: 100 }],
+const RARITY_LABELS = ["Common", "Rare", "Epic", "Legendary"] as const;
+
+const ODDS_BY_COMPOSITION: Record<string, [number, number, number, number]> = {
+    "0-0-0": [80, 18, 2, 0],
+    "0-0-1": [55, 40, 5, 0],
+    "0-1-1": [15, 75, 10, 0],
+    "1-1-1": [0, 76, 24, 0],
+    "0-0-2": [45, 35, 20, 0],
+    "0-1-2": [10, 65, 25, 0],
+    "1-1-2": [0, 55, 45, 0],
+    "0-2-2": [5, 30, 65, 0],
+    "1-2-2": [0, 12, 88, 0],
+    "2-2-2": [0, 0, 95, 5],
+    "0-0-3": [35, 35, 25, 5],
+    "0-1-3": [8, 57, 30, 5],
+    "1-1-3": [0, 45, 50, 5],
+    "0-2-3": [5, 20, 65, 10],
+    "1-2-3": [0, 10, 78, 12],
+    "2-2-3": [0, 0, 84, 16],
+    "0-3-3": [0, 20, 60, 20],
+    "1-3-3": [0, 5, 65, 30],
+    "2-3-3": [0, 0, 58, 42],
+    "3-3-3": [0, 0, 0, 100],
 };
 
 interface OwnedCharmToken {
@@ -74,6 +85,21 @@ function toForgeView(charm: OwnedCharmToken) {
 
 function getStaticFallback(charmId: number): StaticCharmDefinition | null {
     return STATIC_CHARM_DEFINITIONS[charmId] ?? null;
+}
+
+function getCompositionOdds(charms: OwnedCharmToken[]) {
+    if (charms.length !== 3) return [];
+
+    const key = charms
+        .map((charm) => RARITY_ORDER[charm.rarity] ?? 0)
+        .sort((a, b) => a - b)
+        .join("-");
+    const odds = ODDS_BY_COMPOSITION[key];
+    if (!odds) return [];
+
+    return odds
+        .map((chance, index) => ({ rarity: RARITY_LABELS[index], chance }))
+        .filter((entry) => entry.chance > 0);
 }
 
 function parseError(error: unknown) {
@@ -176,15 +202,7 @@ export function Charms() {
         [ownedCharms, selectedTokenIds],
     );
 
-    const baseRarity = useMemo(() => {
-        if (selectedCharms.length !== 3) return null;
-        return selectedCharms.reduce((lowest, charm) => {
-            const current = RARITY_ORDER[charm.rarity] ?? 0;
-            return current < (RARITY_ORDER[lowest] ?? 0) ? charm.rarity : lowest;
-        }, selectedCharms[0]!.rarity);
-    }, [selectedCharms]);
-
-    const odds = baseRarity ? ODDS_BY_BASE[baseRarity] ?? [] : [];
+    const odds = useMemo(() => getCompositionOdds(selectedCharms), [selectedCharms]);
     const canForge = selectedCharms.length === 3 && !isForging;
     const forgeCostChip = Number(forgeCost / 10n ** 18n).toLocaleString("en-US");
 
@@ -350,7 +368,7 @@ export function Charms() {
                     <div className="forge-warning">THE 3 SELECTED CHARMS WILL BE BURNED.</div>
                     <div className="forge-odds">
                         <div className="forge-side-label">ODDS</div>
-                        <p>Based on the lowest rarity selected.</p>
+                        <p>Based on all 3 selected rarities.</p>
                         {odds.length > 0 ? odds.map((entry) => (
                             <div key={entry.rarity} className="forge-odd-row">
                                 <span style={{ color: RARITY_COLORS[entry.rarity] }}>{entry.rarity}</span>
@@ -377,7 +395,7 @@ export function Charms() {
                     <div className="forge-warning">THE 3 SELECTED CHARMS WILL BE BURNED.</div>
                     <div className="forge-odds">
                         <div className="forge-side-label">ODDS</div>
-                        <p>Based on the lowest rarity selected.</p>
+                        <p>Based on all 3 selected rarities.</p>
                         {odds.length > 0 ? odds.map((entry) => (
                             <div key={entry.rarity} className="forge-odd-row">
                                 <span style={{ color: RARITY_COLORS[entry.rarity] }}>{entry.rarity}</span>
