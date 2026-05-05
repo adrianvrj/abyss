@@ -4,25 +4,68 @@ pub fn NAME() -> ByteArray {
 }
 
 const MINTER_ROLE: felt252 = selector!("MINTER_ROLE");
+pub const CHARM_FORGE_PRICE_CHIP: u256 = 4_444_000_000_000_000_000_000;
+const CHARM_FORGE_BURN_PERCENTAGE: u256 = 90;
+const HUNDRED: u256 = 100;
+
+pub fn get_charm_reroll_base_rarity(rarity_1: u8, rarity_2: u8, rarity_3: u8) -> u8 {
+    let mut base = rarity_1;
+    if rarity_2 < base {
+        base = rarity_2;
+    }
+    if rarity_3 < base {
+        base = rarity_3;
+    }
+    base
+}
+
+pub fn get_charm_reroll_result_rarity(base_rarity: u8, roll: u32) -> u8 {
+    if base_rarity == 0 {
+        if roll < 80 {
+            0
+        } else if roll < 98 {
+            1
+        } else {
+            2
+        }
+    } else if base_rarity == 1 {
+        if roll < 75 {
+            1
+        } else {
+            2
+        }
+    } else if base_rarity == 2 {
+        2
+    } else {
+        3
+    }
+}
 
 #[dojo::contract]
 pub mod Charm {
     use dojo::world::WorldStorageTrait;
+    use core::poseidon::poseidon_hash_span;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::interfaces::token::erc721::{IERC721, IERC721Metadata};
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
-    use starknet::ContractAddress;
+    use starknet::{ContractAddress, get_caller_address};
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use crate::constants::NAMESPACE;
     use crate::helpers::charm_types::{get_charm_ids_by_rarity, get_charm_type_info};
+    use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::interfaces::charm_nft::{CharmMetadata, ICharm};
+    use crate::store::StoreTrait;
     use crate::systems::play::NAME as PLAY_NAME;
     use crate::systems::setup::NAME as SETUP_NAME;
+    use crate::systems::token::{IChipDispatcher, IChipDispatcherTrait};
     use crate::systems::treasury::NAME as TREASURY_NAME;
-    use super::MINTER_ROLE;
+    use super::{
+        CHARM_FORGE_BURN_PERCENTAGE, CHARM_FORGE_PRICE_CHIP, HUNDRED, MINTER_ROLE,
+        get_charm_reroll_base_rarity, get_charm_reroll_result_rarity,
+    };
 
     component!(path: ERC721Component, storage: erc721, event: ERC721Event);
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
@@ -57,6 +100,20 @@ pub mod Charm {
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
         SRC5Event: SRC5Component::Event,
+        CharmRerolled: CharmRerolled,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct CharmRerolled {
+        #[key]
+        player: ContractAddress,
+        token_id_1: u256,
+        token_id_2: u256,
+        token_id_3: u256,
+        new_token_id: u256,
+        new_charm_id: u32,
+        base_rarity: u8,
+        result_rarity: u8,
     }
 
     #[generate_trait]
@@ -171,6 +228,105 @@ pub mod Charm {
 
         fn get_charm_type_info(self: @ContractState, charm_id: u32) -> CharmMetadata {
             get_charm_type_info(charm_id)
+        }
+
+        fn get_charm_forge_cost_in_token(
+            self: @ContractState, payment_token: ContractAddress,
+        ) -> u256 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let config = store.config();
+            assert(payment_token == config.chip_token, 'Unsupported payment token');
+            CHARM_FORGE_PRICE_CHIP
+        }
+
+        fn reroll_charms(
+            ref self: ContractState,
+            token_id_1: u256,
+            token_id_2: u256,
+            token_id_3: u256,
+            payment_token: ContractAddress,
+        ) -> u256 {
+            assert(token_id_1 != token_id_2, 'Duplicate token IDs');
+            assert(token_id_1 != token_id_3, 'Duplicate token IDs');
+            assert(token_id_2 != token_id_3, 'Duplicate token IDs');
+
+            let caller = get_caller_address();
+            assert(self.erc721.owner_of(token_id_1) == caller, 'Not charm owner');
+            assert(self.erc721.owner_of(token_id_2) == caller, 'Not charm owner');
+            assert(self.erc721.owner_of(token_id_3) == caller, 'Not charm owner');
+
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let config = store.config();
+            assert(payment_token == config.chip_token, 'Unsupported payment token');
+
+            let token = IERC20Dispatcher { contract_address: payment_token };
+            let this = starknet::get_contract_address();
+            token.transfer_from(caller, this, CHARM_FORGE_PRICE_CHIP);
+
+            let burn_amount = CHARM_FORGE_PRICE_CHIP * CHARM_FORGE_BURN_PERCENTAGE / HUNDRED;
+            let team_amount = CHARM_FORGE_PRICE_CHIP - burn_amount;
+            if burn_amount > 0 {
+                let chip = IChipDispatcher { contract_address: payment_token };
+                chip.burn(burn_amount);
+            }
+            if team_amount > 0 {
+                token.transfer(config.team, team_amount);
+            }
+
+            let charm_id_1 = self.token_charm_id.entry(token_id_1).read();
+            let charm_id_2 = self.token_charm_id.entry(token_id_2).read();
+            let charm_id_3 = self.token_charm_id.entry(token_id_3).read();
+            let meta_1 = get_charm_type_info(charm_id_1);
+            let meta_2 = get_charm_type_info(charm_id_2);
+            let meta_3 = get_charm_type_info(charm_id_3);
+            let base_rarity = get_charm_reroll_base_rarity(
+                meta_1.rarity, meta_2.rarity, meta_3.rarity,
+            );
+
+            let seed = poseidon_hash_span(
+                array![
+                    caller.into(),
+                    token_id_1.low.into(),
+                    token_id_2.low.into(),
+                    token_id_3.low.into(),
+                    starknet::get_block_timestamp().into(),
+                    self.next_token_id.read().into(),
+                ]
+                    .span(),
+            );
+            let seed_u256: u256 = seed.into();
+            let roll: u32 = (seed_u256.low % 100).try_into().unwrap();
+            let result_rarity = get_charm_reroll_result_rarity(base_rarity, roll);
+
+            self.erc721.burn(token_id_1);
+            self.erc721.burn(token_id_2);
+            self.erc721.burn(token_id_3);
+            self.token_charm_id.entry(token_id_1).write(0);
+            self.token_charm_id.entry(token_id_2).write(0);
+            self.token_charm_id.entry(token_id_3).write(0);
+
+            let charm_ids = get_charm_ids_by_rarity(result_rarity);
+            assert(charm_ids.len() > 0, 'Invalid rarity');
+            let index: u32 = ((seed_u256.low / 100) % charm_ids.len().into()).try_into().unwrap();
+            let new_charm_id = *charm_ids.at(index);
+            let new_token_id = InternalImpl::mint_charm_internal(ref self, caller, new_charm_id);
+
+            self.emit(
+                CharmRerolled {
+                    player: caller,
+                    token_id_1,
+                    token_id_2,
+                    token_id_3,
+                    new_token_id,
+                    new_charm_id,
+                    base_rarity,
+                    result_rarity,
+                },
+            );
+
+            new_token_id
         }
 
         fn mint_random_charm_of_rarity(

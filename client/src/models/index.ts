@@ -49,6 +49,7 @@ export {
   type PhantomActivatedEvent,
   type RelicEquippedEvent,
   type CharmMintedEvent,
+  type CharmRerolledEvent,
   type BibliaDiscardedEvent,
   type CashOutResolvedEvent,
   type ParsedGameEvents,

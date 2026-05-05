@@ -4,6 +4,9 @@ use crate::helpers::charm_types::{
 };
 use crate::helpers::grid::normalize_spin_luck;
 use crate::systems::play::get_charm_drop_chance_from_score_and_luck;
+use crate::systems::charm::{
+    CHARM_FORGE_PRICE_CHIP, get_charm_reroll_base_rarity, get_charm_reroll_result_rarity,
+};
 use crate::types::effect::{CharmConditionType, CharmEffectType};
 
 fn assert_charm_meta(
@@ -238,7 +241,7 @@ fn test_all_charm_metadata_definitions() {
         45,
         0,
         CharmConditionType::None,
-        2,
+        3,
         5,
     );
     assert_charm_meta(
@@ -249,7 +252,7 @@ fn test_all_charm_metadata_definitions() {
         2,
         80,
         CharmConditionType::None,
-        2,
+        3,
         5,
     );
 }
@@ -258,8 +261,40 @@ fn test_all_charm_metadata_definitions() {
 fn test_charm_ids_grouped_by_rarity() {
     assert_u32_array_eq(get_charm_ids_by_rarity(0), array![1, 2, 3, 4, 5, 6, 7, 8]);
     assert_u32_array_eq(get_charm_ids_by_rarity(1), array![9, 10, 11, 12, 13, 14]);
-    assert_u32_array_eq(get_charm_ids_by_rarity(2), array![15, 16, 17, 18, 19, 20]);
+    assert_u32_array_eq(get_charm_ids_by_rarity(2), array![15, 16, 17, 18]);
+    assert_u32_array_eq(get_charm_ids_by_rarity(3), array![19, 20]);
     assert_u32_array_eq(get_charm_ids_by_rarity(99), array![]);
+}
+
+#[test]
+fn test_charm_forge_price_is_4444_chip() {
+    assert_eq!(CHARM_FORGE_PRICE_CHIP, 4_444_000_000_000_000_000_000);
+}
+
+#[test]
+fn test_charm_reroll_uses_lowest_rarity_for_mixed_inputs() {
+    assert_eq!(get_charm_reroll_base_rarity(2, 1, 3), 1);
+    assert_eq!(get_charm_reroll_base_rarity(3, 3, 2), 2);
+    assert_eq!(get_charm_reroll_base_rarity(0, 3, 1), 0);
+}
+
+#[test]
+fn test_charm_reroll_common_odds_boundaries() {
+    assert_eq!(get_charm_reroll_result_rarity(0, 0), 0);
+    assert_eq!(get_charm_reroll_result_rarity(0, 79), 0);
+    assert_eq!(get_charm_reroll_result_rarity(0, 80), 1);
+    assert_eq!(get_charm_reroll_result_rarity(0, 97), 1);
+    assert_eq!(get_charm_reroll_result_rarity(0, 98), 2);
+}
+
+#[test]
+fn test_charm_reroll_rare_epic_legendary_odds_boundaries() {
+    assert_eq!(get_charm_reroll_result_rarity(1, 74), 1);
+    assert_eq!(get_charm_reroll_result_rarity(1, 75), 2);
+    assert_eq!(get_charm_reroll_result_rarity(2, 0), 2);
+    assert_eq!(get_charm_reroll_result_rarity(2, 99), 2);
+    assert_eq!(get_charm_reroll_result_rarity(3, 0), 3);
+    assert_eq!(get_charm_reroll_result_rarity(3, 99), 3);
 }
 
 #[test]

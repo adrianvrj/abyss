@@ -74,6 +74,15 @@ export interface CharmMintedEvent {
     tokenId: bigint;
 }
 
+export interface CharmRerolledEvent {
+    player: string;
+    tokenIds: [bigint, bigint, bigint];
+    newTokenId: bigint;
+    newCharmId: number;
+    baseRarity: number;
+    resultRarity: number;
+}
+
 export interface BibliaDiscardedEvent {
     sessionId: number;
     discarded: boolean;
@@ -93,6 +102,7 @@ export interface ParsedEvents {
     phantomActivated: PhantomActivatedEvent | null;
     relicEquipped: RelicEquippedEvent | null;
     charmMinted: CharmMintedEvent | null;
+    charmRerolled: CharmRerolledEvent | null;
     bibliaDiscarded: BibliaDiscardedEvent | null;
     cashOutResolved: CashOutResolvedEvent | null;
 }
@@ -126,6 +136,7 @@ const EVENT_SELECTORS = {
     PhantomActivated: hash.getSelectorFromName('PhantomActivated'),
     RelicEquipped: hash.getSelectorFromName('RelicEquipped'),
     CharmMinted: hash.getSelectorFromName('CharmMinted'),
+    CharmRerolled: hash.getSelectorFromName('CharmRerolled'),
     BibliaDiscarded: hash.getSelectorFromName('BibliaDiscarded'),
     CashOutResolved: hash.getSelectorFromName('CashOutResolved'),
 };
@@ -492,6 +503,32 @@ function parseCharmMintedEvent(eventData: Array<string | bigint | number>): Char
     }
 }
 
+function parseCharmRerolledEvent(
+    eventData: Array<string | bigint | number>,
+    eventKeys: Array<string | bigint | number> = [],
+): CharmRerolledEvent | null {
+    if (!eventData || eventData.length < 11) return null;
+
+    try {
+        const token1 = feltToBigInt(eventData[0]) + (feltToBigInt(eventData[1]) << BigInt(128));
+        const token2 = feltToBigInt(eventData[2]) + (feltToBigInt(eventData[3]) << BigInt(128));
+        const token3 = feltToBigInt(eventData[4]) + (feltToBigInt(eventData[5]) << BigInt(128));
+        const newTokenId = feltToBigInt(eventData[6]) + (feltToBigInt(eventData[7]) << BigInt(128));
+
+        return {
+            player: normalizeAddress(eventKeys[1]) ?? '',
+            tokenIds: [token1, token2, token3],
+            newTokenId,
+            newCharmId: feltToNumber(eventData[8]),
+            baseRarity: feltToNumber(eventData[9]),
+            resultRarity: feltToNumber(eventData[10]),
+        };
+    } catch (e) {
+        console.error('Failed to parse CharmRerolled event:', e);
+        return null;
+    }
+}
+
 /**
  * Parse BibliaDiscarded event
  */
@@ -529,6 +566,7 @@ export function hasParsedEvents(events: ParsedEvents): boolean {
         events.phantomActivated ||
         events.relicEquipped ||
         events.charmMinted ||
+        events.charmRerolled ||
         events.bibliaDiscarded ||
         events.cashOutResolved ||
         events.itemsPurchased.length > 0 ||
@@ -549,6 +587,7 @@ function parseNormalizedEvents(
         phantomActivated: null,
         relicEquipped: null,
         charmMinted: null,
+        charmRerolled: null,
         bibliaDiscarded: null,
         cashOutResolved: null,
     };
@@ -565,6 +604,7 @@ function parseNormalizedEvents(
     const playAddress = normalizeAddress(sourceList[1]);
     const marketAddress = normalizeAddress(sourceList[2]);
     const relicAddress = normalizeAddress(sourceList[3]);
+    const charmAddress = normalizeAddress(sourceList[4]);
 
     for (const event of events) {
         if (allowedAddresses && event.fromAddress !== null && event.fromAddress !== undefined) {
@@ -620,6 +660,11 @@ function parseNormalizedEvents(
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmMinted);
                 result.charmMinted = parsed;
+            }
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmRerolled) >= 0) {
+            const parsed = parseCharmRerolledEvent(event.data, event.keys);
+            if (parsed) {
+                result.charmRerolled = parsed;
             }
         } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.BibliaDiscarded) >= 0) {
             const parsed = parseBibliaDiscardedEvent(event.data);
@@ -687,6 +732,11 @@ function parseNormalizedEvents(
                     parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.CharmMinted);
                     result.charmMinted = parsed;
                 }
+            } else if (emitterAddress === charmAddress && dojoEvent.fieldValues.length === 11) {
+                const parsed = parseCharmRerolledEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
+                if (parsed) {
+                    result.charmRerolled = parsed;
+                }
             } else if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 1) {
                 if (findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.CashOutResolved) >= 0) {
                     const parsed = parseCashOutResolvedEvent(dojoEvent.fieldValues);
@@ -728,6 +778,7 @@ export function parseReceiptEvents(
             phantomActivated: null,
             relicEquipped: null,
             charmMinted: null,
+            charmRerolled: null,
             bibliaDiscarded: null,
             cashOutResolved: null,
         };

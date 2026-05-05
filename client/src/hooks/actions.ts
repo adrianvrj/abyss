@@ -6,6 +6,7 @@ import { getRpcProvider } from "@/api/rpc/provider";
 import { getGameConfig, getUsdCostInToken } from "@/api/rpc/play";
 import {
   DEFAULT_CHAIN_ID,
+  getCharmAddress,
   getMarketAddress,
   getPlayAddress,
   getRelicAddress,
@@ -58,6 +59,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
   const playAddress = useMemo(() => getPlayAddress(chainId), [chainId]);
   const marketAddress = useMemo(() => getMarketAddress(chainId), [chainId]);
   const relicAddress = useMemo(() => getRelicAddress(chainId), [chainId]);
+  const charmAddress = useMemo(() => getCharmAddress(chainId), [chainId]);
 
   const waitForReceipt = useCallback(
     async (transactionHash: string) => {
@@ -107,10 +109,11 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           playAddress,
           marketAddress,
           relicAddress,
+          charmAddress,
         ]),
       };
     },
-    [account, marketAddress, playAddress, relicAddress, waitForReceipt, worldAddress],
+    [account, charmAddress, marketAddress, playAddress, relicAddress, waitForReceipt, worldAddress],
   );
 
   const equipCharms = useCallback(
@@ -356,6 +359,37 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     [account, executeCalls, playAddress, relicAddress],
   );
 
+  const rerollCharms = useCallback(
+    async (tokenIds: [bigint, bigint, bigint], paymentToken: string, amount: bigint) => {
+      if (!account) {
+        throw new Error("Wallet not connected");
+      }
+
+      const [tokenId1, tokenId2, tokenId3] = tokenIds;
+      return executeCalls([
+        {
+          contractAddress: paymentToken,
+          entrypoint: "approve",
+          calldata: CallData.compile([
+            charmAddress,
+            ...toUint256(amount),
+          ]),
+        },
+        {
+          contractAddress: charmAddress,
+          entrypoint: "reroll_charms",
+          calldata: CallData.compile([
+            ...toUint256(tokenId1),
+            ...toUint256(tokenId2),
+            ...toUint256(tokenId3),
+            paymentToken,
+          ]),
+        },
+      ]);
+    },
+    [account, charmAddress, executeCalls],
+  );
+
   const endSession = useCallback(
     async (sessionId: number) =>
       executeCalls([
@@ -388,6 +422,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     playAddress,
     marketAddress,
     relicAddress,
+    charmAddress,
     createSession,
     claimFreeSessionBundle,
     setPendingCharmLoadout,
@@ -398,6 +433,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     refreshMarket,
     equipRelic,
     activateRelic,
+    rerollCharms,
     endSession,
     claimChips,
     waitForReceipt,

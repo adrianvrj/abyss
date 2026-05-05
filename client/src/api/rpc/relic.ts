@@ -150,6 +150,23 @@ export async function getCharmTypeInfo(
   return parseCharmMetadataResult(result);
 }
 
+export async function getCharmForgeCostInToken(
+  chainId: ChainLike,
+  charmContractAddress: string,
+  paymentToken: string,
+) {
+  const provider = getRpcProvider(chainId);
+  const result = await provider.callContract({
+    contractAddress: charmContractAddress,
+    entrypoint: "get_charm_forge_cost_in_token",
+    calldata: [paymentToken],
+  });
+
+  const low = BigInt(result[0] ?? "0");
+  const high = BigInt(result[1] ?? "0");
+  return low + (high << 128n);
+}
+
 export async function getNftBalance(
   chainId: ChainLike,
   contractAddress: string,

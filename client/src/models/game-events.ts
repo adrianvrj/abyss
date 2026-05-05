@@ -69,6 +69,15 @@ export interface CharmMintedEvent {
   tokenId: bigint;
 }
 
+export interface CharmRerolledEvent {
+  player: string;
+  tokenIds: [bigint, bigint, bigint];
+  newTokenId: bigint;
+  newCharmId: number;
+  baseRarity: number;
+  resultRarity: number;
+}
+
 export interface BibliaDiscardedEvent {
   sessionId: number;
   discarded: boolean;
@@ -88,6 +97,7 @@ export interface ParsedGameEvents {
   phantomActivated: PhantomActivatedEvent | null;
   relicEquipped: RelicEquippedEvent | null;
   charmMinted: CharmMintedEvent | null;
+  charmRerolled: CharmRerolledEvent | null;
   bibliaDiscarded: BibliaDiscardedEvent | null;
   cashOutResolved: CashOutResolvedEvent | null;
 }

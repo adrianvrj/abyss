@@ -52,9 +52,9 @@ fn charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
             } else if charm_id == 18 {
                 ('Chaos Orb', '+12 base, block666 +140', CharmEffectType::ConditionalLuckBoost, 140, 0, CharmConditionType::Blocked666, 2, 4)
             } else if charm_id == 19 {
-                ('Soul Abyss', 'Luck +45', CharmEffectType::LuckBoost, 45, 0, CharmConditionType::None, 2, 5)
+                ('Soul Abyss', 'Luck +45', CharmEffectType::LuckBoost, 45, 0, CharmConditionType::None, 3, 5)
             } else {
-                ('Void Heart', '+2 spin +80', CharmEffectType::ExtraSpinWithLuck, 2, 80, CharmConditionType::None, 2, 5)
+                ('Void Heart', '+2 spin +80', CharmEffectType::ExtraSpinWithLuck, 2, 80, CharmConditionType::None, 3, 5)
             }
         }
     }
@@ -334,7 +334,9 @@ pub fn get_charm_ids_by_rarity(rarity: u8) -> Array<u32> {
     } else if rarity == 1 {
         return array![9, 10, 11, 12, 13, 14];
     } else if rarity == 2 {
-        return array![15, 16, 17, 18, 19, 20];
+        return array![15, 16, 17, 18];
+    } else if rarity == 3 {
+        return array![19, 20];
     }
 
     array![]
