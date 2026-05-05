@@ -122,20 +122,26 @@ export function Charms() {
             ]);
             setForgeCost(cost);
 
-            const tokens = await Promise.all(tokenIds.map(async (tokenId) => {
-                const metadata = await getCharmMetadata(chainId, charmAddress, tokenId);
-                const staticDef = getStaticFallback(Number(metadata?.charmId ?? 0));
-                const rarity = getCharmRarityLabel(Number(metadata?.rarity ?? RARITY_ORDER[staticDef?.rarity ?? "Common"] ?? 0));
-                return {
-                    tokenId,
-                    charmId: Number(metadata?.charmId ?? staticDef?.charm_id ?? 0),
-                    name: staticDef?.name ?? metadata?.name ?? "Unknown Charm",
-                    rarity: staticDef?.rarity ?? rarity,
-                    effect: staticDef?.effect ?? "",
-                    description: staticDef?.description ?? "",
-                    image: staticDef?.image ?? "/images/charms/1.png",
-                };
+            const tokenResults = await Promise.all(tokenIds.map(async (tokenId) => {
+                try {
+                    const metadata = await getCharmMetadata(chainId, charmAddress, tokenId);
+                    const staticDef = getStaticFallback(Number(metadata?.charmId ?? 0));
+                    const rarity = getCharmRarityLabel(Number(metadata?.rarity ?? RARITY_ORDER[staticDef?.rarity ?? "Common"] ?? 0));
+                    return {
+                        tokenId,
+                        charmId: Number(metadata?.charmId ?? staticDef?.charm_id ?? 0),
+                        name: staticDef?.name ?? metadata?.name ?? "Unknown Charm",
+                        rarity: staticDef?.rarity ?? rarity,
+                        effect: staticDef?.effect ?? "",
+                        description: staticDef?.description ?? "",
+                        image: staticDef?.image ?? "/images/charms/1.png",
+                    };
+                } catch (metadataError) {
+                    console.warn("Skipping stale charm token:", tokenId.toString(), metadataError);
+                    return null;
+                }
             }));
+            const tokens = tokenResults.filter(Boolean) as OwnedCharmToken[];
 
             tokens.sort((a, b) => {
                 const rarityDiff = (RARITY_ORDER[b.rarity] ?? 0) - (RARITY_ORDER[a.rarity] ?? 0);
@@ -204,14 +210,29 @@ export function Charms() {
                 forgeCost,
             );
             const nextOwned = await loadData();
-            const newTokenId = receipt.events.charmRerolled?.newTokenId;
-            const result =
-                (newTokenId ? nextOwned.find((charm) => charm.tokenId === newTokenId) : null) ??
-                nextOwned.find((charm) => !materials.some((material) => material.tokenId === charm.tokenId)) ??
-                null;
+            const rerollEvent = receipt.events.charmRerolled;
+            const mintedToken = rerollEvent?.newTokenId
+                ? nextOwned.find((charm) => charm.tokenId === rerollEvent.newTokenId)
+                : null;
+            const eventCharm = rerollEvent?.newCharmId
+                ? getStaticFallback(rerollEvent.newCharmId)
+                : null;
+            const result = eventCharm
+                ? {
+                    tokenId: rerollEvent!.newTokenId,
+                    charmId: eventCharm.charm_id,
+                    name: eventCharm.name,
+                    rarity: eventCharm.rarity,
+                    effect: eventCharm.effect,
+                    description: eventCharm.description,
+                    image: eventCharm.image,
+                }
+                : mintedToken;
 
             if (result) {
                 setAnimationPayload({ materials, result });
+            } else {
+                setError("Forge succeeded. Refresh charms to view the result.");
             }
             setSelectedTokenIds([]);
         } catch (e) {
