@@ -199,7 +199,8 @@ pub mod Charm {
             let mut current: u64 = 1;
             while current <= total {
                 let token_id: u256 = current.into();
-                if self.erc721.owner_of(token_id) == player {
+                let charm_id = self.token_charm_id.entry(token_id).read();
+                if charm_id != 0 && self.erc721.owner_of(token_id) == player {
                     token_ids.append(token_id);
                 }
                 current += 1;
