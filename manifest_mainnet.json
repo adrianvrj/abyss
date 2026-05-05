@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
-      "class_hash": "0x2a25a12aed7e138dbc1604bd2da7b184706247d7a23df26effb68d6c7383914",
+      "class_hash": "0x7f4a4c0608b6157529f98fe35709e21557d57ece90dd5b108d68477134d1352",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
