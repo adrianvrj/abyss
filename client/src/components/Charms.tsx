@@ -247,8 +247,6 @@ export function Charms() {
                     <p>Burn 3 owned CHARM NFTs + {forgeCostChip} CHIP to forge 1 new random CHARM.</p>
                     <div className="forge-fee-row">
                         <span><img src={CHIP_TOKEN_IMAGE_URL} alt="CHIP" /> {forgeCostChip} CHIP</span>
-                        <span>90% BURNED</span>
-                        <span>10% TEAM</span>
                     </div>
                 </div>
 
