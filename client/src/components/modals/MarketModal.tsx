@@ -150,10 +150,14 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         setRefreshing(true);
         try {
             const previousMarket = marketData;
-            await refreshMarket(sessionId);
+            const events = await refreshMarket(sessionId);
             onUpdateScore(currentScore - refreshCost);
             setPurchasedInCurrentMarket(new Set());
-            await loadRefreshedMarketData(previousMarket);
+            if (events.models.sessionMarket && hasMarketAdvanced(events.models.sessionMarket, previousMarket)) {
+                await applyMarketData(events.models.sessionMarket);
+            } else {
+                await loadRefreshedMarketData(previousMarket);
+            }
             setCurrentItemIndex(0);
         } catch (e) {
             console.error("Refresh failed", e);

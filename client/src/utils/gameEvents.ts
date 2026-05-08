@@ -95,6 +95,56 @@ export interface CashOutResolvedEvent {
     succeeded: boolean;
 }
 
+export interface ReceiptSessionModel {
+    sessionId: number;
+    playerAddress: string;
+    level: number;
+    score: number;
+    totalScore: number;
+    spinsRemaining: number;
+    isCompetitive: boolean;
+    isActive: boolean;
+    chipsClaimed: boolean;
+    equippedRelic: bigint;
+    relicLastUsedSpin: number;
+    relicPendingEffect: number;
+    totalSpins: number;
+    luck: number;
+    blocked666: boolean;
+    tickets: number;
+    symbolScores: number[];
+}
+
+export interface ReceiptSpinResultModel {
+    sessionId: number;
+    grid: number[];
+    score: number;
+    patternsCount: number;
+    is666: boolean;
+    isJackpot: boolean;
+    isPending: boolean;
+    bibliaUsed: boolean;
+}
+
+export interface ReceiptSessionMarketModel {
+    sessionId: number;
+    refresh_count: number;
+    item_slot_1: number;
+    item_slot_2: number;
+    item_slot_3: number;
+    item_slot_4: number;
+    item_slot_5: number;
+    item_slot_6: number;
+    purchased_mask: number;
+}
+
+export interface ReceiptModelEvents {
+    session: ReceiptSessionModel | null;
+    spinResult: ReceiptSpinResultModel | null;
+    sessionMarket: ReceiptSessionMarketModel | null;
+    sessionChipBonusUnits: number | null;
+}
+
 export interface ParsedEvents {
     spinCompleted: SpinCompletedEvent | null;
     itemsPurchased: ItemPurchasedEvent[];
@@ -107,6 +157,7 @@ export interface ParsedEvents {
     charmRerolled: CharmRerolledEvent | null;
     bibliaDiscarded: BibliaDiscardedEvent | null;
     cashOutResolved: CashOutResolvedEvent | null;
+    models: ReceiptModelEvents;
 }
 
 type RawEvent = {
@@ -130,6 +181,7 @@ type DojoEventEnvelope = {
 
 // Event selectors
 const EVENT_SELECTORS = {
+    StoreSetRecord: hash.getSelectorFromName('StoreSetRecord'),
     SpinCompleted: hash.getSelectorFromName('SpinCompleted'),
     SpinCompletedSignal: hash.getSelectorFromName('SpinCompletedSignal'),
     ItemPurchased: hash.getSelectorFromName('ItemPurchased'),
@@ -143,6 +195,13 @@ const EVENT_SELECTORS = {
     CharmRerolled: hash.getSelectorFromName('CharmRerolled'),
     BibliaDiscarded: hash.getSelectorFromName('BibliaDiscarded'),
     CashOutResolved: hash.getSelectorFromName('CashOutResolved'),
+};
+
+const MODEL_SELECTORS = {
+    Session: '0x408ca588a52ba173cdb4bd5bc4c537bc1a4e7469233b88a310a49a4986093d7',
+    SessionChipBonus: '0x509e54fc96074b4d021ccaf938c8f4f6bc513a8a5543ff504d51cdbdc3027fc',
+    SessionMarket: '0x4ad8621b44437e094945deac96dbf20edf05da7e934fb9045e5788197852c9d',
+    SpinResult: '0x1b3c97e5175ff17598a208a9cbcd6783b9990d1447fef25801234fe2ee58a48',
 };
 
 function feltToNumber(value: string | bigint | number | undefined | null, fallback = 0): number {
@@ -588,6 +647,128 @@ function parseCashOutResolvedEvent(eventData: Array<string | bigint | number>): 
     }
 }
 
+function isSameFelt(a: string | bigint | number | undefined | null, b: string | bigint | number): boolean {
+    try {
+        return BigInt(a ?? 0) === BigInt(b);
+    } catch {
+        return a === b;
+    }
+}
+
+function parseStoreSetRecordModel(
+    event: RawEvent,
+): { selector: string | bigint | number; keyValues: Array<string | bigint | number>; fieldValues: Array<string | bigint | number> } | null {
+    const storeSetRecordIndex = findSelectorIndex(event.keys, EVENT_SELECTORS.StoreSetRecord);
+    if (storeSetRecordIndex < 0 || !event.keys[storeSetRecordIndex + 1]) {
+        return null;
+    }
+
+    const envelope = unwrapDojoEventData(event.data);
+    if (!envelope) {
+        return null;
+    }
+
+    return {
+        selector: event.keys[storeSetRecordIndex + 1],
+        keyValues: envelope.keyValues,
+        fieldValues: envelope.fieldValues,
+    };
+}
+
+function parseSessionModel(
+    keyValues: Array<string | bigint | number>,
+    values: Array<string | bigint | number>,
+): ReceiptSessionModel | null {
+    if (values.length < 22) {
+        return null;
+    }
+
+    try {
+        const equippedRelicLow = feltToBigInt(values[9]);
+        const equippedRelicHigh = feltToBigInt(values[10]);
+
+        return {
+            sessionId: feltToNumber(keyValues[0]),
+            playerAddress: String(values[0] ?? '0x0'),
+            level: feltToNumber(values[1]),
+            score: feltToNumber(values[2]),
+            totalScore: feltToNumber(values[3]),
+            spinsRemaining: feltToNumber(values[4]),
+            isCompetitive: isTruthyFelt(values[5]),
+            isActive: isTruthyFelt(values[6]),
+            chipsClaimed: isTruthyFelt(values[8]),
+            equippedRelic: equippedRelicLow + (equippedRelicHigh << 128n),
+            relicLastUsedSpin: feltToNumber(values[11]),
+            relicPendingEffect: feltToNumber(values[12]),
+            totalSpins: feltToNumber(values[13]),
+            luck: feltToNumber(values[14]),
+            blocked666: isTruthyFelt(values[15]),
+            tickets: feltToNumber(values[16]),
+            symbolScores: [
+                feltToNumber(values[17]),
+                feltToNumber(values[18]),
+                feltToNumber(values[19]),
+                feltToNumber(values[20]),
+                feltToNumber(values[21]),
+            ],
+        };
+    } catch (e) {
+        console.error('Failed to parse Session model event:', e);
+        return null;
+    }
+}
+
+function parseSpinResultModel(
+    keyValues: Array<string | bigint | number>,
+    values: Array<string | bigint | number>,
+): ReceiptSpinResultModel | null {
+    if (values.length < 21) {
+        return null;
+    }
+
+    try {
+        return {
+            sessionId: feltToNumber(keyValues[0]),
+            grid: Array.from({ length: 15 }, (_, index) => feltToNumber(values[index])),
+            score: feltToNumber(values[15]),
+            patternsCount: feltToNumber(values[16]),
+            is666: isTruthyFelt(values[17]),
+            isJackpot: isTruthyFelt(values[18]),
+            isPending: isTruthyFelt(values[19]),
+            bibliaUsed: isTruthyFelt(values[20]),
+        };
+    } catch (e) {
+        console.error('Failed to parse SpinResult model event:', e);
+        return null;
+    }
+}
+
+function parseSessionMarketModel(
+    keyValues: Array<string | bigint | number>,
+    values: Array<string | bigint | number>,
+): ReceiptSessionMarketModel | null {
+    if (values.length < 8) {
+        return null;
+    }
+
+    try {
+        return {
+            sessionId: feltToNumber(keyValues[0]),
+            refresh_count: feltToNumber(values[0]),
+            item_slot_1: feltToNumber(values[1]),
+            item_slot_2: feltToNumber(values[2]),
+            item_slot_3: feltToNumber(values[3]),
+            item_slot_4: feltToNumber(values[4]),
+            item_slot_5: feltToNumber(values[5]),
+            item_slot_6: feltToNumber(values[6]),
+            purchased_mask: feltToNumber(values[7]),
+        };
+    } catch (e) {
+        console.error('Failed to parse SessionMarket model event:', e);
+        return null;
+    }
+}
+
 export function hasParsedEvents(events: ParsedEvents): boolean {
     return Boolean(
         events.spinCompleted ||
@@ -600,7 +781,11 @@ export function hasParsedEvents(events: ParsedEvents): boolean {
         events.bibliaDiscarded ||
         events.cashOutResolved ||
         events.itemsPurchased.length > 0 ||
-        events.itemsSold.length > 0,
+        events.itemsSold.length > 0 ||
+        events.models.session ||
+        events.models.spinResult ||
+        events.models.sessionMarket ||
+        events.models.sessionChipBonusUnits !== null,
     );
 }
 
@@ -620,6 +805,12 @@ function parseNormalizedEvents(
         charmRerolled: null,
         bibliaDiscarded: null,
         cashOutResolved: null,
+        models: {
+            session: null,
+            spinResult: null,
+            sessionMarket: null,
+            sessionChipBonusUnits: null,
+        },
     };
 
     const allowedAddresses = sourceAddresses
@@ -637,6 +828,19 @@ function parseNormalizedEvents(
     const charmAddress = normalizeAddress(sourceList[4]);
 
     for (const event of events) {
+        const modelRecord = parseStoreSetRecordModel(event);
+        if (modelRecord) {
+            if (isSameFelt(modelRecord.selector, MODEL_SELECTORS.Session)) {
+                result.models.session = parseSessionModel(modelRecord.keyValues, modelRecord.fieldValues);
+            } else if (isSameFelt(modelRecord.selector, MODEL_SELECTORS.SpinResult)) {
+                result.models.spinResult = parseSpinResultModel(modelRecord.keyValues, modelRecord.fieldValues);
+            } else if (isSameFelt(modelRecord.selector, MODEL_SELECTORS.SessionMarket)) {
+                result.models.sessionMarket = parseSessionMarketModel(modelRecord.keyValues, modelRecord.fieldValues);
+            } else if (isSameFelt(modelRecord.selector, MODEL_SELECTORS.SessionChipBonus)) {
+                result.models.sessionChipBonusUnits = feltToNumber(modelRecord.fieldValues[0]);
+            }
+        }
+
         if (allowedAddresses && event.fromAddress !== null && event.fromAddress !== undefined) {
             try {
                 if (!allowedAddresses.has(BigInt(event.fromAddress).toString())) {
@@ -838,6 +1042,12 @@ export function parseReceiptEvents(
             charmRerolled: null,
             bibliaDiscarded: null,
             cashOutResolved: null,
+            models: {
+                session: null,
+                spinResult: null,
+                sessionMarket: null,
+                sessionChipBonusUnits: null,
+            },
         };
     }
 

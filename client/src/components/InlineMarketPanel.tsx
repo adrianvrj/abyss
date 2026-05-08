@@ -400,9 +400,16 @@ export default function InlineMarketPanel({
     async function processMarketRefreshedEvent(
         refreshEvent: import('@/utils/gameEvents').MarketRefreshedEvent,
         previousMarket: SessionMarket | null = marketData,
+        receiptMarket: SessionMarket | null = null,
     ) {
         if (!refreshEvent) return;
         if (refreshEvent.stateOnly || refreshEvent.slots.length < 6) {
+            if (receiptMarket && hasMarketAdvanced(receiptMarket, previousMarket)) {
+                const requestId = ++latestMarketRequestRef.current;
+                await Promise.all([applyMarketData(receiptMarket, requestId), syncSessionState()]);
+                return;
+            }
+
             await Promise.all([loadRefreshedMarketData(previousMarket), syncSessionState()]);
             return;
         }
@@ -471,7 +478,11 @@ export default function InlineMarketPanel({
             const refreshEvent = events.marketRefreshed;
             logMarketDebug('refresh:events', events);
             if (refreshEvent) {
-                await processMarketRefreshedEvent(refreshEvent, previousMarket);
+                await processMarketRefreshedEvent(
+                    refreshEvent,
+                    previousMarket,
+                    events.models.sessionMarket,
+                );
             } else {
                 logMarketDebug('refresh:fallback:scheduled');
                 window.setTimeout(() => {
