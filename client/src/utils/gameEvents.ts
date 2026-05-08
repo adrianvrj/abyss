@@ -4,7 +4,6 @@ import { CONTRACTS } from '@/lib/constants';
 // Event types
 export interface SpinCompletedEvent {
     sessionId: number;
-    stateOnly?: boolean;
     grid: number[];
     scoreGained: number;
     newTotalScore: number;
@@ -182,7 +181,6 @@ type DojoEventEnvelope = {
 // Event selectors
 const EVENT_SELECTORS = {
     SpinCompleted: hash.getSelectorFromName('SpinCompleted'),
-    SpinCompletedSignal: hash.getSelectorFromName('SpinCompletedSignal'),
     ItemPurchased: hash.getSelectorFromName('ItemPurchased'),
     ItemSold: hash.getSelectorFromName('ItemSold'),
     MarketRefreshed: hash.getSelectorFromName('MarketRefreshed'),
@@ -328,27 +326,9 @@ function parseSpinCompletedEvent(
     eventData: Array<string | bigint | number>,
     keys: Array<string | bigint | number>,
 ): SpinCompletedEvent | null {
-    let sessionId = readSessionIdFromKeys(keys, EVENT_SELECTORS.SpinCompletedSignal);
-    if (sessionId === 0) {
-        sessionId = readSessionIdFromKeys(keys, EVENT_SELECTORS.SpinCompleted);
-    }
+    const sessionId = readSessionIdFromKeys(keys, EVENT_SELECTORS.SpinCompleted);
     if (!eventData || eventData.length < 16) {
-        return {
-            sessionId,
-            stateOnly: true,
-            grid: [],
-            scoreGained: 0,
-            newTotalScore: 0,
-            newLevel: 0,
-            spinsRemaining: 0,
-            isActive: false,
-            is666: false,
-            isJackpot: false,
-            bibliaUsed: false,
-            currentLuck: 0,
-            symbolScores: [],
-            chipBonusUnits: 0,
-        };
+        return null;
     }
 
     try {
@@ -703,9 +683,7 @@ function parseNormalizedEvents(
             }
         }
 
-        if (findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompletedSignal) >= 0) {
-            result.spinCompleted = parseSpinCompletedEvent(event.data, event.keys);
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompleted) >= 0) {
+        if (findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompleted) >= 0) {
             result.spinCompleted = parseSpinCompletedEvent(event.data, event.keys);
         } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.ItemPurchased) >= 0) {
             const parsed = parseItemPurchasedEvent(event.data);
@@ -774,16 +752,7 @@ function parseNormalizedEvents(
                 continue;
             }
 
-            if (
-                emitterAddress === playAddress
-                && findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.SpinCompletedSignal) >= 0
-                && dojoEvent.fieldValues.length === 1
-            ) {
-                result.spinCompleted = parseSpinCompletedEvent(
-                    dojoEvent.fieldValues,
-                    dojoEvent.keyValues,
-                );
-            } else if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 30) {
+            if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 30) {
                 result.spinCompleted = parseSpinCompletedEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
             } else if (emitterAddress === marketAddress && dojoEvent.fieldValues.length === 7) {
                 const parsed = parseItemPurchasedEvent(dojoEvent.fieldValues);

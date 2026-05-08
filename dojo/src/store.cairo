@@ -9,7 +9,6 @@ use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
     BibliaDiscarded, CashOutResolved, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed,
     PhantomActivated, RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
-    SpinCompletedSignal,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
@@ -344,10 +343,6 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_spin_completed(mut self: Store, event: @SpinCompleted) {
-        self.world.emit_event(event);
-    }
-
-    fn emit_spin_completed_signal(mut self: Store, event: @SpinCompletedSignal) {
         self.world.emit_event(event);
     }
 

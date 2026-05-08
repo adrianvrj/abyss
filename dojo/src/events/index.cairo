@@ -43,16 +43,6 @@ pub struct SpinCompleted {
     pub chip_bonus_units: u32,
 }
 
-#[dojo::event]
-#[derive(Copy, Drop, Serde)]
-pub struct SpinCompletedSignal {
-    #[key]
-    pub session_id: u32,
-    #[key]
-    pub player: ContractAddress,
-    pub dummy_metadata: felt252,
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // ITEM PURCHASED
 // ═══════════════════════════════════════════════════════════════════════════

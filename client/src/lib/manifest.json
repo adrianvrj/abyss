@@ -132,7 +132,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x708354fdc012484e2ec11ecb39dee19a787131d646ba8c024dcad172b5414cc",
+      "class_hash": "0x34c523a245de18c95ee8adaceff90df682577e204a3e14d2f49350b9844d4e3",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -1670,28 +1670,6 @@
       "class_hash": "0x6ba909ade776cd0759a75449ca80cc1235aabad327a8550216493545f55e570",
       "tag": "ABYSS-SpinCompleted",
       "selector": "0x6cc9b3e14b07cf6ea1d434d90a986c4f06058fb7df7f36083daea14a9409977"
-    },
-    {
-      "members": [
-        {
-          "name": "session_id",
-          "type": "core::integer::u32",
-          "key": true
-        },
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": true
-        },
-        {
-          "name": "dummy_metadata",
-          "type": "core::felt252",
-          "key": false
-        }
-      ],
-      "class_hash": "0x43001044bc08ce91f24ccd636420d25e94af4a88b28769b6d59e3931d141c1a",
-      "tag": "ABYSS-SpinCompletedSignal",
-      "selector": "0x107b8b005b0b89bf3cd53b22e3d5a80ba5c30cbfaf6741eb32a97f768333167"
     }
   ],
   "external_contracts": [],
@@ -2362,34 +2340,6 @@
     },
     {
       "type": "struct",
-      "name": "abyss_game::events::index::SpinCompletedSignal",
-      "members": [
-        {
-          "name": "session_id",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "dummy_metadata",
-          "type": "core::felt252"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::events::index::SpinCompletedSignalValue",
-      "members": [
-        {
-          "name": "dummy_metadata",
-          "type": "core::felt252"
-        }
-      ]
-    },
-    {
-      "type": "struct",
       "name": "abyss_game::events::index::SpinCompletedValue",
       "members": [
         {
@@ -2583,12 +2533,6 @@
     {
       "type": "event",
       "name": "abyss_game::events::index::e_SpinCompleted::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::events::index::e_SpinCompletedSignal::Event",
       "kind": "enum",
       "variants": []
     },
@@ -8589,7 +8533,7 @@
       "inputs": [
         {
           "name": "event",
-          "type": "abyss_game::events::index::SpinCompletedSignal"
+          "type": "abyss_game::events::index::SpinCompleted"
         }
       ],
       "outputs": [],
@@ -8608,7 +8552,7 @@
       "inputs": [
         {
           "name": "value",
-          "type": "abyss_game::events::index::SpinCompletedSignalValue"
+          "type": "abyss_game::events::index::SpinCompletedValue"
         }
       ],
       "outputs": [],

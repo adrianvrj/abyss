@@ -287,7 +287,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
         TestResource::Model(declared_class_hash("m_SessionCharms")),
         TestResource::Model(declared_class_hash("m_SessionCharmEntry")),
         TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
-        TestResource::Event(declared_class_hash("e_SpinCompletedSignal")),
+        TestResource::Event(declared_class_hash("e_SpinCompleted")),
         TestResource::Contract(declared_class_hash("Play")),
         TestResource::Contract(declared_class_hash("Collection")),
     ];
@@ -303,7 +303,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
                 selector_from_names(@NAMESPACE(), @"Session"),
                 selector_from_names(@NAMESPACE(), @"SpinResult"),
                 selector_from_names(@NAMESPACE(), @"SessionChipBonus"),
-                selector_from_names(@NAMESPACE(), @"SpinCompletedSignal"),
+                selector_from_names(@NAMESPACE(), @"SpinCompleted"),
             ]
                 .span(),
         );

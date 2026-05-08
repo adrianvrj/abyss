@@ -1,6 +1,5 @@
 export interface SpinCompletedEvent {
   sessionId: number;
-  stateOnly?: boolean;
   grid: number[];
   scoreGained: number;
   newTotalScore: number;

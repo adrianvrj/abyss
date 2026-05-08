@@ -615,14 +615,52 @@ pub mod Play {
                 biblia_used,
             };
             store.set_spin_result(@spin_result);
+            let next_effective_luck = InventoryImpl::calculate_effective_luck_from_spin_modifiers(
+                @spin_modifiers,
+                pats_count,
+                session.spins_remaining,
+                spin_modifiers.item_count,
+                session.score,
+                session.level,
+                session.blocked_666_this_session,
+            );
             // SYNC LEADERBOARD (Will be done via Torii indexing Session model)
 
             store
-                .emit_spin_completed_signal(
-                    @crate::events::index::SpinCompletedSignal {
+                .emit_spin_completed(
+                    @crate::events::index::SpinCompleted {
                         session_id,
                         player: caller,
-                        dummy_metadata: 0,
+                        cell_0: spin_result.cell_0,
+                        cell_1: spin_result.cell_1,
+                        cell_2: spin_result.cell_2,
+                        cell_3: spin_result.cell_3,
+                        cell_4: spin_result.cell_4,
+                        cell_5: spin_result.cell_5,
+                        cell_6: spin_result.cell_6,
+                        cell_7: spin_result.cell_7,
+                        cell_8: spin_result.cell_8,
+                        cell_9: spin_result.cell_9,
+                        cell_10: spin_result.cell_10,
+                        cell_11: spin_result.cell_11,
+                        cell_12: spin_result.cell_12,
+                        cell_13: spin_result.cell_13,
+                        cell_14: spin_result.cell_14,
+                        score_gained: final_score,
+                        new_total_score: session.total_score,
+                        new_level: session.level,
+                        spins_remaining: session.spins_remaining,
+                        is_active: session.is_active,
+                        is_666,
+                        is_jackpot,
+                        biblia_used,
+                        current_luck: next_effective_luck,
+                        score_seven: session.score_seven,
+                        score_diamond: session.score_diamond,
+                        score_cherry: session.score_cherry,
+                        score_coin: session.score_coin,
+                        score_lemon: session.score_lemon,
+                        chip_bonus_units: session_chip_bonus.bonus_units,
                     },
                 );
             if biblia_used {

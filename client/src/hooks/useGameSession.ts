@@ -84,28 +84,6 @@ function summarizeSpinResultSnapshot(spinResult: {
     };
 }
 
-function spinResultSignature(spinResult: {
-    grid: number[];
-    score: number;
-    patternsCount: number;
-    is666: boolean;
-    isJackpot: boolean;
-    bibliaUsed: boolean;
-} | null) {
-    if (!spinResult) {
-        return null;
-    }
-
-    return [
-        spinResult.grid.join(','),
-        spinResult.score,
-        spinResult.patternsCount,
-        Number(spinResult.is666),
-        Number(spinResult.isJackpot),
-        Number(spinResult.bibliaUsed),
-    ].join('|');
-}
-
 function isUsableSpinResult(spinResult: {
     grid: number[];
     score: number;
@@ -684,32 +662,24 @@ export function useGameSession(sessionId: string | null) {
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    const resolveLatestSpinResult = async (previousSignature: string | null) => {
+    const resolveLatestSpinResult = async () => {
         if (!sessionId) return null;
 
         for (let attempt = 0; attempt < 8; attempt++) {
             logSpinDebug('spin:fallback:attempt', {
                 sessionId: Number(sessionId),
                 attempt,
-                previousSignature,
             });
             const spinResult = await getLastSpinResult(Number(sessionId));
-            const signature = spinResultSignature(spinResult);
             logSpinDebug('spin:fallback:spin-result', {
                 attempt,
-                signature,
                 spinResult: summarizeSpinResultSnapshot(spinResult),
             });
             if (isUsableSpinResult(spinResult)) {
-                if (!previousSignature || signature !== previousSignature) {
-                    return spinResult;
-                }
-
-                await loadSessionData(`resolveLatestSpinResult:stale-signature:${attempt}`);
-            } else {
-                await loadSessionData(`resolveLatestSpinResult:attempt:${attempt}`);
+                return spinResult;
             }
 
+            await loadSessionData(`resolveLatestSpinResult:attempt:${attempt}`);
             await delay(attempt < 3 ? 200 : 350);
         }
 
@@ -796,13 +766,6 @@ export function useGameSession(sessionId: string | null) {
                     risk,
                     threshold,
                 },
-            });
-            const previousSpinResult = await getLastSpinResult(Number(sessionId)).catch(() => null);
-            const previousSpinSignature = spinResultSignature(previousSpinResult);
-            logSpinDebug('spin:previous-result', {
-                previousSpinSignature,
-                previousTotalSpins: lastKnownTotalSpinsRef.current,
-                spinResult: summarizeSpinResultSnapshot(previousSpinResult),
             });
             const events = await requestSpin(Number(sessionId));
             logSpinDebug('spin:events', events);
@@ -990,12 +953,8 @@ export function useGameSession(sessionId: string | null) {
                 }, sequenceDelay);
             } else {
                 console.warn('SpinCompleted event not found in receipt, retrying from indexed state:', events);
-                if (events.spinCompleted?.stateOnly) {
-                    logSpinDebug('spin:signal:state-only', events.spinCompleted);
-                }
-                const spinResult = await resolveLatestSpinResult(previousSpinSignature);
+                const spinResult = await resolveLatestSpinResult();
                 logSpinDebug('spin:fallback:resolved', {
-                    source: 'state-read',
                     spinResult: summarizeSpinResultSnapshot(spinResult),
                 });
 
@@ -1144,7 +1103,7 @@ export function useGameSession(sessionId: string | null) {
             }
             await loadSessionData('spin:catch');
         }
-    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, getLastSpinResult, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
+    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
 
     const handleActivateRelic = useCallback(async () => {
         if (!equippedRelic || !sessionId || isActivatingRelic || relicCooldownRemaining > 0 || isRelicSpent) return;
