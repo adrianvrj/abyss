@@ -684,10 +684,7 @@ export function useGameSession(sessionId: string | null) {
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    const resolveLatestSpinResult = async (
-        previousSignature: string | null,
-        previousTotalSpins: number,
-    ) => {
+    const resolveLatestSpinResult = async (previousSignature: string | null) => {
         if (!sessionId) return null;
 
         for (let attempt = 0; attempt < 8; attempt++) {
@@ -695,7 +692,6 @@ export function useGameSession(sessionId: string | null) {
                 sessionId: Number(sessionId),
                 attempt,
                 previousSignature,
-                previousTotalSpins,
             });
             const spinResult = await getLastSpinResult(Number(sessionId));
             const signature = spinResultSignature(spinResult);
@@ -709,10 +705,7 @@ export function useGameSession(sessionId: string | null) {
                     return spinResult;
                 }
 
-                const latestSession = await loadSessionData(`resolveLatestSpinResult:stale-signature:${attempt}`);
-                if (latestSession && latestSession.totalSpins > previousTotalSpins) {
-                    return spinResult;
-                }
+                await loadSessionData(`resolveLatestSpinResult:stale-signature:${attempt}`);
             } else {
                 await loadSessionData(`resolveLatestSpinResult:attempt:${attempt}`);
             }
@@ -806,10 +799,9 @@ export function useGameSession(sessionId: string | null) {
             });
             const previousSpinResult = await getLastSpinResult(Number(sessionId)).catch(() => null);
             const previousSpinSignature = spinResultSignature(previousSpinResult);
-            const previousTotalSpins = lastKnownTotalSpinsRef.current;
             logSpinDebug('spin:previous-result', {
                 previousSpinSignature,
-                previousTotalSpins,
+                previousTotalSpins: lastKnownTotalSpinsRef.current,
                 spinResult: summarizeSpinResultSnapshot(previousSpinResult),
             });
             const events = await requestSpin(Number(sessionId));
@@ -1001,7 +993,7 @@ export function useGameSession(sessionId: string | null) {
                 if (events.spinCompleted?.stateOnly) {
                     logSpinDebug('spin:signal:state-only', events.spinCompleted);
                 }
-                const spinResult = await resolveLatestSpinResult(previousSpinSignature, previousTotalSpins);
+                const spinResult = await resolveLatestSpinResult(previousSpinSignature);
                 logSpinDebug('spin:fallback:resolved', {
                     source: 'state-read',
                     spinResult: summarizeSpinResultSnapshot(spinResult),
