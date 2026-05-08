@@ -4,6 +4,7 @@ import { CONTRACTS } from '@/lib/constants';
 // Event types
 export interface SpinCompletedEvent {
     sessionId: number;
+    stateOnly?: boolean;
     grid: number[];
     scoreGained: number;
     newTotalScore: number;
@@ -40,6 +41,7 @@ export interface ItemSoldEvent {
 
 export interface MarketRefreshedEvent {
     sessionId: number;
+    stateOnly?: boolean;
     newScore: number;
     slots: number[];
     currentLuck: number;
@@ -129,9 +131,11 @@ type DojoEventEnvelope = {
 // Event selectors
 const EVENT_SELECTORS = {
     SpinCompleted: hash.getSelectorFromName('SpinCompleted'),
+    SpinCompletedSignal: hash.getSelectorFromName('SpinCompletedSignal'),
     ItemPurchased: hash.getSelectorFromName('ItemPurchased'),
     ItemSold: hash.getSelectorFromName('ItemSold'),
     MarketRefreshed: hash.getSelectorFromName('MarketRefreshed'),
+    MarketRefreshedSignal: hash.getSelectorFromName('MarketRefreshedSignal'),
     RelicActivated: hash.getSelectorFromName('RelicActivated'),
     PhantomActivated: hash.getSelectorFromName('PhantomActivated'),
     RelicEquipped: hash.getSelectorFromName('RelicEquipped'),
@@ -274,12 +278,30 @@ function parseSpinCompletedEvent(
     eventData: Array<string | bigint | number>,
     keys: Array<string | bigint | number>,
 ): SpinCompletedEvent | null {
+    let sessionId = readSessionIdFromKeys(keys, EVENT_SELECTORS.SpinCompletedSignal);
+    if (sessionId === 0) {
+        sessionId = readSessionIdFromKeys(keys, EVENT_SELECTORS.SpinCompleted);
+    }
     if (!eventData || eventData.length < 16) {
-        return null;
+        return {
+            sessionId,
+            stateOnly: true,
+            grid: [],
+            scoreGained: 0,
+            newTotalScore: 0,
+            newLevel: 0,
+            spinsRemaining: 0,
+            isActive: false,
+            is666: false,
+            isJackpot: false,
+            bibliaUsed: false,
+            currentLuck: 0,
+            symbolScores: [],
+            chipBonusUnits: 0,
+        };
     }
 
     try {
-        const sessionId = readSessionIdFromKeys(keys, EVENT_SELECTORS.SpinCompleted);
         const gridLength = feltToNumber(eventData[0]);
         let gridStart = 0;
 
@@ -369,7 +391,15 @@ function parseItemSoldEvent(eventData: Array<string | bigint | number>): ItemSol
  * Parse MarketRefreshed event
  */
 function parseMarketRefreshedEvent(eventData: Array<string | bigint | number>): MarketRefreshedEvent | null {
-    if (!eventData || eventData.length < 8) return null;
+    if (!eventData || eventData.length < 8) {
+        return {
+            sessionId: 0,
+            stateOnly: true,
+            newScore: 0,
+            slots: [],
+            currentLuck: 0,
+        };
+    }
 
     try {
         return {
@@ -617,7 +647,9 @@ function parseNormalizedEvents(
             }
         }
 
-        if (findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompleted) >= 0) {
+        if (findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompletedSignal) >= 0) {
+            result.spinCompleted = parseSpinCompletedEvent(event.data, event.keys);
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompleted) >= 0) {
             result.spinCompleted = parseSpinCompletedEvent(event.data, event.keys);
         } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.ItemPurchased) >= 0) {
             const parsed = parseItemPurchasedEvent(event.data);
@@ -630,6 +662,12 @@ function parseNormalizedEvents(
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.ItemSold);
                 result.itemsSold.push(parsed);
+            }
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.MarketRefreshedSignal) >= 0) {
+            const parsed = parseMarketRefreshedEvent(event.data);
+            if (parsed) {
+                parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.MarketRefreshedSignal);
+                result.marketRefreshed = parsed;
             }
         } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.MarketRefreshed) >= 0) {
             const parsed = parseMarketRefreshedEvent(event.data);
@@ -686,8 +724,27 @@ function parseNormalizedEvents(
                 continue;
             }
 
-            if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 30) {
+            if (
+                emitterAddress === playAddress
+                && findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.SpinCompletedSignal) >= 0
+                && dojoEvent.fieldValues.length === 1
+            ) {
+                result.spinCompleted = parseSpinCompletedEvent(
+                    dojoEvent.fieldValues,
+                    dojoEvent.keyValues,
+                );
+            } else if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 30) {
                 result.spinCompleted = parseSpinCompletedEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
+            } else if (
+                (emitterAddress === marketAddress || emitterAddress === relicAddress)
+                && findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.MarketRefreshedSignal) >= 0
+                && dojoEvent.fieldValues.length === 1
+            ) {
+                const parsed = parseMarketRefreshedEvent(dojoEvent.fieldValues);
+                if (parsed) {
+                    parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.MarketRefreshedSignal);
+                    result.marketRefreshed = parsed;
+                }
             } else if (emitterAddress === marketAddress && dojoEvent.fieldValues.length === 7) {
                 const parsed = parseItemPurchasedEvent(dojoEvent.fieldValues);
                 if (parsed) {

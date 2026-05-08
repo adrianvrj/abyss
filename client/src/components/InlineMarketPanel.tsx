@@ -102,10 +102,20 @@ export default function InlineMarketPanel({
         getSessionMarket,
         getSessionItems,
         getSessionItemPurchasePrice,
-        isMarketSlotPurchased,
         buyItem,
         refreshMarket
     } = useAbyssGame(account);
+
+    function purchasedSlotsFromMask(mask: number | undefined): Set<number> {
+        const purchasedSlots = new Set<number>();
+        const value = mask ?? 0;
+        for (let slot = 0; slot < 6; slot++) {
+            if (Math.floor(value / (2 ** slot)) % 2 === 1) {
+                purchasedSlots.add(slot);
+            }
+        }
+        return purchasedSlots;
+    }
 
     function getDisplayedPrice(item: ContractItem | null | undefined) {
         if (!item) {
@@ -212,6 +222,7 @@ export default function InlineMarketPanel({
             item_slot_4: practiceMarketItems[3]?.item_id ?? 0,
             item_slot_5: practiceMarketItems[4]?.item_id ?? 0,
             item_slot_6: practiceMarketItems[5]?.item_id ?? 0,
+            purchased_mask: 0,
         });
         setMarketItems(practiceMarketItems);
         setCharmInfoMap(practiceCharmMap);
@@ -288,11 +299,7 @@ export default function InlineMarketPanel({
                 (playerItem) => !hiddenItemIds.includes(playerItem.item_id),
             );
 
-            const purchasedSlots = new Set<number>();
-            for (let slot = 0; slot < 6; slot++) {
-                const isPurchased = await isMarketSlotPurchased(sessionId, slot);
-                if (isPurchased) purchasedSlots.add(slot);
-            }
+            const purchasedSlots = purchasedSlotsFromMask(market.purchased_mask);
 
             if (requestId !== latestMarketRequestRef.current) {
                 return;
@@ -329,6 +336,10 @@ export default function InlineMarketPanel({
 
     async function processMarketRefreshedEvent(refreshEvent: import('@/utils/gameEvents').MarketRefreshedEvent) {
         if (!refreshEvent) return;
+        if (refreshEvent.stateOnly || refreshEvent.slots.length < 6) {
+            await Promise.all([loadMarketData(), syncSessionState()]);
+            return;
+        }
 
         const newScore = refreshEvent.newScore;
         onUpdateScore(newScore);
@@ -344,6 +355,7 @@ export default function InlineMarketPanel({
             item_slot_4: refreshEvent.slots[3] ?? 0,
             item_slot_5: refreshEvent.slots[4] ?? 0,
             item_slot_6: refreshEvent.slots[5] ?? 0,
+            purchased_mask: 0,
         }));
 
         const items: ContractItem[] = [];

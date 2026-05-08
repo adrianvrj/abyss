@@ -11,7 +11,6 @@ pub struct SpinCompleted {
     pub session_id: u32,
     #[key]
     pub player: ContractAddress,
-    // Grid cells
     pub cell_0: u8,
     pub cell_1: u8,
     pub cell_2: u8,
@@ -27,7 +26,6 @@ pub struct SpinCompleted {
     pub cell_12: u8,
     pub cell_13: u8,
     pub cell_14: u8,
-    // Outcome
     pub score_gained: u32,
     pub new_total_score: u32,
     pub new_level: u32,
@@ -37,14 +35,22 @@ pub struct SpinCompleted {
     pub is_jackpot: bool,
     pub biblia_used: bool,
     pub current_luck: u32,
-    // Symbol scores
     pub score_seven: u32,
     pub score_diamond: u32,
     pub score_cherry: u32,
     pub score_coin: u32,
     pub score_lemon: u32,
-    // Chip bonus (e.g., diamond chip bonus units accumulated)
     pub chip_bonus_units: u32,
+}
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct SpinCompletedSignal {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub dummy_metadata: felt252,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -104,6 +110,16 @@ pub struct MarketRefreshed {
     pub slot_5: u32,
     pub slot_6: u32,
     pub current_luck: u32,
+}
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct MarketRefreshedSignal {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub dummy_metadata: felt252,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

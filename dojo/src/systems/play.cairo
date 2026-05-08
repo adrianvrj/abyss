@@ -30,11 +30,85 @@ pub fn get_charm_drop_chance_from_score_and_luck(score: u32, effective_luck: u32
     total_chance
 }
 
+#[inline(always)]
+pub fn get_charm_rarity_from_score_and_roll(score: u32, roll: u32) -> u8 {
+    if score < 1500 {
+        if roll < 88 {
+            0
+        } else {
+            1
+        }
+    } else if score < 3000 {
+        if roll < 76 {
+            0
+        } else if roll < 96 {
+            1
+        } else {
+            2
+        }
+    } else if score < 5000 {
+        if roll < 58 {
+            0
+        } else if roll < 90 {
+            1
+        } else {
+            2
+        }
+    } else if score < 8000 {
+        if roll < 40 {
+            0
+        } else if roll < 78 {
+            1
+        } else if roll < 98 {
+            2
+        } else {
+            3
+        }
+    } else if score < 12500 {
+        if roll < 22 {
+            0
+        } else if roll < 57 {
+            1
+        } else if roll < 92 {
+            2
+        } else {
+            3
+        }
+    } else if score < 25000 {
+        if roll < 10 {
+            0
+        } else if roll < 40 {
+            1
+        } else if roll < 85 {
+            2
+        } else {
+            3
+        }
+    } else {
+        if roll < 3 {
+            0
+        } else if roll < 25 {
+            1
+        } else if roll < 80 {
+            2
+        } else {
+            3
+        }
+    }
+}
+
 #[starknet::interface]
 pub trait IPlay<T> {
     fn create_session(ref self: T, player: ContractAddress, payment_token: ContractAddress) -> u32;
     fn claim_beast_session(ref self: T, player: ContractAddress) -> u32;
     fn mint_session(ref self: T, player: ContractAddress, quantity: u32);
+    fn configure_egs(
+        ref self: T,
+        token_address: ContractAddress,
+        settings_address: ContractAddress,
+        objectives_address: ContractAddress,
+    );
+    fn link_egs_session(ref self: T, token_id: felt252, session_id: u32);
     fn set_pending_charm_loadout(ref self: T, charm_ids: Span<u32>);
     fn equip_charms(ref self: T, session_id: u32, charm_ids: Span<u32>);
     fn request_spin(ref self: T, session_id: u32);
@@ -44,6 +118,7 @@ pub trait IPlay<T> {
     fn get_config(self: @T) -> Config;
     fn get_item_info(self: @T, item_id: u32) -> Item;
     fn get_session(self: @T, session_id: u32) -> Session;
+    fn get_egs_session(self: @T, token_id: felt252) -> u32;
     fn get_player_sessions(self: @T, player: ContractAddress) -> Span<u32>;
     fn get_beast_sessions_used(self: @T, player: ContractAddress) -> u32;
     fn get_available_beast_sessions(self: @T, player: ContractAddress) -> u32;
@@ -71,7 +146,13 @@ pub mod Play {
     use leaderboard::components::rankable::RankableComponent;
     use openzeppelin::access::accesscontrol::AccessControlComponent;
     use openzeppelin::introspection::src5::SRC5Component;
+    use openzeppelin::introspection::src5::SRC5Component::{
+        InternalTrait as SRC5InternalTrait,
+    };
     use starknet::{ContractAddress, get_caller_address};
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
     use crate::constants::{
         DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
         DEFAULT_SCORE_SEVEN, DEFAULT_SPINS, DEFAULT_TICKETS, NAMESPACE,
@@ -82,7 +163,12 @@ pub mod Play {
     use crate::helpers::probability::get_666_probability as get_level_666_probability;
     use crate::helpers::scoring::get_level_threshold;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
+    use crate::interfaces::egs::{
+        GameContextDetails, IMINIGAME_ID, IMinigame, IMinigameTokenData,
+        IMinigameTokenDispatcher, IMinigameTokenDispatcherTrait,
+    };
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicERC721Dispatcher, IRelicERC721DispatcherTrait};
     use crate::interfaces::vrf::{IVrfProviderDispatcherTrait, Source};
     use crate::models::index::{
@@ -100,11 +186,12 @@ pub mod Play {
     const LEADERBOARD_ID: felt252 = 2;
     const BIBLIA_ITEM_ID: u32 = 40;
     const CASH_OUT_ITEM_ID: u32 = 41;
-
     // Components
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
+    #[abi(embed_v0)]
+    impl SRC5ExternalImpl = SRC5Component::SRC5Impl<ContractState>;
     component!(path: RankableComponent, storage: rankable, event: RankableEvent);
     impl RankableInternalImpl = RankableComponent::InternalImpl<ContractState>;
 
@@ -116,6 +203,13 @@ pub mod Play {
         src5: SRC5Component::Storage,
         #[substorage(v0)]
         rankable: RankableComponent::Storage,
+        egs_token_address: ContractAddress,
+        egs_settings_address: ContractAddress,
+        egs_objectives_address: ContractAddress,
+        egs_token_session: Map<felt252, u32>,
+        egs_token_has_session: Map<felt252, bool>,
+        egs_session_token: Map<u32, felt252>,
+        egs_session_has_token: Map<u32, bool>,
     }
 
     #[event]
@@ -132,6 +226,7 @@ pub mod Play {
     fn dojo_init(ref self: ContractState) {
         let _world = self.world(@NAMESPACE());
         self.accesscontrol.initializer();
+        self.src5.register_interface(IMINIGAME_ID);
     }
 
     #[abi(embed_v0)]
@@ -210,6 +305,41 @@ pub mod Play {
             store.set_config(@config);
         }
 
+        fn configure_egs(
+            ref self: ContractState,
+            token_address: ContractAddress,
+            settings_address: ContractAddress,
+            objectives_address: ContractAddress,
+        ) {
+            let caller = get_caller_address();
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let config = store.config();
+            assert(caller == config.admin, 'Only admin');
+
+            self.egs_token_address.write(token_address);
+            self.egs_settings_address.write(settings_address);
+            self.egs_objectives_address.write(objectives_address);
+            self.src5.register_interface(IMINIGAME_ID);
+        }
+
+        fn link_egs_session(ref self: ContractState, token_id: felt252, session_id: u32) {
+            assert(!self.egs_token_has_session.entry(token_id).read(), 'EGS session exists');
+            InternalImpl::pre_egs_action(@self, token_id);
+
+            let caller = get_caller_address();
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            let session = store.session(session_id);
+            assert(session.player_address == caller, 'Not session owner');
+
+            self.egs_token_session.entry(token_id).write(session_id);
+            self.egs_token_has_session.entry(token_id).write(true);
+            self.egs_session_token.entry(session_id).write(token_id);
+            self.egs_session_has_token.entry(session_id).write(true);
+            InternalImpl::post_egs_action(@self, token_id);
+        }
+
         fn set_pending_charm_loadout(ref self: ContractState, charm_ids: Span<u32>) {
             let caller = get_caller_address();
             let world = self.world(@NAMESPACE());
@@ -254,7 +384,8 @@ pub mod Play {
             let mut store = StoreTrait::new(world);
 
             let session = store.session(session_id);
-            assert(session.player_address == caller, 'Not session owner');
+            InternalImpl::assert_session_actor(@self, @session, session_id, caller);
+            InternalImpl::pre_egs_action_for_session(@self, session_id);
             assert(session.is_active, 'Session not active');
             assert(session.total_spins == 0, 'Charms locked after first spin');
             assert(charm_ids.len() <= 3, 'Max 3 charms');
@@ -290,6 +421,7 @@ pub mod Play {
                         session_id, charm_id_1: c1, charm_id_2: c2, charm_id_3: c3,
                     },
                 );
+            InternalImpl::post_egs_action_for_session(@self, session_id);
         }
 
         fn request_spin(ref self: ContractState, session_id: u32) {
@@ -302,7 +434,8 @@ pub mod Play {
             if session_chip_bonus.session_id == 0 {
                 session_chip_bonus.session_id = session_id;
             }
-            assert(session.player_address == caller, 'Not session owner');
+            InternalImpl::assert_session_actor(@self, @session, session_id, caller);
+            InternalImpl::pre_egs_action_for_session(@self, session_id);
             assert(session.is_active, 'Session not active');
             assert(session.spins_remaining > 0, 'No spins remaining');
 
@@ -343,7 +476,6 @@ pub mod Play {
                 session.relic_pending_effect = RelicEffectType::NoEffect;
             }
 
-            let mut next_item_count = spin_modifiers.item_count;
             let mut biblia_used = false;
             let mut biblia_discarded = false;
             let mut cash_out_succeeded = false;
@@ -366,9 +498,6 @@ pub mod Play {
                     if cash_out_succeeded {
                         is_666 = false;
                     }
-                    if cash_out_inventory.quantity == 1 {
-                        next_item_count -= 1;
-                    }
                 } else {
                     let biblia_inventory = store.inventory(session_id, BIBLIA_ITEM_ID);
                     if biblia_inventory.quantity > 0 {
@@ -387,9 +516,6 @@ pub mod Play {
                         }
                         is_666 = false;
                         biblia_used = true;
-                        if biblia_discarded && biblia_inventory.quantity == 1 {
-                            next_item_count -= 1;
-                        }
                     }
                 }
             }
@@ -489,53 +615,14 @@ pub mod Play {
                 biblia_used,
             };
             store.set_spin_result(@spin_result);
-            let next_effective_luck = InventoryImpl::calculate_effective_luck_from_spin_modifiers(
-                @spin_modifiers,
-                pats_count,
-                session.spins_remaining,
-                next_item_count,
-                session.score,
-                session.level,
-                session.blocked_666_this_session,
-            );
-
             // SYNC LEADERBOARD (Will be done via Torii indexing Session model)
 
             store
-                .emit_spin_completed(
-                    @crate::events::index::SpinCompleted {
+                .emit_spin_completed_signal(
+                    @crate::events::index::SpinCompletedSignal {
                         session_id,
                         player: caller,
-                        cell_0: spin_result.cell_0,
-                        cell_1: spin_result.cell_1,
-                        cell_2: spin_result.cell_2,
-                        cell_3: spin_result.cell_3,
-                        cell_4: spin_result.cell_4,
-                        cell_5: spin_result.cell_5,
-                        cell_6: spin_result.cell_6,
-                        cell_7: spin_result.cell_7,
-                        cell_8: spin_result.cell_8,
-                        cell_9: spin_result.cell_9,
-                        cell_10: spin_result.cell_10,
-                        cell_11: spin_result.cell_11,
-                        cell_12: spin_result.cell_12,
-                        cell_13: spin_result.cell_13,
-                        cell_14: spin_result.cell_14,
-                        score_gained: final_score,
-                        new_total_score: session.total_score,
-                        new_level: session.level,
-                        spins_remaining: session.spins_remaining,
-                        is_active: session.is_active,
-                        is_666,
-                        is_jackpot,
-                        biblia_used,
-                        current_luck: next_effective_luck,
-                        score_seven: session.score_seven,
-                        score_diamond: session.score_diamond,
-                        score_cherry: session.score_cherry,
-                        score_coin: session.score_coin,
-                        score_lemon: session.score_lemon,
-                        chip_bonus_units: session_chip_bonus.bonus_units,
+                        dummy_metadata: 0,
                     },
                 );
             if biblia_used {
@@ -548,6 +635,7 @@ pub mod Play {
                         },
                     );
             }
+            InternalImpl::post_egs_action_for_session(@self, session_id);
         }
 
         fn end_session(ref self: ContractState, session_id: u32) {
@@ -556,7 +644,8 @@ pub mod Play {
             let mut store = StoreTrait::new(world);
 
             let mut session = store.session(session_id);
-            assert(session.player_address == caller, 'Not session owner');
+            InternalImpl::assert_session_actor(@self, @session, session_id, caller);
+            InternalImpl::pre_egs_action_for_session(@self, session_id);
             assert(session.is_active, 'Session already ended');
 
             session.is_active = false;
@@ -572,6 +661,7 @@ pub mod Play {
             collection.update(session_id.into());
 
             store.emit_session_ended(session_id, caller, session.total_score, session.level);
+            InternalImpl::post_egs_action_for_session(@self, session_id);
         }
 
         fn claim_chips(ref self: ContractState, session_id: u32) {
@@ -613,6 +703,11 @@ pub mod Play {
             let world = self.world(@NAMESPACE());
             let store = StoreTrait::new(world);
             store.session(session_id)
+        }
+
+        fn get_egs_session(self: @ContractState, token_id: felt252) -> u32 {
+            assert(self.egs_token_has_session.entry(token_id).read(), 'EGS session missing');
+            self.egs_token_session.entry(token_id).read()
         }
 
         fn get_player_sessions(self: @ContractState, player: ContractAddress) -> Span<u32> {
@@ -790,13 +885,181 @@ pub mod Play {
         fn is_market_slot_purchased(self: @ContractState, session_id: u32, slot: u32) -> bool {
             let world = self.world(@NAMESPACE());
             let store = StoreTrait::new(world);
-            let msp = store.market_slot_purchased(session_id, slot);
-            msp.purchased
+            let market = store.session_market(session_id);
+            let slot_bit = if slot == 0 {
+                1
+            } else if slot == 1 {
+                2
+            } else if slot == 2 {
+                4
+            } else if slot == 3 {
+                8
+            } else if slot == 4 {
+                16
+            } else if slot == 5 {
+                32
+            } else {
+                return false;
+            };
+            (market.purchased_mask / slot_bit) % 2 == 1
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl MinigameImpl of IMinigame<ContractState> {
+        fn token_address(self: @ContractState) -> ContractAddress {
+            self.egs_token_address.read()
+        }
+
+        fn settings_address(self: @ContractState) -> ContractAddress {
+            self.egs_settings_address.read()
+        }
+
+        fn objectives_address(self: @ContractState) -> ContractAddress {
+            self.egs_objectives_address.read()
+        }
+
+        fn mint_game(
+            self: @ContractState,
+            player_name: Option<felt252>,
+            settings_id: Option<u32>,
+            start: Option<u64>,
+            end: Option<u64>,
+            objective_id: Option<u32>,
+            context: Option<GameContextDetails>,
+            client_url: Option<ByteArray>,
+            renderer_address: Option<ContractAddress>,
+            skills_address: Option<ContractAddress>,
+            to: ContractAddress,
+            soulbound: bool,
+            paymaster: bool,
+            salt: u16,
+            metadata: u16,
+        ) -> felt252 {
+            let token_address = self.egs_token_address.read();
+            let token = IMinigameTokenDispatcher { contract_address: token_address };
+            token
+                .mint(
+                    starknet::get_contract_address(),
+                    player_name,
+                    settings_id,
+                    start,
+                    end,
+                    objective_id,
+                    context,
+                    client_url,
+                    renderer_address,
+                    skills_address,
+                    to,
+                    soulbound,
+                    paymaster,
+                    salt,
+                    metadata,
+                )
+        }
+
+    }
+
+    #[abi(embed_v0)]
+    impl MinigameTokenDataImpl of IMinigameTokenData<ContractState> {
+        fn score(self: @ContractState, token_id: felt252) -> u64 {
+            match InternalImpl::session_id_for_egs_token(self, token_id) {
+                Option::Some(session_id) => {
+                    let world = self.world(@NAMESPACE());
+                    let store = StoreTrait::new(world);
+                    store.session(session_id).total_score.into()
+                },
+                Option::None => 0,
+            }
+        }
+
+        fn game_over(self: @ContractState, token_id: felt252) -> bool {
+            match InternalImpl::session_id_for_egs_token(self, token_id) {
+                Option::Some(session_id) => {
+                    let world = self.world(@NAMESPACE());
+                    let store = StoreTrait::new(world);
+                    !store.session(session_id).is_active
+                },
+                Option::None => false,
+            }
+        }
+
+        fn score_batch(self: @ContractState, token_ids: Span<felt252>) -> Array<u64> {
+            let mut results: Array<u64> = array![];
+            let mut i: u32 = 0;
+            while i < token_ids.len() {
+                results.append(Self::score(self, *token_ids.at(i)));
+                i += 1;
+            };
+            results
+        }
+
+        fn game_over_batch(self: @ContractState, token_ids: Span<felt252>) -> Array<bool> {
+            let mut results: Array<bool> = array![];
+            let mut i: u32 = 0;
+            while i < token_ids.len() {
+                results.append(Self::game_over(self, *token_ids.at(i)));
+                i += 1;
+            };
+            results
         }
     }
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
+        fn session_id_for_egs_token(self: @ContractState, token_id: felt252) -> Option<u32> {
+            if self.egs_token_has_session.entry(token_id).read() {
+                Option::Some(self.egs_token_session.entry(token_id).read())
+            } else {
+                Option::None
+            }
+        }
+
+        fn assert_egs_token_ownership(self: @ContractState, token_id: felt252) {
+            let token_address = self.egs_token_address.read();
+            let zero_addr: ContractAddress = Zero::zero();
+            assert(token_address != zero_addr, 'EGS token not set');
+            let erc721 = IERC721Dispatcher { contract_address: token_address };
+            let owner = erc721.owner_of(token_id.into());
+            assert(owner == get_caller_address(), 'Caller not EGS owner');
+        }
+
+        fn pre_egs_action(self: @ContractState, token_id: felt252) {
+            Self::assert_egs_token_ownership(self, token_id);
+            let token = IMinigameTokenDispatcher { contract_address: self.egs_token_address.read() };
+            token.assert_is_playable(token_id);
+        }
+
+        fn post_egs_action(self: @ContractState, token_id: felt252) {
+            let token = IMinigameTokenDispatcher { contract_address: self.egs_token_address.read() };
+            token.update_game(token_id);
+        }
+
+        fn assert_session_actor(
+            self: @ContractState, session: @Session, session_id: u32, caller: ContractAddress,
+        ) {
+            if self.egs_session_has_token.entry(session_id).read() {
+                let token_id = self.egs_session_token.entry(session_id).read();
+                Self::assert_egs_token_ownership(self, token_id);
+            } else {
+                assert(*session.player_address == caller, 'Not session owner');
+            }
+        }
+
+        fn pre_egs_action_for_session(self: @ContractState, session_id: u32) {
+            if self.egs_session_has_token.entry(session_id).read() {
+                let token_id = self.egs_session_token.entry(session_id).read();
+                Self::pre_egs_action(self, token_id);
+            }
+        }
+
+        fn post_egs_action_for_session(self: @ContractState, session_id: u32) {
+            if self.egs_session_has_token.entry(session_id).read() {
+                let token_id = self.egs_session_token.entry(session_id).read();
+                Self::post_egs_action(self, token_id);
+            }
+        }
+
         fn mint_competitive_session(
             ref store: Store,
             ref config: Config,
@@ -936,13 +1199,9 @@ pub mod Play {
 
                     if charm_roll < total_chance {
                         let rarity_roll: u32 = ((charm_roll_low / 100) % 100).try_into().unwrap();
-                        let rarity: u8 = if rarity_roll < 3 {
-                            2
-                        } else if rarity_roll < 15 {
-                            1
-                        } else {
-                            0
-                        };
+                        let rarity = get_charm_rarity_from_score_and_roll(
+                            session.total_score, rarity_roll,
+                        );
 
                         let charm_disp = store.charm_disp();
                         let token_id = charm_disp

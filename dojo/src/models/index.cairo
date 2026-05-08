@@ -147,6 +147,7 @@ pub struct SessionMarket {
     pub item_slot_4: u32,
     pub item_slot_5: u32,
     pub item_slot_6: u32,
+    pub purchased_mask: u32,
 }
 
 #[dojo::model]
@@ -179,20 +180,6 @@ pub struct SessionInventory {
     #[key]
     pub item_id: u32,
     pub quantity: u32,
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MARKET SLOT PURCHASED - Track purchased slots per session
-// ═══════════════════════════════════════════════════════════════════════════
-
-#[dojo::model]
-#[derive(Copy, Drop, Serde)]
-pub struct MarketSlotPurchased {
-    #[key]
-    pub session_id: u32,
-    #[key]
-    pub slot: u32,
-    pub purchased: bool,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

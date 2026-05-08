@@ -5,7 +5,7 @@ use crate::constants::{
 };
 use crate::helpers::grid::generate_grid_from_random;
 use crate::models::index::{
-    Config, Item, MarketSlotPurchased, PendingCharmLoadout, Session, SessionCharmEntry,
+    Config, Item, PendingCharmLoadout, Session, SessionCharmEntry,
     SessionCharmLoadout, SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry,
     SessionItemIndex, SessionMarket, SpinResult,
 };
@@ -116,7 +116,6 @@ fn charm_loadout_session_world(
         TestResource::Model(declared_class_hash("m_Config")),
         TestResource::Model(declared_class_hash("m_Session")),
         TestResource::Model(declared_class_hash("m_SessionMarket")),
-        TestResource::Model(declared_class_hash("m_MarketSlotPurchased")),
         TestResource::Model(declared_class_hash("m_PlayerSessions")),
         TestResource::Model(declared_class_hash("m_PlayerSessionEntry")),
         TestResource::Model(declared_class_hash("m_SessionChipBonus")),
@@ -124,7 +123,7 @@ fn charm_loadout_session_world(
         TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
         TestResource::Model(declared_class_hash("m_PendingCharmLoadout")),
         TestResource::Event(declared_class_hash("e_SessionCreated")),
-        TestResource::Event(declared_class_hash("e_MarketRefreshed")),
+        TestResource::Event(declared_class_hash("e_MarketRefreshedSignal")),
         TestResource::Contract(declared_class_hash("Collection")),
         TestResource::Contract(declared_class_hash("Play")),
         TestResource::Contract(declared_class_hash("Treasury")),
@@ -143,7 +142,6 @@ fn charm_loadout_session_world(
                 selector_from_names(@NAMESPACE(), @"Config"),
                 selector_from_names(@NAMESPACE(), @"Session"),
                 selector_from_names(@NAMESPACE(), @"SessionMarket"),
-                selector_from_names(@NAMESPACE(), @"MarketSlotPurchased"),
                 selector_from_names(@NAMESPACE(), @"PlayerSessions"),
                 selector_from_names(@NAMESPACE(), @"PlayerSessionEntry"),
                 selector_from_names(@NAMESPACE(), @"SessionChipBonus"),
@@ -151,7 +149,7 @@ fn charm_loadout_session_world(
                 selector_from_names(@NAMESPACE(), @"SessionCharmLoadout"),
                 selector_from_names(@NAMESPACE(), @"PendingCharmLoadout"),
                 selector_from_names(@NAMESPACE(), @"SessionCreated"),
-                selector_from_names(@NAMESPACE(), @"MarketRefreshed"),
+                selector_from_names(@NAMESPACE(), @"MarketRefreshedSignal"),
             ]
                 .span(),
         );
@@ -289,7 +287,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
         TestResource::Model(declared_class_hash("m_SessionCharms")),
         TestResource::Model(declared_class_hash("m_SessionCharmEntry")),
         TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
-        TestResource::Event(declared_class_hash("e_SpinCompleted")),
+        TestResource::Event(declared_class_hash("e_SpinCompletedSignal")),
         TestResource::Contract(declared_class_hash("Play")),
         TestResource::Contract(declared_class_hash("Collection")),
     ];
@@ -305,7 +303,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
                 selector_from_names(@NAMESPACE(), @"Session"),
                 selector_from_names(@NAMESPACE(), @"SpinResult"),
                 selector_from_names(@NAMESPACE(), @"SessionChipBonus"),
-                selector_from_names(@NAMESPACE(), @"SpinCompleted"),
+                selector_from_names(@NAMESPACE(), @"SpinCompletedSignal"),
             ]
                 .span(),
         );
@@ -314,6 +312,165 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
     let play_address = world.dns_address(@"Play").expect('Play not found');
     let collection_address = world.dns_address(@"Collection").expect('Collection not found');
     (world, play_address, collection_address)
+}
+
+#[test]
+fn market_purchased_mask_view_reads_slot_bits() {
+    let world_class_hash = declared_class_hash("world");
+    let resources = array![
+        TestResource::Model(declared_class_hash("m_SessionMarket")),
+        TestResource::Contract(declared_class_hash("Play")),
+    ];
+    let mut world = spawn_test_world(
+        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
+            .span(),
+    );
+    world.sync_perms_and_inits(array![ContractDefTrait::new(@NAMESPACE(), @"Play")].span());
+    let play_address = world.dns_address(@"Play").expect('Play not found');
+    let play = IPlayDispatcher { contract_address: play_address };
+    let session_id = 42;
+
+    world
+        .write_model_test(
+            @SessionMarket {
+                session_id,
+                refresh_count: 1,
+                item_slot_1: 1,
+                item_slot_2: 2,
+                item_slot_3: 3,
+                item_slot_4: 4,
+                item_slot_5: 5,
+                item_slot_6: 6,
+                purchased_mask: 10,
+            },
+        );
+
+    assert(!play.is_market_slot_purchased(session_id, 0), 'slot0 bought');
+    assert(play.is_market_slot_purchased(session_id, 1), 'slot1 not bought');
+    assert(!play.is_market_slot_purchased(session_id, 2), 'slot2 bought');
+    assert(play.is_market_slot_purchased(session_id, 3), 'slot3 not bought');
+    assert(!play.is_market_slot_purchased(session_id, 4), 'slot4 bought');
+    assert(!play.is_market_slot_purchased(session_id, 5), 'slot5 bought');
+    assert(!play.is_market_slot_purchased(session_id, 6), 'slot6 bought');
+}
+
+fn market_purchase_mask_world() -> (dojo::world::WorldStorage, ContractAddress) {
+    let world_class_hash = declared_class_hash("world");
+    let resources = array![
+        TestResource::Model(declared_class_hash("m_Session")),
+        TestResource::Model(declared_class_hash("m_SessionMarket")),
+        TestResource::Model(declared_class_hash("m_Item")),
+        TestResource::Model(declared_class_hash("m_SessionItemPurchaseCount")),
+        TestResource::Model(declared_class_hash("m_SessionCharms")),
+        TestResource::Event(declared_class_hash("e_ItemPurchased")),
+        TestResource::Contract(declared_class_hash("Market")),
+    ];
+    let world = spawn_test_world(
+        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
+            .span(),
+    );
+    let market_def = ContractDefTrait::new(@NAMESPACE(), @"Market")
+        .with_writer_of(
+            array![
+                selector_from_names(@NAMESPACE(), @"Session"),
+                selector_from_names(@NAMESPACE(), @"SessionMarket"),
+                selector_from_names(@NAMESPACE(), @"ItemPurchased"),
+            ]
+                .span(),
+        );
+    world.sync_perms_and_inits(array![market_def].span());
+    let market_address = world.dns_address(@"Market").expect('Market not found');
+    (world, market_address)
+}
+
+fn seed_market_purchase_mask(
+    ref world: dojo::world::WorldStorage, session_id: u32, player: ContractAddress,
+) {
+    world
+        .write_model_test(
+            @Session {
+                session_id,
+                player_address: player,
+                level: 1,
+                score: 0,
+                total_score: 0,
+                spins_remaining: 1,
+                is_competitive: false,
+                is_active: true,
+                created_at: 0,
+                chips_claimed: false,
+                equipped_relic: 0,
+                relic_last_used_spin: 0,
+                relic_pending_effect: 0,
+                total_spins: 0,
+                luck: 0,
+                blocked_666_this_session: false,
+                tickets: 10,
+                score_seven: DEFAULT_SCORE_SEVEN,
+                score_diamond: DEFAULT_SCORE_DIAMOND,
+                score_cherry: DEFAULT_SCORE_CHERRY,
+                score_coin: DEFAULT_SCORE_COIN,
+                score_lemon: DEFAULT_SCORE_LEMON,
+            },
+        );
+    world
+        .write_model_test(
+            @SessionMarket {
+                session_id,
+                refresh_count: 1,
+                item_slot_1: 1,
+                item_slot_2: 2,
+                item_slot_3: 3,
+                item_slot_4: 4,
+                item_slot_5: 5,
+                item_slot_6: 6,
+                purchased_mask: 0,
+            },
+        );
+    world
+        .write_model_test(
+            @Item {
+                item_id: 1,
+                name: 'spin',
+                description: 'spin',
+                price: 1,
+                sell_price: 0,
+                effect_type: ItemEffectType::SpinBonus,
+                effect_value: 1,
+                target_symbol: 0,
+            },
+        );
+    world.write_model_test(@SessionCharms { session_id, count: 0 });
+}
+
+#[test]
+fn buy_item_sets_purchased_mask_bit() {
+    let (mut world, market_address) = market_purchase_mask_world();
+    let market = IMarketDispatcher { contract_address: market_address };
+    let player: ContractAddress = 0x123.try_into().unwrap();
+    let session_id = 77;
+    seed_market_purchase_mask(ref world, session_id, player);
+    start_cheat_caller_address(market_address, player);
+
+    market.buy_item(session_id, 0);
+
+    let store = StoreTrait::new(world);
+    let market_state = store.session_market(session_id);
+    assert(market_state.purchased_mask == 1, 'mask bit not set');
+}
+
+#[test]
+#[should_panic(expected: ('Slot already purchased',))]
+fn duplicate_buy_item_rejects_from_purchased_mask() {
+    let (mut world, market_address) = market_purchase_mask_world();
+    let market = IMarketDispatcher { contract_address: market_address };
+    let player: ContractAddress = 0x123.try_into().unwrap();
+    let session_id = 78;
+    seed_market_purchase_mask(ref world, session_id, player);
+    start_cheat_caller_address(market_address, player);
+
+    market.buy_item(session_id, 0);
+    market.buy_item(session_id, 0);
 }
 
 fn seed_request_spin_profile_static_models(
@@ -541,13 +698,12 @@ fn refresh_market_profile_world() -> (dojo::world::WorldStorage, ContractAddress
         TestResource::Model(declared_class_hash("m_Config")),
         TestResource::Model(declared_class_hash("m_Session")),
         TestResource::Model(declared_class_hash("m_SessionMarket")),
-        TestResource::Model(declared_class_hash("m_MarketSlotPurchased")),
         TestResource::Model(declared_class_hash("m_SpinResult")),
         TestResource::Model(declared_class_hash("m_SessionItemIndex")),
         TestResource::Model(declared_class_hash("m_SessionCharms")),
         TestResource::Model(declared_class_hash("m_SessionCharmEntry")),
         TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
-        TestResource::Event(declared_class_hash("e_MarketRefreshed")),
+        TestResource::Event(declared_class_hash("e_MarketRefreshedSignal")),
         TestResource::Contract(declared_class_hash("Market")),
     ];
 
@@ -561,8 +717,7 @@ fn refresh_market_profile_world() -> (dojo::world::WorldStorage, ContractAddress
             array![
                 selector_from_names(@NAMESPACE(), @"Session"),
                 selector_from_names(@NAMESPACE(), @"SessionMarket"),
-                selector_from_names(@NAMESPACE(), @"MarketSlotPurchased"),
-                selector_from_names(@NAMESPACE(), @"MarketRefreshed"),
+                selector_from_names(@NAMESPACE(), @"MarketRefreshedSignal"),
             ]
                 .span(),
         );
@@ -664,6 +819,7 @@ fn seed_refresh_market_profile_session(
                 item_slot_4: 4,
                 item_slot_5: 5,
                 item_slot_6: 6,
+                purchased_mask: 0,
             },
         );
     world.write_model_test(@SpinResult {
@@ -693,11 +849,6 @@ fn seed_refresh_market_profile_session(
     world.write_model_test(@SessionItemIndex { session_id, count: 0 });
     world.write_model_test(@SessionCharms { session_id, count: 0 });
 
-    let mut slot: u32 = 0;
-    while slot != 6 {
-        world.write_model_test(@MarketSlotPurchased { session_id, slot, purchased: false });
-        slot += 1;
-    }
 }
 
 #[test]
@@ -728,6 +879,7 @@ fn profile_refresh_market_world_path() {
         checksum += refreshed_market.item_slot_4.into();
         checksum += refreshed_market.item_slot_5.into();
         checksum += refreshed_market.item_slot_6.into();
+        assert(refreshed_market.purchased_mask == 0, 'refresh mask not reset');
 
         i += 1;
     }

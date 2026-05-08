@@ -105,12 +105,14 @@ export interface RawSessionMarket {
   item_slot_4: PrimitiveValue<string>;
   item_slot_5: PrimitiveValue<string>;
   item_slot_6: PrimitiveValue<string>;
+  purchased_mask: PrimitiveValue<string>;
 }
 
 export interface SessionMarket {
   sessionId: number;
   refreshCount: number;
   slots: [number, number, number, number, number, number];
+  purchasedMask: number;
 }
 
 export interface RawSessionInventory {
@@ -255,6 +257,7 @@ export const SessionMarketModel = {
         toNumber(data.item_slot_5),
         toNumber(data.item_slot_6),
       ],
+      purchasedMask: toNumber(data.purchased_mask),
     };
   },
 };

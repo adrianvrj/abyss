@@ -14,7 +14,7 @@ pub mod Relic {
     use starknet::{ContractAddress, get_caller_address};
     use core::poseidon::poseidon_hash_span;
     use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
-    use crate::events::index::{MarketRefreshed, PhantomActivated, RelicActivated};
+    use crate::events::index::{MarketRefreshedSignal, PhantomActivated, RelicActivated};
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::market::MarketImpl;
     use crate::interfaces::relic_nft::{IRelicDispatcherTrait, IRelicERC721DispatcherTrait};
@@ -145,25 +145,15 @@ pub mod Relic {
                 let mut sm = store.session_market(session_id);
                 sm.refresh_count += 1;
 
-                let refreshed_market = MarketImpl::refresh_market(
+                let _refreshed_market = MarketImpl::refresh_market(
                     ref store, sm, session_id, caller,
                 );
-                let refresh_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
-                    @store, session_id, charm_ids.span(), @session,
-                );
                 store
-                    .emit_market_refreshed(
-                        @MarketRefreshed {
+                    .emit_market_refreshed_signal(
+                        @MarketRefreshedSignal {
                             session_id,
                             player: caller,
-                            new_score: session.score,
-                            slot_1: refreshed_market.item_slot_1,
-                            slot_2: refreshed_market.item_slot_2,
-                            slot_3: refreshed_market.item_slot_3,
-                            slot_4: refreshed_market.item_slot_4,
-                            slot_5: refreshed_market.item_slot_5,
-                            slot_6: refreshed_market.item_slot_6,
-                            current_luck: refresh_luck,
+                            dummy_metadata: 0,
                         },
                     );
             } else if effect == RelicEffectType::Trigger666 {

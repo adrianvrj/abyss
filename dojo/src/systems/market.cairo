@@ -14,16 +14,32 @@ pub trait IMarket<T> {
 pub mod Market {
     use starknet::get_caller_address;
     use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
-    use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshed};
-use crate::helpers::inventory::InventoryImpl;
+    use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshedSignal};
+    use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::items::{BIBLIA_ITEM_ID, get_item_purchase_price};
     use crate::helpers::market::MarketImpl;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
     use crate::models::index::SessionItemPurchaseCount;
-    use crate::models::index::MarketSlotPurchased;
     use crate::types::effect::ItemEffectType;
     use crate::store::StoreTrait;
     use super::*;
+
+    #[inline(always)]
+    fn market_slot_bit(slot: u32) -> u32 {
+        if slot == 0 {
+            1
+        } else if slot == 1 {
+            2
+        } else if slot == 2 {
+            4
+        } else if slot == 3 {
+            8
+        } else if slot == 4 {
+            16
+        } else {
+            32
+        }
+    }
 
     #[storage]
     struct Storage {}
@@ -45,12 +61,8 @@ use crate::helpers::inventory::InventoryImpl;
             assert(session.player_address == caller, 'Not session owner');
             assert(session.is_active, 'Session not active');
 
-            // 1. Slot check
-            let msp = store.market_slot_purchased(session_id, market_slot);
-            assert(!msp.purchased, 'Slot already purchased');
-
-            // 2. Item Fetching
-            let market = store.session_market(session_id);
+            // 1. Item Fetching
+            let mut market = store.session_market(session_id);
             let item_id = if market_slot == 0 {
                 market.item_slot_1
             } else if market_slot == 1 {
@@ -67,6 +79,8 @@ use crate::helpers::inventory::InventoryImpl;
                 assert(false, 'Invalid slot');
                 0
             };
+            let purchased_bit = market_slot_bit(market_slot);
+            assert((market.purchased_mask / purchased_bit) % 2 == 0, 'Slot already purchased');
 
             let mut purchase_price: u32 = 0;
             let mut is_charm = false;
@@ -124,10 +138,8 @@ use crate::helpers::inventory::InventoryImpl;
             }
 
             // 5. State Persistence
-            store
-                .set_market_slot_purchased(
-                    @MarketSlotPurchased { session_id, slot: market_slot, purchased: true },
-                );
+            market.purchased_mask += purchased_bit;
+            store.set_session_market(@market);
 
             // 6. Event Emission
             // Reuse the in-scope `session` (already reflects all mutations above, since we
@@ -247,31 +259,15 @@ use crate::helpers::inventory::InventoryImpl;
             store.set_session(@session);
 
             // Execute refresh helper (helper writes the final session_market)
-            let refreshed_market = crate::helpers::market::MarketImpl::refresh_market(
+            let _refreshed_market = crate::helpers::market::MarketImpl::refresh_market(
                 ref store, sm, session_id, caller,
             );
-
-            let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
-            let current_luck = if charm_ids.len() == 0 {
-                0
-            } else {
-                InventoryImpl::calculate_effective_luck_with_charm_ids(
-                    @store, session_id, charm_ids.span(), @session,
-                )
-            };
             store
-                .emit_market_refreshed(
-                    @MarketRefreshed {
+                .emit_market_refreshed_signal(
+                    @MarketRefreshedSignal {
                         session_id,
                         player: caller,
-                        new_score: session.score,
-                        slot_1: refreshed_market.item_slot_1,
-                        slot_2: refreshed_market.item_slot_2,
-                        slot_3: refreshed_market.item_slot_3,
-                        slot_4: refreshed_market.item_slot_4,
-                        slot_5: refreshed_market.item_slot_5,
-                        slot_6: refreshed_market.item_slot_6,
-                        current_luck,
+                        dummy_metadata: 0,
                     },
                 );
         }

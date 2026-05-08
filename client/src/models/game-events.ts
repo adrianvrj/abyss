@@ -1,5 +1,6 @@
 export interface SpinCompletedEvent {
   sessionId: number;
+  stateOnly?: boolean;
   grid: number[];
   scoreGained: number;
   newTotalScore: number;
@@ -35,6 +36,7 @@ export interface ItemSoldEvent {
 
 export interface MarketRefreshedEvent {
   sessionId: number;
+  stateOnly?: boolean;
   newScore: number;
   slots: number[];
   currentLuck: number;

@@ -3,7 +3,9 @@ use crate::helpers::charm_types::{
     get_charm_ids_by_rarity, get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
 };
 use crate::helpers::grid::normalize_spin_luck;
-use crate::systems::play::get_charm_drop_chance_from_score_and_luck;
+use crate::systems::play::{
+    get_charm_drop_chance_from_score_and_luck, get_charm_rarity_from_score_and_roll,
+};
 use crate::systems::charm::{
     CHARM_FORGE_PRICE_CHIP, get_charm_reroll_base_rarity, get_charm_reroll_result_rarity,
 };
@@ -442,6 +444,63 @@ fn test_charm_drop_chance_is_more_conservative() {
     assert(get_charm_drop_chance_from_score_and_luck(1000, 20) == 17, 'mid run chance');
     assert(get_charm_drop_chance_from_score_and_luck(2000, 40) == 34, 'strong run chance');
     assert(get_charm_drop_chance_from_score_and_luck(5000, 140) == 60, 'drop chance cap');
+}
+
+fn assert_score_rarity_odds(
+    score: u32,
+    common: u32,
+    rare: u32,
+    epic: u32,
+    legendary: u32,
+) {
+    assert(common + rare + epic + legendary == 100, 'bad score odds sum');
+    let rare_start = common;
+    let epic_start = common + rare;
+    let legendary_start = common + rare + epic;
+
+    if common > 0 {
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, 0), 0);
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, common - 1), 0);
+    }
+    if rare > 0 {
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, rare_start), 1);
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, epic_start - 1), 1);
+    }
+    if epic > 0 {
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, epic_start), 2);
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, legendary_start - 1), 2);
+    }
+    if legendary > 0 {
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, legendary_start), 3);
+        assert_eq!(get_charm_rarity_from_score_and_roll(score, 99), 3);
+    }
+}
+
+#[test]
+fn test_score_based_charm_rarity_odds_at_score_boundaries() {
+    assert_score_rarity_odds(1499, 88, 12, 0, 0);
+    assert_score_rarity_odds(1500, 76, 20, 4, 0);
+    assert_score_rarity_odds(2999, 76, 20, 4, 0);
+    assert_score_rarity_odds(3000, 58, 32, 10, 0);
+    assert_score_rarity_odds(4999, 58, 32, 10, 0);
+    assert_score_rarity_odds(5000, 40, 38, 20, 2);
+    assert_score_rarity_odds(7999, 40, 38, 20, 2);
+    assert_score_rarity_odds(8000, 22, 35, 35, 8);
+    assert_score_rarity_odds(12499, 22, 35, 35, 8);
+    assert_score_rarity_odds(12500, 10, 30, 45, 15);
+    assert_score_rarity_odds(24999, 10, 30, 45, 15);
+    assert_score_rarity_odds(25000, 3, 22, 55, 20);
+}
+
+#[test]
+fn test_score_based_charm_rarity_odds_for_eight_thousand_tier() {
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 21), 0);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 22), 1);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 56), 1);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 57), 2);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 91), 2);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 92), 3);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 99), 3);
 }
 
 #[test]

@@ -72,29 +72,66 @@ pub impl MarketImpl of MarketTrait {
         2 + ((refresh_count * (refresh_count + 3)) / 2)
     }
 
-    fn get_recent_market_items(market: crate::models::index::SessionMarket) -> Array<u32> {
-        let mut recent_items: Array<u32> = array![];
+    fn has_recent_market_item(
+        recent_items: (u32, u32, u32, u32, u32, u32), target: u32,
+    ) -> bool {
+        let (item_1, item_2, item_3, item_4, item_5, item_6) = recent_items;
+        target != 0
+            && (item_1 == target
+                || item_2 == target
+                || item_3 == target
+                || item_4 == target
+                || item_5 == target
+                || item_6 == target)
+    }
 
-        if market.item_slot_1 > 0 {
-            recent_items.append(market.item_slot_1);
+    fn unique_loadout_charm_ids(
+        loadout: crate::models::index::SessionCharmLoadout,
+    ) -> (u32, u32, u32, u32) {
+        let mut count: u32 = 0;
+        let mut charm_id_1: u32 = 0;
+        let mut charm_id_2: u32 = 0;
+        let mut charm_id_3: u32 = 0;
+
+        if loadout.charm_id_1 > 0 {
+            charm_id_1 = loadout.charm_id_1;
+            count = 1;
         }
-        if market.item_slot_2 > 0 && !Self::has_value(recent_items.span(), market.item_slot_2) {
-            recent_items.append(market.item_slot_2);
+        if loadout.charm_id_2 > 0 && loadout.charm_id_2 != charm_id_1 {
+            if count == 0 {
+                charm_id_1 = loadout.charm_id_2;
+            } else {
+                charm_id_2 = loadout.charm_id_2;
+            }
+            count += 1;
         }
-        if market.item_slot_3 > 0 && !Self::has_value(recent_items.span(), market.item_slot_3) {
-            recent_items.append(market.item_slot_3);
-        }
-        if market.item_slot_4 > 0 && !Self::has_value(recent_items.span(), market.item_slot_4) {
-            recent_items.append(market.item_slot_4);
-        }
-        if market.item_slot_5 > 0 && !Self::has_value(recent_items.span(), market.item_slot_5) {
-            recent_items.append(market.item_slot_5);
-        }
-        if market.item_slot_6 > 0 && !Self::has_value(recent_items.span(), market.item_slot_6) {
-            recent_items.append(market.item_slot_6);
+        if loadout.charm_id_3 > 0
+            && loadout.charm_id_3 != charm_id_1
+            && loadout.charm_id_3 != charm_id_2 {
+            if count == 0 {
+                charm_id_1 = loadout.charm_id_3;
+            } else if count == 1 {
+                charm_id_2 = loadout.charm_id_3;
+            } else {
+                charm_id_3 = loadout.charm_id_3;
+            }
+            count += 1;
         }
 
-        recent_items
+        (count, charm_id_1, charm_id_2, charm_id_3)
+    }
+
+    fn get_loadout_charm_at(
+        loadout_charm_ids: (u32, u32, u32, u32), index: u32,
+    ) -> u32 {
+        let (_, charm_id_1, charm_id_2, charm_id_3) = loadout_charm_ids;
+        if index == 0 {
+            charm_id_1
+        } else if index == 1 {
+            charm_id_2
+        } else {
+            charm_id_3
+        }
     }
 
     fn has_generated_value(
@@ -129,39 +166,36 @@ pub impl MarketImpl of MarketTrait {
     }
 
     fn generate_market_slot_item(
-        session_id: u32,
-        player: ContractAddress,
-        owned_charm_ids: Span<u32>,
+        slot_seed: felt252,
+        loadout_charm_ids: (u32, u32, u32, u32),
         session_charm_ids: Span<u32>,
-        excluded_ids: Span<u32>,
-        slot: u32,
+        recent_items: (u32, u32, u32, u32, u32, u32),
         nonce: u32,
     ) -> u32 {
-        let (s0, _, _) = hades_permutation(session_id.into(), player.into(), 2);
-        let (s1, _, _) = hades_permutation(s0, slot.into(), 2);
-        let (seed, _, _) = hades_permutation(s1, nonce.into(), 2);
+        let (seed, _, _) = hades_permutation(slot_seed, nonce.into(), 2);
         let roll: u256 = seed.into();
         let roll_low: u128 = roll.low;
 
-        let owned_charm_count = owned_charm_ids.len();
-        if owned_charm_count > 0 {
+        let (loadout_charm_count, _, _, _) = loadout_charm_ids;
+        if loadout_charm_count > 0 {
             let charm_roll: u32 = (roll_low % 100).try_into().unwrap();
             if charm_roll < MARKET_CHARM_APPEAR_CHANCE {
-                let charm_index: u32 = ((roll_low / 100) % owned_charm_count.into())
+                let charm_index: u32 = ((roll_low / 100) % loadout_charm_count.into())
                     .try_into()
                     .unwrap();
-                let charm_id = *owned_charm_ids.at(charm_index);
+                let charm_id = Self::get_loadout_charm_at(loadout_charm_ids, charm_index);
                 let charm_item_id = 1000 + charm_id;
                 if charm_id > 0
                     && !Self::has_value(session_charm_ids, charm_id)
-                    && !Self::has_value(excluded_ids, charm_item_id) {
+                    && !Self::has_recent_market_item(recent_items, charm_item_id) {
                     return charm_item_id;
                 }
             }
         }
 
         let item_id: u32 = (roll_low % TOTAL_ITEMS.into()).try_into().unwrap() + 1;
-        if Self::is_retired_market_item(item_id) || Self::has_value(excluded_ids, item_id) {
+        if Self::is_retired_market_item(item_id)
+            || Self::has_recent_market_item(recent_items, item_id) {
             return 0;
         }
 
@@ -179,28 +213,25 @@ pub impl MarketImpl of MarketTrait {
         let nonce = sm.refresh_count;
         // Loadout acts as the candidate pool. Empty loadout → no charms in the market.
         let loadout = store.session_charm_loadout(session_id);
-        let mut loadout_charm_ids: Array<u32> = array![];
-        if loadout.charm_id_1 > 0 {
-            loadout_charm_ids.append(loadout.charm_id_1);
-        }
-        if loadout.charm_id_2 > 0
-            && !Self::has_value(loadout_charm_ids.span(), loadout.charm_id_2) {
-            loadout_charm_ids.append(loadout.charm_id_2);
-        }
-        if loadout.charm_id_3 > 0
-            && !Self::has_value(loadout_charm_ids.span(), loadout.charm_id_3) {
-            loadout_charm_ids.append(loadout.charm_id_3);
-        }
+        let loadout_charm_ids = Self::unique_loadout_charm_ids(loadout);
+        let (loadout_charm_count, _, _, _) = loadout_charm_ids;
         // Only fetch session charms when we might actually consult them — charm candidates
         // are only generated when the loadout is non-empty.
-        let session_charm_ids: Array<u32> = if loadout_charm_ids.len() > 0 {
+        let session_charm_ids: Array<u32> = if loadout_charm_count > 0 {
             crate::helpers::inventory::InventoryImpl::collect_session_charm_ids(
                 @store, session_id,
             )
         } else {
             array![]
         };
-        let recent_items = Self::get_recent_market_items(sm);
+        let recent_items = (
+            sm.item_slot_1,
+            sm.item_slot_2,
+            sm.item_slot_3,
+            sm.item_slot_4,
+            sm.item_slot_5,
+            sm.item_slot_6,
+        );
 
         let mut generated_count: u32 = 0;
         let mut item_slot_1: u32 = 0;
@@ -209,25 +240,27 @@ pub impl MarketImpl of MarketTrait {
         let mut item_slot_4: u32 = 0;
         let mut item_slot_5: u32 = 0;
         let mut item_slot_6: u32 = 0;
+        let (base_seed, _, _) = hades_permutation(session_id.into(), player.into(), 2);
         let mut slot: u32 = 0;
         while slot != 6 {
+            let (slot_seed, _, _) = hades_permutation(base_seed, slot.into(), 2);
             let mut attempts: u32 = 0;
             let mut candidate: u32 = 0;
+            let mut is_duplicate = false;
 
             while attempts != 20 {
                 candidate =
                     Self::generate_market_slot_item(
-                        session_id,
-                        player,
-                        loadout_charm_ids.span(),
+                        slot_seed,
+                        loadout_charm_ids,
                         session_charm_ids.span(),
-                        recent_items.span(),
-                        slot,
+                        recent_items,
                         nonce + (attempts * 100),
                     );
 
-                if candidate != 0
-                    && !Self::has_generated_value(
+                is_duplicate =
+                    candidate != 0
+                        && Self::has_generated_value(
                         generated_count,
                         item_slot_1,
                         item_slot_2,
@@ -236,26 +269,17 @@ pub impl MarketImpl of MarketTrait {
                         item_slot_5,
                         item_slot_6,
                         candidate,
-                    ) {
+                    );
+                if candidate != 0 && !is_duplicate {
                     break;
                 }
                 attempts += 1;
             }
 
-            if candidate == 0
-                || Self::has_generated_value(
-                    generated_count,
-                    item_slot_1,
-                    item_slot_2,
-                    item_slot_3,
-                    item_slot_4,
-                    item_slot_5,
-                    item_slot_6,
-                    candidate,
-                ) {
+            if candidate == 0 || is_duplicate {
                 candidate = 1;
                 while candidate <= TOTAL_ITEMS
-                    && (Self::has_value(recent_items.span(), candidate)
+                    && (Self::has_recent_market_item(recent_items, candidate)
                         || Self::has_generated_value(
                             generated_count,
                             item_slot_1,
@@ -293,24 +317,9 @@ pub impl MarketImpl of MarketTrait {
         sm.item_slot_4 = item_slot_4;
         sm.item_slot_5 = item_slot_5;
         sm.item_slot_6 = item_slot_6;
+        sm.purchased_mask = 0;
 
         store.set_session_market(@sm);
-
-        // Clear purchased flags. Skip writes for slots already marked unpurchased —
-        // writes are ~4× more expensive than reads in Dojo storage.
-        let mut slot: u32 = 0;
-        while slot != 6 {
-            let existing = store.market_slot_purchased(session_id, slot);
-            if existing.purchased {
-                store
-                    .set_market_slot_purchased(
-                        @crate::models::index::MarketSlotPurchased {
-                            session_id, slot, purchased: false,
-                        },
-                    );
-            }
-            slot += 1;
-        };
 
         sm
     }

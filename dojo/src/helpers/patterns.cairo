@@ -18,10 +18,12 @@ pub fn accumulate_symbol_match_counts(
     }
 }
 
+#[inline(always)]
 pub fn apply_percentage_bonus(score: u32, bonus: u32) -> u32 {
     score * (100 + bonus) / 100
 }
 
+#[inline(always)]
 pub fn apply_jackpot_bonus(total_score: u32, is_jackpot: bool, jp_bonus: u32) -> u32 {
     if is_jackpot && jp_bonus > 0 {
         apply_percentage_bonus(total_score, jp_bonus)

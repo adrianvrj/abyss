@@ -118,7 +118,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x69a9d58d8c3b49fc77d589724240e110160a7d90922b93d4b30fbcbaf79fcec",
+      "class_hash": "0x64babbf6c10e0ab5a321d3201effd730dbaa1ba26488e89c9181d4781d2ca4c",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -132,7 +132,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x286e8e7cf9a4d70426e822fd8cb9eb713915f2bf34a32e0e3a6bf49169706e3",
+      "class_hash": "0x708354fdc012484e2ec11ecb39dee19a787131d646ba8c024dcad172b5414cc",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -141,6 +141,8 @@
         "create_session",
         "claim_beast_session",
         "mint_session",
+        "configure_egs",
+        "link_egs_session",
         "set_pending_charm_loadout",
         "equip_charms",
         "request_spin",
@@ -151,7 +153,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x46134b9818fc018a27435592985e7ee23de9f4dc0d874a7d7b059015c7c8892",
+      "class_hash": "0x7e32427114c9d4ff5b75240a3a3c376a5887f5d92ba4a8f45ae01c0fd297d26",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -533,28 +535,6 @@
       "class_hash": "0x150e0f147e320fa546ae08b90fb2fd803c75235b15c45ae6e615053bf983875",
       "tag": "ABYSS-Item",
       "selector": "0x48ae4b237977971e2c1b5b4c13a760ffd0a0a42823059ae40fb7b0505418434"
-    },
-    {
-      "members": [
-        {
-          "name": "session_id",
-          "type": "core::integer::u32",
-          "key": true
-        },
-        {
-          "name": "slot",
-          "type": "core::integer::u32",
-          "key": true
-        },
-        {
-          "name": "purchased",
-          "type": "core::bool",
-          "key": false
-        }
-      ],
-      "class_hash": "0x29122741412b14ba1dc2449ebb0aa946ddb6c0d88860f9e977ee4345dbd878d",
-      "tag": "ABYSS-MarketSlotPurchased",
-      "selector": "0x51d7c28ed172a697204807e3733bf00e1851ba16d52dba5f7a52b6ff3dd0994"
     },
     {
       "members": [
@@ -946,9 +926,14 @@
           "name": "item_slot_6",
           "type": "core::integer::u32",
           "key": false
+        },
+        {
+          "name": "purchased_mask",
+          "type": "core::integer::u32",
+          "key": false
         }
       ],
-      "class_hash": "0x7d9a465085e389186236f43e0434e49032c822c82c47050ac9e32afc049d763",
+      "class_hash": "0x68ddadb7561eb44f5c0319990125bb75bf8b3c7f1f548f4b8081fc77691b369",
       "tag": "ABYSS-SessionMarket",
       "selector": "0x4ad8621b44437e094945deac96dbf20edf05da7e934fb9045e5788197852c9d"
     },
@@ -1382,6 +1367,28 @@
           "key": true
         },
         {
+          "name": "dummy_metadata",
+          "type": "core::felt252",
+          "key": false
+        }
+      ],
+      "class_hash": "0x271572153ca85650f197350a3ecef597a86cd9216d6adf8a742f5981594af3a",
+      "tag": "ABYSS-MarketRefreshedSignal",
+      "selector": "0x1118eda1fcbe2727961128983c50627449727124ea054e414f2f6c9ff4d93cc"
+    },
+    {
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
           "name": "bonus_spins",
           "type": "core::integer::u32",
           "key": false
@@ -1685,6 +1692,28 @@
       "class_hash": "0x6ba909ade776cd0759a75449ca80cc1235aabad327a8550216493545f55e570",
       "tag": "ABYSS-SpinCompleted",
       "selector": "0x6cc9b3e14b07cf6ea1d434d90a986c4f06058fb7df7f36083daea14a9409977"
+    },
+    {
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "dummy_metadata",
+          "type": "core::felt252",
+          "key": false
+        }
+      ],
+      "class_hash": "0x43001044bc08ce91f24ccd636420d25e94af4a88b28769b6d59e3931d141c1a",
+      "tag": "ABYSS-SpinCompletedSignal",
+      "selector": "0x107b8b005b0b89bf3cd53b22e3d5a80ba5c30cbfaf6741eb32a97f768333167"
     }
   ],
   "external_contracts": [],
@@ -1974,6 +2003,34 @@
         {
           "name": "current_luck",
           "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::MarketRefreshedSignal",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "dummy_metadata",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::MarketRefreshedSignalValue",
+      "members": [
+        {
+          "name": "dummy_metadata",
+          "type": "core::felt252"
         }
       ]
     },
@@ -2355,6 +2412,34 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::events::index::SpinCompletedSignal",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "dummy_metadata",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::SpinCompletedSignalValue",
+      "members": [
+        {
+          "name": "dummy_metadata",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::events::index::SpinCompletedValue",
       "members": [
         {
@@ -2517,6 +2602,12 @@
     },
     {
       "type": "event",
+      "name": "abyss_game::events::index::e_MarketRefreshedSignal::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
       "name": "abyss_game::events::index::e_PhantomActivated::Event",
       "kind": "enum",
       "variants": []
@@ -2548,6 +2639,12 @@
     {
       "type": "event",
       "name": "abyss_game::events::index::e_SpinCompleted::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::events::index::e_SpinCompletedSignal::Event",
       "kind": "enum",
       "variants": []
     },
@@ -2771,6 +2868,197 @@
             }
           ],
           "state_mutability": "external"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::interfaces::egs::GameContextDetails",
+      "members": [
+        {
+          "name": "id",
+          "type": "core::felt252"
+        },
+        {
+          "name": "value",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "interface",
+      "name": "abyss_game::interfaces::egs::IMinigame",
+      "items": [
+        {
+          "type": "function",
+          "name": "token_address",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "settings_address",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "objectives_address",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "mint_game",
+          "inputs": [
+            {
+              "name": "player_name",
+              "type": "core::option::Option::<core::felt252>"
+            },
+            {
+              "name": "settings_id",
+              "type": "core::option::Option::<core::integer::u32>"
+            },
+            {
+              "name": "start",
+              "type": "core::option::Option::<core::integer::u64>"
+            },
+            {
+              "name": "end",
+              "type": "core::option::Option::<core::integer::u64>"
+            },
+            {
+              "name": "objective_id",
+              "type": "core::option::Option::<core::integer::u32>"
+            },
+            {
+              "name": "context",
+              "type": "core::option::Option::<abyss_game::interfaces::egs::GameContextDetails>"
+            },
+            {
+              "name": "client_url",
+              "type": "core::option::Option::<core::byte_array::ByteArray>"
+            },
+            {
+              "name": "renderer_address",
+              "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
+            },
+            {
+              "name": "skills_address",
+              "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
+            },
+            {
+              "name": "to",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "soulbound",
+              "type": "core::bool"
+            },
+            {
+              "name": "paymaster",
+              "type": "core::bool"
+            },
+            {
+              "name": "salt",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "metadata",
+              "type": "core::integer::u16"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::felt252"
+            }
+          ],
+          "state_mutability": "view"
+        }
+      ]
+    },
+    {
+      "type": "interface",
+      "name": "abyss_game::interfaces::egs::IMinigameTokenData",
+      "items": [
+        {
+          "type": "function",
+          "name": "score",
+          "inputs": [
+            {
+              "name": "token_id",
+              "type": "core::felt252"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u64"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "game_over",
+          "inputs": [
+            {
+              "name": "token_id",
+              "type": "core::felt252"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::bool"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "score_batch",
+          "inputs": [
+            {
+              "name": "token_ids",
+              "type": "core::array::Span::<core::felt252>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::array::Array::<core::integer::u64>"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "game_over_batch",
+          "inputs": [
+            {
+              "name": "token_ids",
+              "type": "core::array::Span::<core::felt252>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::array::Array::<core::bool>"
+            }
+          ],
+          "state_mutability": "view"
         }
       ]
     },
@@ -3408,34 +3696,6 @@
     },
     {
       "type": "struct",
-      "name": "abyss_game::models::index::MarketSlotPurchased",
-      "members": [
-        {
-          "name": "session_id",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "slot",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "purchased",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::MarketSlotPurchasedValue",
-      "members": [
-        {
-          "name": "purchased",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
       "name": "abyss_game::models::index::PendingCharmLoadout",
       "members": [
         {
@@ -3879,6 +4139,10 @@
         {
           "name": "item_slot_6",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "purchased_mask",
+          "type": "core::integer::u32"
         }
       ]
     },
@@ -3912,6 +4176,10 @@
         },
         {
           "name": "item_slot_6",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "purchased_mask",
           "type": "core::integer::u32"
         }
       ]
@@ -4261,12 +4529,6 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_Item::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_MarketSlotPurchased::Event",
       "kind": "enum",
       "variants": []
     },
@@ -4862,6 +5124,42 @@
         },
         {
           "type": "function",
+          "name": "configure_egs",
+          "inputs": [
+            {
+              "name": "token_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "settings_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "objectives_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "link_egs_session",
+          "inputs": [
+            {
+              "name": "token_id",
+              "type": "core::felt252"
+            },
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "set_pending_charm_loadout",
           "inputs": [
             {
@@ -4963,6 +5261,22 @@
           "outputs": [
             {
               "type": "abyss_game::models::index::Session"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_egs_session",
+          "inputs": [
+            {
+              "name": "token_id",
+              "type": "core::felt252"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
             }
           ],
           "state_mutability": "view"
@@ -6555,11 +6869,39 @@
     },
     {
       "type": "enum",
+      "name": "core::option::Option::<abyss_game::interfaces::egs::GameContextDetails>",
+      "variants": [
+        {
+          "name": "Some",
+          "type": "abyss_game::interfaces::egs::GameContextDetails"
+        },
+        {
+          "name": "None",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "enum",
       "name": "core::option::Option::<core::array::Span::<core::felt252>>",
       "variants": [
         {
           "name": "Some",
           "type": "core::array::Span::<core::felt252>"
+        },
+        {
+          "name": "None",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "core::option::Option::<core::byte_array::ByteArray>",
+      "variants": [
+        {
+          "name": "Some",
+          "type": "core::byte_array::ByteArray"
         },
         {
           "name": "None",
@@ -6588,6 +6930,20 @@
         {
           "name": "Some",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "None",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "core::option::Option::<core::integer::u64>",
+      "variants": [
+        {
+          "name": "Some",
+          "type": "core::integer::u64"
         },
         {
           "name": "None",
@@ -8289,7 +8645,7 @@
       "inputs": [
         {
           "name": "event",
-          "type": "abyss_game::events::index::SpinCompleted"
+          "type": "abyss_game::events::index::SpinCompletedSignal"
         }
       ],
       "outputs": [],
@@ -8308,7 +8664,7 @@
       "inputs": [
         {
           "name": "value",
-          "type": "abyss_game::events::index::SpinCompletedValue"
+          "type": "abyss_game::events::index::SpinCompletedSignalValue"
         }
       ],
       "outputs": [],
@@ -8577,6 +8933,28 @@
           ],
           "outputs": [],
           "state_mutability": "external"
+        }
+      ]
+    },
+    {
+      "type": "interface",
+      "name": "openzeppelin_interfaces::introspection::ISRC5",
+      "items": [
+        {
+          "type": "function",
+          "name": "supports_interface",
+          "inputs": [
+            {
+              "name": "interface_id",
+              "type": "core::felt252"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::bool"
+            }
+          ],
+          "state_mutability": "view"
         }
       ]
     },

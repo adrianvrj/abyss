@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
     getSessionMarket,
     getItemInfo,
-    isMarketSlotPurchased,
     getSessionInventoryCount,
     getSessionItems,
     ContractItem,
@@ -40,6 +39,17 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         loadMarketData();
     }, [sessionId]);
 
+    function purchasedSlotsFromMask(mask: number | undefined): Set<number> {
+        const purchasedSlots = new Set<number>();
+        const value = mask ?? 0;
+        for (let slot = 0; slot < 6; slot++) {
+            if (Math.floor(value / (2 ** slot)) % 2 === 1) {
+                purchasedSlots.add(slot);
+            }
+        }
+        return purchasedSlots;
+    }
+
     async function loadMarketData() {
         try {
             setLoading(true);
@@ -60,12 +70,7 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
             const playerItems = await getSessionItems(sessionId);
             setOwnedItemIds(new Set(playerItems.map(pi => pi.item_id)));
 
-            const purchasedSlots = new Set<number>();
-            for (let slot = 1; slot <= 6; slot++) {
-                const isPurchased = await isMarketSlotPurchased(sessionId, slot);
-                if (isPurchased) purchasedSlots.add(slot);
-            }
-            setPurchasedInCurrentMarket(purchasedSlots);
+            setPurchasedInCurrentMarket(purchasedSlotsFromMask(market.purchased_mask));
         } catch (error) {
             console.error("Failed to load market:", error);
         } finally {

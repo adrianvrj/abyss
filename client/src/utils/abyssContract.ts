@@ -208,6 +208,7 @@ export interface SessionMarket {
   item_slot_4: number;
   item_slot_5: number;
   item_slot_6: number;
+  purchased_mask: number;
   relicPendingEffect?: number;
 }
 
@@ -223,7 +224,7 @@ export async function getSessionMarket(sessionId: number): Promise<SessionMarket
     calldata: [sessionId.toString()],
   });
 
-  const offset = result.length >= 8 ? 1 : 0;
+  const offset = result.length >= 9 ? 1 : 0;
 
   return {
     refresh_count: Number(result[offset] ?? 0),
@@ -233,6 +234,7 @@ export async function getSessionMarket(sessionId: number): Promise<SessionMarket
     item_slot_4: Number(result[offset + 4] ?? 0),
     item_slot_5: Number(result[offset + 5] ?? 0),
     item_slot_6: Number(result[offset + 6] ?? 0),
+    purchased_mask: Number(result[offset + 7] ?? 0),
   };
 }
 

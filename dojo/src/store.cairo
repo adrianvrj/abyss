@@ -8,14 +8,15 @@ use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
     BibliaDiscarded, CashOutResolved, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed,
-    PhantomActivated, RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
+    MarketRefreshedSignal, PhantomActivated, RelicActivated, RelicEquipped, SessionCreated,
+    SessionEnded, SpinCompleted, SpinCompletedSignal,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
 use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
-    BeastSessionsUsed, Config, Item, MarketSlotPurchased, PendingCharmLoadout, PlayerSessionEntry,
+    BeastSessionsUsed, Config, Item, PendingCharmLoadout, PlayerSessionEntry,
     PlayerSessions, Session, SessionCharmEntry, SessionCharmLoadout, SessionCharms, SessionInventory,
     SessionItemEntry, SessionItemIndex, SessionMarket, SessionChipBonus, SessionItemPurchaseCount,
     SpinResult, TokenPairId, XShareSessionClaim,
@@ -201,18 +202,6 @@ pub impl StoreImpl of StoreTrait {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // Market Slot Purchased
-    // ═══════════════════════════════════════════════════════════════════
-
-    fn market_slot_purchased(self: @Store, session_id: u32, slot: u32) -> MarketSlotPurchased {
-        self.world.read_model((session_id, slot))
-    }
-
-    fn set_market_slot_purchased(mut self: Store, msp: @MarketSlotPurchased) {
-        self.world.write_model(msp)
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
     // Item
     // ═══════════════════════════════════════════════════════════════════
 
@@ -358,6 +347,10 @@ pub impl StoreImpl of StoreTrait {
         self.world.emit_event(event);
     }
 
+    fn emit_spin_completed_signal(mut self: Store, event: @SpinCompletedSignal) {
+        self.world.emit_event(event);
+    }
+
     fn emit_item_purchased(mut self: Store, event: @ItemPurchased) {
         self.world.emit_event(event);
     }
@@ -367,6 +360,10 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_market_refreshed(mut self: Store, event: @MarketRefreshed) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_market_refreshed_signal(mut self: Store, event: @MarketRefreshedSignal) {
         self.world.emit_event(event);
     }
 

@@ -46,11 +46,12 @@ pub mod types {
 
 pub mod interfaces {
     pub mod charm_nft;
-    pub mod erc20;
-    pub mod erc721;
-    pub mod pragma;
-    pub mod relic_nft;
-    pub mod vrf;
+        pub mod erc20;
+        pub mod erc721;
+        pub mod egs;
+        pub mod pragma;
+        pub mod relic_nft;
+        pub mod vrf;
 }
 
 pub mod components {
