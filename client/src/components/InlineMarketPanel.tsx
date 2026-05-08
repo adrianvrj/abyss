@@ -28,6 +28,35 @@ function logMarketDebug(stage: string, payload?: unknown) {
     console.log(`[ABYSS_MARKET] ${stage}`, payload);
 }
 
+const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function marketSnapshotSignature(market: SessionMarket | null) {
+    if (!market) {
+        return null;
+    }
+
+    return [
+        market.refresh_count,
+        market.item_slot_1,
+        market.item_slot_2,
+        market.item_slot_3,
+        market.item_slot_4,
+        market.item_slot_5,
+        market.item_slot_6,
+    ].join('|');
+}
+
+function hasMarketAdvanced(nextMarket: SessionMarket, previousMarket: SessionMarket | null) {
+    if (!previousMarket) {
+        return true;
+    }
+
+    return (
+        nextMarket.refresh_count > previousMarket.refresh_count ||
+        marketSnapshotSignature(nextMarket) !== marketSnapshotSignature(previousMarket)
+    );
+}
+
 function getDiamondChipBonus(item: ContractItem) {
     if (item.item_id === 2 || item.item_id === 8) return 1;
     if (item.item_id === 26 || item.item_id === 27) return 2;
@@ -262,64 +291,98 @@ export default function InlineMarketPanel({
         );
     }
 
+    async function applyMarketData(market: SessionMarket, requestId: number) {
+        const itemIds = [
+            market.item_slot_1, market.item_slot_2, market.item_slot_3,
+            market.item_slot_4, market.item_slot_5, market.item_slot_6,
+        ];
+
+        const items: ContractItem[] = [];
+        const charmMap = new Map<number, CharmInfo>();
+
+        for (const id of itemIds) {
+            const item = await resolveMarketItem(id);
+            if (!item) {
+                continue;
+            }
+
+            if (isCharmItem(id)) {
+                const charmId = getCharmIdFromItemId(id);
+                const charmInfo = await getCharmInfo(charmId);
+                if (charmInfo) {
+                    charmMap.set(id, charmInfo);
+                }
+            }
+
+            items.push(item);
+        }
+
+        const playerItems = await getSessionItems(sessionId);
+        const visiblePlayerItems = playerItems.filter(
+            (playerItem) => !hiddenItemIds.includes(playerItem.item_id),
+        );
+
+        const purchasedSlots = purchasedSlotsFromMask(market.purchased_mask);
+
+        if (requestId !== latestMarketRequestRef.current) {
+            return false;
+        }
+
+        const pricedItems = await applySessionItemPrices(items);
+
+        setMarketData(market);
+        setMarketItems(pricedItems);
+        setCharmInfoMap(charmMap);
+        setOwnedItemIds(new Set(visiblePlayerItems.map((playerItem) => playerItem.item_id)));
+        setPurchasedInCurrentMarket(prev => {
+            if (isSameMarketSnapshot(market)) {
+                return new Set([...prev, ...purchasedSlots]);
+            }
+
+            return purchasedSlots;
+        });
+
+        return true;
+    }
+
     async function loadMarketData() {
         const requestId = ++latestMarketRequestRef.current;
         try {
             if (marketItems.length === 0) setLoading(true);
             const market = await getSessionMarket(sessionId);
-            if (!market) return;
+            if (!market) return null;
 
-            const itemIds = [
-                market.item_slot_1, market.item_slot_2, market.item_slot_3,
-                market.item_slot_4, market.item_slot_5, market.item_slot_6,
-            ];
-
-            const items: ContractItem[] = [];
-            const charmMap = new Map<number, CharmInfo>();
-
-            for (const id of itemIds) {
-                const item = await resolveMarketItem(id);
-                if (!item) {
-                    continue;
-                }
-
-                if (isCharmItem(id)) {
-                    const charmId = getCharmIdFromItemId(id);
-                    const charmInfo = await getCharmInfo(charmId);
-                    if (charmInfo) {
-                        charmMap.set(id, charmInfo);
-                    }
-                }
-
-                items.push(item);
-            }
-
-            const playerItems = await getSessionItems(sessionId);
-            const visiblePlayerItems = playerItems.filter(
-                (playerItem) => !hiddenItemIds.includes(playerItem.item_id),
-            );
-
-            const purchasedSlots = purchasedSlotsFromMask(market.purchased_mask);
-
-            if (requestId !== latestMarketRequestRef.current) {
-                return;
-            }
-
-            const pricedItems = await applySessionItemPrices(items);
-
-            setMarketData(market);
-            setMarketItems(pricedItems);
-            setCharmInfoMap(charmMap);
-            setOwnedItemIds(new Set(visiblePlayerItems.map((playerItem) => playerItem.item_id)));
-            setPurchasedInCurrentMarket(prev => {
-                if (isSameMarketSnapshot(market)) {
-                    return new Set([...prev, ...purchasedSlots]);
-                }
-
-                return purchasedSlots;
-            });
+            return await applyMarketData(market, requestId) ? market : null;
         } catch (error) {
             console.error("Failed to load market:", error);
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function loadRefreshedMarketData(previousMarket: SessionMarket | null) {
+        const requestId = ++latestMarketRequestRef.current;
+        try {
+            for (let attempt = 0; attempt < 8; attempt++) {
+                const market = await getSessionMarket(sessionId);
+                logMarketDebug('refresh:fallback:market-snapshot', {
+                    attempt,
+                    previous: marketSnapshotSignature(previousMarket),
+                    next: marketSnapshotSignature(market),
+                });
+
+                if (market && hasMarketAdvanced(market, previousMarket)) {
+                    return await applyMarketData(market, requestId) ? market : null;
+                }
+
+                await delay(attempt < 3 ? 200 : 350);
+            }
+
+            return await loadMarketData();
+        } catch (error) {
+            console.error("Failed to resolve refreshed market:", error);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -334,10 +397,13 @@ export default function InlineMarketPanel({
         ? calculateRefreshCost(practiceRefreshCount)
         : (marketData ? calculateRefreshCost(marketData.refresh_count) : 2);
 
-    async function processMarketRefreshedEvent(refreshEvent: import('@/utils/gameEvents').MarketRefreshedEvent) {
+    async function processMarketRefreshedEvent(
+        refreshEvent: import('@/utils/gameEvents').MarketRefreshedEvent,
+        previousMarket: SessionMarket | null = marketData,
+    ) {
         if (!refreshEvent) return;
         if (refreshEvent.stateOnly || refreshEvent.slots.length < 6) {
-            await Promise.all([loadMarketData(), syncSessionState()]);
+            await Promise.all([loadRefreshedMarketData(previousMarket), syncSessionState()]);
             return;
         }
 
@@ -400,15 +466,16 @@ export default function InlineMarketPanel({
         setRefreshing(true);
         onUpdateScore(currentScore - refreshCost);
         try {
+            const previousMarket = marketData;
             const events = await refreshMarket(sessionId);
             const refreshEvent = events.marketRefreshed;
             logMarketDebug('refresh:events', events);
             if (refreshEvent) {
-                await processMarketRefreshedEvent(refreshEvent);
+                await processMarketRefreshedEvent(refreshEvent, previousMarket);
             } else {
                 logMarketDebug('refresh:fallback:scheduled');
                 window.setTimeout(() => {
-                    void Promise.all([loadMarketData(), syncSessionState()]);
+                    void Promise.all([loadRefreshedMarketData(previousMarket), syncSessionState()]);
                 }, 500);
             }
         } catch (e) {

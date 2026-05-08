@@ -84,6 +84,52 @@ function summarizeSpinResultSnapshot(spinResult: {
     };
 }
 
+function spinResultSignature(spinResult: {
+    grid: number[];
+    score: number;
+    patternsCount: number;
+    is666: boolean;
+    isJackpot: boolean;
+    bibliaUsed: boolean;
+} | null) {
+    if (!spinResult) {
+        return null;
+    }
+
+    return [
+        spinResult.grid.join(','),
+        spinResult.score,
+        spinResult.patternsCount,
+        Number(spinResult.is666),
+        Number(spinResult.isJackpot),
+        Number(spinResult.bibliaUsed),
+    ].join('|');
+}
+
+function isUsableSpinResult(spinResult: {
+    grid: number[];
+    score: number;
+    patternsCount: number;
+    is666: boolean;
+    isJackpot: boolean;
+    isPending: boolean;
+    bibliaUsed: boolean;
+} | null) {
+    if (!spinResult || spinResult.grid.length !== 15 || spinResult.isPending) {
+        return false;
+    }
+
+    const isDefaultEmptyResult =
+        spinResult.score === 0 &&
+        spinResult.patternsCount === 0 &&
+        !spinResult.is666 &&
+        !spinResult.isJackpot &&
+        !spinResult.bibliaUsed &&
+        spinResult.grid.every((cell) => cell === 0);
+
+    return !isDefaultEmptyResult;
+}
+
 function getTicketsAwardedForLevelTransition(previousLevel: number, nextLevel: number) {
     if (nextLevel <= previousLevel) {
         return 0;
@@ -638,25 +684,40 @@ export function useGameSession(sessionId: string | null) {
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    const resolveLatestSpinResult = async () => {
+    const resolveLatestSpinResult = async (
+        previousSignature: string | null,
+        previousTotalSpins: number,
+    ) => {
         if (!sessionId) return null;
 
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < 8; attempt++) {
             logSpinDebug('spin:fallback:attempt', {
                 sessionId: Number(sessionId),
                 attempt,
+                previousSignature,
+                previousTotalSpins,
             });
             const spinResult = await getLastSpinResult(Number(sessionId));
+            const signature = spinResultSignature(spinResult);
             logSpinDebug('spin:fallback:spin-result', {
                 attempt,
+                signature,
                 spinResult: summarizeSpinResultSnapshot(spinResult),
             });
-            if (spinResult && spinResult.grid.length === 15 && !spinResult.isPending) {
-                return spinResult;
+            if (isUsableSpinResult(spinResult)) {
+                if (!previousSignature || signature !== previousSignature) {
+                    return spinResult;
+                }
+
+                const latestSession = await loadSessionData(`resolveLatestSpinResult:stale-signature:${attempt}`);
+                if (latestSession && latestSession.totalSpins > previousTotalSpins) {
+                    return spinResult;
+                }
+            } else {
+                await loadSessionData(`resolveLatestSpinResult:attempt:${attempt}`);
             }
 
-            await loadSessionData(`resolveLatestSpinResult:attempt:${attempt}`);
-            await delay(200);
+            await delay(attempt < 3 ? 200 : 350);
         }
 
         return null;
@@ -742,6 +803,14 @@ export function useGameSession(sessionId: string | null) {
                     risk,
                     threshold,
                 },
+            });
+            const previousSpinResult = await getLastSpinResult(Number(sessionId)).catch(() => null);
+            const previousSpinSignature = spinResultSignature(previousSpinResult);
+            const previousTotalSpins = lastKnownTotalSpinsRef.current;
+            logSpinDebug('spin:previous-result', {
+                previousSpinSignature,
+                previousTotalSpins,
+                spinResult: summarizeSpinResultSnapshot(previousSpinResult),
             });
             const events = await requestSpin(Number(sessionId));
             logSpinDebug('spin:events', events);
@@ -929,7 +998,10 @@ export function useGameSession(sessionId: string | null) {
                 }, sequenceDelay);
             } else {
                 console.warn('SpinCompleted event not found in receipt, retrying from indexed state:', events);
-                const spinResult = await resolveLatestSpinResult();
+                if (events.spinCompleted?.stateOnly) {
+                    logSpinDebug('spin:signal:state-only', events.spinCompleted);
+                }
+                const spinResult = await resolveLatestSpinResult(previousSpinSignature, previousTotalSpins);
                 logSpinDebug('spin:fallback:resolved', {
                     spinResult: summarizeSpinResultSnapshot(spinResult),
                 });
@@ -1079,7 +1151,7 @@ export function useGameSession(sessionId: string | null) {
             }
             await loadSessionData('spin:catch');
         }
-    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
+    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, getLastSpinResult, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
 
     const handleActivateRelic = useCallback(async () => {
         if (!equippedRelic || !sessionId || isActivatingRelic || relicCooldownRemaining > 0 || isRelicSpent) return;

@@ -14,6 +14,35 @@ import { RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
 import { useController } from '@/hooks/useController';
 
+const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function marketSnapshotSignature(market: SessionMarket | null) {
+    if (!market) {
+        return null;
+    }
+
+    return [
+        market.refresh_count,
+        market.item_slot_1,
+        market.item_slot_2,
+        market.item_slot_3,
+        market.item_slot_4,
+        market.item_slot_5,
+        market.item_slot_6,
+    ].join('|');
+}
+
+function hasMarketAdvanced(nextMarket: SessionMarket, previousMarket: SessionMarket | null) {
+    if (!previousMarket) {
+        return true;
+    }
+
+    return (
+        nextMarket.refresh_count > previousMarket.refresh_count ||
+        marketSnapshotSignature(nextMarket) !== marketSnapshotSignature(previousMarket)
+    );
+}
+
 interface MarketModalProps {
     sessionId: number;
     currentScore: number;
@@ -50,29 +79,57 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         return purchasedSlots;
     }
 
+    async function applyMarketData(market: SessionMarket) {
+        setMarketData(market);
+
+        const itemIds = [
+            market.item_slot_1, market.item_slot_2, market.item_slot_3,
+            market.item_slot_4, market.item_slot_5, market.item_slot_6,
+        ];
+
+        const items = await Promise.all(itemIds.map(id => getItemInfo(id)));
+        setMarketItems(items);
+
+        const invCount = await getSessionInventoryCount(sessionId);
+        setInventoryCount(invCount);
+
+        const playerItems = await getSessionItems(sessionId);
+        setOwnedItemIds(new Set(playerItems.map(pi => pi.item_id)));
+
+        setPurchasedInCurrentMarket(purchasedSlotsFromMask(market.purchased_mask));
+    }
+
     async function loadMarketData() {
         try {
             setLoading(true);
             const market = await getSessionMarket(sessionId);
-            setMarketData(market);
-
-            const itemIds = [
-                market.item_slot_1, market.item_slot_2, market.item_slot_3,
-                market.item_slot_4, market.item_slot_5, market.item_slot_6,
-            ];
-
-            const items = await Promise.all(itemIds.map(id => getItemInfo(id)));
-            setMarketItems(items);
-
-            const invCount = await getSessionInventoryCount(sessionId);
-            setInventoryCount(invCount);
-
-            const playerItems = await getSessionItems(sessionId);
-            setOwnedItemIds(new Set(playerItems.map(pi => pi.item_id)));
-
-            setPurchasedInCurrentMarket(purchasedSlotsFromMask(market.purchased_mask));
+            await applyMarketData(market);
+            return market;
         } catch (error) {
             console.error("Failed to load market:", error);
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function loadRefreshedMarketData(previousMarket: SessionMarket | null) {
+        try {
+            setLoading(true);
+            for (let attempt = 0; attempt < 8; attempt++) {
+                const market = await getSessionMarket(sessionId);
+                if (hasMarketAdvanced(market, previousMarket)) {
+                    await applyMarketData(market);
+                    return market;
+                }
+
+                await delay(attempt < 3 ? 200 : 350);
+            }
+
+            return await loadMarketData();
+        } catch (error) {
+            console.error("Failed to resolve refreshed market:", error);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -92,10 +149,11 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         if (!marketData || currentScore < refreshCost) return;
         setRefreshing(true);
         try {
+            const previousMarket = marketData;
             await refreshMarket(sessionId);
             onUpdateScore(currentScore - refreshCost);
             setPurchasedInCurrentMarket(new Set());
-            await loadMarketData();
+            await loadRefreshedMarketData(previousMarket);
             setCurrentItemIndex(0);
         } catch (e) {
             console.error("Refresh failed", e);
