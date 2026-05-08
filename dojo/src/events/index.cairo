@@ -112,16 +112,6 @@ pub struct MarketRefreshed {
     pub current_luck: u32,
 }
 
-#[dojo::event]
-#[derive(Copy, Drop, Serde)]
-pub struct MarketRefreshedSignal {
-    #[key]
-    pub session_id: u32,
-    #[key]
-    pub player: ContractAddress,
-    pub dummy_metadata: felt252,
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // RELIC EVENTS
 // ═══════════════════════════════════════════════════════════════════════════

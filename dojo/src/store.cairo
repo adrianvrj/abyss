@@ -8,8 +8,8 @@ use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
     BibliaDiscarded, CashOutResolved, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed,
-    MarketRefreshedSignal, PhantomActivated, RelicActivated, RelicEquipped, SessionCreated,
-    SessionEnded, SpinCompleted, SpinCompletedSignal,
+    PhantomActivated, RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
+    SpinCompletedSignal,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
@@ -360,10 +360,6 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_market_refreshed(mut self: Store, event: @MarketRefreshed) {
-        self.world.emit_event(event);
-    }
-
-    fn emit_market_refreshed_signal(mut self: Store, event: @MarketRefreshedSignal) {
         self.world.emit_event(event);
     }
 

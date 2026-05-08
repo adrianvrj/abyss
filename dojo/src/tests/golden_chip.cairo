@@ -38,7 +38,7 @@ fn golden_chip_world(
         TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
         TestResource::Model(declared_class_hash("m_PendingCharmLoadout")),
         TestResource::Event(declared_class_hash("e_SessionCreated")),
-        TestResource::Event(declared_class_hash("e_MarketRefreshedSignal")),
+        TestResource::Event(declared_class_hash("e_MarketRefreshed")),
         TestResource::Contract(declared_class_hash("Collection")),
         TestResource::Contract(declared_class_hash("Play")),
         TestResource::Contract(declared_class_hash("Setup")),
@@ -66,7 +66,7 @@ fn golden_chip_world(
                 selector_from_names(@NAMESPACE(), @"SessionCharmLoadout"),
                 selector_from_names(@NAMESPACE(), @"PendingCharmLoadout"),
                 selector_from_names(@NAMESPACE(), @"SessionCreated"),
-                selector_from_names(@NAMESPACE(), @"MarketRefreshedSignal"),
+                selector_from_names(@NAMESPACE(), @"MarketRefreshed"),
             ]
                 .span(),
         );

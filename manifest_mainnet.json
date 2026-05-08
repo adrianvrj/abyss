@@ -118,7 +118,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x64babbf6c10e0ab5a321d3201effd730dbaa1ba26488e89c9181d4781d2ca4c",
+      "class_hash": "0x2155f45e02125b43349dfbe10c07ea3e67a8a8b21bff5de92c5152954d6c5f3",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -153,7 +153,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x7e32427114c9d4ff5b75240a3a3c376a5887f5d92ba4a8f45ae01c0fd297d26",
+      "class_hash": "0x23345d13c4561ecbdb54145574f3ee1912a464ba19b6bffd666ac747d208315",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -1367,28 +1367,6 @@
           "key": true
         },
         {
-          "name": "dummy_metadata",
-          "type": "core::felt252",
-          "key": false
-        }
-      ],
-      "class_hash": "0x271572153ca85650f197350a3ecef597a86cd9216d6adf8a742f5981594af3a",
-      "tag": "ABYSS-MarketRefreshedSignal",
-      "selector": "0x1118eda1fcbe2727961128983c50627449727124ea054e414f2f6c9ff4d93cc"
-    },
-    {
-      "members": [
-        {
-          "name": "session_id",
-          "type": "core::integer::u32",
-          "key": true
-        },
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": true
-        },
-        {
           "name": "bonus_spins",
           "type": "core::integer::u32",
           "key": false
@@ -2008,34 +1986,6 @@
     },
     {
       "type": "struct",
-      "name": "abyss_game::events::index::MarketRefreshedSignal",
-      "members": [
-        {
-          "name": "session_id",
-          "type": "core::integer::u32"
-        },
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "dummy_metadata",
-          "type": "core::felt252"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::events::index::MarketRefreshedSignalValue",
-      "members": [
-        {
-          "name": "dummy_metadata",
-          "type": "core::felt252"
-        }
-      ]
-    },
-    {
-      "type": "struct",
       "name": "abyss_game::events::index::MarketRefreshedValue",
       "members": [
         {
@@ -2597,12 +2547,6 @@
     {
       "type": "event",
       "name": "abyss_game::events::index::e_MarketRefreshed::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::events::index::e_MarketRefreshedSignal::Event",
       "kind": "enum",
       "variants": []
     },

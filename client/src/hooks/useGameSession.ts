@@ -1001,19 +1001,14 @@ export function useGameSession(sessionId: string | null) {
                 if (events.spinCompleted?.stateOnly) {
                     logSpinDebug('spin:signal:state-only', events.spinCompleted);
                 }
-                const receiptSpinResult = isUsableSpinResult(events.models.spinResult)
-                    ? events.models.spinResult
-                    : null;
-                const spinResult = receiptSpinResult
-                    ?? await resolveLatestSpinResult(previousSpinSignature, previousTotalSpins);
+                const spinResult = await resolveLatestSpinResult(previousSpinSignature, previousTotalSpins);
                 logSpinDebug('spin:fallback:resolved', {
-                    source: receiptSpinResult ? 'receipt-model' : 'state-read',
+                    source: 'state-read',
                     spinResult: summarizeSpinResultSnapshot(spinResult),
                 });
 
                 if (spinResult && spinResult.grid.length === 15) {
-                    const latestSession = events.models.session
-                        ?? await loadSessionData('spin:fallback:post-resolve');
+                    const latestSession = await loadSessionData('spin:fallback:post-resolve');
                     const mintedCharm = await resolveMintedCharmInfo(events.charmMinted);
                     const hasCharm = Boolean(mintedCharm);
                     if (mintedCharm) {
@@ -1035,9 +1030,6 @@ export function useGameSession(sessionId: string | null) {
                         const prob = await get666Probability(latestSession.level);
                         setRisk(prob / 10);
                         setBlocked666(latestSession.blocked666);
-                        if (events.models.sessionChipBonusUnits !== null) {
-                            setDiamondChipBonusUnits(events.models.sessionChipBonusUnits);
-                        }
                     } else {
                         setScore(spinResult.is666 ? 0 : score);
                     }

@@ -14,7 +14,7 @@ pub trait IMarket<T> {
 pub mod Market {
     use starknet::get_caller_address;
     use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
-    use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshedSignal};
+    use crate::events::index::{ItemPurchased, ItemSold, MarketRefreshed};
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::items::{BIBLIA_ITEM_ID, get_item_purchase_price};
     use crate::helpers::market::MarketImpl;
@@ -259,15 +259,23 @@ pub mod Market {
             store.set_session(@session);
 
             // Execute refresh helper (helper writes the final session_market)
-            let _refreshed_market = crate::helpers::market::MarketImpl::refresh_market(
+            let refreshed_market = crate::helpers::market::MarketImpl::refresh_market(
                 ref store, sm, session_id, caller,
             );
+            let current_luck = InventoryImpl::calculate_effective_luck(@store, session_id);
             store
-                .emit_market_refreshed_signal(
-                    @MarketRefreshedSignal {
+                .emit_market_refreshed(
+                    @MarketRefreshed {
                         session_id,
                         player: caller,
-                        dummy_metadata: 0,
+                        new_score: session.score,
+                        slot_1: refreshed_market.item_slot_1,
+                        slot_2: refreshed_market.item_slot_2,
+                        slot_3: refreshed_market.item_slot_3,
+                        slot_4: refreshed_market.item_slot_4,
+                        slot_5: refreshed_market.item_slot_5,
+                        slot_6: refreshed_market.item_slot_6,
+                        current_luck,
                     },
                 );
         }
