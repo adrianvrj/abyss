@@ -655,6 +655,26 @@ function isSameFelt(a: string | bigint | number | undefined | null, b: string | 
     }
 }
 
+function stripModelKeys(
+    keyValues: Array<string | bigint | number>,
+    values: Array<string | bigint | number>,
+    expectedValueLength: number,
+): Array<string | bigint | number> {
+    const keyCount = keyValues.length;
+    if (values.length >= expectedValueLength + keyCount) {
+        const valuesStartWithKeys = keyValues.every((key, index) => isSameFelt(values[index], key));
+        if (valuesStartWithKeys) {
+            return values.slice(keyCount, keyCount + expectedValueLength);
+        }
+    }
+
+    if (values.length > expectedValueLength) {
+        return values.slice(values.length - expectedValueLength);
+    }
+
+    return values;
+}
+
 function parseStoreSetRecordModel(
     event: RawEvent,
 ): { selector: string | bigint | number; keyValues: Array<string | bigint | number>; fieldValues: Array<string | bigint | number> } | null {
@@ -679,37 +699,38 @@ function parseSessionModel(
     keyValues: Array<string | bigint | number>,
     values: Array<string | bigint | number>,
 ): ReceiptSessionModel | null {
-    if (values.length < 22) {
+    const modelValues = stripModelKeys(keyValues, values, 22);
+    if (modelValues.length < 22) {
         return null;
     }
 
     try {
-        const equippedRelicLow = feltToBigInt(values[9]);
-        const equippedRelicHigh = feltToBigInt(values[10]);
+        const equippedRelicLow = feltToBigInt(modelValues[9]);
+        const equippedRelicHigh = feltToBigInt(modelValues[10]);
 
         return {
             sessionId: feltToNumber(keyValues[0]),
-            playerAddress: String(values[0] ?? '0x0'),
-            level: feltToNumber(values[1]),
-            score: feltToNumber(values[2]),
-            totalScore: feltToNumber(values[3]),
-            spinsRemaining: feltToNumber(values[4]),
-            isCompetitive: isTruthyFelt(values[5]),
-            isActive: isTruthyFelt(values[6]),
-            chipsClaimed: isTruthyFelt(values[8]),
+            playerAddress: String(modelValues[0] ?? '0x0'),
+            level: feltToNumber(modelValues[1]),
+            score: feltToNumber(modelValues[2]),
+            totalScore: feltToNumber(modelValues[3]),
+            spinsRemaining: feltToNumber(modelValues[4]),
+            isCompetitive: isTruthyFelt(modelValues[5]),
+            isActive: isTruthyFelt(modelValues[6]),
+            chipsClaimed: isTruthyFelt(modelValues[8]),
             equippedRelic: equippedRelicLow + (equippedRelicHigh << 128n),
-            relicLastUsedSpin: feltToNumber(values[11]),
-            relicPendingEffect: feltToNumber(values[12]),
-            totalSpins: feltToNumber(values[13]),
-            luck: feltToNumber(values[14]),
-            blocked666: isTruthyFelt(values[15]),
-            tickets: feltToNumber(values[16]),
+            relicLastUsedSpin: feltToNumber(modelValues[11]),
+            relicPendingEffect: feltToNumber(modelValues[12]),
+            totalSpins: feltToNumber(modelValues[13]),
+            luck: feltToNumber(modelValues[14]),
+            blocked666: isTruthyFelt(modelValues[15]),
+            tickets: feltToNumber(modelValues[16]),
             symbolScores: [
-                feltToNumber(values[17]),
-                feltToNumber(values[18]),
-                feltToNumber(values[19]),
-                feltToNumber(values[20]),
-                feltToNumber(values[21]),
+                feltToNumber(modelValues[17]),
+                feltToNumber(modelValues[18]),
+                feltToNumber(modelValues[19]),
+                feltToNumber(modelValues[20]),
+                feltToNumber(modelValues[21]),
             ],
         };
     } catch (e) {
@@ -722,20 +743,21 @@ function parseSpinResultModel(
     keyValues: Array<string | bigint | number>,
     values: Array<string | bigint | number>,
 ): ReceiptSpinResultModel | null {
-    if (values.length < 21) {
+    const modelValues = stripModelKeys(keyValues, values, 21);
+    if (modelValues.length < 21) {
         return null;
     }
 
     try {
         return {
             sessionId: feltToNumber(keyValues[0]),
-            grid: Array.from({ length: 15 }, (_, index) => feltToNumber(values[index])),
-            score: feltToNumber(values[15]),
-            patternsCount: feltToNumber(values[16]),
-            is666: isTruthyFelt(values[17]),
-            isJackpot: isTruthyFelt(values[18]),
-            isPending: isTruthyFelt(values[19]),
-            bibliaUsed: isTruthyFelt(values[20]),
+            grid: Array.from({ length: 15 }, (_, index) => feltToNumber(modelValues[index])),
+            score: feltToNumber(modelValues[15]),
+            patternsCount: feltToNumber(modelValues[16]),
+            is666: isTruthyFelt(modelValues[17]),
+            isJackpot: isTruthyFelt(modelValues[18]),
+            isPending: isTruthyFelt(modelValues[19]),
+            bibliaUsed: isTruthyFelt(modelValues[20]),
         };
     } catch (e) {
         console.error('Failed to parse SpinResult model event:', e);
@@ -747,21 +769,22 @@ function parseSessionMarketModel(
     keyValues: Array<string | bigint | number>,
     values: Array<string | bigint | number>,
 ): ReceiptSessionMarketModel | null {
-    if (values.length < 8) {
+    const modelValues = stripModelKeys(keyValues, values, 8);
+    if (modelValues.length < 8) {
         return null;
     }
 
     try {
         return {
             sessionId: feltToNumber(keyValues[0]),
-            refresh_count: feltToNumber(values[0]),
-            item_slot_1: feltToNumber(values[1]),
-            item_slot_2: feltToNumber(values[2]),
-            item_slot_3: feltToNumber(values[3]),
-            item_slot_4: feltToNumber(values[4]),
-            item_slot_5: feltToNumber(values[5]),
-            item_slot_6: feltToNumber(values[6]),
-            purchased_mask: feltToNumber(values[7]),
+            refresh_count: feltToNumber(modelValues[0]),
+            item_slot_1: feltToNumber(modelValues[1]),
+            item_slot_2: feltToNumber(modelValues[2]),
+            item_slot_3: feltToNumber(modelValues[3]),
+            item_slot_4: feltToNumber(modelValues[4]),
+            item_slot_5: feltToNumber(modelValues[5]),
+            item_slot_6: feltToNumber(modelValues[6]),
+            purchased_mask: feltToNumber(modelValues[7]),
         };
     } catch (e) {
         console.error('Failed to parse SessionMarket model event:', e);
