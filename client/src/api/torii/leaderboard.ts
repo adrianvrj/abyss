@@ -2,27 +2,21 @@ import { initGrpcClient } from "@/api/torii/client";
 
 type ChainLike = bigint | string | undefined | null;
 
-// Bumped to 2 to wipe the leaderboard for a new season. When bumping again, keep
-// this in sync with `LEADERBOARD_ID` in `dojo/src/systems/play.cairo` and update
-// `LEADERBOARD_SEASON_START` below (or the `VITE_LEADERBOARD_SEASON_START` env var)
-// to the approximate Unix-seconds timestamp of the `Play` contract upgrade so the
-// error-path session fallback doesn't surface pre-season scores.
+// Bumped to 2 to wipe the leaderboard for a new season. When bumping again,
+// keep this in sync with `LEADERBOARD_ID` in `dojo/src/systems/play.cairo`.
 const LEADERBOARD_ID = Number(import.meta.env.VITE_LEADERBOARD_ID ?? "2");
-const LEADERBOARD_SEASON_START = Number(
-  import.meta.env.VITE_LEADERBOARD_SEASON_START ?? "1776643200",
-);
 
 type SqlValue = string | number | bigint | null | undefined;
 
-type RawLeaderboardScoreRow = {
-  leaderboard_id?: SqlValue;
-  username?: SqlValue;
+type AggregatedRow = {
   player?: SqlValue;
-  game_id?: SqlValue;
-  score?: SqlValue;
-  timestamp?: SqlValue;
-  internal_executed_at?: SqlValue;
+  username?: SqlValue;
+  games_played?: SqlValue;
+  best_score?: SqlValue;
+  total_score?: SqlValue;
 };
+
+const TOP_LIMIT = 25;
 
 export interface LeaderboardEntry {
   username: string;
@@ -79,95 +73,26 @@ function toAddress(value: SqlValue): string {
   }
 }
 
-function isSameDay(date: Date, now: Date) {
-  return date.getUTCFullYear() === now.getUTCFullYear()
-    && date.getUTCMonth() === now.getUTCMonth()
-    && date.getUTCDate() === now.getUTCDate();
-}
-
-function getWeekKey(date: Date) {
-  const firstDay = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const days = Math.floor((date.getTime() - firstDay.getTime()) / 86_400_000);
-  return `${date.getUTCFullYear()}-${Math.floor((days + firstDay.getUTCDay()) / 7)}`;
-}
-
-function getExecutedDate(row: RawLeaderboardScoreRow) {
-  const executedAt = row.internal_executed_at ? String(row.internal_executed_at) : "";
-  const parsedExecutedAt = executedAt ? new Date(executedAt) : undefined;
-  if (parsedExecutedAt && !Number.isNaN(parsedExecutedAt.getTime())) {
-    return parsedExecutedAt;
-  }
-
-  const timestamp = toNumberish(row.timestamp);
-  if (timestamp > 0) {
-    return new Date(timestamp * 1000);
-  }
-
-  return undefined;
-}
-
-function aggregate(rows: RawLeaderboardScoreRow[]): LeaderboardEntry[] {
-  const now = new Date();
-  const currentWeek = getWeekKey(now);
-  const entries = new Map<string, LeaderboardEntry>();
-
+function mapAggregated(rows: AggregatedRow[]): LeaderboardEntry[] {
+  const entries: LeaderboardEntry[] = [];
   for (const row of rows) {
     const player = toAddress(row.player);
-    if (!player) {
-      continue;
-    }
-
-    const score = toNumberish(row.score);
-    const date = getExecutedDate(row);
-    const isToday = date ? isSameDay(date, now) : false;
-    const isThisWeek = date ? getWeekKey(date) === currentWeek : false;
-
-    const current = entries.get(player) ?? {
-      username: String(row.username || ""),
+    if (!player) continue;
+    entries.push({
+      username: String(row.username ?? "").trim(),
       player,
-      gamesPlayed: 0,
+      gamesPlayed: toNumberish(row.games_played),
       gamesPlayedDay: 0,
       gamesPlayedWeek: 0,
-      bestScore: 0,
+      bestScore: toNumberish(row.best_score),
       bestScoreDay: null,
       bestScoreWeek: null,
-      totalScore: 0,
+      totalScore: toNumberish(row.total_score),
       totalScoreDay: null,
       totalScoreWeek: null,
-    };
-
-    if (!current.username && row.username) {
-      current.username = String(row.username);
-    }
-
-    current.gamesPlayed += 1;
-    current.bestScore = Math.max(current.bestScore, score);
-    current.totalScore += score;
-
-    if (isToday) {
-      current.gamesPlayedDay += 1;
-      current.bestScoreDay = Math.max(current.bestScoreDay ?? 0, score);
-      current.totalScoreDay = (current.totalScoreDay ?? 0) + score;
-    }
-
-    if (isThisWeek) {
-      current.gamesPlayedWeek += 1;
-      current.bestScoreWeek = Math.max(current.bestScoreWeek ?? 0, score);
-      current.totalScoreWeek = (current.totalScoreWeek ?? 0) + score;
-    }
-
-    entries.set(player, current);
+    });
   }
-
-  return [...entries.values()].sort((left, right) => {
-    if (right.bestScore !== left.bestScore) {
-      return right.bestScore - left.bestScore;
-    }
-    if (right.totalScore !== left.totalScore) {
-      return right.totalScore - left.totalScore;
-    }
-    return left.player.localeCompare(right.player);
-  });
+  return entries;
 }
 
 export const LeaderboardApi = {
@@ -176,49 +101,91 @@ export const LeaderboardApi = {
   },
   async fetchAll(chainId?: ChainLike): Promise<LeaderboardEntry[]> {
     const client = initGrpcClient(chainId);
-    const submittedScoresQuery = `
+
+    // Torii stores felt252 fields as zero-padded hex strings (e.g.
+    // "0x000...0002"). Match any plausible encoding the indexer might use.
+    const hexId = LEADERBOARD_ID.toString(16);
+    const paddedHexId = `0x${hexId.padStart(64, "0")}`;
+    const leaderboardIdMatch = `s.leaderboard_id IN (
+      ${LEADERBOARD_ID},
+      '${LEADERBOARD_ID}',
+      '0x${hexId}',
+      '${paddedHexId}'
+    )`;
+
+    // Aggregate in SQL and only return the top players. This means the join
+    // against `controllers` happens against a tiny grouped result instead of
+    // every raw score row, and the network payload is ~LIMIT rows instead of
+    // up to 500. Day/week breakdowns aren't needed by the current UI so we
+    // skip them entirely — re-introduce per-row aggregation only if those
+    // fields become consumed somewhere.
+    // Note: `score` is a u64 which Torii stores as a 0x-prefixed,
+    // zero-padded 16-char hex string. SQLite can't CAST that to an integer
+    // (it would silently return 0), but for fixed-width zero-padded hex,
+    // lexicographic comparison equals numeric comparison — so `MAX(score)`
+    // on the raw text yields the highest score. We return it as text and
+    // parse to a real number in JS via `toNumberish` (which handles hex).
+    // `SUM` would require numeric values; the current UI doesn't render
+    // `totalScore` for the top-N view, so we skip it here.
+    const aggregatedQuery = `
+      WITH agg AS (
+        SELECT
+          lower(s.player) AS player_lc,
+          COUNT(*) AS games_played,
+          MAX(s.score) AS best_score
+        FROM "ABYSS-LeaderboardScore" AS s
+        WHERE ${leaderboardIdMatch}
+        GROUP BY lower(s.player)
+        ORDER BY best_score DESC, games_played DESC
+        LIMIT ${TOP_LIMIT}
+      )
       SELECT
-        s.leaderboard_id,
-        c.username,
-        s.player,
-        s.game_id,
-        s.score,
-        s.timestamp,
-        s.internal_executed_at
-      FROM "ABYSS-LeaderboardScore" AS s
-      LEFT JOIN controllers AS c ON lower(c.address) = lower(s.player)
-      ORDER BY s.score DESC, s.timestamp ASC;
+        agg.player_lc AS player,
+        c.username AS username,
+        agg.games_played,
+        agg.best_score,
+        agg.best_score AS total_score
+      FROM agg
+      LEFT JOIN controllers AS c ON lower(c.address) = agg.player_lc
+      ORDER BY agg.best_score DESC, agg.games_played DESC;
     `;
 
     try {
-      const rows = (await client.executeSql(submittedScoresQuery)) as RawLeaderboardScoreRow[];
-      const leaderboardRows = rows.filter(
-        (row) => toNumberish(row.leaderboard_id) === LEADERBOARD_ID,
-      );
-      return aggregate(leaderboardRows);
+      const rows = (await client.executeSql(aggregatedQuery)) as AggregatedRow[];
+      if (rows.length > 0) {
+        return mapAggregated(rows);
+      }
     } catch (error) {
       console.warn("LeaderboardScore SQL unavailable, falling back to Session rows:", error);
     }
 
+    // u32 fields are usually stored as plain integers by Torii, but use
+    // MAX on the raw value so we work regardless of encoding (text MAX of
+    // zero-padded hex still sorts correctly).
     const sessionsQuery = `
+      WITH agg AS (
+        SELECT
+          lower(s.player_address) AS player_lc,
+          COUNT(*) AS games_played,
+          MAX(s.total_score) AS best_score
+        FROM "ABYSS-Session" AS s
+        WHERE s.total_score IS NOT NULL
+        GROUP BY lower(s.player_address)
+        ORDER BY best_score DESC, games_played DESC
+        LIMIT ${TOP_LIMIT}
+      )
       SELECT
-        c.username,
-        s.player_address AS player,
-        s.session_id AS game_id,
-        s.total_score AS score,
-        s.created_at AS timestamp,
-        s.internal_executed_at
-      FROM "ABYSS-Session" AS s
-      LEFT JOIN controllers AS c ON lower(c.address) = lower(s.player_address)
-      ORDER BY s.total_score DESC, s.created_at ASC;
+        agg.player_lc AS player,
+        c.username AS username,
+        agg.games_played,
+        agg.best_score,
+        agg.best_score AS total_score
+      FROM agg
+      LEFT JOIN controllers AS c ON lower(c.address) = agg.player_lc
+      ORDER BY agg.best_score DESC, agg.games_played DESC;
     `;
 
-    const rows = (await client.executeSql(sessionsQuery)) as RawLeaderboardScoreRow[];
-    return aggregate(
-      rows.filter((row) => {
-        if (toNumberish(row.score) <= 0) return false;
-        return toNumberish(row.timestamp) >= LEADERBOARD_SEASON_START;
-      }),
-    );
+    const rows = (await client.executeSql(sessionsQuery)) as AggregatedRow[];
+    return mapAggregated(rows);
   },
 };

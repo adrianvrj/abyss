@@ -1,10 +1,12 @@
-import { useEffect, useState, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { LeaderboardEntry } from "@/utils/abyssContract";
+import { useQuery } from "@tanstack/react-query";
+import { getLeaderboard, LeaderboardEntry } from "@/utils/abyssContract";
+import { LeaderboardApi } from "@/api/torii/leaderboard";
 import { ArrowLeft, Trophy, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useController } from "@/hooks/useController";
-import { useAbyssGame } from "@/hooks/useAbyssGame";
+import { useEntities } from "@/context/entities";
 
 const headerStyle: React.CSSProperties = {
     fontFamily: "'PressStart2P', monospace",
@@ -15,25 +17,17 @@ const headerStyle: React.CSSProperties = {
 export function Leaderboard() {
     const navigate = useNavigate();
     const { address, connector } = useController();
-    const { getLeaderboard } = useAbyssGame(null);
-    const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { chainId } = useEntities();
 
-    const loadData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const entries = await getLeaderboard();
-            setLeaderboardData(entries.slice(0, 10));
-        } catch (err) {
-            console.error("Failed to load leaderboard:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [getLeaderboard]);
+    const { data: entries = [], isLoading } = useQuery<LeaderboardEntry[]>({
+        queryKey: [...LeaderboardApi.keys.all(chainId), "top10"],
+        queryFn: () => getLeaderboard(chainId),
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
 
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
+    const leaderboardData = useMemo(() => entries.slice(0, 10), [entries]);
+    const loading = isLoading;
 
     const handleOpenProfile = useCallback(() => {
         try {
@@ -182,7 +176,7 @@ export function Leaderboard() {
                                             key={`${entry.player_address}-${index}`}
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: index * 0.08 }}
+                                            transition={{ delay: index * 0.03, duration: 0.2 }}
                                             style={{
                                                 display: "flex",
                                                 alignItems: "center",

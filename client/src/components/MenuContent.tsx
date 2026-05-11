@@ -2,7 +2,11 @@ import { useState, useCallback, useEffect } from "react";
 import { useController } from "@/hooks/useController";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePractice } from "@/context/practice";
+import { useEntities } from "@/context/entities";
+import { LeaderboardApi } from "@/api/torii/leaderboard";
+import { getLeaderboard } from "@/utils/abyssContract";
 
 const styles = {
     container: {
@@ -52,7 +56,17 @@ export function MenuContent() {
     const navigate = useNavigate();
     const { isConnecting, isConnected, connect, disconnect } = useController();
     const { startPractice } = usePractice();
+    const queryClient = useQueryClient();
+    const { chainId } = useEntities();
     const [isMobile, setIsMobile] = useState(false);
+
+    const prefetchLeaderboard = useCallback(() => {
+        queryClient.prefetchQuery({
+            queryKey: [...LeaderboardApi.keys.all(chainId), "top10"],
+            queryFn: () => getLeaderboard(chainId),
+            staleTime: 30_000,
+        });
+    }, [queryClient, chainId]);
 
     const [activeSessionId] = useState<number | null>(null);
 
@@ -197,6 +211,9 @@ export function MenuContent() {
                     <motion.button
                         style={styles.menuOption}
                         onClick={handleLeaderboard}
+                        onMouseEnter={prefetchLeaderboard}
+                        onFocus={prefetchLeaderboard}
+                        onTouchStart={prefetchLeaderboard}
                         whileHover={{ color: "#FF841C" }}
                         whileTap={{ scale: 0.95 }}
                     >
