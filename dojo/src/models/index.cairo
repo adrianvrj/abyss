@@ -303,6 +303,27 @@ pub struct TokenPairId {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PLAYER STREAK - Daily session completion streak (UTC day / claim_chips)
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct PlayerStreak {
+    #[key]
+    pub player: ContractAddress,
+    /// UTC day index (`block_timestamp / 86400`) of last streak increment.
+    pub last_increment_day_id: u32,
+    /// Consecutive UTC days qualified; `7` = weekly loot eligible until claimed.
+    pub streak_count: u8,
+    /// After loot claim: cannot start next streak until a later UTC day.
+    pub loot_claim_barrier_day_id: u32,
+    pub recover_prior_count: u8,
+    /// Inclusive UTC day deadline to call `recover_streak`.
+    pub recover_deadline_day_id: u32,
+    pub loot_claim_nonce: u32,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BEAST SESSIONS - Track free sessions from Beast NFTs
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -312,17 +333,4 @@ pub struct BeastSessionsUsed {
     #[key]
     pub player: ContractAddress,
     pub count: u32,
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// X SHARE SESSION CLAIM - Track a single externally granted free session
-// ═══════════════════════════════════════════════════════════════════════════
-
-#[dojo::model]
-#[derive(Copy, Drop, Serde)]
-pub struct XShareSessionClaim {
-    #[key]
-    pub player: ContractAddress,
-    pub granted: bool,
-    pub used: bool,
 }

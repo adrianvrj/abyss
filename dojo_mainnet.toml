@@ -15,6 +15,7 @@ account_address = "0x07e89f628e2a133213443FE1b43dd0BB48ae3ab182f7B568A3fBDC66670
 [migration]
 order_inits = [
   "ABYSS-Chip",
+  "ABYSS-Streak",
   "ABYSS-Charm",
   "ABYSS-RelicNFT",
   "ABYSS-Setup",
@@ -28,7 +29,7 @@ order_inits = [
 disable_multicall = true
 
 [writers]
-"ABYSS" = ["ABYSS-Setup", "ABYSS-Collection", "ABYSS-Play", "ABYSS-GoldenChip", "ABYSS-Market", "ABYSS-Relic", "ABYSS-Treasury"]
+"ABYSS" = ["ABYSS-Setup", "ABYSS-Collection", "ABYSS-Play", "ABYSS-Streak", "ABYSS-GoldenChip", "ABYSS-Market", "ABYSS-Relic", "ABYSS-Treasury"]
 
 [owners]
 "ABYSS" = ["ABYSS-Collection", "ABYSS-Chip", "ABYSS-RelicNFT", "ABYSS-GoldenChip"]

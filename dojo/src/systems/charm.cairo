@@ -122,6 +122,7 @@ pub mod Charm {
     use crate::store::StoreTrait;
     use crate::systems::play::NAME as PLAY_NAME;
     use crate::systems::setup::NAME as SETUP_NAME;
+    use crate::systems::streak_system::NAME as STREAK_NAME;
     use crate::systems::token::{IChipDispatcher, IChipDispatcherTrait};
     use crate::systems::treasury::NAME as TREASURY_NAME;
     use super::{
@@ -200,9 +201,11 @@ pub mod Charm {
         self.accesscontrol.initializer();
 
         let play_address = world.dns_address(@PLAY_NAME()).expect('Play not found!');
+        let streak_address = world.dns_address(@STREAK_NAME()).expect('Streak not found!');
         let setup_address = world.dns_address(@SETUP_NAME()).expect('Setup not found!');
         let treasury_address = world.dns_address(@TREASURY_NAME()).expect('Treasury not found!');
         self.accesscontrol._grant_role(MINTER_ROLE, play_address);
+        self.accesscontrol._grant_role(MINTER_ROLE, streak_address);
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, treasury_address);
         self.accesscontrol._grant_role(DEFAULT_ADMIN_ROLE, setup_address);
         self.base_uri.write("");

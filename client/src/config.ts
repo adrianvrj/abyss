@@ -132,6 +132,15 @@ export function getContractAddress(
   return contract.address;
 }
 
+/** Returns `undefined` if `ABYSS-Streak` is not in the synced manifest (pre-migration). */
+export function tryGetStreakAddress(chainId?: ChainLike): string | undefined {
+  try {
+    return getContractAddress(chainId ?? DEFAULT_CHAIN_ID, NAMESPACE, "Streak");
+  } catch {
+    return undefined;
+  }
+}
+
 export function getPlayAddress(chainId?: ChainLike) {
   return getContractAddress(chainId, NAMESPACE, "Play");
 }
@@ -170,4 +179,8 @@ export function getRelicNftAddress(chainId?: ChainLike) {
 
 export function getGoldenChipAddress(chainId?: ChainLike) {
   return getContractAddress(chainId, NAMESPACE, "GoldenChip");
+}
+
+export function getStreakAddress(chainId?: ChainLike) {
+  return getContractAddress(chainId, NAMESPACE, "Streak");
 }

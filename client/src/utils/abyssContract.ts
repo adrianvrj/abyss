@@ -2,11 +2,8 @@ import { lookupAddresses } from "@cartridge/controller";
 import { num, shortString } from "starknet";
 import {
   getAvailableBeastSessions as readAvailableBeastSessions,
-  getCharmDropChance as readCharmDropChance,
-  getChipsToClaim as readChipsToClaim,
   getGameItem,
   getSessionChipBonusUnits as readSessionChipBonusUnits,
-  getSessionChipPayout as readSessionChipPayout,
   getSessionInventoryCount as readSessionInventoryCount,
   getSessionLuck as readSessionLuck,
 } from "@/api/rpc/play";
@@ -323,10 +320,6 @@ export async function getSessionLuck(sessionId: number): Promise<number> {
   return readSessionLuck(DEFAULT_CHAIN_ID, sessionId);
 }
 
-export async function getCharmDropChance(sessionId: number): Promise<number> {
-  return readCharmDropChance(DEFAULT_CHAIN_ID, sessionId);
-}
-
 export async function getSessionInventoryCount(sessionId: number): Promise<number> {
   return readSessionInventoryCount(DEFAULT_CHAIN_ID, sessionId);
 }
@@ -425,14 +418,6 @@ export async function getLeaderboard(
 
 export async function getAvailableBeastSessions(playerAddress: string): Promise<number> {
   return readAvailableBeastSessions(DEFAULT_CHAIN_ID, playerAddress);
-}
-
-export async function getChipsToClaim(sessionId: number): Promise<bigint> {
-  return readChipsToClaim(DEFAULT_CHAIN_ID, sessionId);
-}
-
-export async function getSessionChipPayout(sessionId: number): Promise<bigint> {
-  return readSessionChipPayout(DEFAULT_CHAIN_ID, sessionId);
 }
 
 export async function getSessionChipBonusUnits(sessionId: number): Promise<number> {

@@ -7,13 +7,16 @@ import { getGameConfig, getUsdCostInToken } from "@/api/rpc/play";
 import {
   DEFAULT_CHAIN_ID,
   getCharmAddress,
+  getChipAddress,
   getMarketAddress,
   getPlayAddress,
   getRelicAddress,
   getWorldAddress,
   getSetupAddress,
+  tryGetStreakAddress,
 } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
+import { STREAK_RECOVER_CHIP_WEI } from "@/api/rpc/streak";
 import { parseReceiptEvents } from "@/utils/gameEvents";
 import { useController } from "@/hooks/useController";
 
@@ -60,6 +63,16 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
   const marketAddress = useMemo(() => getMarketAddress(chainId), [chainId]);
   const relicAddress = useMemo(() => getRelicAddress(chainId), [chainId]);
   const charmAddress = useMemo(() => getCharmAddress(chainId), [chainId]);
+  const chipAddress = useMemo(() => getChipAddress(chainId), [chainId]);
+  const streakAddress = useMemo(() => tryGetStreakAddress(chainId), [chainId]);
+
+  const receiptEventContracts = useMemo(() => {
+    const list = [worldAddress, playAddress, marketAddress, relicAddress, charmAddress];
+    if (streakAddress) {
+      list.push(streakAddress);
+    }
+    return list;
+  }, [worldAddress, playAddress, marketAddress, relicAddress, charmAddress, streakAddress]);
 
   const waitForReceipt = useCallback(
     async (transactionHash: string) => {
@@ -104,16 +117,10 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
       return {
         transactionHash: transaction_hash,
         receipt,
-        events: parseReceiptEvents(receipt, [
-          worldAddress,
-          playAddress,
-          marketAddress,
-          relicAddress,
-          charmAddress,
-        ]),
+        events: parseReceiptEvents(receipt, receiptEventContracts),
       };
     },
-    [account, charmAddress, marketAddress, playAddress, relicAddress, waitForReceipt, worldAddress],
+    [account, charmAddress, marketAddress, playAddress, receiptEventContracts, relicAddress, waitForReceipt, worldAddress],
   );
 
   const equipCharms = useCallback(
@@ -414,6 +421,43 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     [executeCalls, playAddress],
   );
 
+  const claimStreakLoot = useCallback(async () => {
+    if (!account) {
+      throw new Error("Wallet not connected");
+    }
+    if (!streakAddress) {
+      throw new Error("Streak contract unavailable (migrate + sync manifest)");
+    }
+    return executeCalls([
+      {
+        contractAddress: streakAddress,
+        entrypoint: "claim_streak_loot",
+        calldata: [],
+      },
+    ]);
+  }, [account, executeCalls, streakAddress]);
+
+  const recoverStreak = useCallback(async () => {
+    if (!account) {
+      throw new Error("Wallet not connected");
+    }
+    if (!streakAddress) {
+      throw new Error("Streak contract unavailable (migrate + sync manifest)");
+    }
+    return executeCalls([
+      {
+        contractAddress: chipAddress,
+        entrypoint: "approve",
+        calldata: CallData.compile([streakAddress, ...toUint256(STREAK_RECOVER_CHIP_WEI)]),
+      },
+      {
+        contractAddress: streakAddress,
+        entrypoint: "recover_streak",
+        calldata: [],
+      },
+    ]);
+  }, [account, chipAddress, executeCalls, streakAddress]);
+
   return {
     account,
     chainId,
@@ -423,6 +467,8 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     marketAddress,
     relicAddress,
     charmAddress,
+    chipAddress,
+    streakAddress,
     createSession,
     claimFreeSessionBundle,
     setPendingCharmLoadout,
@@ -436,6 +482,8 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     rerollCharms,
     endSession,
     claimChips,
+    claimStreakLoot,
+    recoverStreak,
     waitForReceipt,
   };
 }

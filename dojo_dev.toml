@@ -20,6 +20,7 @@ default = "ABYSS"
 "ABYSS" = [
     "ABYSS-Setup",
     "ABYSS-Play",
+    "ABYSS-Streak",
     "ABYSS-GoldenChip",
     "ABYSS-Market",
     "ABYSS-Relic",

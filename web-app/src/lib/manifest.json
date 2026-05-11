@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
-      "class_hash": "0x7f4a4c0608b6157529f98fe35709e21557d57ece90dd5b108d68477134d1352",
+      "class_hash": "0x81931693afe40d41fe4d6859bed6dcc1a5d96cdd2c17bc0991bf252d0e8900",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -132,7 +132,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x34c523a245de18c95ee8adaceff90df682577e204a3e14d2f49350b9844d4e3",
+      "class_hash": "0x4cb7ecb9d553a27f2b85a088fbe5c0747b888c688a755d7d6e0d5e77ef20010",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -231,6 +231,19 @@
         "grant_role",
         "revoke_role",
         "renounce_role"
+      ]
+    },
+    {
+      "address": "0x3ae02dcabcb2707c81ae02199f736698137a65703dcfa912a3535775a62a67b",
+      "class_hash": "0x65278a533c321b6f062b5daf81eb6cdd7c2b4d96790bb87f3cd9f7fbffd5a38",
+      "init_calldata": [],
+      "tag": "ABYSS-Streak",
+      "selector": "0x78dc31fbdcb9796c60122a04ee9218ed2e633fe3bebdffe6ce43dcd7fde3d3a",
+      "systems": [
+        "dojo_init",
+        "claim_streak_loot",
+        "recover_streak",
+        "upgrade"
       ]
     },
     {
@@ -601,6 +614,48 @@
       "class_hash": "0x731b5c36d8c1fb3ddadc9c44933acc1f01fad3dbe731b3b5dfbb95834157b7f",
       "tag": "ABYSS-PlayerSessions",
       "selector": "0x78021b494e7b3094e231b9f1a04b33a9a7759095f68079bf17cce32525d3417"
+    },
+    {
+      "members": [
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "last_increment_day_id",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "streak_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "loot_claim_barrier_day_id",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "recover_prior_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "recover_deadline_day_id",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "loot_claim_nonce",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x67a8205a50743a68624456d1fbd90d494588f9f1e79e9c2bb1d0f5ec808db18",
+      "tag": "ABYSS-PlayerStreak",
+      "selector": "0x750ae5a647660a5e40f3e6c4c47bf2e600081fba9e49756ec1bb21ef0eefa42"
     },
     {
       "members": [
@@ -1070,28 +1125,6 @@
       "class_hash": "0x502051070b9858de98bc9f1dcea5a859e14412af559cc4388b3a9e8ecfa0c00",
       "tag": "ABYSS-TokenPairId",
       "selector": "0x2e580309384e6d2ed586f3fd845bd915285398a33c1ab0f4f702d54b9d8ddad"
-    },
-    {
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": true
-        },
-        {
-          "name": "granted",
-          "type": "core::bool",
-          "key": false
-        },
-        {
-          "name": "used",
-          "type": "core::bool",
-          "key": false
-        }
-      ],
-      "class_hash": "0x4e3eef1a427993737510535d7ff32350a12042e5ec0455570e0f1596e108873",
-      "tag": "ABYSS-XShareSessionClaim",
-      "selector": "0x5cbd95e8f91262786c1d31ceb1143b62a7fc4622cf481ccebdc5648844738cd"
     }
   ],
   "events": [
@@ -3676,6 +3709,70 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::models::index::PlayerStreak",
+      "members": [
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "last_increment_day_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "streak_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "loot_claim_barrier_day_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "recover_prior_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "recover_deadline_day_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "loot_claim_nonce",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::PlayerStreakValue",
+      "members": [
+        {
+          "name": "last_increment_day_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "streak_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "loot_claim_barrier_day_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "recover_prior_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "recover_deadline_day_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "loot_claim_nonce",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::models::index::Session",
       "members": [
         {
@@ -4371,38 +4468,6 @@
       ]
     },
     {
-      "type": "struct",
-      "name": "abyss_game::models::index::XShareSessionClaim",
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "granted",
-          "type": "core::bool"
-        },
-        {
-          "name": "used",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "abyss_game::models::index::XShareSessionClaimValue",
-      "members": [
-        {
-          "name": "granted",
-          "type": "core::bool"
-        },
-        {
-          "name": "used",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
       "type": "event",
       "name": "abyss_game::models::index::m_BeastSessionsUsed::Event",
       "kind": "enum",
@@ -4435,6 +4500,12 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_PlayerSessions::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::models::index::m_PlayerStreak::Event",
       "kind": "enum",
       "variants": []
     },
@@ -4507,12 +4578,6 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_TokenPairId::Event",
-      "kind": "enum",
-      "variants": []
-    },
-    {
-      "type": "event",
-      "name": "abyss_game::models::index::m_XShareSessionClaim::Event",
       "kind": "enum",
       "variants": []
     },
@@ -5187,22 +5252,6 @@
         },
         {
           "type": "function",
-          "name": "get_beast_sessions_used",
-          "inputs": [
-            {
-              "name": "player",
-              "type": "core::starknet::contract_address::ContractAddress"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u32"
-            }
-          ],
-          "state_mutability": "view"
-        },
-        {
-          "type": "function",
           "name": "get_available_beast_sessions",
           "inputs": [
             {
@@ -5261,54 +5310,6 @@
           "outputs": [
             {
               "type": "core::integer::u32"
-            }
-          ],
-          "state_mutability": "view"
-        },
-        {
-          "type": "function",
-          "name": "get_charm_drop_chance",
-          "inputs": [
-            {
-              "name": "session_id",
-              "type": "core::integer::u32"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u32"
-            }
-          ],
-          "state_mutability": "view"
-        },
-        {
-          "type": "function",
-          "name": "get_chips_to_claim",
-          "inputs": [
-            {
-              "name": "session_id",
-              "type": "core::integer::u32"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u256"
-            }
-          ],
-          "state_mutability": "view"
-        },
-        {
-          "type": "function",
-          "name": "get_session_chip_payout",
-          "inputs": [
-            {
-              "name": "session_id",
-              "type": "core::integer::u32"
-            }
-          ],
-          "outputs": [
-            {
-              "type": "core::integer::u256"
             }
           ],
           "state_mutability": "view"
@@ -6283,6 +6284,59 @@
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
           "kind": "flat"
+        }
+      ]
+    },
+    {
+      "type": "interface",
+      "name": "abyss_game::systems::streak_system::IStreak",
+      "items": [
+        {
+          "type": "function",
+          "name": "claim_streak_loot",
+          "inputs": [],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "recover_streak",
+          "inputs": [],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "get_player_streak",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "abyss_game::models::index::PlayerStreak"
+            }
+          ],
+          "state_mutability": "view"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::streak_system::Streak::Event",
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "UpgradeableEvent",
+          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+          "kind": "nested"
+        },
+        {
+          "name": "WorldProviderEvent",
+          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+          "kind": "nested"
         }
       ]
     },

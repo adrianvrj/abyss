@@ -5,10 +5,12 @@ import {
   DEFAULT_MAINNET_RPC_URL,
   DEFAULT_SEPOLIA_RPC_URL,
   NAMESPACE,
+  getChipAddress,
   getMarketAddress,
   getPlayAddress,
   getRelicAddress,
   getToriiUrl,
+  tryGetStreakAddress,
 } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
 
@@ -36,8 +38,39 @@ export const cartridgeSlot = toriiUrl.includes("cartridge.gg")
   ? toriiUrl.split("/").filter(Boolean).slice(-2, -1)[0]
   : "abyss";
 
+function streakContractPolicies(): NonNullable<SessionPolicies["contracts"]> {
+  const streakAddress = tryGetStreakAddress(DEFAULT_CHAIN_ID);
+  if (!streakAddress) {
+    return {};
+  }
+  return {
+    [streakAddress]: {
+      methods: [
+        { entrypoint: "claim_streak_loot" },
+        { entrypoint: "recover_streak" },
+      ],
+    },
+  };
+}
+
+/** `recover_streak` pulls CHIP via `transfer_from`; session must include `approve` on the token. */
+function chipApproveForRecoveryPolicies(): NonNullable<SessionPolicies["contracts"]> {
+  const streakAddress = tryGetStreakAddress(DEFAULT_CHAIN_ID);
+  const chipAddress = getChipAddress(DEFAULT_CHAIN_ID);
+  if (!streakAddress || !chipAddress || chipAddress.toLowerCase() === "0x0") {
+    return {};
+  }
+  return {
+    [chipAddress]: {
+      methods: [{ entrypoint: "approve" }],
+    },
+  };
+}
+
 export const sessionPolicies: SessionPolicies = {
   contracts: {
+    ...streakContractPolicies(),
+    ...chipApproveForRecoveryPolicies(),
     [PLAY_ADDRESS]: {
       methods: [
         { entrypoint: "create_session" },

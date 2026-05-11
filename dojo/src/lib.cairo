@@ -12,6 +12,7 @@ pub mod systems {
     pub mod relic;
     pub mod relic_nft_contract;
     pub mod setup;
+    pub mod streak_system;
     pub mod token;
     pub mod treasury;
 }
@@ -31,10 +32,14 @@ pub mod helpers {
     pub mod items;
     pub mod market;
     pub mod patterns;
+    pub mod play_charm_odds;
+    pub mod play_payout;
+    pub mod play_rewards;
     pub mod pricing;
     pub mod probability;
     pub mod relic_types;
     pub mod scoring;
+    pub mod streak;
 }
 
 pub mod types {

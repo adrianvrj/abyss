@@ -67,6 +67,22 @@ pub impl MarketImpl of MarketTrait {
         owned_charm_ids
     }
 
+    /// Validates up to three charm ids: positive values, NFT-owned, pairwise unique.
+    fn validate_charm_loadout_selection(charm_ids: Span<u32>, owned: Span<u32>) {
+        assert(charm_ids.len() <= 3, 'Max 3 charms');
+
+        let mut seen: Array<u32> = array![];
+        let mut i: u32 = 0;
+        while i < charm_ids.len() {
+            let charm_id = *charm_ids.at(i);
+            assert(charm_id > 0, 'Invalid charm id');
+            assert(Self::has_value(owned, charm_id), 'Charm not owned');
+            assert(!Self::has_value(seen.span(), charm_id), 'Duplicate charm');
+            seen.append(charm_id);
+            i += 1;
+        }
+    }
+
     /// Calculate refresh cost based on refresh count.
     fn get_refresh_cost(refresh_count: u32) -> u32 {
         2 + ((refresh_count * (refresh_count + 3)) / 2)

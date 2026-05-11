@@ -16,9 +16,9 @@ use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, PendingCharmLoadout, PlayerSessionEntry,
-    PlayerSessions, Session, SessionCharmEntry, SessionCharmLoadout, SessionCharms, SessionInventory,
-    SessionItemEntry, SessionItemIndex, SessionMarket, SessionChipBonus, SessionItemPurchaseCount,
-    SpinResult, TokenPairId, XShareSessionClaim,
+    PlayerSessions, PlayerStreak, Session, SessionCharmEntry, SessionCharmLoadout, SessionCharms,
+    SessionInventory, SessionItemEntry, SessionItemIndex, SessionMarket, SessionChipBonus,
+    SessionItemPurchaseCount, SpinResult, TokenPairId,
 };
 
 #[derive(Copy, Drop)]
@@ -234,6 +234,14 @@ pub impl StoreImpl of StoreTrait {
         self.world.write_model(entry)
     }
 
+    fn player_streak(self: @Store, player: ContractAddress) -> PlayerStreak {
+        self.world.read_model(player)
+    }
+
+    fn set_player_streak(mut self: Store, streak: @PlayerStreak) {
+        self.world.write_model(streak)
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Session Item Index
     // ═══════════════════════════════════════════════════════════════════
@@ -312,14 +320,6 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_beast_sessions_used(mut self: Store, bsu: @BeastSessionsUsed) {
         self.world.write_model(bsu)
-    }
-
-    fn x_share_session_claim(self: @Store, player: ContractAddress) -> XShareSessionClaim {
-        self.world.read_model(player)
-    }
-
-    fn set_x_share_session_claim(mut self: Store, claim: @XShareSessionClaim) {
-        self.world.write_model(claim)
     }
 
     // ═══════════════════════════════════════════════════════════════════

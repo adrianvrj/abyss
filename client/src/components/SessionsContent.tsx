@@ -5,7 +5,7 @@ import { useController } from "@/hooks/useController";
 import { useAbyssGame } from "@/hooks/useAbyssGame";
 import { useBundles } from "@/context/bundles";
 import { useAbyssActions } from "@/hooks/actions";
-import { DEFAULT_CHAIN_ID, getCharmAddress, getSetupAddress } from "@/config";
+import { DEFAULT_CHAIN_ID, getCharmAddress, getSetupAddress, tryGetStreakAddress } from "@/config";
 import { CONTRACTS } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +18,12 @@ import { useCharmLoadout } from "@/hooks/useCharmLoadout";
 import { getAvailableGoldenChipRuns, getGoldenChipBalance } from "@/api/rpc/goldenChip";
 import { getCharmMetadata, getPlayerCharms } from "@/api/rpc/relic";
 import { STATIC_CHARM_DEFINITIONS } from "@/lib/charmCatalog";
+import {
+    fetchPlayerStreak,
+    secondsUntilNextUtcDay,
+    utcDayIndexFromMs,
+    type PlayerStreakState,
+} from "@/api/rpc/streak";
 import { Sparkles, Flame } from "lucide-react";
 import type { Bundle } from "@/models/bundle";
 
@@ -49,6 +55,71 @@ function formatGoldenChipResetCountdown(resetMs: number, nowMs: number) {
     }
 
     return `${hours}h ${minutes}m`;
+}
+
+function formatHoursMinutesFromSeconds(seconds: number) {
+    const s = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(s / 3600);
+    const minutes = Math.floor((s % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+}
+
+const STREAK_TRACKER_DAYS = 7;
+
+function StreakUtcDayPips(props: {
+    filled: number;
+    lootReady: boolean;
+    muted?: boolean;
+}) {
+    const { filled, lootReady, muted } = props;
+    const clamped = Math.min(Math.max(filled, 0), STREAK_TRACKER_DAYS);
+
+    return (
+        <div
+            role="img"
+            aria-label={`Streak progress ${clamped} of ${STREAK_TRACKER_DAYS} UTC calendar days`}
+            style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${STREAK_TRACKER_DAYS}, minmax(0, 1fr))`,
+                gap: 5,
+                width: "100%",
+                marginTop: 2,
+                marginBottom: 2,
+            }}
+        >
+            {Array.from({ length: STREAK_TRACKER_DAYS }, (_, i) => {
+                const lit = i < clamped;
+                const crown = lootReady && lit && i === STREAK_TRACKER_DAYS - 1;
+                const baseBg = muted
+                    ? "rgba(55, 48, 40, 0.45)"
+                    : lit
+                      ? crown
+                          ? "#f0a060"
+                          : "#c45a18"
+                      : "rgba(255, 132, 28, 0.1)";
+                const border = muted
+                    ? "1px solid rgba(120, 100, 85, 0.4)"
+                    : lit
+                      ? crown
+                          ? "1px solid rgba(255, 220, 170, 0.65)"
+                          : "1px solid rgba(255, 150, 80, 0.55)"
+                      : "1px solid rgba(255, 132, 28, 0.22)";
+
+                return (
+                    <div
+                        key={i}
+                        style={{
+                            height: 9,
+                            borderRadius: 2,
+                            background: baseBg,
+                            border,
+                            opacity: muted ? 0.85 : 1,
+                        }}
+                    />
+                );
+            })}
+        </div>
+    );
 }
 
 function isZeroAddress(address: string | null | undefined) {
@@ -309,7 +380,8 @@ export function SessionsContent() {
         claimBeastSession,
         isReady,
     } = useAbyssGame(account);
-    const { claimFreeSessionBundle, equipCharms, setPendingCharmLoadout } = useAbyssActions();
+    const { claimFreeSessionBundle, equipCharms, setPendingCharmLoadout, claimStreakLoot, recoverStreak } =
+        useAbyssActions();
     const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
     const charmLoadout = useCharmLoadout(account?.address, chainId);
     const { bundles, status: bundlesStatus, refresh: refreshBundles } = useBundles();
@@ -331,8 +403,11 @@ export function SessionsContent() {
     const [delegateGoldenChipBalance, setDelegateGoldenChipBalance] = useState(0n);
     const [goldenChipRuns, setGoldenChipRuns] = useState(0);
     const [nowMs, setNowMs] = useState(() => Date.now());
+    const [playerStreak, setPlayerStreak] = useState<PlayerStreakState | null>(null);
+    const [isStreakActionPending, setIsStreakActionPending] = useState(false);
     const charmAddress = getCharmAddress(chainId);
     const charmsEnabled = Boolean(charmAddress && charmAddress !== "0x0");
+    const streakFeatureEnabled = Boolean(tryGetStreakAddress(chainId));
     const hasControllerGoldenChip = goldenChipBalance > 0n || goldenChipRuns > 0;
     const hasDelegateGoldenChip = delegateGoldenChipBalance > 0n;
     const hasAnyGoldenChip = hasControllerGoldenChip || hasDelegateGoldenChip;
@@ -350,7 +425,7 @@ export function SessionsContent() {
     }, [isConnected, navigate]);
 
     useEffect(() => {
-        if (!showGoldenChipResetCountdown) {
+        if (!showGoldenChipResetCountdown && !streakFeatureEnabled) {
             return;
         }
 
@@ -360,7 +435,7 @@ export function SessionsContent() {
         }, 60_000);
 
         return () => window.clearInterval(interval);
-    }, [showGoldenChipResetCountdown]);
+    }, [showGoldenChipResetCountdown, streakFeatureEnabled]);
 
     useEffect(() => {
         if (!account?.address || !client) {
@@ -389,6 +464,7 @@ export function SessionsContent() {
 
     const loadSessions = useCallback(async () => {
         if (!isReady || !account) {
+            setPlayerStreak(null);
             setIsLoading(false);
             return;
         }
@@ -440,6 +516,12 @@ export function SessionsContent() {
             const allSessions = await Promise.all(sessionPromises);
             const activeSessions = allSessions.filter((s): s is SessionInfo => s !== null && s.isActive);
             setSessions(activeSessions);
+
+            if (tryGetStreakAddress(chainId)) {
+                setPlayerStreak(await fetchPlayerStreak(chainId, account.address));
+            } else {
+                setPlayerStreak(null);
+            }
         } catch (error) {
             console.error("Failed to load sessions:", error);
         } finally {
@@ -809,6 +891,51 @@ export function SessionsContent() {
         refreshBundles,
     ]);
 
+    const handleClaimStreakLoot = useCallback(async () => {
+        try {
+            setIsStreakActionPending(true);
+            await claimStreakLoot();
+            await loadSessions();
+        } catch (error) {
+            console.error("Failed to claim streak loot:", error);
+        } finally {
+            setIsStreakActionPending(false);
+        }
+    }, [claimStreakLoot, loadSessions]);
+
+    const handleRecoverStreak = useCallback(async () => {
+        try {
+            setIsStreakActionPending(true);
+            await recoverStreak();
+            await loadSessions();
+        } catch (error) {
+            console.error("Failed to recover streak:", error);
+        } finally {
+            setIsStreakActionPending(false);
+        }
+    }, [recoverStreak, loadSessions]);
+
+    const streakTodayUtc = utcDayIndexFromMs(nowMs);
+    const streakUtcCountdown = formatHoursMinutesFromSeconds(secondsUntilNextUtcDay(nowMs));
+    const streakLootReady =
+        streakFeatureEnabled && Boolean(playerStreak && playerStreak.streakCount >= 7);
+    const streakRecoverOffered =
+        streakFeatureEnabled &&
+        Boolean(
+            playerStreak &&
+                playerStreak.recoverPriorCount > 0 &&
+                playerStreak.streakCount === 0 &&
+                streakTodayUtc <= playerStreak.recoverDeadlineDayId,
+        );
+    const streakLootBarrierActive =
+        streakFeatureEnabled &&
+        Boolean(
+            playerStreak &&
+                playerStreak.streakCount === 0 &&
+                playerStreak.lootClaimBarrierDayId !== 0 &&
+                streakTodayUtc <= playerStreak.lootClaimBarrierDayId,
+        );
+
     return (
         <div style={styles.container}>
             {/* Navigation Row */}
@@ -860,6 +987,275 @@ export function SessionsContent() {
                         <span>&gt; NEW RUN</span>
                     )}
                 </motion.button>
+
+                {streakFeatureEnabled && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                            ...styles.perksPanel,
+                            marginTop: 8,
+                            width: "100%",
+                            padding: "12px 14px",
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                            <img
+                                src="/images/streak.png"
+                                alt=""
+                                width={56}
+                                height={56}
+                                style={{
+                                    flexShrink: 0,
+                                    width: 56,
+                                    height: 56,
+                                    objectFit: "contain",
+                                }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        flexWrap: "wrap" as const,
+                                        alignItems: "baseline",
+                                        justifyContent: "space-between",
+                                        gap: 8,
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 8,
+                                            fontFamily: "'PressStart2P', monospace",
+                                            fontSize: 9,
+                                            color: "#FF841C",
+                                            letterSpacing: 1,
+                                            textTransform: "uppercase" as const,
+                                        }}
+                                    >
+                                        <Flame size={14} aria-hidden strokeWidth={2.2} />
+                                        <span>Streak</span>
+                                    </div>
+                                    <span
+                                        style={{
+                                            fontFamily: "var(--font-mono)",
+                                            fontSize: 10,
+                                            color: "rgba(212,203,191,0.45)",
+                                            letterSpacing: "0.06em",
+                                            textTransform: "uppercase" as const,
+                                        }}
+                                    >
+                                        UTC · 7 days
+                                    </span>
+                                </div>
+                                {playerStreak ? (
+                                    streakLootBarrierActive ? (
+                                        <>
+                                            <StreakUtcDayPips filled={0} lootReady={false} muted />
+                                            <p
+                                                style={{
+                                                    margin: 0,
+                                                    fontFamily: "var(--font-body)",
+                                                    color: "#cbbfb0",
+                                                    fontSize: 13,
+                                                    lineHeight: 1.5,
+                                                }}
+                                            >
+                                                Weekly loot claimed. Start counting again after you{' '}
+                                                <strong style={{ color: "#f2ebe3" }}>finish a session</strong> on a later
+                                                UTC day (the claim day does not count).
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <StreakUtcDayPips
+                                                filled={
+                                                    streakLootReady
+                                                        ? STREAK_TRACKER_DAYS
+                                                        : Math.min(playerStreak.streakCount, STREAK_TRACKER_DAYS)
+                                                }
+                                                lootReady={streakLootReady}
+                                            />
+                                            {streakLootReady ? (
+                                                <div>
+                                                    <p
+                                                        style={{
+                                                            margin: 0,
+                                                            fontFamily: "'PressStart2P', monospace",
+                                                            fontSize: 9,
+                                                            color: "#f6efe6",
+                                                            lineHeight: 1.6,
+                                                        }}
+                                                    >
+                                                        WEEKLY LOOT READY
+                                                    </p>
+                                                    <p
+                                                        style={{
+                                                            margin: "6px 0 0",
+                                                            fontFamily: "var(--font-body)",
+                                                            fontSize: 13,
+                                                            color: "#d4cbbf",
+                                                            lineHeight: 1.45,
+                                                        }}
+                                                    >
+                                                        One charm roll · rarity weights{' '}
+                                                        <span style={{ color: "#c8baa8", fontFamily: "var(--font-mono)", fontSize: 12 }}>
+                                                            60% / 30% / 8% / 2%
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            flexWrap: "wrap" as const,
+                                                            alignItems: "baseline",
+                                                            gap: 8,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                fontFamily: "'PressStart2P', monospace",
+                                                                fontSize: 20,
+                                                                color: "#f6efe6",
+                                                                letterSpacing: 1,
+                                                            }}
+                                                        >
+                                                            {Math.min(playerStreak.streakCount, STREAK_TRACKER_DAYS)}
+                                                            <span
+                                                                style={{
+                                                                    fontSize: 11,
+                                                                    color: "rgba(235,224,212,0.45)",
+                                                                    marginLeft: 4,
+                                                                    marginRight: 4,
+                                                                }}
+                                                            >
+                                                                /
+                                                            </span>
+                                                            {STREAK_TRACKER_DAYS}
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                fontFamily: "var(--font-body)",
+                                                                fontSize: 12,
+                                                                color: "#9a8f82",
+                                                                textTransform: "uppercase" as const,
+                                                                letterSpacing: "0.08em",
+                                                            }}
+                                                        >
+                                                            days toward loot
+                                                        </span>
+                                                    </div>
+                                                    <p
+                                                        style={{
+                                                            margin: 0,
+                                                            fontFamily: "var(--font-body)",
+                                                            fontSize: 13,
+                                                            color: "#c9bfb2",
+                                                            lineHeight: 1.45,
+                                                        }}
+                                                    >
+                                                        One qualifying session per UTC day. Next boundary in{" "}
+                                                        <strong style={{ color: "#e8ddcf" }}>{streakUtcCountdown}</strong>.
+                                                    </p>
+                                                </>
+                                            )}
+                                        </>
+                                    )
+                                ) : (
+                                    <p
+                                        style={{
+                                            margin: 0,
+                                            fontFamily: "var(--font-body)",
+                                            color: "#b8a995",
+                                            fontSize: 13,
+                                        }}
+                                    >
+                                        Could not load streak. Refresh or check your connection.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        {playerStreak &&
+                            !streakLootBarrierActive &&
+                            (streakLootReady ||
+                                streakRecoverOffered ||
+                                (playerStreak.recoverPriorCount > 0 && !streakRecoverOffered)) ? (
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        flexWrap: "wrap" as const,
+                                        gap: 10,
+                                        paddingTop: 2,
+                                        borderTop: "1px solid rgba(255, 132, 28, 0.12)",
+                                    }}
+                                >
+                                    {streakLootReady ? (
+                                        <motion.button
+                                            type="button"
+                                            onClick={handleClaimStreakLoot}
+                                            disabled={isStreakActionPending}
+                                            whileHover={{ color: "#FF841C" }}
+                                            whileTap={{ scale: isStreakActionPending ? 1 : 0.98 }}
+                                            style={{
+                                                fontFamily: "var(--font-body)",
+                                                fontSize: 14,
+                                                color: "#f6efe6",
+                                                background: "#1c0f07",
+                                                border: "1px solid rgba(255, 132, 28, 0.55)",
+                                                borderRadius: 8,
+                                                padding: "10px 16px",
+                                                cursor: isStreakActionPending ? "default" : "pointer",
+                                                opacity: isStreakActionPending ? 0.55 : 1,
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: 8,
+                                            }}
+                                        >
+                                            <Sparkles size={16} aria-hidden strokeWidth={2} />
+                                            {isStreakActionPending ? "Claiming..." : "Claim weekly loot"}
+                                        </motion.button>
+                                    ) : null}
+                                    {streakRecoverOffered ? (
+                                        <motion.button
+                                            type="button"
+                                            onClick={handleRecoverStreak}
+                                            disabled={isStreakActionPending}
+                                            whileHover={{ color: "#FF841C" }}
+                                            whileTap={{ scale: isStreakActionPending ? 1 : 0.98 }}
+                                            style={{
+                                                fontFamily: "var(--font-body)",
+                                                fontSize: 14,
+                                                color: "#f6efe6",
+                                                background: "#1c0f07",
+                                                border: "1px solid rgba(255, 132, 28, 0.55)",
+                                                borderRadius: 8,
+                                                padding: "10px 16px",
+                                                cursor: isStreakActionPending ? "default" : "pointer",
+                                                opacity: isStreakActionPending ? 0.55 : 1,
+                                            }}
+                                        >
+                                            {isStreakActionPending ? "Recovering..." : `Recover (${playerStreak.recoverPriorCount} days) · burn 666 CHIP`}
+                                        </motion.button>
+                                    ) : playerStreak.recoverPriorCount > 0 ? (
+                                        <span
+                                            style={{
+                                                fontFamily: "var(--font-body)",
+                                                fontSize: 13,
+                                                color: "rgba(241,229,217,0.55)",
+                                                alignSelf: "center",
+                                            }}
+                                        >
+                                            Recovery expired — streak reset.
+                                        </span>
+                                    ) : null}
+                                </div>
+                            ) : null}
+                    </motion.div>
+                )}
 
                 {/* Pre-run Charm Loadout */}
                 {charmsEnabled && (
