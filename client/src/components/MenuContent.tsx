@@ -7,6 +7,7 @@ import { usePractice } from "@/context/practice";
 import { useEntities } from "@/context/entities";
 import { LeaderboardApi } from "@/api/torii/leaderboard";
 import { getLeaderboard } from "@/utils/abyssContract";
+import { posthog } from "@/lib/posthog";
 
 const styles = {
     container: {
@@ -54,7 +55,7 @@ const styles = {
 
 export function MenuContent() {
     const navigate = useNavigate();
-    const { isConnecting, isConnected, connect, disconnect } = useController();
+    const { isConnecting, isConnected, connect, disconnect, address, username } = useController();
     const { startPractice } = usePractice();
     const queryClient = useQueryClient();
     const { chainId } = useEntities();
@@ -87,11 +88,19 @@ export function MenuContent() {
         }
         try {
             await connect();
+            posthog.capture("wallet_connected");
             navigate("/sessions");
         } catch (error) {
             console.error("Connection failed:", error);
+            posthog.captureException(error);
         }
     }, [isConnected, connect, navigate]);
+
+    useEffect(() => {
+        if (isConnected && address) {
+            posthog.identify(address, { username: username ?? undefined });
+        }
+    }, [isConnected, address, username]);
 
     const handleContinue = useCallback(() => {
         if (activeSessionId) {
@@ -104,6 +113,7 @@ export function MenuContent() {
     }, [navigate]);
 
     const handlePractice = useCallback(() => {
+        posthog.capture("practice_started");
         startPractice();
         navigate("/practice");
     }, [navigate, startPractice]);
@@ -113,6 +123,8 @@ export function MenuContent() {
     }, []);
 
     const handleLogout = useCallback(async () => {
+        posthog.capture("wallet_disconnected");
+        posthog.reset();
         await disconnect();
         navigate("/");
     }, [disconnect, navigate]);

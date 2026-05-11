@@ -4,6 +4,7 @@ import { CallData } from "starknet";
 import ControllerConnector from "@cartridge/connector/controller";
 import { getRpcProvider } from "@/api/rpc/provider";
 import { getGameConfig, getUsdCostInToken } from "@/api/rpc/play";
+import { posthog } from "@/lib/posthog";
 import {
   DEFAULT_CHAIN_ID,
   getCharmAddress,
@@ -209,7 +210,14 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         calldata: CallData.compile([account.address, selectedPaymentToken]),
       });
 
-      return executeCalls(calls);
+      const receipt = await executeCalls(calls);
+      posthog.capture("session_created", {
+        player_address: account.address,
+        chain_id: chainId,
+        payment_token: selectedPaymentToken,
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
     },
     [account, chainId, executeCalls, playAddress],
   );
@@ -241,12 +249,17 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         await cartridgeConnector.controller.openBundle(bundleId, registry, {
           onPurchaseComplete: () => {
             console.log("[ABYSS_ACTIONS] claimsocial:complete");
+            posthog.capture("free_session_claimed", {
+              bundle_id: bundleId,
+              chain_id: chainId,
+            });
             onComplete?.();
           },
           socialClaimOptions,
         });
       } catch (error) {
         console.error("[ABYSS_ACTIONS] claimsocial:error", error);
+        posthog.captureException(error);
         throw error;
       }
     },
@@ -265,7 +278,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
       });
       const vrfAddress = config?.vrf || CONTRACTS.CARTRIDGE_VRF;
 
-      return executeCalls(
+      const receipt = await executeCalls(
         [
           {
             contractAddress: vrfAddress,
@@ -283,6 +296,13 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         ],
         { maxFee: 2_000_000_000_000_000n },
       );
+      posthog.capture("spin_requested", {
+        session_id: sessionId,
+        player_address: account.address,
+        chain_id: chainId,
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
     },
     [account, chainId, executeCalls, playAddress],
   );
@@ -300,14 +320,22 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
   );
 
   const sellItem = useCallback(
-    async (sessionId: number, itemId: number, quantity: number = 1) =>
-      executeCalls([
+    async (sessionId: number, itemId: number, quantity: number = 1) => {
+      const receipt = await executeCalls([
         {
           contractAddress: marketAddress,
           entrypoint: "sell_item",
           calldata: CallData.compile([sessionId, itemId, quantity]),
         },
-      ]),
+      ]);
+      posthog.capture("item_sold", {
+        session_id: sessionId,
+        item_id: itemId,
+        quantity,
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
+    },
     [executeCalls, marketAddress],
   );
 
@@ -328,13 +356,19 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
       const low = tokenId & ((1n << 128n) - 1n);
       const high = tokenId >> 128n;
 
-      return executeCalls([
+      const receipt = await executeCalls([
         {
           contractAddress: relicAddress,
           entrypoint: "equip_relic",
           calldata: CallData.compile([sessionId, low, high]),
         },
       ]);
+      posthog.capture("relic_equipped", {
+        session_id: sessionId,
+        relic_token_id: tokenId.toString(),
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
     },
     [executeCalls, relicAddress],
   );
@@ -361,7 +395,13 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         });
       }
 
-      return executeCalls(calls);
+      const receipt = await executeCalls(calls);
+      posthog.capture("relic_activated", {
+        session_id: sessionId,
+        relic_id: relicId,
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
     },
     [account, executeCalls, playAddress, relicAddress],
   );
@@ -373,7 +413,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
       }
 
       const [tokenId1, tokenId2, tokenId3] = tokenIds;
-      return executeCalls([
+      const receipt = await executeCalls([
         {
           contractAddress: paymentToken,
           entrypoint: "approve",
@@ -393,31 +433,49 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           ]),
         },
       ]);
+      posthog.capture("charm_rerolled", {
+        player_address: account.address,
+        payment_token: paymentToken,
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
     },
     [account, charmAddress, executeCalls],
   );
 
   const endSession = useCallback(
-    async (sessionId: number) =>
-      executeCalls([
+    async (sessionId: number) => {
+      const receipt = await executeCalls([
         {
           contractAddress: playAddress,
           entrypoint: "end_session",
           calldata: CallData.compile([sessionId]),
         },
-      ]),
+      ]);
+      posthog.capture("session_ended", {
+        session_id: sessionId,
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
+    },
     [executeCalls, playAddress],
   );
 
   const claimChips = useCallback(
-    async (sessionId: number) =>
-      executeCalls([
+    async (sessionId: number) => {
+      const receipt = await executeCalls([
         {
           contractAddress: playAddress,
           entrypoint: "claim_chips",
           calldata: CallData.compile([sessionId]),
         },
-      ]),
+      ]);
+      posthog.capture("chips_claimed", {
+        session_id: sessionId,
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
+    },
     [executeCalls, playAddress],
   );
 
@@ -428,13 +486,18 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     if (!streakAddress) {
       throw new Error("Streak contract unavailable (migrate + sync manifest)");
     }
-    return executeCalls([
+    const receipt = await executeCalls([
       {
         contractAddress: streakAddress,
         entrypoint: "claim_streak_loot",
         calldata: [],
       },
     ]);
+    posthog.capture("streak_loot_claimed", {
+      player_address: account.address,
+      transaction_hash: receipt.transactionHash,
+    });
+    return receipt;
   }, [account, executeCalls, streakAddress]);
 
   const recoverStreak = useCallback(async () => {

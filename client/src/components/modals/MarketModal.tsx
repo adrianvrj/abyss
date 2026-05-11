@@ -13,6 +13,7 @@ import ModalWrapper from './ModalWrapper';
 import { RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
 import { useController } from '@/hooks/useController';
+import { posthog } from '@/lib/posthog';
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -151,12 +152,18 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         try {
             const previousMarket = marketData;
             await refreshMarket(sessionId);
+            posthog.capture("market_refreshed", {
+                session_id: sessionId,
+                refresh_cost: refreshCost,
+                refresh_count: previousMarket.refresh_count + 1,
+            });
             onUpdateScore(currentScore - refreshCost);
             setPurchasedInCurrentMarket(new Set());
             await loadRefreshedMarketData(previousMarket);
             setCurrentItemIndex(0);
         } catch (e) {
             console.error("Refresh failed", e);
+            posthog.captureException(e);
         } finally {
             setRefreshing(false);
         }
@@ -167,6 +174,13 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         setPurchasingSlot(slot);
         try {
             await buyItem(sessionId, slot);
+            posthog.capture("item_purchased", {
+                session_id: sessionId,
+                item_id: item.item_id,
+                item_name: item.name,
+                item_price: item.price,
+                market_slot: slot,
+            });
             onUpdateScore(currentScore - item.price);
             setPurchasedInCurrentMarket(prev => new Set(prev).add(slot));
             if (item.effect_type !== ItemEffectType.SpinBonus) {
@@ -175,6 +189,7 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
             }
         } catch (e) {
             console.error("Purchase failed", e);
+            posthog.captureException(e);
         } finally {
             setPurchasingSlot(null);
         }
