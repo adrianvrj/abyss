@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type ControllerConnector from "@cartridge/connector/controller";
 import { useNetwork } from "@starknet-react/core";
 import { useController } from "@/hooks/useController";
@@ -26,6 +26,7 @@ import {
 } from "@/api/rpc/streak";
 import { Sparkles, Flame } from "lucide-react";
 import type { Bundle } from "@/models/bundle";
+import { captureAbyss } from "@/lib/posthog";
 
 interface SessionInfo {
     sessionId: number;
@@ -405,6 +406,7 @@ export function SessionsContent() {
     const [nowMs, setNowMs] = useState(() => Date.now());
     const [playerStreak, setPlayerStreak] = useState<PlayerStreakState | null>(null);
     const [isStreakActionPending, setIsStreakActionPending] = useState(false);
+    const sessionsListViewTrackedRef = useRef(false);
     const charmAddress = getCharmAddress(chainId);
     const charmsEnabled = Boolean(charmAddress && charmAddress !== "0x0");
     const streakFeatureEnabled = Boolean(tryGetStreakAddress(chainId));
@@ -542,9 +544,30 @@ export function SessionsContent() {
         loadSessions();
     }, [isReady, account?.address, loadSessions]);
 
-    const handleSelectSession = useCallback((sessionId: number) => {
-        navigate(`/game?sessionId=${sessionId}`);
-    }, [navigate]);
+    useEffect(() => {
+        if (!isConnected || isLoading) {
+            return;
+        }
+        if (sessionsListViewTrackedRef.current) {
+            return;
+        }
+        sessionsListViewTrackedRef.current = true;
+        captureAbyss("sessions_viewed", {
+            chain_id: chainId,
+            active_session_count: sessions.length,
+        });
+    }, [isConnected, isLoading, sessions.length, chainId]);
+
+    const handleSelectSession = useCallback(
+        (sessionId: number) => {
+            captureAbyss("session_selected", {
+                session_id: sessionId,
+                chain_id: chainId,
+            });
+            navigate(`/game?sessionId=${sessionId}`);
+        },
+        [navigate, chainId],
+    );
 
     const loadOwnedCharms = useCallback(async () => {
         if (!charmsEnabled || !account?.address) return;
@@ -604,13 +627,19 @@ export function SessionsContent() {
         setIsSealingLoadout(true);
         try {
             await equipCharms(configuringSession.sessionId, charmLoadout.loadout);
+            captureAbyss("charm_loadout_saved", {
+                session_id: configuringSession.sessionId,
+                charm_count: charmLoadout.loadout.length,
+                chain_id: chainId,
+                scope: "session",
+            });
             setSessionCharmIds(charmLoadout.loadout);
             await loadSessions();
             setConfiguringSession(null);
         } finally {
             setIsSealingLoadout(false);
         }
-    }, [charmLoadout.loadout, configuringSession, equipCharms, loadSessions]);
+    }, [charmLoadout.loadout, chainId, configuringSession, equipCharms, loadSessions]);
 
     const handleOpenPrerunLoadout = useCallback(() => {
         setIsPrerunLoadoutOpen(true);
@@ -625,11 +654,17 @@ export function SessionsContent() {
         setIsSavingPrerunLoadout(true);
         try {
             await setPendingCharmLoadout(charmLoadout.loadout);
+            captureAbyss("charm_loadout_saved", {
+                session_id: 0,
+                charm_count: charmLoadout.loadout.length,
+                chain_id: chainId,
+                scope: "pending_prerun",
+            });
             setIsPrerunLoadoutOpen(false);
         } finally {
             setIsSavingPrerunLoadout(false);
         }
-    }, [charmLoadout.loadout, setPendingCharmLoadout]);
+    }, [chainId, charmLoadout.loadout, setPendingCharmLoadout]);
 
     const handleCreateSessionClick = useCallback(async () => {
         if (!account) {
@@ -637,7 +672,10 @@ export function SessionsContent() {
             return;
         }
 
+        captureAbyss("new_session_clicked", { entry: "paid_bundle", chain_id: chainId });
+
         setIsCreating(true);
+        let checkoutBundleId: number | null = null;
         try {
             let availableBundles = bundles;
             let sessionBundle =
@@ -672,18 +710,34 @@ export function SessionsContent() {
 
             if (!sessionBundle) {
                 console.error("No session bundle found; refusing to fallback to paid create_session.");
+                captureAbyss("bundle_flow_failed", {
+                    stage: "no_bundle_configured",
+                    chain_id: chainId,
+                });
                 await loadSessions();
                 return;
             }
 
             if (!connector) {
                 console.error("No controller connector available for openBundle.");
+                captureAbyss("bundle_flow_failed", {
+                    stage: "no_connector",
+                    chain_id: chainId,
+                });
                 return;
             }
 
             const controller = connector as ControllerConnector;
             const registry = getSetupAddress(chain?.id);
             const previousSessionIds = await getPlayerSessions(account.address);
+
+            checkoutBundleId = sessionBundle.id;
+            captureAbyss("bundle_checkout_opened", {
+                bundle_id: checkoutBundleId,
+                bundle_kind: "session",
+                price_wei: sessionBundle.price.toString(),
+                chain_id: chainId,
+            });
 
             await controller.controller.openBundle(sessionBundle.id, registry, {
                 onPurchaseComplete: async () => {
@@ -694,6 +748,12 @@ export function SessionsContent() {
                         );
 
                         if (createdSessionId !== undefined) {
+                            captureAbyss("bundle_purchase_completed", {
+                                bundle_id: checkoutBundleId,
+                                new_session_id: createdSessionId,
+                                bundle_kind: "session",
+                                chain_id: chainId,
+                            });
                             await loadSessions();
                             navigate(`/game?sessionId=${createdSessionId}`);
                             return;
@@ -702,15 +762,26 @@ export function SessionsContent() {
                         await new Promise((resolve) => setTimeout(resolve, 400));
                     }
 
+                    captureAbyss("bundle_flow_failed", {
+                        stage: "post_purchase_poll_exhausted",
+                        bundle_id: checkoutBundleId,
+                        chain_id: chainId,
+                    });
                     await loadSessions();
                 },
             });
         } catch (error: any) {
             console.error("Failed to create session:", error);
+            captureAbyss("bundle_flow_failed", {
+                stage: "open_bundle_error",
+                bundle_id: checkoutBundleId,
+                chain_id: chainId,
+                error_message: error?.message ? String(error.message) : "unknown",
+            });
         } finally {
             setIsCreating(false);
         }
-    }, [account, bundles, chain?.id, connector, getPlayerSessions, loadSessions, navigate, refreshBundles]);
+    }, [account, bundles, chain?.id, chainId, connector, getPlayerSessions, loadSessions, navigate, refreshBundles]);
 
     const handleBack = useCallback(() => {
         navigate("/");
@@ -722,7 +793,7 @@ export function SessionsContent() {
     }, [disconnect, navigate]);
 
     const waitForClaimedSession = useCallback(
-        async (claimFn: () => Promise<number>) => {
+        async (claimFn: () => Promise<number>, flow: string) => {
             if (!account) {
                 return;
             }
@@ -737,6 +808,11 @@ export function SessionsContent() {
                 );
 
                 if (createdSessionId !== undefined) {
+                    captureAbyss("session_claim_completed", {
+                        flow,
+                        new_session_id: createdSessionId,
+                        chain_id: chainId,
+                    });
                     await loadSessions();
                     navigate(`/game?sessionId=${createdSessionId}`);
                     return;
@@ -745,9 +821,14 @@ export function SessionsContent() {
                 await new Promise((resolve) => setTimeout(resolve, 400));
             }
 
+            captureAbyss("session_resolution_failed", {
+                flow,
+                stage: "poll_exhausted",
+                chain_id: chainId,
+            });
             await loadSessions();
         },
-        [account, getPlayerSessions, loadSessions, navigate],
+        [account, chainId, getPlayerSessions, loadSessions, navigate],
     );
 
     const handleShareOnX = useCallback(async () => {
@@ -770,14 +851,23 @@ export function SessionsContent() {
                 "_blank",
                 "noopener,noreferrer",
             );
+            captureAbyss("social_free_session_skipped", {
+                reason: "no_share_bundle",
+                chain_id: chainId,
+            });
             return;
         }
+
+        captureAbyss("social_free_session_started", {
+            bundle_id: shareBundle.id,
+            chain_id: chainId,
+        });
 
         setIsCreating(true);
         try {
             const referralLink = `https://play.abyssgame.fun?ref=${account.address}`;
             const previousSessionIds = await getPlayerSessions(account.address);
-            
+
             await claimFreeSessionBundle(shareBundle.id, referralLink, async () => {
                 for (let attempt = 1; attempt <= 20; attempt += 1) {
                     const nextSessionIds = await getPlayerSessions(account.address);
@@ -786,6 +876,12 @@ export function SessionsContent() {
                     );
 
                     if (createdSessionId !== undefined) {
+                        captureAbyss("bundle_purchase_completed", {
+                            bundle_id: shareBundle!.id,
+                            new_session_id: createdSessionId,
+                            bundle_kind: "social_free",
+                            chain_id: chainId,
+                        });
                         await loadSessions();
                         setIsCreating(false);
                         navigate(`/game?sessionId=${createdSessionId}`);
@@ -795,11 +891,21 @@ export function SessionsContent() {
                     await new Promise((resolve) => setTimeout(resolve, 2000));
                 }
                 console.warn("[ABYSS_BUNDLE] Polling timed out. Try refreshing the page.");
+                captureAbyss("session_resolution_failed", {
+                    flow: "social_free",
+                    stage: "poll_exhausted",
+                    chain_id: chainId,
+                });
                 await loadSessions();
                 setIsCreating(false);
             });
         } catch (error) {
             console.error("Failed to open social claim bundle:", error);
+            captureAbyss("bundle_flow_failed", {
+                stage: "social_claim_error",
+                chain_id: chainId,
+                error_message: error instanceof Error ? error.message : "unknown",
+            });
             setIsCreating(false);
         } finally {
             // Keep creating true until polling finishes or fails
@@ -808,6 +914,7 @@ export function SessionsContent() {
         account,
         bundles,
         chain?.id,
+        chainId,
         connector,
         getPlayerSessions,
         loadSessions,
@@ -817,22 +924,34 @@ export function SessionsContent() {
     ]);
 
     const handleClaimBeastSession = useCallback(async () => {
+        captureAbyss("beast_session_claim_started", { chain_id: chainId });
         setIsCreating(true);
         try {
-            await waitForClaimedSession(claimBeastSession);
+            await waitForClaimedSession(claimBeastSession, "beast");
         } catch (error) {
             console.error("Failed to claim Beast session:", error);
+            captureAbyss("bundle_flow_failed", {
+                stage: "beast_claim_error",
+                chain_id: chainId,
+                error_message: error instanceof Error ? error.message : "unknown",
+            });
         } finally {
             setIsCreating(false);
         }
-    }, [claimBeastSession, waitForClaimedSession]);
+    }, [chainId, claimBeastSession, waitForClaimedSession]);
 
     const handleClaimGoldenChipRun = useCallback(async () => {
         if (!account || !connector || goldenChipRuns <= 0) {
             return;
         }
 
+        captureAbyss("golden_chip_session_started", {
+            chain_id: chainId,
+            golden_chip_runs: goldenChipRuns,
+        });
+
         setIsCreating(true);
+        let goldenBundleId: number | null = null;
         try {
             let availableBundles = bundles;
             let goldenBundle = findGoldenChipBundle(availableBundles);
@@ -845,9 +964,21 @@ export function SessionsContent() {
 
             if (!goldenBundle) {
                 console.error("Golden Chip bundle not found.");
+                captureAbyss("bundle_flow_failed", {
+                    stage: "golden_bundle_missing",
+                    chain_id: chainId,
+                });
                 await loadSessions();
                 return;
             }
+
+            goldenBundleId = goldenBundle.id;
+            captureAbyss("bundle_checkout_opened", {
+                bundle_id: goldenBundleId,
+                bundle_kind: "golden_chip",
+                price_wei: goldenBundle.price.toString(),
+                chain_id: chainId,
+            });
 
             const controller = connector as ControllerConnector;
             const registry = getSetupAddress(chain?.id);
@@ -862,6 +993,12 @@ export function SessionsContent() {
                         );
 
                         if (createdSessionId !== undefined) {
+                            captureAbyss("bundle_purchase_completed", {
+                                bundle_id: goldenBundleId,
+                                new_session_id: createdSessionId,
+                                bundle_kind: "golden_chip",
+                                chain_id: chainId,
+                            });
                             await loadSessions();
                             setIsCreating(false);
                             navigate(`/game?sessionId=${createdSessionId}`);
@@ -871,18 +1008,30 @@ export function SessionsContent() {
                         await new Promise((resolve) => setTimeout(resolve, 2000));
                     }
 
+                    captureAbyss("bundle_flow_failed", {
+                        stage: "golden_chip_poll_exhausted",
+                        bundle_id: goldenBundleId,
+                        chain_id: chainId,
+                    });
                     await loadSessions();
                     setIsCreating(false);
                 },
             });
         } catch (error) {
             console.error("Failed to claim Golden Chip run:", error);
+            captureAbyss("bundle_flow_failed", {
+                stage: "golden_chip_open_bundle_error",
+                bundle_id: goldenBundleId,
+                chain_id: chainId,
+                error_message: error instanceof Error ? error.message : "unknown",
+            });
             setIsCreating(false);
         }
     }, [
         account,
         bundles,
         chain?.id,
+        chainId,
         connector,
         getPlayerSessions,
         goldenChipRuns,
@@ -898,22 +1047,31 @@ export function SessionsContent() {
             await loadSessions();
         } catch (error) {
             console.error("Failed to claim streak loot:", error);
+            captureAbyss("streak_loot_failed", {
+                chain_id: chainId,
+                error_message: error instanceof Error ? error.message : "unknown",
+            });
         } finally {
             setIsStreakActionPending(false);
         }
-    }, [claimStreakLoot, loadSessions]);
+    }, [chainId, claimStreakLoot, loadSessions]);
 
     const handleRecoverStreak = useCallback(async () => {
         try {
             setIsStreakActionPending(true);
             await recoverStreak();
+            captureAbyss("streak_recover_success", { chain_id: chainId });
             await loadSessions();
         } catch (error) {
             console.error("Failed to recover streak:", error);
+            captureAbyss("streak_recover_failed", {
+                chain_id: chainId,
+                error_message: error instanceof Error ? error.message : "unknown",
+            });
         } finally {
             setIsStreakActionPending(false);
         }
-    }, [recoverStreak, loadSessions]);
+    }, [chainId, recoverStreak, loadSessions]);
 
     const streakTodayUtc = utcDayIndexFromMs(nowMs);
     const streakUtcCountdown = formatHoursMinutesFromSeconds(secondsUntilNextUtcDay(nowMs));

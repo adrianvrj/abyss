@@ -4,7 +4,7 @@ import { CallData } from "starknet";
 import ControllerConnector from "@cartridge/connector/controller";
 import { getRpcProvider } from "@/api/rpc/provider";
 import { getGameConfig, getUsdCostInToken } from "@/api/rpc/play";
-import { posthog } from "@/lib/posthog";
+import { captureAbyss, posthog } from "@/lib/posthog";
 import {
   DEFAULT_CHAIN_ID,
   getCharmAddress,
@@ -211,7 +211,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
       });
 
       const receipt = await executeCalls(calls);
-      posthog.capture("session_created", {
+      captureAbyss("session_created", {
         player_address: account.address,
         chain_id: chainId,
         payment_token: selectedPaymentToken,
@@ -249,7 +249,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         await cartridgeConnector.controller.openBundle(bundleId, registry, {
           onPurchaseComplete: () => {
             console.log("[ABYSS_ACTIONS] claimsocial:complete");
-            posthog.capture("free_session_claimed", {
+            captureAbyss("free_session_claimed", {
               bundle_id: bundleId,
               chain_id: chainId,
             });
@@ -296,7 +296,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         ],
         { maxFee: 2_000_000_000_000_000n },
       );
-      posthog.capture("spin_requested", {
+      captureAbyss("spin_requested", {
         session_id: sessionId,
         player_address: account.address,
         chain_id: chainId,
@@ -328,7 +328,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           calldata: CallData.compile([sessionId, itemId, quantity]),
         },
       ]);
-      posthog.capture("item_sold", {
+      captureAbyss("item_sold", {
         session_id: sessionId,
         item_id: itemId,
         quantity,
@@ -363,7 +363,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           calldata: CallData.compile([sessionId, low, high]),
         },
       ]);
-      posthog.capture("relic_equipped", {
+      captureAbyss("relic_equipped", {
         session_id: sessionId,
         relic_token_id: tokenId.toString(),
         transaction_hash: receipt.transactionHash,
@@ -396,7 +396,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
       }
 
       const receipt = await executeCalls(calls);
-      posthog.capture("relic_activated", {
+      captureAbyss("relic_activated", {
         session_id: sessionId,
         relic_id: relicId,
         transaction_hash: receipt.transactionHash,
@@ -433,7 +433,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           ]),
         },
       ]);
-      posthog.capture("charm_rerolled", {
+      captureAbyss("charm_rerolled", {
         player_address: account.address,
         payment_token: paymentToken,
         transaction_hash: receipt.transactionHash,
@@ -452,7 +452,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           calldata: CallData.compile([sessionId]),
         },
       ]);
-      posthog.capture("session_ended", {
+      captureAbyss("session_ended", {
         session_id: sessionId,
         transaction_hash: receipt.transactionHash,
       });
@@ -470,7 +470,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
           calldata: CallData.compile([sessionId]),
         },
       ]);
-      posthog.capture("chips_claimed", {
+      captureAbyss("chips_claimed", {
         session_id: sessionId,
         transaction_hash: receipt.transactionHash,
       });
@@ -493,7 +493,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
         calldata: [],
       },
     ]);
-    posthog.capture("streak_loot_claimed", {
+    captureAbyss("streak_loot_claimed", {
       player_address: account.address,
       transaction_hash: receipt.transactionHash,
     });

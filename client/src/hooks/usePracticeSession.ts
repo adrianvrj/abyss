@@ -5,6 +5,7 @@ import { ContractItem } from "@/utils/abyssContract";
 import { usePractice } from "@/context/practice";
 import { getGameConfig } from "@/api/rpc/play";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
+import { captureAbyss } from "@/lib/posthog";
 
 interface OwnedRelic {
   tokenId: bigint;
@@ -75,6 +76,7 @@ export function usePracticeSession() {
   const currentLuck = run ? getPracticeEffectiveLuck(run) : 0;
   const [lastMarketEvent, setLastMarketEvent] = useState<null>(null);
   const chipEconomyConfigRef = useRef<{ emissionRate: number; boostMultiplier: number } | null>(null);
+  const practiceSpinCountRef = useRef(0);
 
   const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const spinSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -83,6 +85,10 @@ export function usePracticeSession() {
   useEffect(() => {
     runRef.current = run;
   }, [run]);
+
+  useEffect(() => {
+    practiceSpinCountRef.current = 0;
+  }, [run?.id]);
 
   const loadChipEconomyConfig = useCallback(async () => {
     if (chipEconomyConfigRef.current) {
@@ -307,6 +313,30 @@ export function usePracticeSession() {
 
     setIsSpinning(false);
 
+    practiceSpinCountRef.current += 1;
+    const spinOrdinal = practiceSpinCountRef.current;
+    const nextState = outcome.nextState;
+    if (spinOrdinal === 1) {
+      captureAbyss("first_spin_completed", {
+        session_id: 0,
+        practice_mode: true,
+        practice_run_id: nextState.id,
+        chain_id: DEFAULT_CHAIN_ID,
+        level: nextState.level,
+        spins_remaining: nextState.spinsRemaining,
+        score: nextState.score,
+      });
+    } else if (spinOrdinal > 0 && spinOrdinal % 5 === 0) {
+      captureAbyss("spin_milestone", {
+        session_id: 0,
+        practice_mode: true,
+        practice_run_id: nextState.id,
+        chain_id: DEFAULT_CHAIN_ID,
+        spin_count: spinOrdinal,
+        level: nextState.level,
+      });
+    }
+
     const sequenceDelay = outcome.cashOutSucceeded
       ? 2400
       : outcome.is666
@@ -476,5 +506,6 @@ export function usePracticeSession() {
     practiceRefreshCount: run?.refreshCount ?? 0,
     startPractice,
     clearPractice,
+    practiceRunId: run?.id ?? null,
   };
 }

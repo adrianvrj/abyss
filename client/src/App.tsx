@@ -1,6 +1,7 @@
 import { Suspense, useEffect, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Providers } from "@/components/providers";
+import { usePosthogPageviews } from "@/hooks/usePosthogPageviews";
 import { AssetPreloaderProvider } from "@/components/providers/AssetPreloaderProvider";
 import ChipBalanceBadge from "@/components/ChipBalanceBadge";
 import ControllerButton from "@/components/ControllerButton";
@@ -50,6 +51,11 @@ function GameRoute() {
   );
 }
 
+function PosthogPageviewListener() {
+  usePosthogPageviews();
+  return null;
+}
+
 function App() {
   useEffect(() => {
     // Hard reset of local state if on localhost to avoid WASM/stale-session crashes
@@ -88,6 +94,7 @@ function App() {
           v7_relativeSplatPath: true,
         }}
       >
+        <PosthogPageviewListener />
         <ChipBalanceBadge />
         <ControllerButton />
         <Suspense fallback={<MenuLoading />}>

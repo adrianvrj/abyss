@@ -14,6 +14,7 @@ import { CONTRACTS, DEFAULT_CHAIN_ID } from '@/lib/constants';
 import { getCharmMetadata, getPlayerCharms } from '@/api/rpc/relic';
 import { getRpcProvider } from '@/api/rpc/provider';
 import { getGameConfig } from '@/api/rpc/play';
+import { captureAbyss } from '@/lib/posthog';
 
 const DEBUG_SPIN_SYNC =
     import.meta.env.DEV || import.meta.env.VITE_ABYSS_DEBUG_SPIN === 'true';
@@ -152,6 +153,7 @@ export function useGameSession(sessionId: string | null) {
     const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
     const rpcProvider = getRpcProvider(chainId);
     const chipEconomyConfigRef = useRef<{ emissionRate: number; boostMultiplier: number } | null>(null);
+    const spinCountVisitRef = useRef(0);
 
     // Game State
     const [level, setLevel] = useState(1);
@@ -736,6 +738,10 @@ export function useGameSession(sessionId: string | null) {
         initializeGame();
     }, [sessionId, isReady]);
 
+    useEffect(() => {
+        spinCountVisitRef.current = 0;
+    }, [sessionId]);
+
     const handleSpin = useCallback(async () => {
         if (!sessionId || isSpinning || spinsRemaining <= 0 || showGameOver || !isSessionActive) return;
 
@@ -789,6 +795,27 @@ export function useGameSession(sessionId: string | null) {
                 });
                 setGrid(spin.grid);
                 setHasSpunOnce(true);
+                spinCountVisitRef.current += 1;
+                const spinOrdinal = spinCountVisitRef.current;
+                const resolvedScore = spin.is666 ? 0 : score + spin.scoreGained;
+                if (spinOrdinal === 1) {
+                    captureAbyss("first_spin_completed", {
+                        session_id: Number(sessionId),
+                        chain_id: chainId,
+                        practice_mode: false,
+                        level: spin.newLevel,
+                        spins_remaining: spin.spinsRemaining,
+                        score: resolvedScore,
+                    });
+                } else if (spinOrdinal > 0 && spinOrdinal % 5 === 0) {
+                    captureAbyss("spin_milestone", {
+                        session_id: Number(sessionId),
+                        chain_id: chainId,
+                        practice_mode: false,
+                        spin_count: spinOrdinal,
+                        level: spin.newLevel,
+                    });
+                }
                 setScore(prev => spin.is666 ? 0 : prev + spin.scoreGained);
                 setLevel(spin.newLevel);
                 if (spin.symbolScores?.length === 5) setSymbolScores(spin.symbolScores);
@@ -967,6 +994,29 @@ export function useGameSession(sessionId: string | null) {
                     }
                     setGrid(spinResult.grid);
                     setHasSpunOnce(true);
+                    spinCountVisitRef.current += 1;
+                    const spinOrdinal = spinCountVisitRef.current;
+                    const analyticsLevel = latestSession?.level ?? level;
+                    const analyticsSpins = latestSession?.spinsRemaining ?? spinsRemaining;
+                    const analyticsScore = latestSession?.score ?? (spinResult.is666 ? 0 : score);
+                    if (spinOrdinal === 1) {
+                        captureAbyss("first_spin_completed", {
+                            session_id: Number(sessionId),
+                            chain_id: chainId,
+                            practice_mode: false,
+                            level: analyticsLevel,
+                            spins_remaining: analyticsSpins,
+                            score: analyticsScore,
+                        });
+                    } else if (spinOrdinal > 0 && spinOrdinal % 5 === 0) {
+                        captureAbyss("spin_milestone", {
+                            session_id: Number(sessionId),
+                            chain_id: chainId,
+                            practice_mode: false,
+                            spin_count: spinOrdinal,
+                            level: analyticsLevel,
+                        });
+                    }
                     if (latestSession) {
                         setScore(latestSession.score);
                         setLevel(latestSession.level);
@@ -1103,7 +1153,7 @@ export function useGameSession(sessionId: string | null) {
             }
             await loadSessionData('spin:catch');
         }
-    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
+    }, [sessionId, isSpinning, spinsRemaining, showGameOver, isSessionActive, requestSpin, score, level, tickets, risk, threshold, pendingRelicEffect, chainId, getLevelThreshold, get666Probability, resolveMintedCharmInfo, captureGameOverBuild, getLocalBuildItems, hideInventoryItem, resolveChipPayout, resolveDiamondChipBonusUnits]);
 
     const handleActivateRelic = useCallback(async () => {
         if (!equippedRelic || !sessionId || isActivatingRelic || relicCooldownRemaining > 0 || isRelicSpent) return;

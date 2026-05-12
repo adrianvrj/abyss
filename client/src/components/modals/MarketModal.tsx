@@ -13,7 +13,7 @@ import ModalWrapper from './ModalWrapper';
 import { RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAbyssGame } from '@/hooks/useAbyssGame';
 import { useController } from '@/hooks/useController';
-import { posthog } from '@/lib/posthog';
+import { captureAbyss, posthog } from '@/lib/posthog';
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -152,7 +152,7 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         try {
             const previousMarket = marketData;
             await refreshMarket(sessionId);
-            posthog.capture("market_refreshed", {
+            captureAbyss("market_refreshed", {
                 session_id: sessionId,
                 refresh_cost: refreshCost,
                 refresh_count: previousMarket.refresh_count + 1,
@@ -174,7 +174,7 @@ export default function MarketModal({ sessionId, currentScore, onClose, onUpdate
         setPurchasingSlot(slot);
         try {
             await buyItem(sessionId, slot);
-            posthog.capture("item_purchased", {
+            captureAbyss("item_purchased", {
                 session_id: sessionId,
                 item_id: item.item_id,
                 item_name: item.name,

@@ -7,7 +7,7 @@ import { usePractice } from "@/context/practice";
 import { useEntities } from "@/context/entities";
 import { LeaderboardApi } from "@/api/torii/leaderboard";
 import { getLeaderboard } from "@/utils/abyssContract";
-import { posthog } from "@/lib/posthog";
+import { captureAbyss, posthog } from "@/lib/posthog";
 
 const styles = {
     container: {
@@ -83,12 +83,14 @@ export function MenuContent() {
 
     const handlePlay = useCallback(async () => {
         if (isConnected) {
+            captureAbyss("menu_play_clicked", { already_connected: true });
             navigate("/sessions");
             return;
         }
+        captureAbyss("connect_wallet_clicked", { entry: "menu_play" });
         try {
             await connect();
-            posthog.capture("wallet_connected");
+            captureAbyss("wallet_connected", { entry: "menu_play" });
             navigate("/sessions");
         } catch (error) {
             console.error("Connection failed:", error);
@@ -109,11 +111,12 @@ export function MenuContent() {
     }, [activeSessionId, navigate]);
 
     const handleLeaderboard = useCallback(() => {
+        captureAbyss("menu_navigate", { destination: "leaderboard" });
         navigate("/leaderboard");
     }, [navigate]);
 
     const handlePractice = useCallback(() => {
-        posthog.capture("practice_started");
+        captureAbyss("practice_started", { entry: "menu" });
         startPractice();
         navigate("/practice");
     }, [navigate, startPractice]);
@@ -123,7 +126,7 @@ export function MenuContent() {
     }, []);
 
     const handleLogout = useCallback(async () => {
-        posthog.capture("wallet_disconnected");
+        captureAbyss("wallet_disconnected", { entry: "menu" });
         posthog.reset();
         await disconnect();
         navigate("/");
@@ -199,7 +202,10 @@ export function MenuContent() {
                     {isConnected && (
                         <motion.button
                             style={styles.menuOption}
-                            onClick={() => navigate("/relics")}
+                            onClick={() => {
+                                captureAbyss("menu_navigate", { destination: "relics" });
+                                navigate("/relics");
+                            }}
                             whileHover={{ color: "#FF841C" }}
                             whileTap={{ scale: 0.95 }}
                         >
@@ -211,7 +217,10 @@ export function MenuContent() {
                     {isConnected && (
                         <motion.button
                             style={styles.menuOption}
-                            onClick={() => navigate("/charms")}
+                            onClick={() => {
+                                captureAbyss("menu_navigate", { destination: "charms" });
+                                navigate("/charms");
+                            }}
                             whileHover={{ color: "#FF841C" }}
                             whileTap={{ scale: 0.95 }}
                         >

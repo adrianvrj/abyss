@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useNetwork } from "@starknet-react/core";
 import SlotGrid from "@/components/SlotGrid";
 import PatternOverlay from "@/components/PatternOverlay";
 import LevelUpAnimation from "@/components/LevelUpAnimation";
@@ -24,6 +25,8 @@ import { usePracticeSession } from "@/hooks/usePracticeSession";
 import { getItemImage } from "@/utils/itemImages";
 import { AnimatePresence } from "framer-motion";
 import { Store, Package, HelpCircle, Home, Gem } from "lucide-react";
+import { DEFAULT_CHAIN_ID } from "@/lib/constants";
+import { captureAbyss } from "@/lib/posthog";
 
 export function GameContent() {
     const location = useLocation();
@@ -38,7 +41,16 @@ export function GameContent() {
 function SessionGameContent() {
     const [searchParams] = useSearchParams();
     const sessionId = searchParams.get("sessionId");
+    const missingSessionLogged = useRef(false);
     const game = useGameSession(sessionId);
+
+    useEffect(() => {
+        if (sessionId || missingSessionLogged.current) {
+            return;
+        }
+        missingSessionLogged.current = true;
+        captureAbyss("game_load_blocked", { reason: "missing_session_id" });
+    }, [sessionId]);
 
     if (!sessionId) {
         return (
@@ -122,6 +134,100 @@ function GameStage({
 
     const isLoading = !assetsLoaded || game.isInitialLoading;
 
+    const { chain } = useNetwork();
+    const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
+    const gameEnteredTrackedRef = useRef(false);
+    const gameOverTrackedRef = useRef(false);
+    const prevMobileTabRef = useRef(activeMobileTab);
+
+    const exitToMenu = useCallback(
+        (exitReason: "hud_back" | "sidebar_home" | "game_over_menu") => {
+            captureAbyss("game_exited", {
+                practice_mode: practiceMode,
+                session_id: practiceMode ? 0 : numericSessionId,
+                chain_id: chainId,
+                exit_reason: exitReason,
+                level: game.level,
+                spins_remaining: game.spinsRemaining,
+                score: game.score,
+            });
+            navigate("/");
+        },
+        [chainId, game.level, game.score, game.spinsRemaining, navigate, numericSessionId, practiceMode],
+    );
+
+    useEffect(() => {
+        if (isLoading) {
+            gameEnteredTrackedRef.current = false;
+            return;
+        }
+        if (gameEnteredTrackedRef.current) {
+            return;
+        }
+        gameEnteredTrackedRef.current = true;
+        const practiceRunId = practiceGame?.practiceRunId ?? undefined;
+        captureAbyss("game_entered", {
+            practice_mode: practiceMode,
+            session_id: practiceMode ? 0 : numericSessionId,
+            practice_run_id: practiceRunId,
+            chain_id: chainId,
+            level: game.level,
+            spins_remaining: game.spinsRemaining,
+        });
+    }, [
+        isLoading,
+        practiceMode,
+        numericSessionId,
+        chainId,
+        game.level,
+        game.spinsRemaining,
+        practiceGame,
+    ]);
+
+    useEffect(() => {
+        if (!game.showGameOver) {
+            gameOverTrackedRef.current = false;
+            return;
+        }
+        if (gameOverTrackedRef.current) {
+            return;
+        }
+        gameOverTrackedRef.current = true;
+        captureAbyss("game_over_shown", {
+            practice_mode: practiceMode,
+            session_id: practiceMode ? 0 : numericSessionId,
+            chain_id: chainId,
+            reason: game.gameOverReason ?? "unknown",
+            final_score: game.finalScore,
+            level: game.level,
+        });
+    }, [
+        game.showGameOver,
+        game.gameOverReason,
+        game.finalScore,
+        game.level,
+        practiceMode,
+        numericSessionId,
+        chainId,
+    ]);
+
+    useEffect(() => {
+        if (prevMobileTabRef.current === activeMobileTab) {
+            return;
+        }
+        const prev = prevMobileTabRef.current;
+        prevMobileTabRef.current = activeMobileTab;
+        if (activeMobileTab !== "home") {
+            captureAbyss("game_panel_opened", {
+                practice_mode: practiceMode,
+                session_id: practiceMode ? 0 : numericSessionId,
+                chain_id: chainId,
+                panel: activeMobileTab,
+                previous_panel: prev,
+            });
+        }
+    }, [activeMobileTab, chainId, numericSessionId, practiceMode]);
+
     if (isLoading) {
         let statusText = "Entering the Abyss...";
         let progress = 0;
@@ -172,7 +278,7 @@ function GameStage({
                     spinsRemaining={game.spinsRemaining}
                     score={game.score}
                     tickets={game.tickets}
-                    onExit={() => navigate("/")}
+                    onExit={() => exitToMenu("hud_back")}
                 />
             </div>
 
@@ -444,10 +550,18 @@ function GameStage({
                                 <Gem size={20} color="#FF841C" />
                             </button>
                         )}
-                        <button className="sidebar-btn" onClick={(e) => { e.stopPropagation(); setActiveModal('info'); }} title="Info" disabled={game.isSpinning}>
+                        <button className="sidebar-btn" onClick={(e) => {
+                            e.stopPropagation();
+                            captureAbyss("game_info_opened", {
+                                practice_mode: practiceMode,
+                                session_id: practiceMode ? 0 : numericSessionId,
+                                chain_id: chainId,
+                            });
+                            setActiveModal("info");
+                        }} title="Info" disabled={game.isSpinning}>
                             <HelpCircle size={20} color="#FF841C" />
                         </button>
-                        <button className="sidebar-btn" onClick={(e) => { e.stopPropagation(); navigate("/"); }} title="Home" disabled={game.isSpinning}>
+                        <button className="sidebar-btn" onClick={(e) => { e.stopPropagation(); exitToMenu("sidebar_home"); }} title="Home" disabled={game.isSpinning}>
                             <Home size={20} color="#FF841C" />
                         </button>
                     </div>
@@ -560,7 +674,7 @@ function GameStage({
                 sessionId={numericSessionId}
                 level={game.level}
                 chipsClaimed={game.chipsClaimed}
-                onBackToMenu={() => navigate("/")}
+                onBackToMenu={() => exitToMenu("game_over_menu")}
                 practiceMode={practiceMode}
                 onPlayAgain={practiceGame?.handlePlayAgain}
             />
