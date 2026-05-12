@@ -13,7 +13,7 @@ export function initPostHog() {
     person_profiles: "identified_only",
     capture_pageview: true,
     capture_pageleave: true,
-    enableExceptionAutocapture: true,
+    capture_exceptions: true,
   });
 }
 
