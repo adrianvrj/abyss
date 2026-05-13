@@ -779,7 +779,13 @@ export default function InlineMarketPanel({
                             <div
                                 key={`desktop-${item.item_id}-${index}`}
                                 className={`desktop-market-card ${isPurchasedSlot ? 'sold' : ''}`}
+                                tabIndex={0}
                             >
+                                <div className="market-sell-hover" aria-label={`Sells for ${item.sell_price} tickets`}>
+                                    <span>SELLS {item.sell_price}</span>
+                                    <img src="/images/ticket.png" alt="" width={18} height={9} loading="lazy" />
+                                </div>
+
                                 <div className="desktop-market-image-frame">
                                     <img
                                         src={desktopImage}
@@ -864,7 +870,13 @@ export default function InlineMarketPanel({
                             <div
                                 key={`${item.item_id}-${index}`}
                                 className={`mobile-market-card ${isPurchasedSlot ? 'sold' : ''}`}
+                                tabIndex={0}
                             >
+                                <div className="market-sell-hover" aria-label={`Sells for ${item.sell_price} tickets`}>
+                                    <span>SELLS {item.sell_price}</span>
+                                    <img src="/images/ticket.png" alt="" width={18} height={9} loading="lazy" />
+                                </div>
+
                                 <div className="mobile-market-image-frame">
                                     <img
                                         src={mobileImage}
@@ -978,10 +990,57 @@ const styles = `
         border: 1px solid rgba(255, 132, 28, 0.18);
         border-radius: 14px;
         padding: 10px;
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 8px;
         min-height: 220px;
+        outline: none;
+    }
+    .mobile-market-card:hover,
+    .mobile-market-card:focus-visible,
+    .desktop-market-card:hover,
+    .desktop-market-card:focus-visible {
+        border-color: rgba(255, 132, 28, 0.55);
+        box-shadow: 0 0 18px rgba(255, 132, 28, 0.14);
+    }
+    .market-sell-hover {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        max-width: calc(100% - 16px);
+        min-height: 24px;
+        padding: 5px 7px;
+        border: 1px solid rgba(255, 132, 28, 0.72);
+        border-radius: 999px;
+        background: rgba(10, 4, 2, 0.94);
+        box-shadow: 0 0 12px rgba(255, 132, 28, 0.18);
+        color: #FF841C;
+        font-family: 'PressStart2P', monospace;
+        font-size: 7px;
+        line-height: 1;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(-4px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .market-sell-hover img {
+        flex: 0 0 auto;
+    }
+    .mobile-market-card:hover .market-sell-hover,
+    .mobile-market-card:focus-within .market-sell-hover,
+    .mobile-market-card:focus-visible .market-sell-hover,
+    .desktop-market-card:hover .market-sell-hover,
+    .desktop-market-card:focus-within .market-sell-hover,
+    .desktop-market-card:focus-visible .market-sell-hover {
+        opacity: 1;
+        transform: translateY(0);
     }
     .mobile-market-card.sold {
         opacity: 0.8;
@@ -1088,6 +1147,7 @@ const styles = `
         flex-direction: column;
         gap: 8px;
         min-height: 176px;
+        outline: none;
     }
     .desktop-market-card.sold {
         opacity: 0.82;

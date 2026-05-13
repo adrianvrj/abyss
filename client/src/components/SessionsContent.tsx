@@ -24,7 +24,7 @@ import {
     utcDayIndexFromMs,
     type PlayerStreakState,
 } from "@/api/rpc/streak";
-import { Sparkles, Flame } from "lucide-react";
+import { Sparkles, Flame, ChevronDown } from "lucide-react";
 import type { Bundle } from "@/models/bundle";
 import { captureAbyss } from "@/lib/posthog";
 
@@ -224,6 +224,37 @@ const styles = {
         letterSpacing: "2px",
         textAlign: "center" as const,
     },
+    fixedPreviousRunsCue: {
+        position: "fixed" as const,
+        left: 0,
+        right: 0,
+        bottom: "86px",
+        zIndex: 30,
+        width: "fit-content",
+        margin: "0 auto",
+        padding: "8px 12px",
+        color: "#FF841C",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
+        fontFamily: "'PressStart2P', monospace",
+        fontSize: "11px",
+        lineHeight: 1.5,
+        background: "rgba(0, 0, 0, 0.68)",
+        borderRadius: "999px",
+        textShadow: "0 0 12px rgba(255,132,28,0.88), 0 2px 10px #000, 0 0 2px #000",
+        textTransform: "uppercase" as const,
+        whiteSpace: "nowrap" as const,
+    },
+    previousRunsCueIcon: {
+        color: "#FF841C",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+    },
     noSessions: {
         fontFamily: "'PressStart2P', monospace",
         fontSize: "12px",
@@ -406,7 +437,11 @@ export function SessionsContent() {
     const [nowMs, setNowMs] = useState(() => Date.now());
     const [playerStreak, setPlayerStreak] = useState<PlayerStreakState | null>(null);
     const [isStreakActionPending, setIsStreakActionPending] = useState(false);
+    const [hasMoreBelow, setHasMoreBelow] = useState(false);
+    const [isActiveRunsVisible, setIsActiveRunsVisible] = useState(false);
     const sessionsListViewTrackedRef = useRef(false);
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+    const activeRunsRef = useRef<HTMLDivElement | null>(null);
     const charmAddress = getCharmAddress(chainId);
     const charmsEnabled = Boolean(charmAddress && charmAddress !== "0x0");
     const streakFeatureEnabled = Boolean(tryGetStreakAddress(chainId));
@@ -558,6 +593,55 @@ export function SessionsContent() {
         });
     }, [isConnected, isLoading, sessions.length, chainId]);
 
+    useEffect(() => {
+        const scrollNode = scrollContainerRef.current;
+        if (!scrollNode) {
+            setHasMoreBelow(false);
+            return;
+        }
+
+        const updateScrollCue = () => {
+            const remaining = scrollNode.scrollHeight - scrollNode.scrollTop - scrollNode.clientHeight;
+            setHasMoreBelow(remaining > 120);
+        };
+
+        updateScrollCue();
+        const resizeObserver = new ResizeObserver(updateScrollCue);
+        resizeObserver.observe(scrollNode);
+        window.addEventListener("resize", updateScrollCue);
+        scrollNode.addEventListener("scroll", updateScrollCue, { passive: true });
+
+        const raf = window.requestAnimationFrame(updateScrollCue);
+        const timeout = window.setTimeout(updateScrollCue, 500);
+
+        return () => {
+            resizeObserver.disconnect();
+            window.cancelAnimationFrame(raf);
+            window.clearTimeout(timeout);
+            window.removeEventListener("resize", updateScrollCue);
+            scrollNode.removeEventListener("scroll", updateScrollCue);
+        };
+    });
+
+    useEffect(() => {
+        const activeRunsNode = activeRunsRef.current;
+        if (!activeRunsNode) {
+            setIsActiveRunsVisible(false);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => setIsActiveRunsVisible(entry.isIntersecting),
+            {
+                root: scrollContainerRef.current,
+                threshold: 0.12,
+            },
+        );
+
+        observer.observe(activeRunsNode);
+        return () => observer.disconnect();
+    }, [isLoading]);
+
     const handleSelectSession = useCallback(
         (sessionId: number) => {
             captureAbyss("session_selected", {
@@ -620,7 +704,7 @@ export function SessionsContent() {
     const handleCloseLoadout = useCallback(() => {
         setConfiguringSession(null);
         setSessionCharmIds([]);
-    }, []);
+    }, [sessions.length]);
 
     const handleSealLoadout = useCallback(async () => {
         if (!configuringSession) return;
@@ -791,6 +875,19 @@ export function SessionsContent() {
         await disconnect();
         navigate("/");
     }, [disconnect, navigate]);
+
+    const handleScrollToActiveRuns = useCallback(() => {
+        if (activeRunsRef.current) {
+            activeRunsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+        }
+
+        const scrollNode = scrollContainerRef.current;
+        scrollNode?.scrollBy({
+            top: Math.max(360, scrollNode.clientHeight * 0.72),
+            behavior: "smooth",
+        });
+    }, []);
 
     const waitForClaimedSession = useCallback(
         async (claimFn: () => Promise<number>, flow: string) => {
@@ -1095,7 +1192,7 @@ export function SessionsContent() {
         );
 
     return (
-        <div style={styles.container}>
+        <div ref={scrollContainerRef} style={styles.container}>
             {/* Navigation Row */}
             <div style={styles.navRow}>
                 <motion.button
@@ -1688,7 +1785,7 @@ export function SessionsContent() {
                 </motion.div>
 
                 {/* Active Sessions */}
-                <div>
+                <div ref={activeRunsRef}>
                     <p style={styles.sectionTitle}>active runs</p>
 
                     {isLoading ? (
@@ -1798,6 +1895,29 @@ export function SessionsContent() {
                 isLocked={false}
                 isSubmitting={isSavingPrerunLoadout}
             />
+
+            {hasMoreBelow && !isActiveRunsVisible && (
+                <motion.button
+                    type="button"
+                    style={styles.fixedPreviousRunsCue}
+                    onClick={handleScrollToActiveRuns}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    whileHover={{ color: "#FF841C" }}
+                    whileTap={{ scale: 0.98 }}
+                    aria-label="Scroll to active sessions"
+                >
+                    <span>scroll to active sessions</span>
+                    <motion.span
+                        style={styles.previousRunsCueIcon}
+                        animate={{ y: [0, 3, 0] }}
+                        transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                        <ChevronDown size={14} strokeWidth={2.6} />
+                    </motion.span>
+                </motion.button>
+            )}
         </div>
     );
 }
