@@ -149,9 +149,59 @@ export function CharmLoadoutModal({
                     grid-template-columns: repeat(3, 1fr);
                     gap: 10px;
                 }
+                .charm-loadout-card-effect {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                }
                 @media (max-width: 480px) {
                     .charm-card-grid {
-                        grid-template-columns: repeat(2, 1fr);
+                        grid-template-columns: 1fr;
+                        gap: 8px;
+                        max-height: min(42vh, 360px) !important;
+                        padding-right: 0 !important;
+                    }
+                    .charm-loadout-card {
+                        display: grid !important;
+                        grid-template-columns: 76px minmax(0, 1fr) auto !important;
+                        align-items: center !important;
+                        gap: 10px !important;
+                        min-height: 88px !important;
+                        padding: 8px 10px !important;
+                        text-align: left !important;
+                    }
+                    .charm-loadout-card-art {
+                        width: 72px !important;
+                        aspect-ratio: 1 !important;
+                        grid-row: 1 / span 3 !important;
+                    }
+                    .charm-loadout-card-name,
+                    .charm-loadout-card-rarity,
+                    .charm-loadout-card-effect {
+                        text-align: left !important;
+                    }
+                    .charm-loadout-card-name {
+                        align-self: end !important;
+                        font-size: 8px !important;
+                        line-height: 1.35 !important;
+                    }
+                    .charm-loadout-card-rarity {
+                        font-size: 6px !important;
+                    }
+                    .charm-loadout-card-effect {
+                        align-self: start !important;
+                        font-size: 7px !important;
+                        line-height: 1.45 !important;
+                        -webkit-line-clamp: 3;
+                    }
+                    .charm-loadout-eq {
+                        position: static !important;
+                        grid-column: 3 !important;
+                        grid-row: 1 / span 3 !important;
+                        align-self: center !important;
+                        justify-self: end !important;
+                        padding: 5px 6px !important;
                     }
                 }
             `}</style>
@@ -437,6 +487,7 @@ export function CharmLoadoutModal({
                             return (
                                 <motion.button
                                     key={def.charm_id}
+                                    className="charm-loadout-card"
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0 }}
@@ -470,6 +521,7 @@ export function CharmLoadoutModal({
                                 >
                                     {equipped && (
                                         <div
+                                            className="charm-loadout-eq"
                                             style={{
                                                 position: "absolute",
                                                 top: 4,
@@ -487,6 +539,7 @@ export function CharmLoadoutModal({
                                         </div>
                                     )}
                                     <div
+                                        className="charm-loadout-card-art"
                                         style={{
                                             width: "72%",
                                             aspectRatio: "1",
@@ -521,6 +574,7 @@ export function CharmLoadoutModal({
                                         />
                                     </div>
                                     <div
+                                        className="charm-loadout-card-name"
                                         style={{
                                             fontFamily: "'PressStart2P', monospace",
                                             fontSize: 7,
@@ -534,6 +588,7 @@ export function CharmLoadoutModal({
                                         {def.name}
                                     </div>
                                     <div
+                                        className="charm-loadout-card-rarity"
                                         style={{
                                             fontFamily: "'PressStart2P', monospace",
                                             fontSize: 6,
@@ -543,6 +598,20 @@ export function CharmLoadoutModal({
                                         }}
                                     >
                                         {def.rarity}
+                                    </div>
+                                    <div
+                                        className="charm-loadout-card-effect"
+                                        style={{
+                                            fontFamily: "'PressStart2P', monospace",
+                                            fontSize: 5.5,
+                                            color: equipped ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.52)",
+                                            textAlign: "center",
+                                            lineHeight: 1.45,
+                                            letterSpacing: 0,
+                                            maxWidth: "100%",
+                                        }}
+                                    >
+                                        {def.effect}
                                     </div>
                                 </motion.button>
                             );
