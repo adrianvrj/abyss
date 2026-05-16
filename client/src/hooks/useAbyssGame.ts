@@ -77,9 +77,10 @@ export interface SessionMarket {
 export interface LeaderboardEntry {
   player_address: string;
   username: string;
-  games_played: number;
   best_score: number;
   total_score: number;
+  item_ids: number[];
+  charm_ids: number[];
 }
 
 type ExecuteCall = {

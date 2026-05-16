@@ -8,7 +8,7 @@ import {
   getSessionInventoryCount as readSessionInventoryCount,
   getSessionLuck as readSessionLuck,
 } from "@/api/rpc/play";
-import { LeaderboardApi } from "@/api/torii/leaderboard";
+import { LeaderboardApi, type LeaderboardWindow } from "@/api/torii/leaderboard";
 import {
   DEFAULT_CHAIN_ID,
   getCharmAddress,
@@ -378,21 +378,24 @@ export async function refreshMarket(sessionId: number, executor: any): Promise<s
 export interface LeaderboardEntry {
   player_address: string;
   username: string;
-  games_played: number;
   best_score: number;
   total_score: number;
+  item_ids: number[];
+  charm_ids: number[];
 }
 
 export async function getLeaderboard(
   chainId: bigint | string = DEFAULT_CHAIN_ID,
+  window: LeaderboardWindow = "all-time",
 ): Promise<LeaderboardEntry[]> {
-  const entries = await LeaderboardApi.fetchAll(chainId);
+  const entries = await LeaderboardApi.fetchAll(chainId, window);
   const mapped: LeaderboardEntry[] = entries.map((entry) => ({
     player_address: entry.player,
     username: entry.username,
-    games_played: entry.gamesPlayed,
     best_score: entry.bestScore,
     total_score: entry.totalScore,
+    item_ids: entry.itemIds,
+    charm_ids: entry.charmIds,
   }));
 
   const missingUsername = mapped.filter((e) => !e.username?.trim());

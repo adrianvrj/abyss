@@ -1,12 +1,14 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getLeaderboard, LeaderboardEntry } from "@/utils/abyssContract";
-import { LeaderboardApi } from "@/api/torii/leaderboard";
+import { LeaderboardApi, type LeaderboardWindow } from "@/api/torii/leaderboard";
 import { ArrowLeft, Trophy, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useController } from "@/hooks/useController";
 import { useEntities } from "@/context/entities";
+import { STATIC_CHARM_DEFINITIONS } from "@/lib/charmCatalog";
+import { getItemImage } from "@/utils/itemImages";
 
 const headerStyle: React.CSSProperties = {
     fontFamily: "'PressStart2P', monospace",
@@ -18,10 +20,11 @@ export function Leaderboard() {
     const navigate = useNavigate();
     const { address, connector } = useController();
     const { chainId } = useEntities();
+    const [selectedWindow, setSelectedWindow] = useState<LeaderboardWindow>("weekly");
 
     const { data: entries = [], isLoading } = useQuery<LeaderboardEntry[]>({
-        queryKey: [...LeaderboardApi.keys.all(chainId), "top10"],
-        queryFn: () => getLeaderboard(chainId),
+        queryKey: [...LeaderboardApi.keys.all(chainId, selectedWindow), "top10"],
+        queryFn: () => getLeaderboard(chainId, selectedWindow),
         staleTime: 30_000,
         refetchOnWindowFocus: false,
     });
@@ -52,6 +55,66 @@ export function Leaderboard() {
 
     const isCurrentUser = (addr: string) => {
         return address && addr.toLowerCase() === address.toLowerCase();
+    };
+
+    const renderBuild = (entry: LeaderboardEntry) => {
+        const charms = (entry.charm_ids ?? []).slice(0, 3);
+        const items = (entry.item_ids ?? []).filter((id) => id > 0 && id < 1000).slice(0, 7);
+
+        if (charms.length === 0 && items.length === 0) {
+            return (
+                <span style={{
+                    fontFamily: "'PressStart2P', monospace",
+                    fontSize: 7,
+                    color: "rgba(255,255,255,0.35)",
+                    textTransform: "uppercase",
+                }}>
+                    No build
+                </span>
+            );
+        }
+
+        return (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, flexWrap: "wrap" }}>
+                {charms.map((charmId) => {
+                    const charm = STATIC_CHARM_DEFINITIONS[charmId];
+                    return (
+                        <img
+                            key={`charm-${charmId}`}
+                            src={charm?.image ?? `/images/charms/${charmId}.png`}
+                            alt={charm?.name ?? `Charm ${charmId}`}
+                            title={charm?.name ?? `Charm #${charmId}`}
+                            width={22}
+                            height={22}
+                            loading="lazy"
+                            style={{
+                                width: 24,
+                                height: 24,
+                                objectFit: "contain",
+                                imageRendering: "pixelated",
+                            }}
+                        />
+                    );
+                })}
+                {items.map((itemId) => (
+                    <img
+                        key={`item-${itemId}`}
+                        src={getItemImage(itemId)}
+                        alt={`Item ${itemId}`}
+                        title={`Item #${itemId}`}
+                        width={22}
+                        height={22}
+                        loading="lazy"
+                        style={{
+                            width: 24,
+                            height: 24,
+                            objectFit: "contain",
+                            imageRendering: "pixelated",
+                        }}
+                    />
+                ))}
+            </div>
+        );
     };
 
     return (
@@ -112,6 +175,60 @@ export function Leaderboard() {
             </div>
 
             <div style={{ width: "100%", maxWidth: "600px" }}>
+                <div
+                    role="tablist"
+                    aria-label="Leaderboard window"
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 8,
+                        marginBottom: 14,
+                        padding: 4,
+                        border: "1px solid rgba(255, 132, 28, 0.35)",
+                        borderRadius: 8,
+                        background: "rgba(255, 132, 28, 0.06)",
+                    }}
+                >
+                    {([
+                        ["weekly", "Weekly"],
+                        ["all-time", "All time"],
+                    ] as const).map(([window, label]) => {
+                        const active = selectedWindow === window;
+                        return (
+                            <button
+                                key={window}
+                                type="button"
+                                role="tab"
+                                aria-selected={active}
+                                onClick={() => setSelectedWindow(window)}
+                                style={{
+                                    minHeight: 38,
+                                    border: active ? "1px solid #FF841C" : "1px solid transparent",
+                                    borderRadius: 6,
+                                    background: active ? "#1c0f07" : "transparent",
+                                    color: active ? "#f6efe6" : "rgba(255,255,255,0.62)",
+                                    cursor: "pointer",
+                                    fontFamily: "'PressStart2P', monospace",
+                                    fontSize: 9,
+                                    textTransform: "uppercase",
+                                }}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
+                </div>
+                <div
+                    style={{
+                        marginBottom: 12,
+                        fontFamily: "var(--font-body)",
+                        fontSize: 13,
+                        color: "rgba(212,203,191,0.72)",
+                        textAlign: "center",
+                    }}
+                >
+                    {selectedWindow === "weekly" ? "Best runs from the last 7 days." : "Best runs across the current season."}
+                </div>
                 {loading ? (
                     <div style={{
                         display: "flex",
@@ -150,7 +267,7 @@ export function Leaderboard() {
                         }}>
                             <span style={{ ...headerStyle, width: "40px" }}>#</span>
                             <span style={{ ...headerStyle, flex: 1 }}>Player</span>
-                            <span style={{ ...headerStyle, width: "60px", textAlign: "center" }}>Runs</span>
+                            <span style={{ ...headerStyle, width: "160px", textAlign: "center" }}>Build</span>
                             <span style={{ ...headerStyle, width: "80px", textAlign: "right" }}>Best</span>
                         </div>
 
@@ -227,15 +344,9 @@ export function Leaderboard() {
                                                 {entry.username || formatAddress(entry.player_address)}
                                             </span>
 
-                                            <span style={{
-                                                width: "60px",
-                                                textAlign: "center",
-                                                fontFamily: "'PressStart2P', monospace",
-                                                fontSize: "10px",
-                                                color: isPodium ? "#FFD700" : "#fff",
-                                            }}>
-                                                {entry.games_played}
-                                            </span>
+                                            <div style={{ width: "160px", minHeight: 26, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                {renderBuild(entry)}
+                                            </div>
 
                                             <span style={{
                                                 width: "80px",

@@ -11,16 +11,32 @@ type SqlValue = string | number | bigint | null | undefined;
 type AggregatedRow = {
   player?: SqlValue;
   username?: SqlValue;
+  session_id?: SqlValue;
   games_played?: SqlValue;
   best_score?: SqlValue;
   total_score?: SqlValue;
 };
 
+type InventoryRow = {
+  session_id?: SqlValue;
+  item_id?: SqlValue;
+  quantity?: SqlValue;
+};
+
+type CharmLoadoutRow = {
+  session_id?: SqlValue;
+  charm_id_1?: SqlValue;
+  charm_id_2?: SqlValue;
+  charm_id_3?: SqlValue;
+};
+
 const TOP_LIMIT = 25;
+export type LeaderboardWindow = "all-time" | "weekly";
 
 export interface LeaderboardEntry {
   username: string;
   player: string;
+  sessionId: number;
   gamesPlayed: number;
   gamesPlayedDay: number;
   gamesPlayedWeek: number;
@@ -30,6 +46,8 @@ export interface LeaderboardEntry {
   totalScore: number;
   totalScoreDay: number | null;
   totalScoreWeek: number | null;
+  itemIds: number[];
+  charmIds: number[];
 }
 
 function toNumberish(value: SqlValue): number {
@@ -81,6 +99,7 @@ function mapAggregated(rows: AggregatedRow[]): LeaderboardEntry[] {
     entries.push({
       username: String(row.username ?? "").trim(),
       player,
+      sessionId: toNumberish(row.session_id),
       gamesPlayed: toNumberish(row.games_played),
       gamesPlayedDay: 0,
       gamesPlayedWeek: 0,
@@ -90,16 +109,95 @@ function mapAggregated(rows: AggregatedRow[]): LeaderboardEntry[] {
       totalScore: toNumberish(row.total_score),
       totalScoreDay: null,
       totalScoreWeek: null,
+      itemIds: [],
+      charmIds: [],
     });
   }
   return entries;
 }
 
+function sessionIdPredicate(alias: string, sessionIds: number[]) {
+  const values = new Set<string>();
+  for (const id of sessionIds) {
+    if (!Number.isFinite(id) || id <= 0) continue;
+    values.add(String(id));
+    values.add(`'${id}'`);
+    values.add(`'0x${id.toString(16)}'`);
+    values.add(`'0x${id.toString(16).padStart(64, "0")}'`);
+  }
+  return values.size > 0 ? `${alias}.session_id IN (${Array.from(values).join(",")})` : "1 = 0";
+}
+
+async function hydrateBuilds(
+  client: ReturnType<typeof initGrpcClient>,
+  entries: LeaderboardEntry[],
+): Promise<LeaderboardEntry[]> {
+  const sessionIds = Array.from(new Set(entries.map((entry) => entry.sessionId).filter((id) => id > 0)));
+  if (sessionIds.length === 0) {
+    return entries;
+  }
+
+  const inventoryBySession = new Map<number, number[]>();
+  const charmBySession = new Map<number, number[]>();
+  const predicate = sessionIdPredicate("s", sessionIds);
+
+  try {
+    const rows = (await client.executeSql(`
+      SELECT s.session_id, s.item_id, s.quantity
+      FROM "ABYSS-SessionInventory" AS s
+      WHERE ${predicate};
+    `)) as InventoryRow[];
+
+    for (const row of rows) {
+      const sessionId = toNumberish(row.session_id);
+      const itemId = toNumberish(row.item_id);
+      const quantity = toNumberish(row.quantity);
+      if (sessionId <= 0 || itemId <= 0 || quantity <= 0) continue;
+      const current = inventoryBySession.get(sessionId) ?? [];
+      current.push(itemId);
+      inventoryBySession.set(sessionId, current);
+    }
+  } catch (error) {
+    console.warn("Leaderboard inventory hydration failed:", error);
+  }
+
+  try {
+    const rows = (await client.executeSql(`
+      SELECT s.session_id, s.charm_id_1, s.charm_id_2, s.charm_id_3
+      FROM "ABYSS-SessionCharmLoadout" AS s
+      WHERE ${predicate};
+    `)) as CharmLoadoutRow[];
+
+    for (const row of rows) {
+      const sessionId = toNumberish(row.session_id);
+      const charmIds = [
+        toNumberish(row.charm_id_1),
+        toNumberish(row.charm_id_2),
+        toNumberish(row.charm_id_3),
+      ].filter((id) => id > 0);
+      if (sessionId <= 0 || charmIds.length === 0) continue;
+      charmBySession.set(sessionId, charmIds);
+    }
+  } catch (error) {
+    console.warn("Leaderboard charm loadout hydration failed:", error);
+  }
+
+  return entries.map((entry) => ({
+    ...entry,
+    itemIds: inventoryBySession.get(entry.sessionId) ?? [],
+    charmIds: charmBySession.get(entry.sessionId) ?? [],
+  }));
+}
+
 export const LeaderboardApi = {
   keys: {
-    all: (chainId?: ChainLike) => ["leaderboard", chainId?.toString() ?? "default"] as const,
+    all: (chainId?: ChainLike, window: LeaderboardWindow = "all-time") =>
+      ["leaderboard", chainId?.toString() ?? "default", window] as const,
   },
-  async fetchAll(chainId?: ChainLike): Promise<LeaderboardEntry[]> {
+  async fetchAll(
+    chainId?: ChainLike,
+    window: LeaderboardWindow = "all-time",
+  ): Promise<LeaderboardEntry[]> {
     const client = initGrpcClient(chainId);
 
     // Torii stores felt252 fields as zero-padded hex strings (e.g.
@@ -112,6 +210,21 @@ export const LeaderboardApi = {
       '0x${hexId}',
       '${paddedHexId}'
     )`;
+    const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
+    const weekHex = `0x${sevenDaysAgo.toString(16)}`;
+    const paddedWeekHex = `0x${sevenDaysAgo.toString(16).padStart(16, "0")}`;
+    const leaderboardScoreWindowWhere = window === "weekly"
+      ? `AND (
+          (s.timestamp LIKE '0x%' AND (s.timestamp >= '${weekHex}' OR s.timestamp >= '${paddedWeekHex}'))
+          OR (s.timestamp NOT LIKE '0x%' AND CAST(s.timestamp AS INTEGER) >= ${sevenDaysAgo})
+        )`
+      : "";
+    const sessionWindowWhere = window === "weekly"
+      ? `AND (
+          (s.created_at LIKE '0x%' AND (s.created_at >= '${weekHex}' OR s.created_at >= '${paddedWeekHex}'))
+          OR (s.created_at NOT LIKE '0x%' AND CAST(s.created_at AS INTEGER) >= ${sevenDaysAgo})
+        )`
+      : "";
 
     // Aggregate in SQL and only return the top players. This means the join
     // against `controllers` happens against a tiny grouped result instead of
@@ -128,32 +241,38 @@ export const LeaderboardApi = {
     // `SUM` would require numeric values; the current UI doesn't render
     // `totalScore` for the top-N view, so we skip it here.
     const aggregatedQuery = `
-      WITH agg AS (
+      WITH ranked AS (
         SELECT
           lower(s.player) AS player_lc,
-          COUNT(*) AS games_played,
-          MAX(s.score) AS best_score
+          s.game_id AS session_id,
+          s.score AS best_score,
+          COUNT(*) OVER (PARTITION BY lower(s.player)) AS games_played,
+          ROW_NUMBER() OVER (
+            PARTITION BY lower(s.player)
+            ORDER BY s.score DESC, s.game_id DESC
+          ) AS rank
         FROM "ABYSS-LeaderboardScore" AS s
         WHERE ${leaderboardIdMatch}
-        GROUP BY lower(s.player)
-        ORDER BY best_score DESC, games_played DESC
-        LIMIT ${TOP_LIMIT}
+          ${leaderboardScoreWindowWhere}
       )
       SELECT
-        agg.player_lc AS player,
+        ranked.player_lc AS player,
         c.username AS username,
-        agg.games_played,
-        agg.best_score,
-        agg.best_score AS total_score
-      FROM agg
-      LEFT JOIN controllers AS c ON lower(c.address) = agg.player_lc
-      ORDER BY agg.best_score DESC, agg.games_played DESC;
+        ranked.session_id,
+        ranked.games_played,
+        ranked.best_score,
+        ranked.best_score AS total_score
+      FROM ranked
+      LEFT JOIN controllers AS c ON lower(c.address) = ranked.player_lc
+      WHERE ranked.rank = 1
+        ORDER BY best_score DESC, games_played DESC
+      LIMIT ${TOP_LIMIT};
     `;
 
     try {
       const rows = (await client.executeSql(aggregatedQuery)) as AggregatedRow[];
       if (rows.length > 0) {
-        return mapAggregated(rows);
+        return hydrateBuilds(client, mapAggregated(rows));
       }
     } catch (error) {
       console.warn("LeaderboardScore SQL unavailable, falling back to Session rows:", error);
@@ -163,29 +282,35 @@ export const LeaderboardApi = {
     // MAX on the raw value so we work regardless of encoding (text MAX of
     // zero-padded hex still sorts correctly).
     const sessionsQuery = `
-      WITH agg AS (
+      WITH ranked AS (
         SELECT
           lower(s.player_address) AS player_lc,
-          COUNT(*) AS games_played,
-          MAX(s.total_score) AS best_score
+          s.session_id,
+          s.total_score AS best_score,
+          COUNT(*) OVER (PARTITION BY lower(s.player_address)) AS games_played,
+          ROW_NUMBER() OVER (
+            PARTITION BY lower(s.player_address)
+            ORDER BY s.total_score DESC, s.session_id DESC
+          ) AS rank
         FROM "ABYSS-Session" AS s
         WHERE s.total_score IS NOT NULL
-        GROUP BY lower(s.player_address)
-        ORDER BY best_score DESC, games_played DESC
-        LIMIT ${TOP_LIMIT}
+          ${sessionWindowWhere}
       )
       SELECT
-        agg.player_lc AS player,
+        ranked.player_lc AS player,
         c.username AS username,
-        agg.games_played,
-        agg.best_score,
-        agg.best_score AS total_score
-      FROM agg
-      LEFT JOIN controllers AS c ON lower(c.address) = agg.player_lc
-      ORDER BY agg.best_score DESC, agg.games_played DESC;
+        ranked.session_id,
+        ranked.games_played,
+        ranked.best_score,
+        ranked.best_score AS total_score
+      FROM ranked
+      LEFT JOIN controllers AS c ON lower(c.address) = ranked.player_lc
+      WHERE ranked.rank = 1
+        ORDER BY best_score DESC, games_played DESC
+      LIMIT ${TOP_LIMIT};
     `;
 
     const rows = (await client.executeSql(sessionsQuery)) as AggregatedRow[];
-    return mapAggregated(rows);
+    return hydrateBuilds(client, mapAggregated(rows));
   },
 };
