@@ -1327,13 +1327,46 @@ export function SessionsContent() {
                                         <>
                                             <StreakUtcDayPips
                                                 filled={
-                                                    streakLootReady
+                                                    streakRecoverOffered
+                                                        ? Math.min(playerStreak.recoverPriorCount, STREAK_TRACKER_DAYS)
+                                                        : streakLootReady
                                                         ? STREAK_TRACKER_DAYS
                                                         : Math.min(playerStreak.streakCount, STREAK_TRACKER_DAYS)
                                                 }
-                                                lootReady={streakLootReady}
+                                                lootReady={streakLootReady && !streakRecoverOffered}
                                             />
-                                            {streakLootReady ? (
+                                            {streakRecoverOffered ? (
+                                                <div>
+                                                    <p
+                                                        style={{
+                                                            margin: 0,
+                                                            fontFamily: "'PressStart2P', monospace",
+                                                            fontSize: 9,
+                                                            color: "#f6efe6",
+                                                            lineHeight: 1.6,
+                                                        }}
+                                                    >
+                                                        STREAK BROKEN
+                                                    </p>
+                                                    <p
+                                                        style={{
+                                                            margin: "6px 0 0",
+                                                            fontFamily: "var(--font-body)",
+                                                            fontSize: 13,
+                                                            color: "#d4cbbf",
+                                                            lineHeight: 1.45,
+                                                        }}
+                                                    >
+                                                        You can recover{" "}
+                                                        <strong style={{ color: "#f2ebe3" }}>
+                                                            {playerStreak.recoverPriorCount} day
+                                                            {playerStreak.recoverPriorCount === 1 ? "" : "s"}
+                                                        </strong>{" "}
+                                                        and count today's finished session before UTC reset in{" "}
+                                                        <strong style={{ color: "#e8ddcf" }}>{streakUtcCountdown}</strong>.
+                                                    </p>
+                                                </div>
+                                            ) : streakLootReady ? (
                                                 <div>
                                                     <p
                                                         style={{

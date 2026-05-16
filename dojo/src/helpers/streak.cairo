@@ -1,5 +1,6 @@
 use starknet::ContractAddress;
 
+use crate::models::index::PlayerStreak;
 use crate::store::{Store, StoreTrait};
 
 pub const SECONDS_PER_DAY: u64 = 86400;
@@ -26,22 +27,18 @@ pub fn streak_loot_rarity_from_roll(roll: u32) -> u8 {
 }
 
 /// Called after successful `claim_chips` rewards processing (`chips_claimed` set).
-pub fn advance_player_streak(ref store: Store, player: ContractAddress, today: u32) {
-    let mut ps = store.player_streak(player);
-
+pub fn advance_player_streak_state(mut ps: PlayerStreak, today: u32) -> PlayerStreak {
     if ps.recover_prior_count > 0 && today > ps.recover_deadline_day_id {
         ps.recover_prior_count = 0;
         ps.recover_deadline_day_id = 0;
     }
 
     if ps.streak_count == 7 {
-        store.set_player_streak(@ps);
-        return;
+        return ps;
     }
 
     if ps.streak_count > 0 && ps.last_increment_day_id == today {
-        store.set_player_streak(@ps);
-        return;
+        return ps;
     }
 
     let gap = ps.last_increment_day_id != 0
@@ -51,15 +48,15 @@ pub fn advance_player_streak(ref store: Store, player: ContractAddress, today: u
 
     if gap {
         ps.recover_prior_count = ps.streak_count;
-        ps.recover_deadline_day_id = ps.last_increment_day_id + 2;
+        ps.recover_deadline_day_id = today;
         ps.streak_count = 0;
         ps.last_increment_day_id = 0;
+        return ps;
     }
 
     if ps.streak_count == 0 {
         if ps.loot_claim_barrier_day_id != 0 && today <= ps.loot_claim_barrier_day_id {
-            store.set_player_streak(@ps);
-            return;
+            return ps;
         }
         ps.streak_count = 1;
         ps.last_increment_day_id = today;
@@ -72,5 +69,19 @@ pub fn advance_player_streak(ref store: Store, player: ContractAddress, today: u
         ps.last_increment_day_id = today;
     }
 
+    ps
+}
+
+pub fn recovered_streak_count(recover_prior_count: u8) -> u8 {
+    if recover_prior_count >= 7 {
+        7
+    } else {
+        recover_prior_count + 1
+    }
+}
+
+/// Called after successful `claim_chips` rewards processing (`chips_claimed` set).
+pub fn advance_player_streak(ref store: Store, player: ContractAddress, today: u32) {
+    let ps = advance_player_streak_state(store.player_streak(player), today);
     store.set_player_streak(@ps);
 }

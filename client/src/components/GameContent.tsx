@@ -135,6 +135,7 @@ function GameStage({
             return true;
         });
     }, [game.bibliaBroken, game.hiddenItems, game.initialInventoryItems, game.optimisticItems]);
+    const desktopInventorySlots = Array.from({ length: 7 }, (_, index) => visibleInventoryItems[index] ?? null);
     const trickyDiceItem = visibleInventoryItems.find((item) => item.item_id === TRICKY_DICE_ITEM_ID);
     const shouldShowTrickyDice = Boolean(trickyDiceItem) && !game.showGameOver && activeMobileTab === 'home';
 
@@ -467,9 +468,26 @@ function GameStage({
                             </div>
                         )}
                     </div>
-                    {visibleInventoryItems.length > 0 && (
-                        <div className="desktop-floating-inventory" aria-label="Inventory">
-                            {visibleInventoryItems.slice(0, 7).map((item, index) => {
+                    <div className="desktop-floating-inventory" aria-label={`Inventory ${visibleInventoryItems.length} of 7 slots used`}>
+                        <div className="desktop-floating-inventory-limit">
+                            <span>Inventory</span>
+                            <strong>{Math.min(visibleInventoryItems.length, 7)}/7</strong>
+                        </div>
+                        <div className="desktop-floating-inventory-slots">
+                            {desktopInventorySlots.map((item, index) => {
+                                if (!item) {
+                                    return (
+                                        <div
+                                            key={`empty-${index}`}
+                                            className="desktop-floating-item desktop-floating-empty"
+                                            style={{ "--float-index": index } as CSSProperties}
+                                            aria-hidden="true"
+                                        >
+                                            <span />
+                                        </div>
+                                    );
+                                }
+
                                 const debtScore = item.item_id === 1026 || item.item_id === 1027
                                     ? game.charmDebtScores?.[item.item_id - 1000] ?? 0
                                     : 0;
@@ -504,7 +522,7 @@ function GameStage({
                                 );
                             })}
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Right Sidebar */}
@@ -957,11 +975,38 @@ function GameStage({
                         transform: translateX(-50%);
                         z-index: 145;
                         display: flex;
+                        flex-direction: column;
+                        align-items: flex-end;
+                        justify-content: center;
+                        gap: 8px;
+                        pointer-events: auto;
+                        max-width: min(78vw, 680px);
+                    }
+                    .desktop-floating-inventory-limit {
+                        align-self: center;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 6px 9px;
+                        border: 1px solid rgba(255, 132, 28, 0.62);
+                        border-radius: 5px;
+                        background: rgba(8, 3, 0, 0.82);
+                        color: rgba(255, 236, 218, 0.72);
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 7px;
+                        letter-spacing: 0.08em;
+                        text-transform: uppercase;
+                    }
+                    .desktop-floating-inventory-limit strong {
+                        color: #FFE08A;
+                        font-size: 9px;
+                        letter-spacing: 0;
+                    }
+                    .desktop-floating-inventory-slots {
+                        display: flex;
                         align-items: flex-end;
                         justify-content: center;
                         gap: clamp(10px, 1.4vw, 18px);
-                        pointer-events: auto;
-                        max-width: min(78vw, 680px);
                     }
                     .desktop-floating-item {
                         --float-offset: calc((var(--float-index, 0) - 3) * 2px);
@@ -976,6 +1021,20 @@ function GameStage({
                         animation: desktopInventoryFloat 2.8s ease-in-out infinite;
                         animation-delay: calc(var(--float-index, 0) * -0.18s);
                         filter: none;
+                    }
+                    .desktop-floating-empty {
+                        cursor: default;
+                        pointer-events: none;
+                        border: 1px dashed rgba(255, 132, 28, 0.26);
+                        border-radius: 13px;
+                        background: rgba(7, 3, 0, 0.28);
+                        animation: none;
+                    }
+                    .desktop-floating-empty span {
+                        position: absolute;
+                        inset: 13px;
+                        border: 1px solid rgba(255, 132, 28, 0.16);
+                        border-radius: 9px;
                     }
                     .desktop-floating-item img {
                         width: 100%;
@@ -1075,8 +1134,8 @@ function GameStage({
                     .game-content-wrapper { margin-bottom: 60px; }
                     .desktop-floating-inventory {
                         bottom: 74px;
-                        gap: 8px;
                     }
+                    .desktop-floating-inventory-slots { gap: 8px; }
                     .desktop-floating-item {
                         width: 58px;
                         height: 58px;

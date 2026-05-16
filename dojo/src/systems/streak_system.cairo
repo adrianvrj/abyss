@@ -22,7 +22,7 @@ pub mod Streak {
 
     use crate::constants::NAMESPACE;
     use crate::helpers::streak::{
-        streak_loot_rarity_from_roll, utc_day_from_timestamp,
+        recovered_streak_count, streak_loot_rarity_from_roll, utc_day_from_timestamp,
         STREAK_LOOT_CHARM_SESSION_ID_SENTINEL, STREAK_RECOVER_CHIP_COST,
     };
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
@@ -124,8 +124,8 @@ pub mod Streak {
             let chip = IChipDispatcher { contract_address: config.chip_token };
             chip.burn(STREAK_RECOVER_CHIP_COST);
 
-            ps.streak_count = ps.recover_prior_count;
-            ps.last_increment_day_id = if today >= 1 { today - 1 } else { 0 };
+            ps.streak_count = recovered_streak_count(ps.recover_prior_count);
+            ps.last_increment_day_id = today;
             ps.recover_prior_count = 0;
             ps.recover_deadline_day_id = 0;
 

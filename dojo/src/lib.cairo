@@ -71,4 +71,5 @@ pub mod components {
         pub mod pattern_logic;
         pub mod setup;
         pub mod spin_profile;
+        pub mod streak_logic;
 }

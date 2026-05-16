@@ -572,7 +572,9 @@ export default function InlineMarketPanel({
         }
     }
 
-    const visibleInventoryCount = Array.from(ownedItemIds).filter((itemId) => itemId < 1000).length;
+    const visibleInventoryCount = Array.from(ownedItemIds).filter(
+        (itemId) => itemId < 1000 && !hiddenItemIds.includes(itemId),
+    ).length;
 
     function getEffectDetails(item: ContractItem): string {
         if (item.description && item.description.length > 0) return item.description;
