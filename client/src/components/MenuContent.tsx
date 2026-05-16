@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useController } from "@/hooks/useController";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,8 @@ import { useEntities } from "@/context/entities";
 import { LeaderboardApi } from "@/api/torii/leaderboard";
 import { getLeaderboard } from "@/utils/abyssContract";
 import { captureAbyss, posthog } from "@/lib/posthog";
+import { STATIC_CHARM_DEFINITIONS } from "@/lib/charmCatalog";
+import { CharmLoadoutModal } from "@/components/modals/CharmLoadoutModal";
 
 const styles = {
     container: {
@@ -60,6 +62,15 @@ export function MenuContent() {
     const queryClient = useQueryClient();
     const { chainId } = useEntities();
     const [isMobile, setIsMobile] = useState(false);
+    const [isPracticeLoadoutOpen, setIsPracticeLoadoutOpen] = useState(false);
+    const [practiceCharmLoadout, setPracticeCharmLoadout] = useState<number[]>([]);
+    const allPracticeCharmIds = useMemo(
+        () => Object.keys(STATIC_CHARM_DEFINITIONS)
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id))
+            .sort((a, b) => a - b),
+        [],
+    );
 
     const prefetchLeaderboard = useCallback(() => {
         queryClient.prefetchQuery({
@@ -116,10 +127,36 @@ export function MenuContent() {
     }, [navigate]);
 
     const handlePractice = useCallback(() => {
-        captureAbyss("practice_started", { entry: "menu" });
-        startPractice();
+        captureAbyss("practice_loadout_opened", { entry: "menu" });
+        setIsPracticeLoadoutOpen(true);
+    }, []);
+
+    const handleTogglePracticeCharm = useCallback((charmId: number) => {
+        setPracticeCharmLoadout((prev) => {
+            if (prev.includes(charmId)) {
+                return prev.filter((id) => id !== charmId);
+            }
+            if (prev.length >= 3) {
+                return prev;
+            }
+            return [...prev, charmId];
+        });
+    }, []);
+
+    const handleClearPracticeCharms = useCallback(() => {
+        setPracticeCharmLoadout([]);
+    }, []);
+
+    const handleStartPracticeWithLoadout = useCallback(() => {
+        captureAbyss("practice_started", {
+            entry: "menu",
+            charm_loadout: practiceCharmLoadout,
+            charm_count: practiceCharmLoadout.length,
+        });
+        startPractice(practiceCharmLoadout);
+        setIsPracticeLoadoutOpen(false);
         navigate("/practice");
-    }, [navigate, startPractice]);
+    }, [navigate, practiceCharmLoadout, startPractice]);
 
     const handleDiscord = useCallback(() => {
         window.open("https://discord.gg/UspD94Z5p7", "_blank");
@@ -263,6 +300,17 @@ export function MenuContent() {
                     </svg>
                 </button>
             </div>
+
+            <CharmLoadoutModal
+                isOpen={isPracticeLoadoutOpen}
+                onClose={() => setIsPracticeLoadoutOpen(false)}
+                ownedCharmIds={allPracticeCharmIds}
+                loadout={practiceCharmLoadout}
+                onToggle={handleTogglePracticeCharm}
+                onClear={handleClearPracticeCharms}
+                onSeal={handleStartPracticeWithLoadout}
+                isLocked={false}
+            />
         </div>
     );
 }

@@ -26,6 +26,7 @@ pub mod CharmEffectType {
     pub const PatternRetrigger: u8 = 8;
     pub const ExtraSpinWithLuck: u8 = 9;
     pub const ConditionalLuckBoost: u8 = 10;
+    pub const DebtPledge: u8 = 12;
 }
 
 /// Charm condition types - when passive effects activate
@@ -37,4 +38,6 @@ pub mod CharmConditionType {
     pub const LowScore: u8 = 4;
     pub const HighLevel: u8 = 5;
     pub const Blocked666: u8 = 6;
+    pub const Consecutive666: u8 = 7;
+    pub const AllPatternTypesSameSpin: u8 = 8;
 }

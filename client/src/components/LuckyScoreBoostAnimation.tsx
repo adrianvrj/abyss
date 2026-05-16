@@ -64,7 +64,7 @@ export default function LuckyScoreBoostAnimation({
                         height: '8px',
                         borderRadius: '999px',
                         background: '#FFD54A',
-                        boxShadow: '0 0 10px #FFD54A, 0 0 24px rgba(255, 132, 28, 0.8)',
+                        boxShadow: 'none',
                     }}
                 />
             ))}
@@ -80,7 +80,7 @@ export default function LuckyScoreBoostAnimation({
                     borderRadius: '18px',
                     background: '#120700',
                     boxShadow:
-                        '0 0 0 2px rgba(255, 213, 74, 0.22), 0 18px 55px rgba(0, 0, 0, 0.72), 0 0 34px rgba(255, 132, 28, 0.25)',
+                        'none',
                     textAlign: 'center',
                     fontFamily: "'PressStart2P', monospace",
                     color: '#FF841C',
@@ -92,7 +92,7 @@ export default function LuckyScoreBoostAnimation({
                     style={{
                         fontSize: 'clamp(13px, 2.4vw, 18px)',
                         lineHeight: 1.5,
-                        textShadow: '0 0 12px rgba(255, 132, 28, 0.55)',
+                        textShadow: 'none',
                     }}
                 >
                     LUCKY THE DEALER
@@ -114,7 +114,7 @@ export default function LuckyScoreBoostAnimation({
                         style={{
                             fontSize: 'clamp(22px, 5vw, 38px)',
                             color: '#FFD54A',
-                            textShadow: '0 0 14px rgba(255, 213, 74, 0.6)',
+                            textShadow: 'none',
                         }}
                     >
                         +{luckyBonus}

@@ -70,6 +70,13 @@ export function usePracticeSession() {
   const [luckyScoreBoostTotal, setLuckyScoreBoostTotal] = useState(0);
   const [luckyScoreBoostBonus, setLuckyScoreBoostBonus] = useState(0);
   const [showCashOutAnimation, setShowCashOutAnimation] = useState(false);
+  const [debtFeedback, setDebtFeedback] = useState<string | null>(null);
+  const [debtPayoutAnimation, setDebtPayoutAnimation] = useState<{
+    charmId: number;
+    storedScore: number;
+    multiplier: number;
+    payoutScore: number;
+  } | null>(null);
   const [relicIndex, setRelicIndex] = useState(0);
   const [itemToSell, setItemToSell] = useState<ContractItem | null>(null);
   const [isSelling, setIsSelling] = useState(false);
@@ -182,6 +189,8 @@ export function usePracticeSession() {
     setLuckyScoreBoostTotal(0);
     setLuckyScoreBoostBonus(0);
     setShowCashOutAnimation(false);
+    setDebtFeedback(null);
+    setDebtPayoutAnimation(null);
     setItemToSell(null);
   }, []);
 
@@ -284,6 +293,27 @@ export function usePracticeSession() {
 
     if (outcome.cashOutSucceeded) {
       setShowCashOutAnimation(true);
+    }
+
+    const latestDebtPaid = outcome.debtPaid.at(-1) ?? null;
+    const latestDebtCollected = outcome.debtCollected.at(-1) ?? null;
+    const latestDebtDefaulted = outcome.debtDefaulted.at(-1) ?? null;
+
+    if (latestDebtPaid) {
+      setDebtFeedback(`Charm #${latestDebtPaid.charmId} paid ${latestDebtPaid.payoutScore} score`);
+      setDebtPayoutAnimation({
+        charmId: latestDebtPaid.charmId,
+        storedScore: latestDebtPaid.storedScore,
+        multiplier: latestDebtPaid.multiplier,
+        payoutScore: latestDebtPaid.payoutScore,
+      });
+      window.setTimeout(() => setDebtFeedback(null), 2200);
+    } else if (latestDebtCollected) {
+      setDebtFeedback(`Charm #${latestDebtCollected.charmId} pledged ${latestDebtCollected.collectedScore} score (${latestDebtCollected.storedScore} stored)`);
+      window.setTimeout(() => setDebtFeedback(null), 2200);
+    } else if (latestDebtDefaulted) {
+      setDebtFeedback(`Charm #${latestDebtDefaulted.charmId} defaulted ${latestDebtDefaulted.storedScore} stored score`);
+      window.setTimeout(() => setDebtFeedback(null), 2200);
     }
 
     if (outcome.is666) {
@@ -458,6 +488,8 @@ export function usePracticeSession() {
     luckyScoreBoostTotal,
     luckyScoreBoostBonus,
     showCashOutAnimation,
+    debtFeedback,
+    debtPayoutAnimation,
     setShowBibliaAnimation,
     setShowCharmAnimation: useCallback((_value: boolean) => {
       return;
@@ -469,6 +501,7 @@ export function usePracticeSession() {
     setShowScoreResetAnimation,
     setShowLuckyScoreBoostAnimation,
     setShowCashOutAnimation,
+    setDebtPayoutAnimation,
     setGameOverReason,
     equippedRelic,
     isRelicSpent,
@@ -504,6 +537,7 @@ export function usePracticeSession() {
     practiceBibliaPurchaseCount: run?.bibliaPurchaseCount ?? 0,
     practicePurchasedSlots: run?.purchasedSlots ?? [],
     practiceRefreshCount: run?.refreshCount ?? 0,
+    charmDebtScores: run?.charmDebtScores ?? {},
     startPractice,
     clearPractice,
     practiceRunId: run?.id ?? null,

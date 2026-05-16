@@ -57,8 +57,7 @@ export function SpinButton({ onClick, disabled, isSpinning, spinsRemaining }: Sp
         }
 
         .spin-button:not(:disabled):hover {
-          box-shadow: 0 0 20px var(--color-primary-glow),
-                      0 0 40px var(--color-primary-glow);
+          box-shadow: none;
         }
 
         .spin-button-content {

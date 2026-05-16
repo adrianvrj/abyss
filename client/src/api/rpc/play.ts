@@ -251,3 +251,15 @@ export async function getSessionChipBonusUnits(chainId: ChainLike, sessionId: nu
 
   return Number(result[0] ?? 0);
 }
+
+export async function getSessionCharmDebt(chainId: ChainLike, sessionId: number, charmId: number) {
+  const provider = getRpcProvider(chainId);
+  const playAddress = getPlayAddress(chainId);
+  const result = await provider.callContract({
+    contractAddress: playAddress,
+    entrypoint: "get_session_charm_debt",
+    calldata: [sessionId.toString(), charmId.toString()],
+  });
+
+  return Number(result[0] ?? 0);
+}

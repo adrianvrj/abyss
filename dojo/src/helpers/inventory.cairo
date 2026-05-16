@@ -20,7 +20,7 @@ pub struct SpinCycleModifiers {
     pub spin_bonus: u32,
     pub probability_bonuses: (u32, u32, u32, u32, u32),
     pub coin_probability_penalty: u32,
-    pub retrigger_bonuses: (u32, u32, u32, u32),
+    pub retrigger_bonuses: (u32, u32, u32, u32, u32),
     pub pattern_bonuses: (u32, u32, u32, u32, u32, u32),
     pub symbol_scores: (u32, u32, u32, u32, u32),
     pub direct_score_bonuses: (u32, u32, u32, u32, u32),
@@ -32,6 +32,8 @@ pub struct SpinCycleModifiers {
     pub low_score_bonus: u32,
     pub high_level_bonus: u32,
     pub blocked_666_bonus: u32,
+    pub has_boxing_globes: bool,
+    pub has_morellonomicon: bool,
 }
 
 #[generate_trait]
@@ -286,7 +288,10 @@ pub impl InventoryImpl of InventoryTrait {
         let mut low_score_bonus: u32 = 0;
         let mut high_level_bonus: u32 = 0;
         let mut blocked_666_bonus: u32 = 0;
+        let mut has_boxing_globes = false;
+        let mut has_morellonomicon = false;
         let mut h3_retrigger: u32 = 1;
+        let mut vert_retrigger: u32 = 1;
         let mut diag_retrigger: u32 = 1;
         let mut all_retrigger: u32 = 1;
         let mut jackpot_retrigger: u32 = 1;
@@ -294,73 +299,85 @@ pub impl InventoryImpl of InventoryTrait {
         let mut j: u32 = 0;
         while j != charm_count {
             let charm_id = store.session_charm_entry(session_id, j).charm_id;
-            let charm_meta = get_charm_type_info(charm_id);
-            let val = charm_meta.effect_value;
+            if charm_id == 26 {
+                has_boxing_globes = true;
+            } else if charm_id == 27 {
+                has_morellonomicon = true;
+            } else {
+                let charm_meta = get_charm_type_info(charm_id);
+                let val = charm_meta.effect_value;
 
-            if charm_id == 18 {
-                base_luck += 12;
-            }
-
-            if charm_meta.effect_type == CharmEffectType::LuckBoost {
-                base_luck += val;
-            } else if charm_meta.effect_type == CharmEffectType::ExtraSpinWithLuck {
-                base_luck += charm_meta.effect_value_2;
-                spin_bonus += val;
-            }
-
-            if charm_id == 19 {
-                jackpot_retrigger = 2;
-            }
-
-            if charm_meta.effect_type == CharmEffectType::PatternRetrigger {
-                let retrigger_val = val;
-                let pattern_type = charm_meta.effect_value_2;
-
-                if pattern_type == 0 {
-                    all_retrigger = retrigger_val;
-                } else if pattern_type == 1 {
-                    h3_retrigger = retrigger_val;
-                } else if pattern_type == 3 {
-                    diag_retrigger = retrigger_val;
-                } else if pattern_type == 5 {
-                    jackpot_retrigger = retrigger_val;
+                if charm_id == 18 {
+                    base_luck += 12;
                 }
-            }
 
-            if charm_id == 12 {
-                pattern_luck_per_pattern += val;
-                conditional_luck += last_spin.patterns_count.into() * val;
-            }
+                if charm_meta.effect_type == CharmEffectType::LuckBoost {
+                    base_luck += val;
+                } else if charm_meta.effect_type == CharmEffectType::ExtraSpinWithLuck {
+                    base_luck += charm_meta.effect_value_2;
+                    spin_bonus += val;
+                }
 
-            if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
-                no_pattern_bonus += val;
-                if last_spin.patterns_count == 0 {
-                    conditional_luck += val;
+                if charm_id == 19 {
+                    jackpot_retrigger = 2;
                 }
-            } else if charm_meta.condition_type == CharmConditionType::LowSpinsRemaining {
-                low_spins_bonus += val;
-                if session.spins_remaining <= 3 {
-                    conditional_luck += val;
+
+                if charm_meta.effect_type == CharmEffectType::PatternRetrigger {
+                    let retrigger_val = val;
+                    let pattern_type = charm_meta.effect_value_2;
+
+                    if pattern_type == 0 {
+                        all_retrigger = retrigger_val;
+                    } else if pattern_type == 1 {
+                        h3_retrigger = retrigger_val;
+                    } else if pattern_type == 2 {
+                        vert_retrigger = retrigger_val;
+                    } else if pattern_type == 3 {
+                        diag_retrigger = retrigger_val;
+                    } else if pattern_type == 5 {
+                        jackpot_retrigger = retrigger_val;
+                    }
                 }
-            } else if charm_meta.condition_type == CharmConditionType::PerItemInInventory {
-                per_item_bonus += val;
-                conditional_luck += persistent_item_count * val;
-            } else if charm_meta.condition_type == CharmConditionType::LowScore {
-                low_score_bonus += val;
-                if session.score < 180 {
-                    conditional_luck += val;
+
+                if charm_id == 12 {
+                    pattern_luck_per_pattern += val;
+                    conditional_luck += last_spin.patterns_count.into() * val;
                 }
-            } else if charm_meta.condition_type == CharmConditionType::HighLevel {
-                let high_level_conditional_bonus =
-                    if charm_meta.effect_value_2 > 0 { charm_meta.effect_value_2 } else { val };
-                high_level_bonus += high_level_conditional_bonus;
-                if session.level >= 4 {
-                    conditional_luck += high_level_conditional_bonus;
-                }
-            } else if charm_meta.condition_type == CharmConditionType::Blocked666 {
-                blocked_666_bonus += val;
-                if session.blocked_666_this_session {
-                    conditional_luck += val;
+
+                if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
+                    no_pattern_bonus += val;
+                    if last_spin.patterns_count == 0 {
+                        conditional_luck += val;
+                    }
+                } else if charm_meta.condition_type == CharmConditionType::LowSpinsRemaining {
+                    low_spins_bonus += val;
+                    if session.spins_remaining <= 3 {
+                        conditional_luck += val;
+                    }
+                } else if charm_meta.condition_type == CharmConditionType::PerItemInInventory {
+                    per_item_bonus += val;
+                    conditional_luck += persistent_item_count * val;
+                } else if charm_meta.condition_type == CharmConditionType::LowScore {
+                    low_score_bonus += val;
+                    if session.score < 180 {
+                        conditional_luck += val;
+                    }
+                } else if charm_meta.condition_type == CharmConditionType::HighLevel {
+                    let high_level_conditional_bonus =
+                        if charm_meta.effect_value_2 > 0 {
+                            charm_meta.effect_value_2
+                        } else {
+                            val
+                        };
+                    high_level_bonus += high_level_conditional_bonus;
+                    if session.level >= 4 {
+                        conditional_luck += high_level_conditional_bonus;
+                    }
+                } else if charm_meta.condition_type == CharmConditionType::Blocked666 {
+                    blocked_666_bonus += val;
+                    if session.blocked_666_this_session {
+                        conditional_luck += val;
+                    }
                 }
             }
 
@@ -370,6 +387,9 @@ pub impl InventoryImpl of InventoryTrait {
         if all_retrigger > 1 {
             if h3_retrigger < all_retrigger {
                 h3_retrigger = all_retrigger;
+            }
+            if vert_retrigger < all_retrigger {
+                vert_retrigger = all_retrigger;
             }
             if diag_retrigger < all_retrigger {
                 diag_retrigger = all_retrigger;
@@ -383,7 +403,9 @@ pub impl InventoryImpl of InventoryTrait {
             spin_bonus,
             probability_bonuses: (p7, pd, pc, p_coin, pl),
             coin_probability_penalty,
-            retrigger_bonuses: (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger),
+            retrigger_bonuses: (
+                h3_retrigger, vert_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger,
+            ),
             pattern_bonuses: (h3, h4, h5, vert, diag, jp),
             symbol_scores: (
                 session.score_seven,
@@ -401,6 +423,8 @@ pub impl InventoryImpl of InventoryTrait {
             low_score_bonus,
             high_level_bonus,
             blocked_666_bonus,
+            has_boxing_globes,
+            has_morellonomicon,
         }
     }
 
@@ -454,7 +478,9 @@ pub impl InventoryImpl of InventoryTrait {
     }
 
     /// Get retrigger bonuses from charms
-    fn get_charm_retrigger_bonuses(store: @Store, session_id: u32) -> (u32, u32, u32, u32) {
+    fn get_charm_retrigger_bonuses(store: @Store, session_id: u32) -> (
+        u32, u32, u32, u32, u32,
+    ) {
         let charm_ids = Self::collect_session_charm_ids(store, session_id);
         get_charm_retrigger_bonuses_for_ids(charm_ids.span())
     }

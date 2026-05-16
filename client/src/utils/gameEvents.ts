@@ -84,6 +84,31 @@ export interface CharmRerolledEvent {
     resultRarity: number;
 }
 
+export interface CharmDebtCollectedEvent {
+    sessionId: number;
+    charmId: number;
+    collectedScore: number;
+    storedScore: number;
+    newScore: number;
+    newTotalScore: number;
+}
+
+export interface CharmDebtPaidEvent {
+    sessionId: number;
+    charmId: number;
+    storedScore: number;
+    multiplier: number;
+    payoutScore: number;
+    newScore: number;
+    newTotalScore: number;
+}
+
+export interface CharmDebtDefaultedEvent {
+    sessionId: number;
+    charmId: number;
+    storedScore: number;
+}
+
 export interface BibliaDiscardedEvent {
     sessionId: number;
     discarded: boolean;
@@ -154,6 +179,9 @@ export interface ParsedEvents {
     relicEquipped: RelicEquippedEvent | null;
     charmMinted: CharmMintedEvent | null;
     charmRerolled: CharmRerolledEvent | null;
+    charmDebtCollected: CharmDebtCollectedEvent[];
+    charmDebtPaid: CharmDebtPaidEvent[];
+    charmDebtDefaulted: CharmDebtDefaultedEvent[];
     bibliaDiscarded: BibliaDiscardedEvent | null;
     cashOutResolved: CashOutResolvedEvent | null;
     models: ReceiptModelEvents;
@@ -189,6 +217,9 @@ const EVENT_SELECTORS = {
     RelicEquipped: hash.getSelectorFromName('RelicEquipped'),
     CharmMinted: hash.getSelectorFromName('CharmMinted'),
     CharmRerolled: hash.getSelectorFromName('CharmRerolled'),
+    CharmDebtCollected: hash.getSelectorFromName('CharmDebtCollected'),
+    CharmDebtPaid: hash.getSelectorFromName('CharmDebtPaid'),
+    CharmDebtDefaulted: hash.getSelectorFromName('CharmDebtDefaulted'),
     BibliaDiscarded: hash.getSelectorFromName('BibliaDiscarded'),
     CashOutResolved: hash.getSelectorFromName('CashOutResolved'),
 };
@@ -589,6 +620,55 @@ function parseCharmRerolledEvent(
     }
 }
 
+function parseCharmDebtCollectedEvent(eventData: Array<string | bigint | number>): CharmDebtCollectedEvent | null {
+    if (!eventData || eventData.length < 5) return null;
+    try {
+        return {
+            sessionId: 0,
+            charmId: feltToNumber(eventData[0]),
+            collectedScore: feltToNumber(eventData[1]),
+            storedScore: feltToNumber(eventData[2]),
+            newScore: feltToNumber(eventData[3]),
+            newTotalScore: feltToNumber(eventData[4]),
+        };
+    } catch (e) {
+        console.error('Failed to parse CharmDebtCollected event:', e);
+        return null;
+    }
+}
+
+function parseCharmDebtPaidEvent(eventData: Array<string | bigint | number>): CharmDebtPaidEvent | null {
+    if (!eventData || eventData.length < 6) return null;
+    try {
+        return {
+            sessionId: 0,
+            charmId: feltToNumber(eventData[0]),
+            storedScore: feltToNumber(eventData[1]),
+            multiplier: feltToNumber(eventData[2]),
+            payoutScore: feltToNumber(eventData[3]),
+            newScore: feltToNumber(eventData[4]),
+            newTotalScore: feltToNumber(eventData[5]),
+        };
+    } catch (e) {
+        console.error('Failed to parse CharmDebtPaid event:', e);
+        return null;
+    }
+}
+
+function parseCharmDebtDefaultedEvent(eventData: Array<string | bigint | number>): CharmDebtDefaultedEvent | null {
+    if (!eventData || eventData.length < 2) return null;
+    try {
+        return {
+            sessionId: 0,
+            charmId: feltToNumber(eventData[0]),
+            storedScore: feltToNumber(eventData[1]),
+        };
+    } catch (e) {
+        console.error('Failed to parse CharmDebtDefaulted event:', e);
+        return null;
+    }
+}
+
 /**
  * Parse BibliaDiscarded event
  */
@@ -627,6 +707,9 @@ export function hasParsedEvents(events: ParsedEvents): boolean {
         events.relicEquipped ||
         events.charmMinted ||
         events.charmRerolled ||
+        events.charmDebtCollected.length > 0 ||
+        events.charmDebtPaid.length > 0 ||
+        events.charmDebtDefaulted.length > 0 ||
         events.bibliaDiscarded ||
         events.cashOutResolved ||
         events.itemsPurchased.length > 0 ||
@@ -648,6 +731,9 @@ function parseNormalizedEvents(
         relicEquipped: null,
         charmMinted: null,
         charmRerolled: null,
+        charmDebtCollected: [],
+        charmDebtPaid: [],
+        charmDebtDefaulted: [],
         bibliaDiscarded: null,
         cashOutResolved: null,
         models: {
@@ -732,6 +818,24 @@ function parseNormalizedEvents(
             if (parsed) {
                 result.charmRerolled = parsed;
             }
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtCollected) >= 0) {
+            const parsed = parseCharmDebtCollectedEvent(event.data);
+            if (parsed) {
+                parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmDebtCollected);
+                result.charmDebtCollected.push(parsed);
+            }
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtPaid) >= 0) {
+            const parsed = parseCharmDebtPaidEvent(event.data);
+            if (parsed) {
+                parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmDebtPaid);
+                result.charmDebtPaid.push(parsed);
+            }
+        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtDefaulted) >= 0) {
+            const parsed = parseCharmDebtDefaultedEvent(event.data);
+            if (parsed) {
+                parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmDebtDefaulted);
+                result.charmDebtDefaulted.push(parsed);
+            }
         } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.BibliaDiscarded) >= 0) {
             const parsed = parseBibliaDiscardedEvent(event.data);
             if (parsed) {
@@ -803,6 +907,24 @@ function parseNormalizedEvents(
                 if (parsed) {
                     result.charmRerolled = parsed;
                 }
+            } else if (emitterAddress === playAddress && findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.CharmDebtCollected) >= 0) {
+                const parsed = parseCharmDebtCollectedEvent(dojoEvent.fieldValues);
+                if (parsed) {
+                    parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.CharmDebtCollected);
+                    result.charmDebtCollected.push(parsed);
+                }
+            } else if (emitterAddress === playAddress && findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.CharmDebtPaid) >= 0) {
+                const parsed = parseCharmDebtPaidEvent(dojoEvent.fieldValues);
+                if (parsed) {
+                    parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.CharmDebtPaid);
+                    result.charmDebtPaid.push(parsed);
+                }
+            } else if (emitterAddress === playAddress && findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.CharmDebtDefaulted) >= 0) {
+                const parsed = parseCharmDebtDefaultedEvent(dojoEvent.fieldValues);
+                if (parsed) {
+                    parsed.sessionId = readSessionIdFromKeys(dojoEvent.keyValues, EVENT_SELECTORS.CharmDebtDefaulted);
+                    result.charmDebtDefaulted.push(parsed);
+                }
             } else if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 1) {
                 if (findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.CashOutResolved) >= 0) {
                     const parsed = parseCashOutResolvedEvent(dojoEvent.fieldValues);
@@ -845,6 +967,9 @@ export function parseReceiptEvents(
             relicEquipped: null,
             charmMinted: null,
             charmRerolled: null,
+            charmDebtCollected: [],
+            charmDebtPaid: [],
+            charmDebtDefaulted: [],
             bibliaDiscarded: null,
             cashOutResolved: null,
             models: {

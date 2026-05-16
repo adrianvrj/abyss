@@ -185,6 +185,50 @@ pub struct CharmMinted {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CHARM DEBT
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmDebtCollected {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub charm_id: u32,
+    pub collected_score: u32,
+    pub stored_score: u32,
+    pub new_score: u32,
+    pub new_total_score: u32,
+}
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmDebtPaid {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub charm_id: u32,
+    pub stored_score: u32,
+    pub multiplier: u32,
+    pub payout_score: u32,
+    pub new_score: u32,
+    pub new_total_score: u32,
+}
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmDebtDefaulted {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub charm_id: u32,
+    pub stored_score: u32,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BIBLIA DISCARDED
 // ═══════════════════════════════════════════════════════════════════════════
 

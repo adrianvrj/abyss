@@ -108,9 +108,7 @@ export default function BibliaSaveAnimation({
                     border: isSacrifice
                         ? "2px solid rgba(255, 194, 98, 0.22)"
                         : "2px solid rgba(255, 244, 214, 0.22)",
-                    boxShadow: isSacrifice
-                        ? "0 0 36px rgba(255, 179, 84, 0.32), inset 0 0 60px rgba(255, 236, 198, 0.08)"
-                        : "0 0 34px rgba(255, 225, 154, 0.24), inset 0 0 60px rgba(255, 249, 225, 0.14)",
+                    boxShadow: "none",
                 }}
             />
 
@@ -145,9 +143,7 @@ export default function BibliaSaveAnimation({
                     fontSize: "clamp(72px, 18vw, 240px)",
                     lineHeight: 1,
                     color: isSacrifice ? "#FF6B3D" : "#FFD784",
-                    textShadow: isSacrifice
-                        ? "0 0 28px rgba(255, 60, 0, 0.45)"
-                        : "0 0 28px rgba(255, 225, 140, 0.28)",
+                    textShadow: "none",
                     letterSpacing: "0.06em",
                 }}
             >
@@ -167,9 +163,7 @@ export default function BibliaSaveAnimation({
                     textAlign: "center",
                     fontFamily: "'PressStart2P', monospace",
                     color: "#FFF3C7",
-                    textShadow: isSacrifice
-                        ? "0 0 10px rgba(255, 243, 199, 0.85), 0 0 28px rgba(255, 164, 86, 0.55), 4px 4px 0 rgba(40, 20, 0, 0.9)"
-                        : "0 0 10px rgba(255, 250, 232, 0.9), 0 0 26px rgba(255, 218, 132, 0.44), 4px 4px 0 rgba(40, 20, 0, 0.9)",
+                    textShadow: "4px 4px 0 rgba(40, 20, 0, 0.9)",
                     padding: "24px",
                 }}
             >
@@ -217,20 +211,12 @@ export default function BibliaSaveAnimation({
                         animate={
                             isSacrifice
                                 ? {
-                                    filter: [
-                                        "drop-shadow(0 0 18px rgba(255, 245, 210, 0.95)) drop-shadow(0 0 44px rgba(255, 180, 92, 0.62))",
-                                        "drop-shadow(0 0 24px rgba(255, 245, 210, 0.98)) drop-shadow(0 0 60px rgba(255, 132, 28, 0.88))",
-                                        "drop-shadow(0 0 18px rgba(255, 230, 170, 0.78)) drop-shadow(0 0 30px rgba(255, 132, 28, 0.48))",
-                                    ],
+                                    filter: ["none", "none", "none"],
                                     scale: [1, 1.08, 0.94],
                                     opacity: [1, 1, 0.82],
                                 }
                                 : {
-                                    filter: [
-                                        "drop-shadow(0 0 18px rgba(255, 249, 225, 0.95)) drop-shadow(0 0 44px rgba(255, 217, 124, 0.48))",
-                                        "drop-shadow(0 0 24px rgba(255, 255, 244, 0.98)) drop-shadow(0 0 54px rgba(255, 228, 158, 0.58))",
-                                        "drop-shadow(0 0 18px rgba(255, 249, 225, 0.92)) drop-shadow(0 0 40px rgba(255, 217, 124, 0.5))",
-                                    ],
+                                    filter: ["none", "none", "none"],
                                     scale: [1, 1.03, 1],
                                 }
                         }
@@ -289,7 +275,7 @@ export default function BibliaSaveAnimation({
                             width: min(34vw, 280px);
                             height: 130%;
                             transform: translateX(-50%);
-                            filter: blur(10px);
+                            filter: none;
                             animation: abyssBibliaBeamPulse 1.3s ease-in-out infinite;
                         }
 
@@ -340,18 +326,14 @@ export default function BibliaSaveAnimation({
                         .abyss-biblia-particle.feather {
                             border-radius: 999px 999px 999px 999px / 70% 70% 35% 35%;
                             background: linear-gradient(180deg, #FFFDF4 0%, #FFE09A 100%);
-                            box-shadow:
-                                0 0 12px rgba(255, 252, 239, 0.9),
-                                0 0 24px rgba(255, 216, 123, 0.45);
+                            box-shadow: none;
                             animation-name: abyssBibliaFeatherRise;
                         }
 
                         .abyss-biblia-particle.ash {
                             border-radius: 999px;
                             background: linear-gradient(180deg, #FFF2CA 0%, #FF9A4F 100%);
-                            box-shadow:
-                                0 0 10px rgba(255, 232, 182, 0.95),
-                                0 0 22px rgba(255, 150, 62, 0.62);
+                            box-shadow: none;
                             animation-name: abyssBibliaAshRise;
                         }
 
@@ -364,16 +346,12 @@ export default function BibliaSaveAnimation({
 
                         .abyss-biblia-ward-ring.preserved {
                             border: 2px solid rgba(255, 245, 210, 0.36);
-                            box-shadow:
-                                inset 0 0 34px rgba(255, 249, 225, 0.16),
-                                0 0 32px rgba(255, 225, 140, 0.22);
+                            box-shadow: none;
                         }
 
                         .abyss-biblia-ward-ring.sacrifice {
                             border: 2px solid rgba(255, 216, 126, 0.32);
-                            box-shadow:
-                                inset 0 0 30px rgba(255, 239, 198, 0.14),
-                                0 0 36px rgba(255, 159, 73, 0.28);
+                            box-shadow: none;
                         }
 
                         .abyss-biblia-ward-ring::before,
@@ -396,7 +374,7 @@ export default function BibliaSaveAnimation({
                             inset: -16%;
                             border-radius: 50%;
                             border: 2px solid rgba(255, 213, 113, 0.7);
-                            box-shadow: 0 0 28px rgba(255, 150, 52, 0.38);
+                            box-shadow: none;
                             z-index: 1;
                         }
 
@@ -406,9 +384,7 @@ export default function BibliaSaveAnimation({
                             height: 2px;
                             border-radius: 999px;
                             background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.95) 45%, rgba(255, 158, 67, 0.92) 100%);
-                            box-shadow:
-                                0 0 8px rgba(255, 255, 255, 0.9),
-                                0 0 18px rgba(255, 132, 28, 0.8);
+                            box-shadow: none;
                             opacity: 0;
                             z-index: 3;
                             animation: abyssBibliaFractureFlash 0.5s ease-out forwards;

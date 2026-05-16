@@ -1,6 +1,8 @@
 use crate::helpers::charm_types::{
     calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
     get_charm_ids_by_rarity, get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
+    get_debt_pledge_config, preview_debt_collection, preview_debt_payout,
+    should_pay_debt_pledge,
 };
 use crate::helpers::grid::normalize_spin_luck;
 use crate::systems::play::{
@@ -301,15 +303,49 @@ fn test_all_charm_metadata_definitions() {
         3,
         5,
     );
+    assert_charm_meta(
+        21, 'Big Diamond', 'Luck +15', CharmEffectType::LuckBoost, 15, 0,
+        CharmConditionType::None, 0, 1,
+    );
+    assert_charm_meta(
+        22, 'Supernova Nacho', 'No pat +22', CharmEffectType::ConditionalLuckBoost, 22, 0,
+        CharmConditionType::NoPatternLastSpin, 0, 1,
+    );
+    assert_charm_meta(
+        23, 'Magic Bean', 'Per item +9', CharmEffectType::ConditionalLuckBoost, 9, 0,
+        CharmConditionType::PerItemInInventory, 0, 1,
+    );
+    assert_charm_meta(
+        24, 'Ice King Crown', 'Vert x2', CharmEffectType::PatternRetrigger, 2, 2,
+        CharmConditionType::None, 1, 2,
+    );
+    assert_charm_meta(
+        25, 'Antimatter', '+2 spin +28', CharmEffectType::ExtraSpinWithLuck, 2, 28,
+        CharmConditionType::None, 1, 2,
+    );
+    assert_charm_meta(
+        26, 'Boxing Globes', 'Debt 5, 666x2 pays x10', CharmEffectType::DebtPledge, 5, 10,
+        CharmConditionType::Consecutive666, 2, 3,
+    );
+    assert_charm_meta(
+        27, 'Morellonomicon', 'Debt 10, HVD pays x12', CharmEffectType::DebtPledge, 10, 12,
+        CharmConditionType::AllPatternTypesSameSpin, 3, 3,
+    );
 }
 
 #[test]
 fn test_charm_ids_grouped_by_rarity() {
-    assert_u32_array_eq(get_charm_ids_by_rarity(0), array![1, 2, 3, 4, 5, 6, 7, 8]);
-    assert_u32_array_eq(get_charm_ids_by_rarity(1), array![9, 10, 11, 12, 13, 14]);
-    assert_u32_array_eq(get_charm_ids_by_rarity(2), array![15, 16, 17, 18]);
-    assert_u32_array_eq(get_charm_ids_by_rarity(3), array![19, 20]);
+    assert_u32_array_eq(get_charm_ids_by_rarity(0), array![1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23]);
+    assert_u32_array_eq(get_charm_ids_by_rarity(1), array![9, 10, 11, 12, 13, 14, 24, 25]);
+    assert_u32_array_eq(get_charm_ids_by_rarity(2), array![15, 16, 17, 18, 26]);
+    assert_u32_array_eq(get_charm_ids_by_rarity(3), array![19, 20, 27]);
     assert_u32_array_eq(get_charm_ids_by_rarity(99), array![]);
+}
+
+#[test]
+#[should_panic(expected: ('Invalid charm',))]
+fn test_charm_id_above_expanded_range_rejected() {
+    get_charm_type_info(28);
 }
 
 #[test]
@@ -373,6 +409,78 @@ fn test_effective_luck_applies_conditional_charm_rules() {
     let charm_ids = array![3, 4, 6, 8, 11, 12, 18];
     let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 2, 4, 80, 5, true);
     assert(luck == 276, 'unexpected effective luck');
+}
+
+#[test]
+fn test_new_existing_effect_charms_contribute_luck() {
+    let charm_ids = array![21, 22, 23, 25];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 3, 200, 1, false);
+    assert(luck == 92, 'bad new charm luck');
+}
+
+#[test]
+fn test_debt_charms_do_not_contribute_luck() {
+    let charm_ids = array![26, 27];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 3, 200, 1, true);
+    assert(luck == 0, 'debt gave luck');
+}
+
+#[test]
+fn test_debt_pledge_configs_are_id_scoped() {
+    let (is_debt_26, collect_26, multiplier_26, condition_26) = get_debt_pledge_config(26);
+    assert(is_debt_26, '26 not debt');
+    assert(collect_26 == 5, '26 collect');
+    assert(multiplier_26 == 10, '26 mult');
+    assert(condition_26 == CharmConditionType::Consecutive666, '26 condition');
+
+    let (is_debt_27, collect_27, multiplier_27, condition_27) = get_debt_pledge_config(27);
+    assert(is_debt_27, '27 not debt');
+    assert(collect_27 == 10, '27 collect');
+    assert(multiplier_27 == 12, '27 mult');
+    assert(condition_27 == CharmConditionType::AllPatternTypesSameSpin, '27 condition');
+
+    let (is_debt_21, _, _, _) = get_debt_pledge_config(21);
+    assert(!is_debt_21, '21 should not debt');
+}
+
+#[test]
+fn test_debt_collection_does_not_reduce_below_zero() {
+    let (score, total_score, stored_score, collected) = preview_debt_collection(3, 80, 5, 5);
+    assert(score == 0, 'bad score');
+    assert(total_score == 80, 'bad total score');
+    assert(stored_score == 8, 'bad stored');
+    assert(collected == 3, 'bad collected');
+}
+
+#[test]
+fn test_debt_collection_uses_configured_cap() {
+    let (score, total_score, stored_score, collected) = preview_debt_collection(100, 150, 10, 10);
+    assert(score == 90, 'bad score cap');
+    assert(total_score == 150, 'bad total cap');
+    assert(stored_score == 20, 'bad stored cap');
+    assert(collected == 10, 'bad collected cap');
+}
+
+#[test]
+fn test_boxing_globes_pays_on_consecutive_666_only() {
+    assert(should_pay_debt_pledge(26, true, true, 0), '26 should pay');
+    assert(!should_pay_debt_pledge(26, false, true, 0), '26 paid early');
+    assert(!should_pay_debt_pledge(26, true, false, 7), '26 paid non666');
+}
+
+#[test]
+fn test_morellonomicon_pays_on_all_pattern_types() {
+    assert(should_pay_debt_pledge(27, false, false, 7), '27 should pay');
+    assert(!should_pay_debt_pledge(27, true, true, 3), '27 paid partial');
+    assert(!should_pay_debt_pledge(27, true, true, 5), '27 paid missing vertical');
+}
+
+#[test]
+fn test_debt_payout_resets_principal_math() {
+    let (score, total_score, payout) = preview_debt_payout(20, 40, 15, 10);
+    assert(score == 170, 'bad payout score');
+    assert(total_score == 190, 'bad payout total');
+    assert(payout == 150, 'bad payout');
 }
 
 #[test]
@@ -530,9 +638,10 @@ fn test_extra_spin_charms_can_be_summed_for_reset_logic() {
 
 #[test]
 fn test_pattern_retriggers_match_contract_behavior() {
-    let charm_ids = array![10, 14, 17, 19];
-    let (h3, diag, all, jackpot) = get_charm_retrigger_bonuses_for_ids(charm_ids.span());
+    let charm_ids = array![10, 14, 17, 19, 24];
+    let (h3, vert, diag, all, jackpot) = get_charm_retrigger_bonuses_for_ids(charm_ids.span());
     assert(h3 == 2, 'bad horizontal retrigger');
+    assert(vert == 2, 'bad vertical retrigger');
     assert(diag == 2, 'bad diagonal retrigger');
     assert(all == 2, 'bad all retrigger');
     assert(jackpot == 2, 'bad jackpot retrigger');
@@ -541,9 +650,10 @@ fn test_pattern_retriggers_match_contract_behavior() {
 #[test]
 fn test_reapers_mark_does_not_retrigger_jackpot() {
     let charm_ids = array![17];
-    let (h3, diag, all, jackpot) = get_charm_retrigger_bonuses_for_ids(charm_ids.span());
+    let (h3, vert, diag, all, jackpot) = get_charm_retrigger_bonuses_for_ids(charm_ids.span());
     assert(h3 == 2, 'bad horizontal retrigger');
     assert(diag == 2, 'bad diagonal retrigger');
-    assert(all == 2, 'bad vertical retrigger');
+    assert(vert == 2, 'bad vertical retrigger');
+    assert(all == 2, 'bad all retrigger');
     assert(jackpot == 1, 'jackpot should not retrigger');
 }

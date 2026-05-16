@@ -1,9 +1,14 @@
 import { STATIC_ITEM_DEFINITIONS } from "@/lib/itemCatalog";
 import {
+  CharmConditionType,
+  CharmEffectType,
   getCharmLuckEntries,
   convertFortuneToSpinLuck,
   type CharmLuckContext,
+  mergeCharmDisplayData,
+  type CharmContractMetadata,
 } from "@/lib/charmRules";
+import { getStaticCharmDefinition } from "@/lib/charmCatalog";
 import { applyPatternModifiers } from "@/lib/patternMath";
 import { ContractItem, ItemEffectType } from "@/utils/abyssContract";
 import { DEFAULT_GAME_CONFIG } from "@/utils/GameConfig";
@@ -19,6 +24,9 @@ const CASH_OUT_ITEM_ID = 41;
 const MARKET_SLOT_COUNT = 6;
 const INVENTORY_LIMIT = 7;
 const MAX_ITEM_ID = 41;
+const CHARM_ITEM_OFFSET = 1000;
+const MARKET_CHARM_APPEAR_CHANCE = 22;
+const MAX_PRACTICE_LOADOUT_CHARMS = 3;
 const RETIRED_MARKET_ITEM_IDS = new Set<number>([10, 19, 23, 24, 39]);
 const RELIC_EFFECT_RANDOM_JACKPOT = 0;
 const RELIC_EFFECT_DOUBLE_NEXT_SPIN = 2;
@@ -48,6 +56,7 @@ export interface PracticeRunState {
   grid: number[];
   inventoryItems: ContractItem[];
   marketItems: ContractItem[];
+  loadoutCharmIds: number[];
   refreshCount: number;
   purchasedSlots: number[];
   symbolScores: number[];
@@ -62,6 +71,8 @@ export interface PracticeRunState {
   pendingRelicEffect: number | null;
   bibliaPurchaseCount: number;
   lastSpinPatternCount: number;
+  charmDebtScores: Record<number, number>;
+  consecutive666Count: number;
 }
 
 export interface PracticeSpinOutcome {
@@ -78,6 +89,25 @@ export interface PracticeSpinOutcome {
   previousLevel: number;
   awardedTickets: number;
   endedRun: boolean;
+  debtCollected: Array<{
+    charmId: number;
+    collectedScore: number;
+    storedScore: number;
+    newScore: number;
+    newTotalScore: number;
+  }>;
+  debtPaid: Array<{
+    charmId: number;
+    storedScore: number;
+    multiplier: number;
+    payoutScore: number;
+    newScore: number;
+    newTotalScore: number;
+  }>;
+  debtDefaulted: Array<{
+    charmId: number;
+    storedScore: number;
+  }>;
 }
 
 export interface PracticeBuyOutcome {
@@ -162,6 +192,103 @@ function buildPracticeItem(itemId: number): ContractItem {
   };
 }
 
+function getPracticeCharmMetadata(charmId: number): CharmContractMetadata | null {
+  const staticDefinition = getStaticCharmDefinition(charmId);
+  if (!staticDefinition) {
+    return null;
+  }
+
+  const base = {
+    charmId,
+    name: staticDefinition.name,
+    description: staticDefinition.description,
+    rarity: staticDefinition.rarity === "Legendary" ? 3 : staticDefinition.rarity === "Epic" ? 2 : staticDefinition.rarity === "Rare" ? 1 : 0,
+    shopCost: staticDefinition.shop_cost,
+  };
+
+  switch (charmId) {
+    case 1: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 10, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 2: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 12, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 3: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 18, effectValue2: 0, conditionType: CharmConditionType.NoPatternLastSpin };
+    case 4: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 20, effectValue2: 0, conditionType: CharmConditionType.LowSpinsRemaining };
+    case 5: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 14, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 6: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 8, effectValue2: 0, conditionType: CharmConditionType.PerItemInInventory };
+    case 7: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 16, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 8: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 22, effectValue2: 0, conditionType: CharmConditionType.LowScore };
+    case 9: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 24, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 10: return { ...base, effectType: CharmEffectType.PatternRetrigger, effectValue: 2, effectValue2: 1, conditionType: CharmConditionType.None };
+    case 11: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 14, effectValue2: 18, conditionType: CharmConditionType.HighLevel };
+    case 12: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 12, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 13: return { ...base, effectType: CharmEffectType.ExtraSpinWithLuck, effectValue: 2, effectValue2: 25, conditionType: CharmConditionType.None };
+    case 14: return { ...base, effectType: CharmEffectType.PatternRetrigger, effectValue: 2, effectValue2: 3, conditionType: CharmConditionType.None };
+    case 15: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 38, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 16: return { ...base, effectType: CharmEffectType.ExtraSpinWithLuck, effectValue: 3, effectValue2: 20, conditionType: CharmConditionType.None };
+    case 17: return { ...base, effectType: CharmEffectType.PatternRetrigger, effectValue: 2, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 18: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 140, effectValue2: 0, conditionType: CharmConditionType.Blocked666 };
+    case 19: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 45, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 20: return { ...base, effectType: CharmEffectType.ExtraSpinWithLuck, effectValue: 2, effectValue2: 80, conditionType: CharmConditionType.None };
+    case 21: return { ...base, effectType: CharmEffectType.LuckBoost, effectValue: 15, effectValue2: 0, conditionType: CharmConditionType.None };
+    case 22: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 22, effectValue2: 0, conditionType: CharmConditionType.NoPatternLastSpin };
+    case 23: return { ...base, effectType: CharmEffectType.ConditionalLuckBoost, effectValue: 9, effectValue2: 0, conditionType: CharmConditionType.PerItemInInventory };
+    case 24: return { ...base, effectType: CharmEffectType.PatternRetrigger, effectValue: 2, effectValue2: 2, conditionType: CharmConditionType.None };
+    case 25: return { ...base, effectType: CharmEffectType.ExtraSpinWithLuck, effectValue: 2, effectValue2: 28, conditionType: CharmConditionType.None };
+    case 26: return { ...base, effectType: CharmEffectType.DebtPledge, effectValue: 5, effectValue2: 10, conditionType: CharmConditionType.Consecutive666 };
+    case 27: return { ...base, effectType: CharmEffectType.DebtPledge, effectValue: 10, effectValue2: 12, conditionType: CharmConditionType.AllPatternTypesSameSpin };
+    default: return null;
+  }
+}
+
+function buildPracticeCharmItem(charmId: number): ContractItem | null {
+  const staticDefinition = getStaticCharmDefinition(charmId);
+  const metadata = getPracticeCharmMetadata(charmId);
+  const charmInfo = mergeCharmDisplayData({
+    charmId,
+    staticDefinition,
+    apiMetadata: null,
+    metadata,
+  });
+
+  if (!charmInfo) {
+    return null;
+  }
+
+  return {
+    item_id: CHARM_ITEM_OFFSET + charmId,
+    name: charmInfo.name,
+    description: charmInfo.description,
+    price: charmInfo.shop_cost,
+    sell_price: Math.floor(charmInfo.shop_cost / 2),
+    effect_type: ItemEffectType.CharmEffect,
+    effect_value: charmInfo.luck,
+    target_symbol: charmInfo.rarity,
+    image: charmInfo.image,
+    charmInfo,
+  };
+}
+
+function normalizePracticeLoadout(charmIds: number[] = []) {
+  const seen = new Set<number>();
+  const normalized: number[] = [];
+
+  for (const charmId of charmIds) {
+    const id = Number(charmId);
+    if (
+      Number.isInteger(id) &&
+      id > 0 &&
+      getStaticCharmDefinition(id) &&
+      !seen.has(id)
+    ) {
+      seen.add(id);
+      normalized.push(id);
+      if (normalized.length >= MAX_PRACTICE_LOADOUT_CHARMS) {
+        break;
+      }
+    }
+  }
+
+  return normalized;
+}
+
 function getCharmMetadataFromItem(item: ContractItem) {
   return item.charmInfo?.metadata ?? null;
 }
@@ -169,6 +296,20 @@ function getCharmMetadataFromItem(item: ContractItem) {
 function getCharmExtraSpinValue(item: ContractItem) {
   const metadata = getCharmMetadataFromItem(item);
   return metadata?.effectType === 9 ? metadata.effectValue : 0;
+}
+
+function getDebtCharmConfig(item: ContractItem) {
+  const metadata = getCharmMetadataFromItem(item);
+  if (metadata?.effectType !== CharmEffectType.DebtPledge) {
+    return null;
+  }
+
+  return {
+    charmId: metadata.charmId,
+    collectAmount: metadata.effectValue,
+    multiplier: metadata.effectValue2,
+    conditionType: metadata.conditionType,
+  };
 }
 
 function getPracticeLuckContext(state: PracticeRunState, items = state.inventoryItems): CharmLuckContext {
@@ -292,16 +433,40 @@ function buildWeightedSymbols(items: ContractItem[]) {
 function generateMarketItems(
   rngState: number,
   previousItems: ContractItem[] = [],
+  loadoutCharmIds: number[] = [],
+  activeCharmIds: number[] = [],
+  guaranteeLoadoutCharms = false,
 ) {
   let nextState = rngState;
   const pickedIds = new Set<number>();
   const excludedIds = new Set<number>(previousItems.map((item) => item.item_id));
+  const availableCharmIds = normalizePracticeLoadout(loadoutCharmIds)
+    .filter((charmId) => !activeCharmIds.includes(charmId));
   let attempts = 0;
 
+  if (guaranteeLoadoutCharms) {
+    for (const charmId of availableCharmIds) {
+      if (pickedIds.size >= MARKET_SLOT_COUNT) {
+        break;
+      }
+      pickedIds.add(CHARM_ITEM_OFFSET + charmId);
+    }
+  }
+
   while (pickedIds.size < MARKET_SLOT_COUNT && attempts < 200) {
-    const next = takeRandomInt(nextState, MAX_ITEM_ID);
-    nextState = next.nextState;
-    const itemId = next.value + 1;
+    let itemId = 0;
+    const charmRoll = takeRandomInt(nextState, 100);
+    nextState = charmRoll.nextState;
+
+    if (availableCharmIds.length > 0 && charmRoll.value < MARKET_CHARM_APPEAR_CHANCE) {
+      const charmPick = takeRandomInt(nextState, availableCharmIds.length);
+      nextState = charmPick.nextState;
+      itemId = CHARM_ITEM_OFFSET + availableCharmIds[charmPick.value];
+    } else {
+      const next = takeRandomInt(nextState, MAX_ITEM_ID);
+      nextState = next.nextState;
+      itemId = next.value + 1;
+    }
 
     if (!RETIRED_MARKET_ITEM_IDS.has(itemId) && !excludedIds.has(itemId) && !pickedIds.has(itemId)) {
       pickedIds.add(itemId);
@@ -319,7 +484,11 @@ function generateMarketItems(
 
   return {
     nextState,
-    items: Array.from(pickedIds).map((itemId) => buildPracticeItem(itemId)),
+    items: Array.from(pickedIds)
+      .map((itemId) => itemId >= CHARM_ITEM_OFFSET
+        ? buildPracticeCharmItem(itemId - CHARM_ITEM_OFFSET)
+        : buildPracticeItem(itemId))
+      .filter((item): item is ContractItem => Boolean(item)),
   };
 }
 
@@ -415,6 +584,20 @@ function getPatternsForGrid(grid: number[], items: ContractItem[], symbolScores:
   return modifiedPatterns.filter((pattern) => pattern.score > 0);
 }
 
+function hasAllPatternFamilies(patterns: Pattern[]) {
+  let hasHorizontal = false;
+  let hasVertical = false;
+  let hasDiagonal = false;
+
+  for (const pattern of patterns) {
+    if (pattern.type.startsWith("horizontal")) hasHorizontal = true;
+    else if (pattern.type.startsWith("vertical")) hasVertical = true;
+    else if (pattern.type.startsWith("diagonal")) hasDiagonal = true;
+  }
+
+  return hasHorizontal && hasVertical && hasDiagonal;
+}
+
 function getAwardedTickets(previousLevel: number, nextLevel: number) {
   if (nextLevel <= previousLevel) {
     return 0;
@@ -436,9 +619,10 @@ function getDiamondChipBonusUnits(items: ContractItem[]) {
   }, 0);
 }
 
-export function createPracticeRun(runId: number, seed: number): PracticeRunState {
+export function createPracticeRun(runId: number, seed: number, charmLoadout: number[] = []): PracticeRunState {
   const normalizedSeed = toNonZeroSeed(seed);
-  const market = generateMarketItems(normalizedSeed, []);
+  const loadoutCharmIds = normalizePracticeLoadout(charmLoadout);
+  const market = generateMarketItems(normalizedSeed, [], loadoutCharmIds, [], true);
 
   return withDerivedState({
     id: runId,
@@ -455,6 +639,7 @@ export function createPracticeRun(runId: number, seed: number): PracticeRunState
     grid: [],
     inventoryItems: [],
     marketItems: market.items,
+    loadoutCharmIds,
     refreshCount: 0,
     purchasedSlots: [],
     symbolScores: [...DEFAULT_SYMBOL_SCORES],
@@ -469,6 +654,8 @@ export function createPracticeRun(runId: number, seed: number): PracticeRunState
     pendingRelicEffect: null,
     bibliaPurchaseCount: 0,
     lastSpinPatternCount: 0,
+    charmDebtScores: {},
+    consecutive666Count: 0,
   });
 }
 
@@ -488,6 +675,9 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
       previousLevel: state.level,
       awardedTickets: 0,
       endedRun: !state.isActive,
+      debtCollected: [],
+      debtPaid: [],
+      debtDefaulted: [],
     };
   }
 
@@ -503,6 +693,10 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
   const previousScore = state.score;
   const previousLevel = state.level;
   const inventoryItems = cloneItems(state.inventoryItems);
+  let debtScores = { ...state.charmDebtScores };
+  const debtCollected: PracticeSpinOutcome["debtCollected"] = [];
+  const debtPaid: PracticeSpinOutcome["debtPaid"] = [];
+  const debtDefaulted: PracticeSpinOutcome["debtDefaulted"] = [];
   let bibliaUsed = false;
   let bibliaDiscarded = false;
   let is666 = spin.is666;
@@ -566,6 +760,8 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
       state.diamondChipBonusUnits +
       (is666 ? 0 : matchCounts[1] * getDiamondChipBonusUnits(inventoryItems)),
     lastSpinPatternCount: is666 ? 0 : patterns.length,
+    consecutive666Count: is666 ? state.consecutive666Count + 1 : 0,
+    charmDebtScores: debtScores,
     sessionRevision: state.sessionRevision + 1,
     inventoryRevision:
       state.inventoryRevision + ((bibliaDiscarded || cashOutSucceeded || cashOutFailed) ? 1 : 0),
@@ -585,6 +781,68 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
       totalScore: nextState.totalScore + scoreGained,
     });
   }
+
+  const allPatternFamiliesHit = !is666 && hasAllPatternFamilies(patterns);
+  for (const item of inventoryItems) {
+    const config = getDebtCharmConfig(item);
+    if (!config) {
+      continue;
+    }
+
+    const previousStored = debtScores[config.charmId] ?? 0;
+    const collectedScore = Math.min(config.collectAmount, nextState.score);
+    let storedScore = previousStored;
+
+    if (collectedScore > 0) {
+      storedScore += collectedScore;
+      nextState = withDerivedState({
+        ...nextState,
+        score: nextState.score - collectedScore,
+      });
+      debtScores = {
+        ...debtScores,
+        [config.charmId]: storedScore,
+      };
+      debtCollected.push({
+        charmId: config.charmId,
+        collectedScore,
+        storedScore,
+        newScore: nextState.score,
+        newTotalScore: nextState.totalScore,
+      });
+    }
+
+    const shouldPay =
+      storedScore > 0 &&
+      ((config.conditionType === CharmConditionType.Consecutive666 && nextState.consecutive666Count >= 2) ||
+        (config.conditionType === CharmConditionType.AllPatternTypesSameSpin && allPatternFamiliesHit));
+
+    if (shouldPay) {
+      const payoutScore = storedScore * config.multiplier;
+      nextState = withDerivedState({
+        ...nextState,
+        score: nextState.score + payoutScore,
+        totalScore: nextState.totalScore + payoutScore,
+      });
+      debtScores = {
+        ...debtScores,
+        [config.charmId]: 0,
+      };
+      debtPaid.push({
+        charmId: config.charmId,
+        storedScore,
+        multiplier: config.multiplier,
+        payoutScore,
+        newScore: nextState.score,
+        newTotalScore: nextState.totalScore,
+      });
+    }
+  }
+
+  nextState = {
+    ...nextState,
+    charmDebtScores: debtScores,
+  };
 
   if (cashOutSucceeded) {
     nextState = withDerivedState({
@@ -610,9 +868,21 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
   }
 
   if (nextState.spinsRemaining <= 0) {
+    for (const item of inventoryItems) {
+      const config = getDebtCharmConfig(item);
+      const storedScore = config ? debtScores[config.charmId] ?? 0 : 0;
+      if (config && storedScore > 0) {
+        debtDefaulted.push({ charmId: config.charmId, storedScore });
+        debtScores = {
+          ...debtScores,
+          [config.charmId]: 0,
+        };
+      }
+    }
     nextState = {
       ...nextState,
       isActive: false,
+      charmDebtScores: debtScores,
     };
   }
 
@@ -630,6 +900,9 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
     previousLevel,
     awardedTickets: getAwardedTickets(previousLevel, nextState.level),
     endedRun: !nextState.isActive,
+    debtCollected,
+    debtPaid,
+    debtDefaulted,
   };
 }
 
@@ -638,7 +911,8 @@ export function buyPracticeItem(state: PracticeRunState, slotIndex: number): Pra
   const purchasePrice = item ? getItemPurchasePrice(item, state.bibliaPurchaseCount) : 0;
   const alreadyPurchased = state.purchasedSlots.includes(slotIndex);
   const alreadyOwned = state.inventoryItems.some((inventoryItem) => inventoryItem.item_id === item?.item_id);
-  const inventoryFull = state.inventoryItems.filter((inventoryItem) => inventoryItem.item_id < 1000).length >= INVENTORY_LIMIT;
+  const isCharm = item ? item.item_id >= CHARM_ITEM_OFFSET : false;
+  const inventoryFull = !isCharm && state.inventoryItems.filter((inventoryItem) => inventoryItem.item_id < 1000).length >= INVENTORY_LIMIT;
 
   if (
     !item ||
@@ -724,7 +998,10 @@ export function refreshPracticeMarket(state: PracticeRunState): PracticeRefreshO
     return null;
   }
 
-  const market = generateMarketItems(state.rngState, state.marketItems);
+  const activeCharmIds = state.inventoryItems
+    .filter((item) => item.item_id >= CHARM_ITEM_OFFSET)
+    .map((item) => item.item_id - CHARM_ITEM_OFFSET);
+  const market = generateMarketItems(state.rngState, state.marketItems, state.loadoutCharmIds, activeCharmIds);
   const nextState = withDerivedState({
     ...state,
     rngState: market.nextState,
@@ -819,7 +1096,10 @@ export function activatePracticeRelic(state: PracticeRunState): PracticeRelicAct
   }
 
   if (relicId === 5) {
-    const market = generateMarketItems(state.rngState, state.marketItems);
+    const activeCharmIds = state.inventoryItems
+      .filter((item) => item.item_id >= CHARM_ITEM_OFFSET)
+      .map((item) => item.item_id - CHARM_ITEM_OFFSET);
+    const market = generateMarketItems(state.rngState, state.marketItems, state.loadoutCharmIds, activeCharmIds);
     const nextState = withDerivedState({
       ...state,
       rngState: market.nextState,

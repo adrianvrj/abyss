@@ -102,7 +102,17 @@ pub mod PurchaseComponent {
                 total_amount, config.burn_percentage, config.treasury_percentage,
             );
 
-            swap_and_burn_chip(@store, bundle.payment_token, burn_amount_quote);
+            let chip_address = config.chip_token;
+            if bundle.payment_token == chip_address {
+                // CHIP-paid bundles already settle CHIP on this contract's balance from Arcade:
+                // burn directly instead of routing through Ekubo (saves router + clearer steps).
+                if burn_amount_quote > 0 {
+                    let chip_token = IChipDispatcher { contract_address: chip_address };
+                    chip_token.burn(burn_amount_quote);
+                }
+            } else {
+                swap_and_burn_chip(@store, bundle.payment_token, burn_amount_quote);
+            }
 
             let quote = IERC20Dispatcher { contract_address: bundle.payment_token };
             if treasury_amount > 0 {

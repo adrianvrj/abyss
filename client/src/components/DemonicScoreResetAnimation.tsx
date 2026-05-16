@@ -97,8 +97,7 @@ export default function DemonicScoreResetAnimation({
                     textAlign: 'center',
                     fontFamily: "'PressStart2P', monospace",
                     color: '#FF841C',
-                    textShadow:
-                        '0 0 8px #FF841C, 0 0 22px rgba(255, 50, 0, 0.95), 4px 4px 0 #2A0000',
+                    textShadow: '4px 4px 0 #2A0000',
                     padding: '24px',
                 }}
             >
@@ -158,9 +157,7 @@ export default function DemonicScoreResetAnimation({
                     height: min(78vw, 680px);
                     border: 2px solid rgba(255, 132, 28, 0.28);
                     border-radius: 50%;
-                    box-shadow:
-                        inset 0 0 55px rgba(255, 60, 0, 0.35),
-                        0 0 80px rgba(255, 60, 0, 0.28);
+                    box-shadow: none;
                     animation: abyssResetSpin 6s linear infinite;
                 }
 
@@ -197,7 +194,7 @@ export default function DemonicScoreResetAnimation({
                     bottom: -24px;
                     border-radius: 999px;
                     background: #FF841C;
-                    box-shadow: 0 0 12px #FF841C, 0 0 24px rgba(255, 60, 0, 0.75);
+                    box-shadow: none;
                     animation-name: abyssResetEmberRise;
                     animation-timing-function: ease-out;
                     animation-iteration-count: infinite;

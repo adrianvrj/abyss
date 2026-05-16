@@ -33,6 +33,13 @@ export const STATIC_CHARM_DEFINITIONS: Record<number, StaticCharmDefinition> = {
   18: { charm_id: 18, name: "Chaos Orb", description: "Chaos rewards survival.", rarity: "Epic", effect: "+12 Luck, +140 more if 666 was blocked this session", luck: 12, shop_cost: 4, image: charmImage(18), background_color: "#7C3AED" },
   19: { charm_id: 19, name: "Soul of the Abyss", description: "Jackpots bow to its power.", rarity: "Legendary", effect: "+45 Luck, jackpot patterns trigger twice", luck: 45, shop_cost: 5, image: charmImage(19), background_color: "#D97706" },
   20: { charm_id: 20, name: "Void Heart", description: "The ultimate abyssal charm.", rarity: "Legendary", effect: "+2 spins and +80 Luck", luck: 80, shop_cost: 5, image: charmImage(20), background_color: "#D97706" },
+  21: { charm_id: 21, name: "Big Diamond", description: "A suspiciously affordable diamond with a tiny lien stamped on the back.", rarity: "Common", effect: "+15 Luck", luck: 15, shop_cost: 1, image: charmImage(21), background_color: "#6B7280" },
+  22: { charm_id: 22, name: "Supernova Nacho", description: "Convenience-store cheese heated past regulation and blessed by a bored cashier.", rarity: "Common", effect: "+22 Luck if last spin had no patterns", luck: 22, shop_cost: 1, image: charmImage(22), background_color: "#6B7280" },
+  23: { charm_id: 23, name: "Magic Bean", description: "One bean, many clauses. Keep your receipt.", rarity: "Common", effect: "+9 Luck per item in inventory", luck: 9, shop_cost: 1, image: charmImage(23), background_color: "#6B7280" },
+  24: { charm_id: 24, name: "Ice King Crown", description: "A pawn-shop crown that makes vertical lines file duplicate paperwork.", rarity: "Rare", effect: "Vertical patterns trigger twice", luck: 0, shop_cost: 2, image: charmImage(24), background_color: "#2563EB" },
+  25: { charm_id: 25, name: "Antimatter", description: "A sealed office-supply jar marked DO NOT SHAKE, currently shaking.", rarity: "Rare", effect: "+2 spins and +28 Luck", luck: 28, shop_cost: 2, image: charmImage(25), background_color: "#2563EB" },
+  26: { charm_id: 26, name: "Boxing Globes", description: "Desktop globes that punch tiny deductions into your account until 666 repeats.", rarity: "Epic", effect: "Pledge 5/spin. 666 x2 pays x10.", luck: 0, shop_cost: 3, image: charmImage(26), background_color: "#7C3AED" },
+  27: { charm_id: 27, name: "Morellonomicon", description: "A cursed mushroom ledger with loyalty stamps for inadvisable geometry.", rarity: "Legendary", effect: "Pledge 10/spin. H+V+D pays x12.", luck: 0, shop_cost: 3, image: charmImage(27), background_color: "#D97706" },
 };
 
 export function getStaticCharmDefinition(charmId: number): StaticCharmDefinition | null {

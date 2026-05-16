@@ -415,7 +415,7 @@ export default function GameStatsPanel({
                             width: `${displayedLuckPercent}%`,
                             height: '100%',
                             background: 'linear-gradient(90deg, #FFD54A 0%, #FF8A1C 100%)',
-                            boxShadow: '0 0 14px rgba(255, 170, 0, 0.35)',
+                            boxShadow: 'none',
                         }} />
                     </div>
                 </div>

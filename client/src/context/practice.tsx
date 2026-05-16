@@ -25,8 +25,8 @@ import {
 
 type PracticeContextValue = {
   run: PracticeRunState | null;
-  startPractice: () => PracticeRunState;
-  resetPractice: () => PracticeRunState;
+  startPractice: (charmLoadout?: number[]) => PracticeRunState;
+  resetPractice: (charmLoadout?: number[]) => PracticeRunState;
   clearPractice: () => void;
   spin: () => PracticeSpinOutcome | null;
   buyItem: (slotIndex: number) => PracticeBuyOutcome | null;
@@ -42,24 +42,30 @@ const PracticeContext = createContext<PracticeContextValue | undefined>(undefine
 export function PracticeProvider({ children }: PropsWithChildren) {
   const [run, setRun] = useState<PracticeRunState | null>(null);
   const nextRunIdRef = useRef(1);
+  const lastLoadoutRef = useRef<number[]>([]);
 
-  const createRun = useCallback(() => {
+  const createRun = useCallback((charmLoadout?: number[]) => {
     const runId = nextRunIdRef.current++;
     const seed = (Date.now() ^ (runId * 0x9e3779b9)) >>> 0;
-    return createPracticeRun(runId, seed);
+    return createPracticeRun(runId, seed, charmLoadout ?? lastLoadoutRef.current);
   }, []);
 
-  const startPractice = useCallback(() => {
-    const nextRun = createRun();
+  const startPractice = useCallback((charmLoadout?: number[]) => {
+    if (charmLoadout) {
+      lastLoadoutRef.current = charmLoadout;
+    }
+    const nextRun = createRun(charmLoadout);
     setRun(nextRun);
     return nextRun;
   }, [createRun]);
 
-  const resetPractice = useCallback(() => {
-    const nextRun = createRun();
+  const resetPractice = useCallback((charmLoadout?: number[]) => {
+    const resolvedLoadout = charmLoadout ?? run?.loadoutCharmIds ?? lastLoadoutRef.current;
+    lastLoadoutRef.current = resolvedLoadout;
+    const nextRun = createRun(resolvedLoadout);
     setRun(nextRun);
     return nextRun;
-  }, [createRun]);
+  }, [createRun, run?.loadoutCharmIds]);
 
   const clearPractice = useCallback(() => {
     setRun(null);
@@ -156,10 +162,12 @@ export function PracticeProvider({ children }: PropsWithChildren) {
   }, []);
 
   const playAgain = useCallback(() => {
-    const nextRun = createRun();
+    const resolvedLoadout = run?.loadoutCharmIds ?? lastLoadoutRef.current;
+    lastLoadoutRef.current = resolvedLoadout;
+    const nextRun = createRun(resolvedLoadout);
     setRun(nextRun);
     return nextRun;
-  }, [createRun]);
+  }, [createRun, run?.loadoutCharmIds]);
 
   const value = useMemo<PracticeContextValue>(
     () => ({

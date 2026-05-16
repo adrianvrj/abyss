@@ -39,6 +39,7 @@ pub trait IPlay<T> {
     fn get_session_luck(self: @T, session_id: u32) -> u32;
     fn get_session_inventory_count(self: @T, session_id: u32) -> u32;
     fn get_session_chip_bonus_units(self: @T, session_id: u32) -> u32;
+    fn get_session_charm_debt(self: @T, session_id: u32, charm_id: u32) -> u32;
     fn get_session_item_purchase_price(self: @T, session_id: u32, item_id: u32) -> u32;
     fn get_session_items(self: @T, session_id: u32) -> Span<(u32, u32)>;
     fn get_spin_result(self: @T, session_id: u32) -> SpinResult;
@@ -78,8 +79,9 @@ pub mod Play {
     use crate::interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicERC721Dispatcher, IRelicERC721DispatcherTrait};
     use crate::interfaces::vrf::{IVrfProviderDispatcherTrait, Source};
+    use crate::events::index::{CharmDebtCollected, CharmDebtDefaulted, CharmDebtPaid};
     use crate::models::index::{
-        Config, Item, PlayerSessionEntry, Session, SessionChipBonus,
+        Config, Item, PlayerSessionEntry, Session, SessionCharmDebt, SessionChipBonus,
         SessionItemPurchaseCount, SessionMarket, SpinResult,
     };
     use crate::store::{Store, StoreTrait};
@@ -321,6 +323,7 @@ pub mod Play {
             let vrf = store.vrf_disp();
             let random_word = vrf.consume_random(Source::Nonce(caller));
 
+            let previous_spin = store.spin_result(session_id);
             let spin_modifiers = InventoryImpl::get_spin_cycle_modifiers(@store, session_id, @session);
             let luck = spin_modifiers.effective_luck;
             let prob_bonuses = spin_modifiers.probability_bonuses;
@@ -330,7 +333,10 @@ pub mod Play {
             let symbol_scores = spin_modifiers.symbol_scores;
             let probability_666 = get_level_666_probability(session.level);
 
-            let (score_gained, pats_count, mut is_666, is_jackpot, grid, (m7, md, mc, m_coin, ml)) =
+            let (
+                score_gained, pats_count, mut is_666, is_jackpot, grid, pattern_type_mask,
+                (m7, md, mc, m_coin, ml),
+            ) =
                 crate::components::spinnable::SpinnableImpl::execute_spin(
                 random_word,
                 luck,
@@ -428,6 +434,18 @@ pub mod Play {
                     md * spin_modifiers.diamond_chip_bonus_per_pattern;
             }
 
+            InternalImpl::process_debt_pledges(
+                ref store,
+                ref session,
+                session_id,
+                caller,
+                spin_modifiers.has_boxing_globes,
+                spin_modifiers.has_morellonomicon,
+                previous_spin.is_666,
+                is_666,
+                pattern_type_mask,
+            );
+
             if cash_out_succeeded {
                 session.spins_remaining = 0;
                 session.is_active = false;
@@ -449,6 +467,13 @@ pub mod Play {
             }
 
             if !session.is_active {
+                InternalImpl::default_debt_pledges(
+                    ref store,
+                    session_id,
+                    caller,
+                    spin_modifiers.has_boxing_globes,
+                    spin_modifiers.has_morellonomicon,
+                );
                 crate::helpers::play_rewards::process_end_session_rewards(
                     ref store, ref session, session_id, random_word,
                 );
@@ -553,6 +578,10 @@ pub mod Play {
             assert(session.is_active, 'Session already ended');
 
             session.is_active = false;
+            let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
+            InternalImpl::default_debt_pledges_for_ids(
+                ref store, session_id, caller, charm_ids.span(),
+            );
             crate::helpers::play_rewards::process_end_session_rewards(
                 ref store, ref session, session_id, 0,
             );
@@ -681,6 +710,12 @@ pub mod Play {
             let world = self.world(@NAMESPACE());
             let store = StoreTrait::new(world);
             store.session_chip_bonus(session_id).bonus_units
+        }
+
+        fn get_session_charm_debt(self: @ContractState, session_id: u32, charm_id: u32) -> u32 {
+            let world = self.world(@NAMESPACE());
+            let store = StoreTrait::new(world);
+            store.session_charm_debt(session_id, charm_id).stored_score
         }
 
         fn get_session_item_purchase_price(self: @ContractState, session_id: u32, item_id: u32) -> u32 {
@@ -913,6 +948,163 @@ pub mod Play {
             if self.egs_session_has_token.entry(session_id).read() {
                 let token_id = self.egs_session_token.entry(session_id).read();
                 Self::post_egs_action(self, token_id);
+            }
+        }
+
+        fn collect_debt_for_charm(
+            ref store: Store,
+            ref session: Session,
+            session_id: u32,
+            player: ContractAddress,
+            charm_id: u32,
+            collect_amount: u32,
+        ) -> u32 {
+            let collected = if session.score < collect_amount { session.score } else { collect_amount };
+            if collected == 0 {
+                return store.session_charm_debt(session_id, charm_id).stored_score;
+            }
+
+            let mut debt = store.session_charm_debt(session_id, charm_id);
+            debt.session_id = session_id;
+            debt.charm_id = charm_id;
+            debt.stored_score += collected;
+            session.score -= collected;
+            store.set_session_charm_debt(@debt);
+            store
+                .emit_charm_debt_collected(
+                    @CharmDebtCollected {
+                        session_id,
+                        player,
+                        charm_id,
+                        collected_score: collected,
+                        stored_score: debt.stored_score,
+                        new_score: session.score,
+                        new_total_score: session.total_score,
+                    },
+                );
+            debt.stored_score
+        }
+
+        fn pay_debt_for_charm(
+            ref store: Store,
+            ref session: Session,
+            session_id: u32,
+            player: ContractAddress,
+            charm_id: u32,
+            stored_score: u32,
+            multiplier: u32,
+        ) {
+            if stored_score == 0 {
+                return;
+            }
+
+            let payout = stored_score * multiplier;
+            session.score += payout;
+            session.total_score += payout;
+            store
+                .set_session_charm_debt(
+                    @SessionCharmDebt { session_id, charm_id, stored_score: 0 },
+                );
+            store
+                .emit_charm_debt_paid(
+                    @CharmDebtPaid {
+                        session_id,
+                        player,
+                        charm_id,
+                        stored_score,
+                        multiplier,
+                        payout_score: payout,
+                        new_score: session.score,
+                        new_total_score: session.total_score,
+                    },
+                );
+        }
+
+        fn process_debt_pledges(
+            ref store: Store,
+            ref session: Session,
+            session_id: u32,
+            player: ContractAddress,
+            has_boxing_globes: bool,
+            has_morellonomicon: bool,
+            previous_is_666: bool,
+            current_is_666: bool,
+            pattern_type_mask: u8,
+        ) {
+            if has_boxing_globes {
+                let stored_score = Self::collect_debt_for_charm(
+                    ref store, ref session, session_id, player, 26, 5,
+                );
+                if previous_is_666 && current_is_666 {
+                    Self::pay_debt_for_charm(
+                        ref store, ref session, session_id, player, 26, stored_score, 10,
+                    );
+                }
+            }
+
+            if has_morellonomicon {
+                let stored_score = Self::collect_debt_for_charm(
+                    ref store, ref session, session_id, player, 27, 10,
+                );
+                if pattern_type_mask == 7 {
+                    Self::pay_debt_for_charm(
+                        ref store, ref session, session_id, player, 27, stored_score, 12,
+                    );
+                }
+            }
+        }
+
+        fn default_debt_for_charm(
+            ref store: Store,
+            session_id: u32,
+            player: ContractAddress,
+            charm_id: u32,
+        ) {
+            let debt = store.session_charm_debt(session_id, charm_id);
+            if debt.stored_score == 0 {
+                return;
+            }
+
+            store
+                .set_session_charm_debt(
+                    @SessionCharmDebt { session_id, charm_id, stored_score: 0 },
+                );
+            store
+                .emit_charm_debt_defaulted(
+                    @CharmDebtDefaulted {
+                        session_id, player, charm_id, stored_score: debt.stored_score,
+                    },
+                );
+        }
+
+        fn default_debt_pledges(
+            ref store: Store,
+            session_id: u32,
+            player: ContractAddress,
+            has_boxing_globes: bool,
+            has_morellonomicon: bool,
+        ) {
+            if has_boxing_globes {
+                Self::default_debt_for_charm(ref store, session_id, player, 26);
+            }
+            if has_morellonomicon {
+                Self::default_debt_for_charm(ref store, session_id, player, 27);
+            }
+        }
+
+        fn default_debt_pledges_for_ids(
+            ref store: Store,
+            session_id: u32,
+            player: ContractAddress,
+            charm_ids: Span<u32>,
+        ) {
+            let mut i: u32 = 0;
+            while i != charm_ids.len() {
+                let charm_id = *charm_ids.at(i);
+                if charm_id == 26 || charm_id == 27 {
+                    Self::default_debt_for_charm(ref store, session_id, player, charm_id);
+                }
+                i += 1;
             }
         }
 

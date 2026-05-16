@@ -129,11 +129,7 @@ export default function CharmForgeAnimation({
                                     y: reduceMotion ? 0 : [y, y * 0.74, 0],
                                     scale: reduceMotion ? [0.9, 0.65] : [0.78, 1, 0.16],
                                     rotate: index % 2 ? [9, -15, 80] : [-9, 18, -80],
-                                    filter: [
-                                        `drop-shadow(0 0 8px ${color})`,
-                                        `drop-shadow(0 0 24px ${color})`,
-                                        "drop-shadow(0 0 34px #FF841C)",
-                                    ],
+                                    filter: ["none", "none", "none"],
                                 }
                                 : { opacity: 0, scale: 0.12 }}
                             transition={{ duration: reduceMotion ? 0.65 : 1.22, ease: "easeInOut", delay: index * 0.08 }}
@@ -181,11 +177,7 @@ export default function CharmForgeAnimation({
                     animate={phase === "reveal" && !reduceMotion
                         ? {
                             scale: [1, 1.06, 1],
-                            filter: [
-                                `drop-shadow(0 0 18px ${resultColor}) drop-shadow(0 0 44px rgba(255,132,28,0.58))`,
-                                `drop-shadow(0 0 30px ${resultColor}) drop-shadow(0 0 70px rgba(255,132,28,0.8))`,
-                                `drop-shadow(0 0 20px ${resultColor}) drop-shadow(0 0 46px rgba(255,132,28,0.58))`,
-                            ],
+                            filter: ["none", "none", "none"],
                         }
                         : {}}
                     transition={{ duration: 1.1, repeat: phase === "reveal" ? Infinity : 0 }}
@@ -226,9 +218,7 @@ export default function CharmForgeAnimation({
                     height: min(82vw, 700px);
                     border: 2px solid rgba(255,132,28,0.28);
                     border-radius: 50%;
-                    box-shadow:
-                        inset 0 0 55px rgba(255,60,0,0.26),
-                        0 0 76px rgba(255,60,0,0.22);
+                    box-shadow: none;
                     animation: abyssForgeSpin 5.4s linear infinite;
                 }
 
@@ -274,7 +264,7 @@ export default function CharmForgeAnimation({
                     width: min(22vw, 160px);
                     height: 120vh;
                     background: linear-gradient(90deg, transparent, rgba(255,132,28,0.24), rgba(255,245,215,0.24), rgba(255,132,28,0.24), transparent);
-                    filter: blur(10px);
+                    filter: none;
                     transform: rotate(9deg);
                     animation: abyssForgeBeam 0.9s ease-in-out infinite alternate;
                 }
@@ -284,7 +274,7 @@ export default function CharmForgeAnimation({
                     bottom: -30px;
                     border-radius: 999px;
                     background: #FF841C;
-                    box-shadow: 0 0 12px #FF841C, 0 0 24px rgba(255,60,0,0.78);
+                    box-shadow: none;
                     animation-name: abyssForgeEmberRise;
                     animation-timing-function: ease-out;
                     animation-iteration-count: infinite;
@@ -296,10 +286,7 @@ export default function CharmForgeAnimation({
                     color: #FFF3C7;
                     font-size: clamp(14px, 3vw, 30px);
                     letter-spacing: 0.08em;
-                    text-shadow:
-                        0 0 10px rgba(255,243,199,0.82),
-                        0 0 28px rgba(255,132,28,0.64),
-                        4px 4px 0 rgba(42,0,0,0.9);
+                    text-shadow: 4px 4px 0 rgba(42,0,0,0.9);
                     text-align: center;
                 }
 
@@ -326,7 +313,7 @@ export default function CharmForgeAnimation({
                     height: 100%;
                     object-fit: contain;
                     image-rendering: pixelated;
-                    filter: drop-shadow(0 0 10px rgba(255,132,28,0.45));
+                    filter: none;
                 }
 
                 .abyss-forge-crack {
@@ -335,7 +322,7 @@ export default function CharmForgeAnimation({
                     height: 2px;
                     background: linear-gradient(90deg, transparent, rgba(255,245,215,0.9), rgba(255,132,28,0.88), transparent);
                     opacity: 0;
-                    box-shadow: 0 0 18px rgba(255,132,28,0.8);
+                    box-shadow: none;
                     animation: abyssForgeCrack 0.72s ease-out forwards;
                 }
 
@@ -368,9 +355,7 @@ export default function CharmForgeAnimation({
                     height: 220px;
                     object-fit: contain;
                     image-rendering: pixelated;
-                    filter:
-                        drop-shadow(0 0 18px var(--forge-rarity))
-                        drop-shadow(0 0 52px rgba(255,132,28,0.62));
+                    filter: none;
                 }
 
                 .abyss-forge-result-name {

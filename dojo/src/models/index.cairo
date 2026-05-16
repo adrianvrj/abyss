@@ -266,6 +266,16 @@ pub struct SessionCharmEntry {
     pub charm_id: u32,
 }
 
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct SessionCharmDebt {
+    #[key]
+    pub session_id: u32,
+    #[key]
+    pub charm_id: u32,
+    pub stored_score: u32,
+}
+
 // Pre-run charm loadout: whitelist of charm IDs allowed to appear in the
 // market during this session. Does NOT grant luck or retriggers — it only
 // restricts the market's charm candidate pool. Empty (all zeros) means no

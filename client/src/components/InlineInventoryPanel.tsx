@@ -4,6 +4,7 @@ import {
     getItemInfo,
     ContractItem,
     getCharmInfo,
+    getSessionCharmDebt,
     ItemEffectType,
 } from '@/utils/abyssContract';
 import { getItemImage } from '@/utils/itemImages';
@@ -26,6 +27,7 @@ interface InlineInventoryPanelProps {
     bibliaBroken?: boolean;
     practiceMode?: boolean;
     practiceItems?: ContractItem[];
+    charmDebtScores?: Record<number, number>;
 }
 
 export default function InlineInventoryPanel({
@@ -40,6 +42,7 @@ export default function InlineInventoryPanel({
     bibliaBroken = false,
     practiceMode = false,
     practiceItems = [],
+    charmDebtScores = {},
 }: InlineInventoryPanelProps) {
     const isPersistedInventoryItem = (item: ContractItem) => item.effect_type !== ItemEffectType.SpinBonus;
 
@@ -48,6 +51,7 @@ export default function InlineInventoryPanel({
     const [ownedItems, setOwnedItems] = useState<ContractItem[]>(initialInventory);
     const [hoveredItem, setHoveredItem] = useState<ContractItem | null>(null);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [fetchedDebtScores, setFetchedDebtScores] = useState<Record<number, number>>({});
     const latestInventoryRequestRef = useRef(0);
 
     const handleNext = () => setCurrentIndex((prev) => (prev + 1) % 7);
@@ -162,6 +166,44 @@ export default function InlineInventoryPanel({
 
     const inventoryCount = displayItems.length;
     const slots = Array.from({ length: 7 }, (_, i) => displayItems[i] || null);
+    const debtScores = { ...fetchedDebtScores, ...charmDebtScores };
+    const debtItemSignature = displayItems
+        .filter((item) => item.item_id === 1026 || item.item_id === 1027)
+        .map((item) => item.item_id)
+        .join(",");
+
+    useEffect(() => {
+        if (practiceMode || !sessionId || !debtItemSignature) {
+            if (practiceMode) setFetchedDebtScores({});
+            return;
+        }
+
+        let cancelled = false;
+        const loadDebt = async () => {
+            const entries = await Promise.all(
+                debtItemSignature.split(",").filter(Boolean).map(async (itemIdText) => {
+                    const charmId = Number(itemIdText) - 1000;
+                    const stored = await getSessionCharmDebt(sessionId, charmId).catch(() => 0);
+                    return [charmId, stored] as const;
+                }),
+            );
+            if (!cancelled) {
+                setFetchedDebtScores(Object.fromEntries(entries));
+            }
+        };
+
+        void loadDebt();
+        return () => {
+            cancelled = true;
+        };
+    }, [debtItemSignature, practiceMode, sessionId, refreshTrigger]);
+
+    const getDebtScoreForItem = (item: ContractItem | null | undefined) => {
+        if (!item || (item.item_id !== 1026 && item.item_id !== 1027)) {
+            return 0;
+        }
+        return debtScores[item.item_id - 1000] ?? 0;
+    };
 
     return (
         <div className="inline-inventory-panel">
@@ -169,6 +211,7 @@ export default function InlineInventoryPanel({
             <div className="inventory-slots desktop-view">
                 {slots.map((item, index) => {
                     const isSelling = item && sellingItemId !== undefined && item.item_id === sellingItemId;
+                    const debtScore = getDebtScoreForItem(item);
                     return (
                         <div
                             key={index}
@@ -196,10 +239,21 @@ export default function InlineInventoryPanel({
                                 </div>
                             )}
 
+                            {debtScore > 0 && !isSelling && (
+                                <div className="debt-ledger-badge">
+                                    {debtScore}
+                                </div>
+                            )}
+
                             {hoveredItem && item && hoveredItem.item_id === item.item_id && !isSelling && (
                                 <div className="item-tooltip">
                                     <div className="tooltip-name">{item.name}</div>
                                     <div className="tooltip-effect">{formatItemEffect(item)}</div>
+                                    {debtScore > 0 && (
+                                        <div className="tooltip-debt">
+                                            HELD DEBT: {debtScore}
+                                        </div>
+                                    )}
                                     <div style={{
                                         marginTop: '4px',
                                         fontSize: '10px',
@@ -249,6 +303,14 @@ export default function InlineInventoryPanel({
                 <div className="carousel-display">
                     {slots[currentIndex] ? (
                         <>
+                            {(() => {
+                                const mobileDebtScore = getDebtScoreForItem(slots[currentIndex]);
+                                return mobileDebtScore > 0 ? (
+                                    <div className="carousel-debt-ledger">
+                                        HELD DEBT: {mobileDebtScore}
+                                    </div>
+                                ) : null;
+                            })()}
                             <div className="carousel-image">
                                 <img
                                     src={slots[currentIndex]?.image || getItemImage(slots[currentIndex]?.item_id || 1)}
@@ -350,6 +412,18 @@ export default function InlineInventoryPanel({
                     background: #000;
                     padding: 6px 10px;
                     border-radius: 4px;
+                }
+                .carousel-debt-ledger {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 8px;
+                    color: #FFE08A;
+                    border: 1px solid rgba(255, 132, 28, 0.65);
+                    background: rgba(255, 132, 28, 0.14);
+                    box-shadow: none;
+                    padding: 7px 9px;
+                    border-radius: 4px;
+                    margin-bottom: 12px;
+                    letter-spacing: 0.5px;
                 }
                 .carousel-empty {
                     display: flex;
@@ -466,6 +540,23 @@ export default function InlineInventoryPanel({
                     justify-content: center;
                     transition: all 0.2s;
                 }
+                .debt-ledger-badge {
+                    position: absolute;
+                    right: -7px;
+                    bottom: -7px;
+                    min-width: 22px;
+                    height: 16px;
+                    padding: 0 4px;
+                    border-radius: 3px;
+                    border: 1px solid #FF841C;
+                    background: #190800;
+                    color: #FFE08A;
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 7px;
+                    line-height: 16px;
+                    text-align: center;
+                    box-shadow: none;
+                }
                 .inv-slot.has-item {
                     cursor: pointer;
                     border-color: #FF841C;
@@ -517,6 +608,17 @@ export default function InlineInventoryPanel({
                     font-size: 8px;
                     color: #FFEA00;
                     margin-bottom: 6px;
+                    text-align: center;
+                }
+                .tooltip-debt {
+                    font-family: 'PressStart2P', monospace;
+                    font-size: 7px;
+                    color: #FFE08A;
+                    background: rgba(255, 132, 28, 0.12);
+                    border: 1px solid rgba(255, 132, 28, 0.5);
+                    border-radius: 3px;
+                    padding: 5px 6px;
+                    margin: 6px 0;
                     text-align: center;
                 }
                 .tooltip-action {

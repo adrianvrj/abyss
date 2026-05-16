@@ -5,6 +5,7 @@ export enum CharmEffectType {
   PatternRetrigger = 8,
   ExtraSpinWithLuck = 9,
   ConditionalLuckBoost = 10,
+  DebtPledge = 12,
 }
 
 export enum CharmConditionType {
@@ -15,6 +16,8 @@ export enum CharmConditionType {
   LowScore = 4,
   HighLevel = 5,
   Blocked666 = 6,
+  Consecutive666 = 7,
+  AllPatternTypesSameSpin = 8,
 }
 
 export interface CharmContractMetadata {
@@ -101,6 +104,18 @@ function formatPositiveLuck(value: number) {
   return `+${value} Luck`;
 }
 
+function describeDebtPledge(metadata: CharmContractMetadata) {
+  const collect = metadata.effectValue;
+  const multiplier = metadata.effectValue2;
+  if (metadata.conditionType === CharmConditionType.Consecutive666) {
+    return `Pledge ${collect}/spin. 666 x2 pays x${multiplier}.`;
+  }
+  if (metadata.conditionType === CharmConditionType.AllPatternTypesSameSpin) {
+    return `Pledge ${collect}/spin. H+V+D pays x${multiplier}.`;
+  }
+  return `Pledge ${collect}/spin. Pays x${multiplier}.`;
+}
+
 export function getCharmRarityLabel(rarity: number) {
   switch (rarity) {
     case 0:
@@ -160,13 +175,21 @@ export function describeCharmEffect(metadata: CharmContractMetadata | null) {
     return formatPositiveLuck(metadata.effectValue);
   }
 
-    if (metadata.effectType === CharmEffectType.PatternRetrigger) {
-      if (metadata.effectValue2 === 0) {
+  if (metadata.effectType === CharmEffectType.DebtPledge) {
+    return describeDebtPledge(metadata);
+  }
+
+  if (metadata.effectType === CharmEffectType.PatternRetrigger) {
+    if (metadata.effectValue2 === 0) {
       return `All non-jackpot patterns trigger x${metadata.effectValue}`;
-      }
+    }
 
     if (metadata.effectValue2 === 1) {
       return `Horizontal patterns trigger x${metadata.effectValue}`;
+    }
+
+    if (metadata.effectValue2 === 2) {
+      return `Vertical patterns trigger x${metadata.effectValue}`;
     }
 
     if (metadata.effectValue2 === 3) {
@@ -286,6 +309,7 @@ export function getCharmPatternRetriggerBonuses(
   metadataList: Array<CharmContractMetadata | null | undefined>,
 ): CharmPatternRetriggerBonuses {
   let horizontal = 1;
+  let vertical = 1;
   let diagonal = 1;
   let all = 1;
   let jackpot = 1;
@@ -307,6 +331,8 @@ export function getCharmPatternRetriggerBonuses(
       all = metadata.effectValue;
     } else if (metadata.effectValue2 === 1) {
       horizontal = metadata.effectValue;
+    } else if (metadata.effectValue2 === 2) {
+      vertical = metadata.effectValue;
     } else if (metadata.effectValue2 === 3) {
       diagonal = metadata.effectValue;
     } else if (metadata.effectValue2 === 5) {
@@ -316,12 +342,13 @@ export function getCharmPatternRetriggerBonuses(
 
   if (all > 1) {
     horizontal = Math.max(horizontal, all);
+    vertical = Math.max(vertical, all);
     diagonal = Math.max(diagonal, all);
   }
 
   return {
     horizontal,
-    vertical: all,
+    vertical,
     diagonal,
     jackpot,
   };

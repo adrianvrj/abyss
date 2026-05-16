@@ -116,7 +116,7 @@ export default function TrickyDiceCashOutAnimation({
                     fontSize: "clamp(54px, 15vw, 180px)",
                     lineHeight: 1,
                     color: "#FFDD72",
-                    textShadow: "0 0 24px rgba(255, 197, 74, 0.55)",
+                    textShadow: "none",
                     letterSpacing: "0.08em",
                 }}
             >
@@ -136,8 +136,7 @@ export default function TrickyDiceCashOutAnimation({
                     textAlign: "center",
                     fontFamily: "'PressStart2P', monospace",
                     color: "#FFF4CA",
-                    textShadow:
-                        "0 0 10px rgba(255, 244, 202, 0.88), 0 0 26px rgba(255, 164, 46, 0.56), 4px 4px 0 rgba(50, 20, 0, 0.92)",
+                    textShadow: "4px 4px 0 rgba(50, 20, 0, 0.92)",
                     padding: "24px",
                 }}
             >
@@ -153,17 +152,13 @@ export default function TrickyDiceCashOutAnimation({
                     <motion.div
                         animate={{ rotate: [0, 180, 360], scale: [0.96, 1.08, 1] }}
                         transition={{ duration: 0.92, ease: "easeOut" }}
-                        className="abyss-cashout-dice-glow"
+                        className="abyss-cashout-dice-frame"
                     />
                     <motion.img
                         src="/images/item41.png"
                         alt="Tricky Dice"
                         animate={{
-                            filter: [
-                                "drop-shadow(0 0 18px rgba(255, 240, 186, 0.95)) drop-shadow(0 0 44px rgba(255, 160, 40, 0.64))",
-                                "drop-shadow(0 0 24px rgba(255, 240, 186, 0.98)) drop-shadow(0 0 60px rgba(255, 125, 0, 0.84))",
-                                "drop-shadow(0 0 18px rgba(255, 232, 162, 0.78)) drop-shadow(0 0 30px rgba(255, 125, 0, 0.46))",
-                            ],
+                            filter: ["none", "none", "none"],
                             scale: [1, 1.08, 0.98],
                         }}
                         transition={{ duration: 0.76, ease: "easeOut" }}
@@ -215,9 +210,7 @@ export default function TrickyDiceCashOutAnimation({
                             height: min(80vw, 700px);
                             border-radius: 50%;
                             border: 2px solid rgba(255, 194, 98, 0.24);
-                            box-shadow:
-                                inset 0 0 56px rgba(255, 155, 56, 0.22),
-                                0 0 80px rgba(255, 143, 28, 0.2);
+                            box-shadow: none;
                             animation: abyssCashoutPulse 3.4s ease-in-out infinite;
                         }
 
@@ -254,7 +247,7 @@ export default function TrickyDiceCashOutAnimation({
                             bottom: -26px;
                             border-radius: 999px;
                             background: #FFD46E;
-                            box-shadow: 0 0 14px #FFD46E, 0 0 28px rgba(255, 128, 0, 0.7);
+                            box-shadow: none;
                             animation-name: abyssCashoutSparkRise;
                             animation-timing-function: ease-out;
                             animation-iteration-count: infinite;
@@ -269,16 +262,16 @@ export default function TrickyDiceCashOutAnimation({
                             border-radius: 50%;
                             border: 2px solid rgba(86, 42, 0, 0.7);
                             background: radial-gradient(circle at 30% 30%, #ffe6a6, #ffad33 62%, #d96300 100%);
-                            box-shadow: 0 0 16px rgba(255, 178, 78, 0.46);
+                            box-shadow: none;
                             animation: abyssCashoutChipBurst 1.4s ease-out forwards;
                             opacity: 0;
                         }
 
-                        .abyss-cashout-dice-glow {
+                        .abyss-cashout-dice-frame {
                             position: absolute;
                             inset: 10%;
                             border-radius: 26px;
-                            box-shadow: 0 0 48px rgba(255, 167, 63, 0.48);
+                            box-shadow: none;
                         }
 
                         @keyframes abyssCashoutPulse {

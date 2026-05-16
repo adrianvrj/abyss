@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://abyssgame.fun';
 
 // Soul Charms metadata configuration
-// Matches the 20 charms defined in SOUL_CHARMS_IMPLEMENTATION.md
+// Matches the charm definitions in dojo/src/helpers/charm_types.cairo
 const CHARM_METADATA: Record<string, {
     name: string;
     description: string;
@@ -229,6 +229,76 @@ const CHARM_METADATA: Record<string, {
         effect_description: "+2 spins with +80 luck",
         luck_value: 80,
         shop_cost: 5
+    },
+    "21": {
+        name: "Big Diamond",
+        description: "A suspiciously affordable diamond with a tiny lien stamped on the back.",
+        image: `${BASE_URL}/images/charms/21.png`,
+        rarity: "Common",
+        effect_type: "LuckBoost",
+        effect_description: "+15 luck permanently",
+        luck_value: 15,
+        shop_cost: 1
+    },
+    "22": {
+        name: "Supernova Nacho",
+        description: "Convenience-store cheese heated past regulation and blessed by a bored cashier.",
+        image: `${BASE_URL}/images/charms/22.png`,
+        rarity: "Common",
+        effect_type: "ConditionalLuckBoost",
+        effect_description: "+22 luck when last spin had no patterns",
+        luck_value: 22,
+        shop_cost: 1
+    },
+    "23": {
+        name: "Magic Bean",
+        description: "One bean, many clauses. Keep your receipt.",
+        image: `${BASE_URL}/images/charms/23.png`,
+        rarity: "Common",
+        effect_type: "ConditionalLuckBoost",
+        effect_description: "+9 luck per item in inventory",
+        luck_value: 9,
+        shop_cost: 1
+    },
+    "24": {
+        name: "Ice King Crown",
+        description: "A pawn-shop crown that makes vertical lines file duplicate paperwork.",
+        image: `${BASE_URL}/images/charms/24.png`,
+        rarity: "Rare",
+        effect_type: "PatternRetrigger",
+        effect_description: "Vertical patterns trigger twice",
+        luck_value: 0,
+        shop_cost: 2
+    },
+    "25": {
+        name: "Antimatter",
+        description: "A sealed office-supply jar marked DO NOT SHAKE, currently shaking.",
+        image: `${BASE_URL}/images/charms/25.png`,
+        rarity: "Rare",
+        effect_type: "ExtraSpinWithLuck",
+        effect_description: "+2 spins with +28 luck",
+        luck_value: 28,
+        shop_cost: 2
+    },
+    "26": {
+        name: "Boxing Globes",
+        description: "Desktop globes that punch tiny deductions into your account until 666 repeats.",
+        image: `${BASE_URL}/images/charms/26.png`,
+        rarity: "Epic",
+        effect_type: "DebtPledge",
+        effect_description: "Pledges up to 5 score each spin; two 666 spins in a row pays stored score x10",
+        luck_value: 0,
+        shop_cost: 3
+    },
+    "27": {
+        name: "Morellonomicon",
+        description: "A cursed mushroom ledger with loyalty stamps for inadvisable geometry.",
+        image: `${BASE_URL}/images/charms/27.png`,
+        rarity: "Legendary",
+        effect_type: "DebtPledge",
+        effect_description: "Pledges up to 10 score each spin; horizontal, vertical, and diagonal in one spin pays stored score x12",
+        luck_value: 0,
+        shop_cost: 3
     }
 };
 

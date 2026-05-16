@@ -179,7 +179,7 @@ const styles = {
     },
     sessionCardHover: {
         border: "2px solid #FF841C",
-        boxShadow: "0 0 20px rgba(255, 132, 28, 0.3)",
+        boxShadow: "none",
     },
     sessionInfo: {
         display: "flex",
@@ -244,7 +244,7 @@ const styles = {
         lineHeight: 1.5,
         background: "rgba(0, 0, 0, 0.68)",
         borderRadius: "999px",
-        textShadow: "0 0 12px rgba(255,132,28,0.88), 0 2px 10px #000, 0 0 2px #000",
+        textShadow: "0 2px 10px #000",
         textTransform: "uppercase" as const,
         whiteSpace: "nowrap" as const,
     },
@@ -271,7 +271,7 @@ const styles = {
         display: "flex",
         flexDirection: "column" as const,
         gap: "12px",
-        boxShadow: "0 0 0 1px rgba(255,132,28,0.08) inset",
+        boxShadow: "none",
     },
     perksHeader: {
         fontFamily: "'PressStart2P', monospace",
@@ -1523,7 +1523,7 @@ export function SessionsContent() {
                             borderRadius: 12,
                             background: "#0a0402",
                             padding: "12px 14px",
-                            boxShadow: "0 0 0 1px rgba(255,132,28,0.08) inset",
+                            boxShadow: "none",
                             display: "flex",
                             flexDirection: "column",
                             gap: 10,

@@ -32,7 +32,7 @@ const REFRESH_MARKET_PROFILE_ITERATIONS: u32 = 24;
 #[test]
 fn profile_execute_spin_hot_path() {
     let probability_bonuses = (8, 5, 3, 2, 1);
-    let retrigger_bonuses = (2, 2, 2, 1);
+    let retrigger_bonuses = (2, 2, 2, 2, 1);
     let pattern_bonuses = (25, 40, 75, 30, 35, 50);
     let symbol_scores = (7, 5, 4, 3, 2);
 
@@ -40,7 +40,8 @@ fn profile_execute_spin_hot_path() {
     let mut i: u32 = 0;
     while i != PROFILE_ITERATIONS {
         let random_word: felt252 = (0xAB55_u32 + i).into();
-        let (score, patterns, is_666, is_jackpot, grid, matches) = SpinnableImpl::execute_spin(
+        let (score, patterns, is_666, is_jackpot, grid, pattern_mask, matches) =
+            SpinnableImpl::execute_spin(
             random_word,
             24,
             probability_bonuses,
@@ -55,6 +56,7 @@ fn profile_execute_spin_hot_path() {
         let (m7, md, mc, m_coin, ml) = matches;
         checksum += score.into();
         checksum += patterns.into();
+        checksum += pattern_mask.into();
         checksum += (*grid.at(0)).into();
         checksum += (*grid.at(7)).into();
         checksum += (*grid.at(14)).into();

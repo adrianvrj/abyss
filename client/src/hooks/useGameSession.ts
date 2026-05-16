@@ -202,6 +202,14 @@ export function useGameSession(sessionId: string | null) {
     const [luckyScoreBoostTotal, setLuckyScoreBoostTotal] = useState(0);
     const [luckyScoreBoostBonus, setLuckyScoreBoostBonus] = useState(0);
     const [showCashOutAnimation, setShowCashOutAnimation] = useState(false);
+    const [debtFeedback, setDebtFeedback] = useState<string | null>(null);
+    const [charmDebtScores, setCharmDebtScores] = useState<Record<number, number>>({});
+    const [debtPayoutAnimation, setDebtPayoutAnimation] = useState<{
+        charmId: number;
+        storedScore: number;
+        multiplier: number;
+        payoutScore: number;
+    } | null>(null);
 
     // Relic State
     const [equippedRelic, setEquippedRelic] = useState<OwnedRelic | null>(null);
@@ -236,6 +244,11 @@ export function useGameSession(sessionId: string | null) {
     // Audio
     const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
     const spinSoundRef = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        setCharmDebtScores({});
+        setDebtPayoutAnimation(null);
+    }, [sessionId]);
 
     const loadChipEconomyConfig = useCallback(async () => {
         if (chipEconomyConfigRef.current) {
@@ -753,6 +766,7 @@ export function useGameSession(sessionId: string | null) {
         setShowLuckyScoreBoostAnimation(false);
         setLuckyScoreBoostTotal(0);
         setLuckyScoreBoostBonus(0);
+        setDebtFeedback(null);
         setBibliaBroken(false);
         spinSoundRef.current = playSound('spin');
 
@@ -775,6 +789,10 @@ export function useGameSession(sessionId: string | null) {
             });
             const events = await requestSpin(Number(sessionId));
             logSpinDebug('spin:events', events);
+            const latestDebtPaid = events.charmDebtPaid.at(-1) ?? null;
+            const latestDebtCollected = events.charmDebtCollected.at(-1) ?? null;
+            const latestDebtScoreEvent = latestDebtPaid ?? latestDebtCollected;
+            const latestDebtDefaulted = events.charmDebtDefaulted.at(-1) ?? null;
 
             if (spinSoundRef.current) {
                 spinSoundRef.current.pause();
@@ -797,7 +815,7 @@ export function useGameSession(sessionId: string | null) {
                 setHasSpunOnce(true);
                 spinCountVisitRef.current += 1;
                 const spinOrdinal = spinCountVisitRef.current;
-                const resolvedScore = spin.is666 ? 0 : score + spin.scoreGained;
+                const resolvedScore = latestDebtScoreEvent?.newScore ?? (spin.is666 ? 0 : score + spin.scoreGained);
                 if (spinOrdinal === 1) {
                     captureAbyss("first_spin_completed", {
                         session_id: Number(sessionId),
@@ -816,7 +834,7 @@ export function useGameSession(sessionId: string | null) {
                         level: spin.newLevel,
                     });
                 }
-                setScore(prev => spin.is666 ? 0 : prev + spin.scoreGained);
+                setScore(prev => latestDebtScoreEvent?.newScore ?? (spin.is666 ? 0 : prev + spin.scoreGained));
                 setLevel(spin.newLevel);
                 if (spin.symbolScores?.length === 5) setSymbolScores(spin.symbolScores);
                 setSpinsRemaining(spin.spinsRemaining);
@@ -824,6 +842,43 @@ export function useGameSession(sessionId: string | null) {
                 setBlocked666(spin.is666);
                 if (spin.currentLuck !== undefined) setCurrentLuck(spin.currentLuck);
                 setDiamondChipBonusUnits(spin.chipBonusUnits);
+
+                if (
+                    events.charmDebtCollected.length > 0 ||
+                    events.charmDebtPaid.length > 0 ||
+                    events.charmDebtDefaulted.length > 0
+                ) {
+                    setCharmDebtScores(prev => {
+                        const next = { ...prev };
+                        for (const debtEvent of events.charmDebtCollected) {
+                            next[debtEvent.charmId] = debtEvent.storedScore;
+                        }
+                        for (const debtEvent of events.charmDebtPaid) {
+                            next[debtEvent.charmId] = 0;
+                        }
+                        for (const debtEvent of events.charmDebtDefaulted) {
+                            next[debtEvent.charmId] = 0;
+                        }
+                        return next;
+                    });
+                }
+
+                if (latestDebtPaid) {
+                    setDebtPayoutAnimation({
+                        charmId: latestDebtPaid.charmId,
+                        storedScore: latestDebtPaid.storedScore,
+                        multiplier: latestDebtPaid.multiplier,
+                        payoutScore: latestDebtPaid.payoutScore,
+                    });
+                    setDebtFeedback(`Charm #${latestDebtPaid.charmId} paid ${latestDebtPaid.payoutScore} score`);
+                    window.setTimeout(() => setDebtFeedback(null), 2200);
+                } else if (latestDebtCollected) {
+                    setDebtFeedback(`Charm #${latestDebtCollected.charmId} pledged ${latestDebtCollected.collectedScore} score (${latestDebtCollected.storedScore} stored)`);
+                    window.setTimeout(() => setDebtFeedback(null), 2200);
+                } else if (latestDebtDefaulted) {
+                    setDebtFeedback(`Charm #${latestDebtDefaulted.charmId} defaulted ${latestDebtDefaulted.storedScore} stored score`);
+                    window.setTimeout(() => setDebtFeedback(null), 2200);
+                }
 
                 if (spin.is666) {
                     setScoreResetPreviousScore(score);
@@ -939,7 +994,8 @@ export function useGameSession(sessionId: string | null) {
                         // `newTotalScore` is the lifetime/leaderboard score. The final
                         // session balance shown in game over and used for CHIP payout is
                         // `session.score`, which can be lower after market spending.
-                        const fallbackFinalBalance = spin.is666 ? 0 : score + spin.scoreGained;
+                        const fallbackFinalBalance = latestDebtScoreEvent?.newScore ?? (spin.is666 ? 0 : score + spin.scoreGained);
+                        const fallbackFinalLifetimeScore = latestDebtScoreEvent?.newTotalScore ?? spin.newTotalScore;
                         const finalDiamondBonus = spin.chipBonusUnits;
 
                         // Still fetch session for background sync/other fields
@@ -955,7 +1011,7 @@ export function useGameSession(sessionId: string | null) {
                             : fallbackFinalBalance;
                         const finalLifetimeScore = latestSessionMatchesSpin
                             ? latestSession.totalScore
-                            : spin.newTotalScore;
+                            : fallbackFinalLifetimeScore;
                         await captureGameOverBuild();
 
                         setDiamondChipBonusUnits(finalDiamondBonus);
@@ -1308,8 +1364,10 @@ export function useGameSession(sessionId: string | null) {
         showCharmAnimation, mintedCharmInfo,
         showRelicActivation, showScoreResetAnimation, scoreResetPreviousScore,
         showLuckyScoreBoostAnimation, luckyScoreBoostTotal, luckyScoreBoostBonus, showCashOutAnimation,
+        debtFeedback, debtPayoutAnimation,
         setShowBibliaAnimation, setShowCharmAnimation, setMintedCharmInfo,
         setShowRelicActivation, setShowScoreResetAnimation, setShowLuckyScoreBoostAnimation, setShowCashOutAnimation, setGameOverReason,
+        setDebtPayoutAnimation,
 
         // Relics
         equippedRelic, ownedRelics, isActivatingRelic, isEquippingRelic,
@@ -1320,6 +1378,7 @@ export function useGameSession(sessionId: string | null) {
         inventoryRefreshTrigger, setInventoryRefreshTrigger,
         marketRefreshTrigger, setMarketRefreshTrigger, optimisticItems, setOptimisticItems,
         currentLuck, setCurrentLuck, lastMarketEvent, setLastMarketEvent, registerInventoryItemAcquired,
+        charmDebtScores, setCharmDebtScores,
 
         // Actions
         handleSpin, handleActivateRelic, handleEquipRelic, handleSellConfirm,

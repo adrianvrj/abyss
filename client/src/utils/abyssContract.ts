@@ -4,6 +4,7 @@ import {
   getAvailableBeastSessions as readAvailableBeastSessions,
   getGameItem,
   getSessionChipBonusUnits as readSessionChipBonusUnits,
+  getSessionCharmDebt as readSessionCharmDebt,
   getSessionInventoryCount as readSessionInventoryCount,
   getSessionLuck as readSessionLuck,
 } from "@/api/rpc/play";
@@ -422,6 +423,10 @@ export async function getAvailableBeastSessions(playerAddress: string): Promise<
 
 export async function getSessionChipBonusUnits(sessionId: number): Promise<number> {
   return readSessionChipBonusUnits(DEFAULT_CHAIN_ID, sessionId);
+}
+
+export async function getSessionCharmDebt(sessionId: number, charmId: number): Promise<number> {
+  return readSessionCharmDebt(DEFAULT_CHAIN_ID, sessionId, charmId);
 }
 
 export async function claimChips(sessionId: number, executor: any): Promise<any> {

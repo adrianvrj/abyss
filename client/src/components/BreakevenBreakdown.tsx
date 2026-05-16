@@ -168,7 +168,7 @@ export function BreakevenBreakdown({
                   borderRadius: "50%",
                   border: "2px solid #000",
                   transform: "translateX(-50%)",
-                  boxShadow: "0 0 8px rgba(255,132,28,0.5)",
+                  boxShadow: "none",
                 }}
               />
             )}
@@ -218,7 +218,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: "10px",
-    boxShadow: "0 0 0 1px rgba(255,132,28,0.08) inset",
+    boxShadow: "none",
   },
   header: {
     fontFamily: "'PressStart2P', monospace",

@@ -76,7 +76,7 @@ export default function RelicActivationAnimation({ relicName, onComplete }: Reli
                             width: '100%',
                             height: '100%',
                             objectFit: 'contain',
-                            filter: 'drop-shadow(0 0 40px rgba(255, 255, 255, 0.9))'
+                            filter: 'none'
                         }}
                     />
                 </motion.div>

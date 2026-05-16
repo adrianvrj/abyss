@@ -101,7 +101,7 @@ export function ChipBalanceBadge() {
           borderRadius: isMobile ? "12px" : "10px",
           boxShadow: isMobile
             ? "0 6px 18px rgba(0,0,0,0.35)"
-            : "0 0 0 1px rgba(255, 132, 28, 0.12), 0 10px 24px rgba(0,0,0,0.35)",
+            : "0 10px 24px rgba(0,0,0,0.35)",
           backdropFilter: "blur(6px)",
           minWidth: isMobile ? "unset" : undefined,
         }}

@@ -6,28 +6,24 @@ import { STATIC_CHARM_DEFINITIONS, type StaticCharmDefinition } from "@/lib/char
 
 const MAX_CHARMS = 3;
 
-const RARITY_PALETTE: Record<string, { border: string; glow: string; tint: string; label: string }> = {
+const RARITY_PALETTE: Record<string, { border: string; tint: string; label: string }> = {
     Common: {
         border: "#4B5563",
-        glow: "rgba(156, 163, 175, 0.35)",
         tint: "rgba(156, 163, 175, 0.08)",
         label: "#9CA3AF",
     },
     Rare: {
         border: "#2563EB",
-        glow: "rgba(59, 130, 246, 0.45)",
         tint: "rgba(59, 130, 246, 0.10)",
         label: "#60A5FA",
     },
     Epic: {
         border: "#7C3AED",
-        glow: "rgba(168, 85, 247, 0.50)",
         tint: "rgba(168, 85, 247, 0.12)",
         label: "#C084FC",
     },
     Legendary: {
         border: "#D97706",
-        glow: "rgba(255, 188, 48, 0.55)",
         tint: "rgba(255, 188, 48, 0.14)",
         label: "#FFD27A",
     },
@@ -63,7 +59,6 @@ export function CharmLoadoutModal({
     alreadyEquippedIds,
 }: CharmLoadoutModalProps) {
     const [error, setError] = useState<string | null>(null);
-    const [hoveredCharm, setHoveredCharm] = useState<number | null>(null);
 
     useEffect(() => {
         if (!isOpen) setError(null);
@@ -227,9 +222,7 @@ export function CharmLoadoutModal({
                                 borderRadius: 10,
                                 cursor: def && !isLocked ? "pointer" : "default",
                                 overflow: "hidden",
-                                boxShadow: def
-                                    ? `0 0 0 1px rgba(0,0,0,0.4) inset, 0 0 20px ${pal!.glow}`
-                                    : "none",
+                                boxShadow: "none",
                                 display: "flex",
                                 flexDirection: "column",
                                 alignItems: "center",
@@ -260,7 +253,7 @@ export function CharmLoadoutModal({
                                         style={{
                                             position: "absolute",
                                             inset: 0,
-                                            background: `radial-gradient(circle at 50% 55%, ${pal!.glow}, transparent 65%)`,
+                                            background: "transparent",
                                             pointerEvents: "none",
                                         }}
                                     />
@@ -272,7 +265,7 @@ export function CharmLoadoutModal({
                                             height: "58%",
                                             objectFit: "contain",
                                             imageRendering: "pixelated",
-                                            filter: `drop-shadow(0 0 8px ${pal!.glow})`,
+                                            filter: "none",
                                             zIndex: 1,
                                         }}
                                     />
@@ -440,7 +433,6 @@ export function CharmLoadoutModal({
                             const equipped = loadout.includes(def.charm_id);
                             const full = loadout.length >= MAX_CHARMS;
                             const disabled = !equipped && full;
-                            const isHovered = hoveredCharm === def.charm_id;
 
                             return (
                                 <motion.button
@@ -449,8 +441,6 @@ export function CharmLoadoutModal({
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.2, delay: i * 0.02 }}
-                                    onMouseEnter={() => setHoveredCharm(def.charm_id)}
-                                    onMouseLeave={() => setHoveredCharm(null)}
                                     onClick={() => {
                                         if (disabled) return;
                                         onToggle(def.charm_id);
@@ -474,11 +464,7 @@ export function CharmLoadoutModal({
                                         flexDirection: "column",
                                         alignItems: "center",
                                         gap: 6,
-                                        boxShadow: equipped
-                                            ? `0 0 14px ${pal.glow}`
-                                            : isHovered
-                                                ? `0 0 8px rgba(255,132,28,0.25)`
-                                                : "none",
+                                        boxShadow: "none",
                                         transition: "box-shadow 0.18s ease, border 0.18s ease",
                                     }}
                                 >
@@ -515,8 +501,8 @@ export function CharmLoadoutModal({
                                                 style={{
                                                     position: "absolute",
                                                     inset: -2,
-                                                    background: `radial-gradient(circle, ${pal.glow}, transparent 70%)`,
-                                                    filter: "blur(4px)",
+                                                    background: "transparent",
+                                                    filter: "none",
                                                 }}
                                             />
                                         )}
@@ -528,9 +514,7 @@ export function CharmLoadoutModal({
                                                 height: "100%",
                                                 objectFit: "contain",
                                                 imageRendering: "pixelated",
-                                                filter: equipped
-                                                    ? `drop-shadow(0 0 4px ${pal.glow})`
-                                                    : "grayscale(0.3)",
+                                                filter: equipped ? "none" : "grayscale(0.3)",
                                                 position: "relative",
                                                 zIndex: 1,
                                             }}

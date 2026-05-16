@@ -7,8 +7,9 @@ use ekubo::interfaces::router::IRouterDispatcher;
 use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
-    BibliaDiscarded, CashOutResolved, CharmMinted, ItemPurchased, ItemSold, MarketRefreshed,
-    PhantomActivated, RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
+    BibliaDiscarded, CashOutResolved, CharmDebtCollected, CharmDebtDefaulted, CharmDebtPaid,
+    CharmMinted, ItemPurchased, ItemSold, MarketRefreshed, PhantomActivated, RelicActivated,
+    RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
@@ -16,9 +17,9 @@ use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, PendingCharmLoadout, PlayerSessionEntry,
-    PlayerSessions, PlayerStreak, Session, SessionCharmEntry, SessionCharmLoadout, SessionCharms,
-    SessionInventory, SessionItemEntry, SessionItemIndex, SessionMarket, SessionChipBonus,
-    SessionItemPurchaseCount, SpinResult, TokenPairId,
+    PlayerSessions, PlayerStreak, Session, SessionCharmDebt, SessionCharmEntry,
+    SessionCharmLoadout, SessionCharms, SessionInventory, SessionItemEntry, SessionItemIndex,
+    SessionMarket, SessionChipBonus, SessionItemPurchaseCount, SpinResult, TokenPairId,
 };
 
 #[derive(Copy, Drop)]
@@ -282,6 +283,14 @@ pub impl StoreImpl of StoreTrait {
         self.world.write_model(entry)
     }
 
+    fn session_charm_debt(self: @Store, session_id: u32, charm_id: u32) -> SessionCharmDebt {
+        self.world.read_model((session_id, charm_id))
+    }
+
+    fn set_session_charm_debt(mut self: Store, debt: @SessionCharmDebt) {
+        self.world.write_model(debt)
+    }
+
     fn session_charm_loadout(self: @Store, session_id: u32) -> SessionCharmLoadout {
         self.world.read_model(session_id)
     }
@@ -371,6 +380,18 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_charm_minted(mut self: Store, event: @CharmMinted) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_charm_debt_collected(mut self: Store, event: @CharmDebtCollected) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_charm_debt_paid(mut self: Store, event: @CharmDebtPaid) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_charm_debt_defaulted(mut self: Store, event: @CharmDebtDefaulted) {
         self.world.emit_event(event);
     }
 

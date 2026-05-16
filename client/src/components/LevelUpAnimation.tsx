@@ -14,7 +14,7 @@ export default function LevelUpAnimation({ isVisible }: LevelUpAnimationProps) {
                             font-family: 'PressStart2P', monospace;
                             font-size: 48px;
                             color: #FFD700;
-                            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+                            text-shadow: none;
                         }
 
                         @media (max-width: 768px) {

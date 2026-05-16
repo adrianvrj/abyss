@@ -2,18 +2,18 @@
 pub impl SpinnableImpl of SpinnableTrait {
     /// Execute a spin machine cycle.
     /// Handles grid generation and pattern detection/scoring only.
-    /// Returns (score, pats_count, is_666, is_jackpot, grid, matches).
+    /// Returns (score, pats_count, is_666, is_jackpot, grid, pattern_type_mask, matches).
     fn execute_spin(
         random_word: felt252,
         luck: u32,
         probability_bonuses: (u32, u32, u32, u32, u32),
         coin_probability_penalty: u32,
         probability_666: u32,
-        retrigger_bonuses: (u32, u32, u32, u32),
+        retrigger_bonuses: (u32, u32, u32, u32, u32),
         pattern_bonuses: (u32, u32, u32, u32, u32, u32),
         symbol_scores: (u32, u32, u32, u32, u32),
         force_jackpot: bool,
-    ) -> (u32, u8, bool, bool, Array<u8>, (u32, u32, u32, u32, u32)) {
+    ) -> (u32, u8, bool, bool, Array<u8>, u8, (u32, u32, u32, u32, u32)) {
         // Generate grid
         let (mut grid, is_666, is_jackpot) = if force_jackpot {
             crate::helpers::grid::generate_jackpot_grid(random_word)
@@ -30,11 +30,13 @@ pub impl SpinnableImpl of SpinnableTrait {
         // Calculate score from patterns
         let g = grid.span();
         let (h3_bonus, h4_bonus, h5_bonus, vert_bonus, diag_bonus, jp_bonus) = pattern_bonuses;
-        let (h3_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger) = retrigger_bonuses;
-        let vert_retrigger = all_retrigger;
+        let (h3_retrigger, vert_retrigger, diag_retrigger, _, jackpot_retrigger) =
+            retrigger_bonuses;
 
         let mut total_score: u32 = 0;
         let mut total_patterns: u8 = 0;
+        let mut pattern_type_mask: u8 = 0;
+        let mut has_horizontal = false;
         let mut m7: u32 = 0;
         let mut md: u32 = 0;
         let mut mc: u32 = 0;
@@ -51,6 +53,9 @@ pub impl SpinnableImpl of SpinnableTrait {
             );
             total_score += score * h3_retrigger;
             total_patterns += pats;
+            if pats > 0 {
+                has_horizontal = true;
+            }
 
             // Track matches for upgrades
             if matched == crate::types::symbol::SymbolType::SEVEN {
@@ -75,6 +80,9 @@ pub impl SpinnableImpl of SpinnableTrait {
         );
         total_score += v_score * vert_retrigger;
         total_patterns += v_pats;
+        if v_pats > 0 {
+            pattern_type_mask = pattern_type_mask | 2;
+        }
         m7 += vm7;
         md += vmd;
         mc += vmc;
@@ -88,11 +96,18 @@ pub impl SpinnableImpl of SpinnableTrait {
         );
         total_score += d_score * diag_retrigger;
         total_patterns += d_pats;
+        if d_pats > 0 {
+            pattern_type_mask = pattern_type_mask | 4;
+        }
         m7 += dm7;
         md += dmd;
         mc += dmc;
         m_coin += dm_coin;
         ml += dml;
+
+        if has_horizontal {
+            pattern_type_mask += 1;
+        }
 
         total_score =
             crate::helpers::patterns::apply_jackpot_bonus(total_score, is_jackpot, jp_bonus);
@@ -102,6 +117,9 @@ pub impl SpinnableImpl of SpinnableTrait {
             total_score = total_score * jackpot_retrigger;
         }
 
-        (total_score, total_patterns, is_666, is_jackpot, grid, (m7, md, mc, m_coin, ml))
+        (
+            total_score, total_patterns, is_666, is_jackpot, grid, pattern_type_mask,
+            (m7, md, mc, m_coin, ml),
+        )
     }
 }

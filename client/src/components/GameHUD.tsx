@@ -36,7 +36,7 @@ export default function GameHUD({
                             padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 12px;
                             background: rgba(0, 0, 0, 0.94);
                             border-bottom: 2px solid rgba(255, 132, 28, 0.26);
-                            backdrop-filter: blur(6px);
+                            backdrop-filter: none;
                         }
                         .game-hud .hud-back {
                             width: 48px;
@@ -51,7 +51,7 @@ export default function GameHUD({
                             color: #FF841C;
                             cursor: pointer;
                             flex-shrink: 0;
-                            box-shadow: inset 0 0 0 1px rgba(255, 132, 28, 0.08);
+                            box-shadow: none;
                         }
                         .game-hud .hud-back:active {
                             transform: translateY(1px);
@@ -150,7 +150,7 @@ export default function GameHUD({
                         .game-hud .hud-progress-fill {
                             height: 100%;
                             background: #FF841C;
-                            box-shadow: 0 0 10px rgba(255, 132, 28, 0.28);
+                            box-shadow: none;
                             transition: width 0.28s ease;
                         }
                         .game-hud .ticket-icon {

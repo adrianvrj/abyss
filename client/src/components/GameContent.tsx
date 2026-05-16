@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { useNetwork } from "@starknet-react/core";
 import SlotGrid from "@/components/SlotGrid";
 import PatternOverlay from "@/components/PatternOverlay";
@@ -16,6 +16,7 @@ import LuckyScoreBoostAnimation from "@/components/LuckyScoreBoostAnimation";
 import TrickyDiceCashOutAnimation from "@/components/TrickyDiceCashOutAnimation";
 import RelicActivationAnimation from "@/components/RelicActivationAnimation";
 import CharmMintAnimation from "@/components/CharmMintAnimation";
+import DebtPayoutAnimation from "@/components/DebtPayoutAnimation";
 import RelicModal from "@/components/modals/RelicModal";
 import InfoModal from "@/components/modals/InfoModal";
 import PreloadingScreen from "@/components/PreloadingScreen";
@@ -23,6 +24,7 @@ import { useAssets } from "@/components/providers/AssetPreloaderProvider";
 import { useGameSession } from "@/hooks/useGameSession";
 import { usePracticeSession } from "@/hooks/usePracticeSession";
 import { getItemImage } from "@/utils/itemImages";
+import { ItemEffectType } from "@/utils/abyssContract";
 import { AnimatePresence } from "framer-motion";
 import { Store, Package, HelpCircle, Home, Gem } from "lucide-react";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
@@ -95,8 +97,6 @@ function GameStage({
     const [activeMobileTab, setActiveMobileTab] = useState<'home' | 'market' | 'inventory' | 'info'>('home');
     const [activeModal, setActiveModal] = useState<'info' | null>(null);
     const [showRelicModal, setShowRelicModal] = useState(false);
-    const [showBibliaPreview, setShowBibliaPreview] = useState(false);
-    const [showScoreResetPreview, setShowScoreResetPreview] = useState(false);
     const practiceGame = practiceMode ? (game as ReturnType<typeof usePracticeSession>) : null;
     const mobileTabMeta = {
         market: {
@@ -121,14 +121,20 @@ function GameStage({
         const merged = [...(game.initialInventoryItems ?? []), ...(game.optimisticItems ?? [])];
 
         return merged.filter((item) => {
-            if (!item || hidden.has(item.item_id) || seen.has(item.item_id)) {
+            if (
+                !item ||
+                hidden.has(item.item_id) ||
+                seen.has(item.item_id) ||
+                item.effect_type === ItemEffectType.SpinBonus ||
+                (game.bibliaBroken && item.item_id === 40)
+            ) {
                 return false;
             }
 
             seen.add(item.item_id);
             return true;
         });
-    }, [game.hiddenItems, game.initialInventoryItems, game.optimisticItems]);
+    }, [game.bibliaBroken, game.hiddenItems, game.initialInventoryItems, game.optimisticItems]);
     const trickyDiceItem = visibleInventoryItems.find((item) => item.item_id === TRICKY_DICE_ITEM_ID);
     const shouldShowTrickyDice = Boolean(trickyDiceItem) && !game.showGameOver && activeMobileTab === 'home';
 
@@ -235,27 +241,6 @@ function GameStage({
         else if (game.isInitialLoading) { statusText = "Syncing with Chain..."; progress = 100; }
         return <PreloadingScreen progress={progress} statusText={statusText} />;
     }
-    const shouldShowBibliaAnimation = game.showBibliaAnimation || showBibliaPreview;
-    const shouldShowScoreResetAnimation = game.showScoreResetAnimation || showScoreResetPreview;
-    const handleBibliaAnimationComplete = () => {
-        if (showBibliaPreview) {
-            setShowBibliaPreview(false);
-        }
-
-        if (game.showBibliaAnimation) {
-            game.setShowBibliaAnimation(false);
-        }
-    };
-    const handleScoreResetAnimationComplete = () => {
-        if (showScoreResetPreview) {
-            setShowScoreResetPreview(false);
-        }
-
-        if (game.showScoreResetAnimation) {
-            game.setShowScoreResetAnimation(false);
-        }
-    };
-
     return (
         <div className="game-container game-page-bg">
             <LevelUpAnimation isVisible={game.showLevelUp} />
@@ -348,6 +333,7 @@ function GameStage({
                                 initialInventory={game.initialInventoryItems}
                                 practiceMode={practiceMode}
                                 practiceItems={game.initialInventoryItems}
+                                charmDebtScores={game.charmDebtScores}
                             />
                         </div>
                         <div style={{ display: activeMobileTab === 'info' ? 'contents' : 'none' }}>
@@ -400,22 +386,6 @@ function GameStage({
                         practiceRefreshCount={practiceGame?.practiceRefreshCount}
                         onPracticeRefresh={practiceGame?.handlePracticeRefresh}
                         onPracticeBuy={practiceGame?.handlePracticeBuy}
-                    />
-                    <InlineInventoryPanel
-                        sessionId={numericSessionId}
-                        currentScore={game.score}
-                        currentTickets={game.tickets}
-                        onUpdateScore={game.setScore}
-                        onUpdateTickets={game.setTickets}
-                        onItemClick={(item) => game.setItemToSell(item)}
-                        refreshTrigger={game.inventoryRefreshTrigger}
-                        optimisticItems={game.optimisticItems}
-                        sellingItemId={game.isSelling && game.itemToSell ? game.itemToSell.item_id : undefined}
-                        hiddenItemIds={game.hiddenItems}
-                        bibliaBroken={game.bibliaBroken}
-                        initialInventory={game.initialInventoryItems}
-                        practiceMode={practiceMode}
-                        practiceItems={game.initialInventoryItems}
                     />
                 </div>
 
@@ -497,6 +467,44 @@ function GameStage({
                             </div>
                         )}
                     </div>
+                    {visibleInventoryItems.length > 0 && (
+                        <div className="desktop-floating-inventory" aria-label="Inventory">
+                            {visibleInventoryItems.slice(0, 7).map((item, index) => {
+                                const debtScore = item.item_id === 1026 || item.item_id === 1027
+                                    ? game.charmDebtScores?.[item.item_id - 1000] ?? 0
+                                    : 0;
+                                return (
+                                    <button
+                                        key={item.item_id}
+                                        type="button"
+                                        className="desktop-floating-item"
+                                        style={{ "--float-index": index } as CSSProperties}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            game.setItemToSell(item);
+                                        }}
+                                        aria-label={`${item.name}. Sell for ${item.sell_price} tickets`}
+                                    >
+                                        <img
+                                            src={item.image || getItemImage(item.item_id)}
+                                            alt={item.name}
+                                            width={74}
+                                            height={74}
+                                            loading="lazy"
+                                            style={{ objectFit: "contain", imageRendering: "pixelated" }}
+                                        />
+                                        {debtScore > 0 && (
+                                            <span className="desktop-floating-debt">{debtScore}</span>
+                                        )}
+                                        <span className="desktop-floating-tooltip">
+                                            <span>SELL FOR {item.sell_price}</span>
+                                            <img className="desktop-floating-tooltip-ticket" src="/images/ticket.png" alt="" width={10} height={10} loading="lazy" />
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Sidebar */}
@@ -615,10 +623,10 @@ function GameStage({
 
             {/* Animations */}
             <AnimatePresence>
-                {shouldShowScoreResetAnimation && (
+                {game.showScoreResetAnimation && (
                     <DemonicScoreResetAnimation
-                        previousScore={showScoreResetPreview ? 666 : game.scoreResetPreviousScore}
-                        onComplete={handleScoreResetAnimationComplete}
+                        previousScore={game.scoreResetPreviousScore}
+                        onComplete={() => game.setShowScoreResetAnimation(false)}
                     />
                 )}
                 {game.showLuckyScoreBoostAnimation && (
@@ -633,10 +641,19 @@ function GameStage({
                         onComplete={() => game.setShowCashOutAnimation(false)}
                     />
                 )}
-                {shouldShowBibliaAnimation && (
+                {game.showBibliaAnimation && (
                     <BibliaSaveAnimation
-                        discarded={game.showBibliaAnimation ? game.bibliaDiscarded : true}
-                        onComplete={handleBibliaAnimationComplete}
+                        discarded={game.bibliaDiscarded}
+                        onComplete={() => game.setShowBibliaAnimation(false)}
+                    />
+                )}
+                {game.debtPayoutAnimation && (
+                    <DebtPayoutAnimation
+                        charmId={game.debtPayoutAnimation.charmId}
+                        storedScore={game.debtPayoutAnimation.storedScore}
+                        multiplier={game.debtPayoutAnimation.multiplier}
+                        payoutScore={game.debtPayoutAnimation.payoutScore}
+                        onComplete={() => game.setDebtPayoutAnimation(null)}
                     />
                 )}
             </AnimatePresence>
@@ -646,6 +663,32 @@ function GameStage({
                     relicName={game.equippedRelic.name}
                     onComplete={() => game.setShowRelicActivation(false)}
                 />
+            )}
+
+            {game.debtFeedback && (
+                <div
+                    style={{
+                        position: "fixed",
+                        left: "50%",
+                        bottom: "calc(18px + env(safe-area-inset-bottom))",
+                        transform: "translateX(-50%)",
+                        zIndex: 10000,
+                        maxWidth: "min(92vw, 560px)",
+                        padding: "10px 14px",
+                        border: "1px solid rgba(255, 132, 28, 0.55)",
+                        borderRadius: 6,
+                        background: "rgba(18, 7, 0, 0.94)",
+                        color: "#FFD166",
+                        fontFamily: "'PressStart2P', monospace",
+                        fontSize: 10,
+                        lineHeight: 1.6,
+                        textAlign: "center",
+                        boxShadow: "none",
+                        pointerEvents: "none",
+                    }}
+                >
+                    {game.debtFeedback}
+                </div>
             )}
 
             {!practiceMode && game.showCharmAnimation && game.mintedCharmInfo && (
@@ -750,6 +793,7 @@ function GameStage({
                     align-items: flex-end;
                     padding-bottom: 0;
                 }
+                .desktop-floating-inventory { display: none; }
                 .machine-wrapper {
                     position: relative;
                     height: 100%;
@@ -775,7 +819,7 @@ function GameStage({
                     animation: trickyDiceFloat 2.4s ease-in-out infinite;
                 }
                 .tricky-dice-floating-indicator img {
-                    filter: drop-shadow(0 0 10px rgba(255, 132, 28, 0.4));
+                    filter: none;
                 }
                 @keyframes trickyDiceFloat {
                     0%, 100% {
@@ -899,10 +943,112 @@ function GameStage({
                     letter-spacing: 0.08em;
                     text-transform: uppercase;
                     text-align: center;
-                    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+                    box-shadow: none;
                 }
                 @media (min-width: 1025px) {
                     .mobile-content-overlay { display: none !important; }
+                    .tricky-dice-floating-indicator {
+                        display: none;
+                    }
+                    .desktop-floating-inventory {
+                        position: fixed;
+                        left: 50%;
+                        bottom: 18px;
+                        transform: translateX(-50%);
+                        z-index: 145;
+                        display: flex;
+                        align-items: flex-end;
+                        justify-content: center;
+                        gap: clamp(10px, 1.4vw, 18px);
+                        pointer-events: auto;
+                        max-width: min(78vw, 680px);
+                    }
+                    .desktop-floating-item {
+                        --float-offset: calc((var(--float-index, 0) - 3) * 2px);
+                        position: relative;
+                        width: 76px;
+                        height: 76px;
+                        border: none;
+                        background: transparent;
+                        padding: 0;
+                        cursor: pointer;
+                        transform: translateY(var(--float-offset));
+                        animation: desktopInventoryFloat 2.8s ease-in-out infinite;
+                        animation-delay: calc(var(--float-index, 0) * -0.18s);
+                        filter: none;
+                    }
+                    .desktop-floating-item img {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: contain;
+                        transition: transform 0.16s ease, filter 0.16s ease;
+                    }
+                    .desktop-floating-item:hover img,
+                    .desktop-floating-item:focus-visible img {
+                        transform: translateY(-9px) scale(1.12);
+                        filter: none;
+                    }
+                    .desktop-floating-item:focus-visible {
+                        outline: 2px solid #FF841C;
+                        outline-offset: 3px;
+                        border-radius: 10px;
+                    }
+                    .desktop-floating-tooltip {
+                        position: absolute;
+                        left: 50%;
+                        bottom: calc(100% + 6px);
+                        transform: translateX(-50%) translateY(5px);
+                        display: flex;
+                        align-items: center;
+                        gap: 5px;
+                        padding: 7px 9px;
+                        border: 1px solid rgba(255, 132, 28, 0.75);
+                        border-radius: 5px;
+                        background: rgba(10, 3, 0, 0.94);
+                        color: #FFE08A;
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 8px;
+                        white-space: nowrap;
+                        opacity: 0;
+                        pointer-events: none;
+                        box-shadow: none;
+                        transition: opacity 0.14s ease, transform 0.14s ease;
+                    }
+                    .desktop-floating-tooltip-ticket {
+                        width: 10px !important;
+                        height: 10px !important;
+                        object-fit: contain;
+                        image-rendering: pixelated;
+                        flex: 0 0 auto;
+                        transform: none !important;
+                        filter: none !important;
+                    }
+                    .desktop-floating-item:hover .desktop-floating-tooltip,
+                    .desktop-floating-item:focus-visible .desktop-floating-tooltip {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                    .desktop-floating-debt {
+                        position: absolute;
+                        right: 2px;
+                        bottom: 3px;
+                        min-width: 24px;
+                        height: 17px;
+                        padding: 0 5px;
+                        border-radius: 4px;
+                        border: 1px solid #FF841C;
+                        background: #190800;
+                        color: #FFE08A;
+                        font-family: 'PressStart2P', monospace;
+                        font-size: 7px;
+                        line-height: 17px;
+                        text-align: center;
+                        box-shadow: none;
+                    }
+                    @keyframes desktopInventoryFloat {
+                        0%, 100% { transform: translateY(var(--float-offset)); }
+                        50% { transform: translateY(calc(var(--float-offset) - 7px)); }
+                    }
                 }
                 @media (min-width: 1025px) and (max-width: 1279px) {
                     .mobile-nav {
@@ -927,6 +1073,17 @@ function GameStage({
                         cursor: pointer;
                     }
                     .game-content-wrapper { margin-bottom: 60px; }
+                    .desktop-floating-inventory {
+                        bottom: 74px;
+                        gap: 8px;
+                    }
+                    .desktop-floating-item {
+                        width: 58px;
+                        height: 58px;
+                    }
+                    .desktop-floating-tooltip {
+                        font-size: 7px;
+                    }
                 }
                 @media (max-width: 1024px) {
                     .game-container {
@@ -1000,7 +1157,7 @@ function GameStage({
                         width: 100%;
                         height: auto;
                         transform: none;
-                        filter: drop-shadow(0 22px 40px rgba(0, 0, 0, 0.5));
+                        filter: none;
                     }
                     .tricky-dice-floating-indicator {
                         position: absolute;
@@ -1073,10 +1230,10 @@ function GameStage({
                         color: #FF841C;
                         background: #261205;
                         border-color: #FF841C;
-                        box-shadow: inset 0 0 0 1px rgba(255, 132, 28, 0.08);
+                        box-shadow: none;
                     }
                     .nav-item.active svg {
-                        filter: drop-shadow(0 0 6px rgba(255, 132, 28, 0.18));
+                        filter: none;
                     }
                     .hidden-on-mobile { display: none !important; }
                     .mobile-content-overlay {

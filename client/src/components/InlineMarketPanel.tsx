@@ -1002,7 +1002,7 @@ const styles = `
     .desktop-market-card:hover,
     .desktop-market-card:focus-visible {
         border-color: rgba(255, 132, 28, 0.55);
-        box-shadow: 0 0 18px rgba(255, 132, 28, 0.14);
+        box-shadow: none;
     }
     .market-sell-hover {
         position: absolute;
@@ -1019,7 +1019,7 @@ const styles = `
         border: 1px solid rgba(255, 132, 28, 0.72);
         border-radius: 999px;
         background: rgba(10, 4, 2, 0.94);
-        box-shadow: 0 0 12px rgba(255, 132, 28, 0.18);
+        box-shadow: none;
         color: #FF841C;
         font-family: 'PressStart2P', monospace;
         font-size: 7px;
