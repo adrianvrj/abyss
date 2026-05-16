@@ -700,6 +700,7 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
   let bibliaUsed = false;
   let bibliaDiscarded = false;
   let is666 = spin.is666;
+  const rolled666 = is666;
   let cashOutSucceeded = false;
   let cashOutFailed = false;
 
@@ -772,6 +773,13 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
       ...nextState,
       score: 0,
       totalScore: 0,
+      blocked666: true,
+    });
+  } else if (rolled666 && bibliaUsed) {
+    nextState = withDerivedState({
+      ...nextState,
+      score: nextState.score + scoreGained,
+      totalScore: nextState.totalScore + scoreGained,
       blocked666: true,
     });
   } else {

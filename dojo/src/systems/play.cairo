@@ -359,6 +359,7 @@ pub mod Play {
             let mut biblia_discarded = false;
             let mut cash_out_succeeded = false;
             let mut cash_out_failed = false;
+            let rolled_666 = is_666;
             if is_666 {
                 let cash_out_inventory = store.inventory(session_id, CASH_OUT_ITEM_ID);
                 if cash_out_inventory.quantity > 0 {
@@ -397,6 +398,10 @@ pub mod Play {
                         biblia_used = true;
                     }
                 }
+            }
+
+            if rolled_666 && biblia_used {
+                session.blocked_666_this_session = true;
             }
 
             if cash_out_succeeded || cash_out_failed {

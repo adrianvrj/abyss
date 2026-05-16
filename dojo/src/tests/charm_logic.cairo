@@ -591,23 +591,23 @@ fn test_score_based_charm_rarity_odds_at_score_boundaries() {
     assert_score_rarity_odds(2999, 76, 20, 4, 0);
     assert_score_rarity_odds(3000, 58, 32, 10, 0);
     assert_score_rarity_odds(4999, 58, 32, 10, 0);
-    assert_score_rarity_odds(5000, 40, 38, 20, 2);
-    assert_score_rarity_odds(7999, 40, 38, 20, 2);
-    assert_score_rarity_odds(8000, 22, 35, 35, 8);
-    assert_score_rarity_odds(12499, 22, 35, 35, 8);
-    assert_score_rarity_odds(12500, 10, 30, 45, 15);
-    assert_score_rarity_odds(24999, 10, 30, 45, 15);
-    assert_score_rarity_odds(25000, 3, 22, 55, 20);
+    assert_score_rarity_odds(5000, 52, 38, 9, 1);
+    assert_score_rarity_odds(7999, 52, 38, 9, 1);
+    assert_score_rarity_odds(8000, 40, 42, 15, 3);
+    assert_score_rarity_odds(12499, 40, 42, 15, 3);
+    assert_score_rarity_odds(12500, 28, 40, 27, 5);
+    assert_score_rarity_odds(24999, 28, 40, 27, 5);
+    assert_score_rarity_odds(25000, 18, 35, 42, 5);
 }
 
 #[test]
 fn test_score_based_charm_rarity_odds_for_eight_thousand_tier() {
-    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 21), 0);
-    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 22), 1);
-    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 56), 1);
-    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 57), 2);
-    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 91), 2);
-    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 92), 3);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 39), 0);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 40), 1);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 81), 1);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 82), 2);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 96), 2);
+    assert_eq!(get_charm_rarity_from_score_and_roll(8000, 97), 3);
     assert_eq!(get_charm_rarity_from_score_and_roll(8000, 99), 3);
 }
 

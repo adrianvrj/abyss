@@ -4,6 +4,7 @@ use crate::constants::{
     DEFAULT_SCORE_SEVEN, NAMESPACE, WORLD_RESOURCE,
 };
 use crate::helpers::grid::generate_grid_from_random;
+use crate::helpers::inventory::InventoryImpl;
 use crate::models::index::{
     Config, Item, PendingCharmLoadout, Session, SessionCharmEntry,
     SessionCharmLoadout, SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry,
@@ -290,6 +291,7 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
         TestResource::Model(declared_class_hash("m_SessionCharmEntry")),
         TestResource::Model(declared_class_hash("m_SessionCharmLoadout")),
         TestResource::Event(declared_class_hash("e_SpinCompleted")),
+        TestResource::Event(declared_class_hash("e_BibliaDiscarded")),
         TestResource::Contract(declared_class_hash("Play")),
         TestResource::Contract(declared_class_hash("Collection")),
     ];
@@ -305,7 +307,9 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
                 selector_from_names(@NAMESPACE(), @"Session"),
                 selector_from_names(@NAMESPACE(), @"SpinResult"),
                 selector_from_names(@NAMESPACE(), @"SessionChipBonus"),
+                selector_from_names(@NAMESPACE(), @"SessionInventory"),
                 selector_from_names(@NAMESPACE(), @"SpinCompleted"),
+                selector_from_names(@NAMESPACE(), @"BibliaDiscarded"),
             ]
                 .span(),
         );
@@ -654,6 +658,70 @@ fn seed_request_spin_profile_session(
     world.write_model_test(@SessionInventory { session_id, item_id: 40, quantity: 0 });
 }
 
+fn seed_biblia_blocked_666_session(
+    ref world: dojo::world::WorldStorage, session_id: u32, player: ContractAddress,
+) {
+    world
+        .write_model_test(
+            @Session {
+                session_id,
+                player_address: player,
+                level: 21,
+                score: 200,
+                total_score: 200,
+                spins_remaining: 2,
+                is_competitive: true,
+                is_active: true,
+                created_at: 1,
+                chips_claimed: false,
+                equipped_relic: 0,
+                relic_last_used_spin: 0,
+                relic_pending_effect: RelicEffectType::NoEffect,
+                total_spins: 0,
+                luck: 0,
+                blocked_666_this_session: false,
+                tickets: 6,
+                score_seven: DEFAULT_SCORE_SEVEN,
+                score_diamond: DEFAULT_SCORE_DIAMOND,
+                score_cherry: DEFAULT_SCORE_CHERRY,
+                score_coin: DEFAULT_SCORE_COIN,
+                score_lemon: DEFAULT_SCORE_LEMON,
+            },
+        );
+    world
+        .write_model_test(
+            @SpinResult {
+                session_id,
+                cell_0: 1,
+                cell_1: 2,
+                cell_2: 3,
+                cell_3: 4,
+                cell_4: 5,
+                cell_5: 1,
+                cell_6: 2,
+                cell_7: 3,
+                cell_8: 4,
+                cell_9: 5,
+                cell_10: 1,
+                cell_11: 2,
+                cell_12: 3,
+                cell_13: 4,
+                cell_14: 5,
+                score: 0,
+                patterns_count: 0,
+                is_666: false,
+                is_jackpot: false,
+                is_pending: false,
+                biblia_used: false,
+            },
+        );
+    world.write_model_test(@SessionItemIndex { session_id, count: 0 });
+    world.write_model_test(@SessionChipBonus { session_id, bonus_units: 0 });
+    world.write_model_test(@SessionCharms { session_id, count: 1 });
+    world.write_model_test(@SessionCharmEntry { session_id, index: 0, charm_id: 18 });
+    world.write_model_test(@SessionInventory { session_id, item_id: 40, quantity: 1 });
+}
+
 #[test]
 fn profile_request_spin_world_path() {
     let (mut world, play_address, collection_address) = request_spin_profile_world();
@@ -692,6 +760,33 @@ fn profile_request_spin_world_path() {
     }
 
     assert(checksum != 0, 'request spin guard');
+}
+
+#[test]
+fn biblia_blocked_666_activates_chaos_orb() {
+    let (mut world, play_address, collection_address) = request_spin_profile_world();
+    let player: ContractAddress = 0x1234.try_into().unwrap();
+    let vrf_address: ContractAddress = 0x9876.try_into().unwrap();
+    let play = IPlayDispatcher { contract_address: play_address };
+    let session_id = 666;
+
+    seed_request_spin_profile_static_models(ref world, vrf_address);
+    seed_biblia_blocked_666_session(ref world, session_id, player);
+    start_mock_call(vrf_address, selector!("consume_random"), 0x00B1B11A);
+    start_mock_call(collection_address, selector!("update"), ());
+    start_cheat_caller_address(play_address, player);
+
+    play.request_spin(session_id);
+
+    let store = StoreTrait::new(world);
+    let session = store.session(session_id);
+    let spin_result = store.spin_result(session_id);
+    let next_luck = InventoryImpl::calculate_effective_luck(@store, session_id);
+
+    assert(session.blocked_666_this_session, 'biblia did not block 666');
+    assert(spin_result.biblia_used, 'biblia not used');
+    assert(!spin_result.is_666, '666 should be cleared');
+    assert(next_luck == 152, 'chaos orb not active');
 }
 
 fn refresh_market_profile_world() -> (dojo::world::WorldStorage, ContractAddress) {

@@ -32,41 +32,41 @@ pub fn get_charm_rarity_from_score_and_roll(score: u32, roll: u32) -> u8 {
             2
         }
     } else if score < 8000 {
-        if roll < 40 {
+        if roll < 52 {
             0
-        } else if roll < 78 {
+        } else if roll < 90 {
             1
-        } else if roll < 98 {
+        } else if roll < 99 {
             2
         } else {
             3
         }
     } else if score < 12500 {
-        if roll < 22 {
+        if roll < 40 {
             0
-        } else if roll < 57 {
+        } else if roll < 82 {
             1
-        } else if roll < 92 {
+        } else if roll < 97 {
             2
         } else {
             3
         }
     } else if score < 25000 {
-        if roll < 10 {
+        if roll < 28 {
             0
-        } else if roll < 40 {
+        } else if roll < 68 {
             1
-        } else if roll < 85 {
+        } else if roll < 95 {
             2
         } else {
             3
         }
     } else {
-        if roll < 3 {
+        if roll < 18 {
             0
-        } else if roll < 25 {
+        } else if roll < 53 {
             1
-        } else if roll < 80 {
+        } else if roll < 95 {
             2
         } else {
             3
