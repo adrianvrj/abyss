@@ -1,12 +1,16 @@
-import { Suspense, useEffect, lazy } from "react";
+import { Suspense, useCallback, useEffect, useState, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Providers } from "@/components/providers";
 import { usePosthogPageviews } from "@/hooks/usePosthogPageviews";
 import { AssetPreloaderProvider } from "@/components/providers/AssetPreloaderProvider";
 import ChipBalanceBadge from "@/components/ChipBalanceBadge";
 import ControllerButton from "@/components/ControllerButton";
+import NewsModal from "@/components/modals/NewsModal";
 import { DEFAULT_CHAIN_ID, getToriiUrl, getWorldAddress } from "@/config";
 import { CONTROLLER_RPC_URL, cartridgeSlot } from "@/lib/controllerConfig";
+
+const NEWS_VERSION = "charms-21-27";
+const NEWS_STORAGE_KEY = "abyss_seen_news_version";
 
 // Lazy load components
 const MenuContent = lazy(() => import("@/components/MenuContent").then(m => ({ default: m.MenuContent })));
@@ -57,6 +61,8 @@ function PosthogPageviewListener() {
 }
 
 function App() {
+  const [showNewsModal, setShowNewsModal] = useState(false);
+
   useEffect(() => {
     // Hard reset of local state if on localhost to avoid WASM/stale-session crashes
     if (typeof window !== "undefined" && window.location.hostname === "localhost") {
@@ -66,6 +72,31 @@ function App() {
         sessionStorage.setItem("abyss_dev_reset", "true");
         // console.log("Dev: Local state cleared for clean initialization.");
       }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      setShowNewsModal(window.localStorage.getItem(NEWS_STORAGE_KEY) !== NEWS_VERSION);
+    } catch {
+      setShowNewsModal(true);
+    }
+  }, []);
+
+  const handleCloseNews = useCallback(() => {
+    setShowNewsModal(false);
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(NEWS_STORAGE_KEY, NEWS_VERSION);
+    } catch {
+      // Ignore storage failures in private browsing or sandboxed iframes.
     }
   }, []);
 
@@ -109,6 +140,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
+        {showNewsModal && <NewsModal onClose={handleCloseNews} />}
       </Router>
     </Providers>
   );
