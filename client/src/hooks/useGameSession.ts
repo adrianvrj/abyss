@@ -127,7 +127,20 @@ const RELIC_NAMES: Record<number, string> = {
 
 const BIBLIA_ITEM_ID = 40;
 const CASH_OUT_ITEM_ID = 41;
-const CHIP_SCORE_DIVISOR = 20;
+const CHIP_BONUS_CAP = 300;
+
+function getChipUnits(scoreValue: number, bonusUnits = 0) {
+    const safeScore = Math.max(0, Math.floor(scoreValue));
+    const tier1 = Math.min(safeScore, 12_000);
+    const tier2 = Math.max(0, Math.min(safeScore, 25_000) - 12_000);
+    const tier3 = Math.max(0, safeScore - 25_000);
+    const safeBonusUnits = Math.min(Math.max(0, Math.floor(bonusUnits)), CHIP_BONUS_CAP);
+
+    return Math.floor(tier1 / 10)
+        + Math.floor(tier2 / 20)
+        + Math.floor(tier3 / 30)
+        + safeBonusUnits;
+}
 
 export interface OwnedRelic {
     tokenId: bigint;
@@ -270,8 +283,7 @@ export function useGameSession(sessionId: string | null) {
         emissionRate = 1,
         boostMultiplier = 1,
     ) => {
-        const baseUnits = Math.floor(Math.max(0, scoreValue) / CHIP_SCORE_DIVISOR);
-        return (baseUnits + Math.max(0, bonusUnits)) * emissionRate * boostMultiplier;
+        return getChipUnits(scoreValue, bonusUnits) * emissionRate * boostMultiplier;
     }, []);
 
     const resolveChipPayout = useCallback(async (

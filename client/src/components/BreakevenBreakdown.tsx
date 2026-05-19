@@ -6,9 +6,24 @@ interface BreakevenBreakdownProps {
   chipBoostMultiplier: number;
   chipsPerUsdc: number | null;
   isLoadingPrice: boolean;
+  gameplayPoolRemaining?: bigint;
+  charmPoolRemaining?: bigint;
+  isLoadingRewardPools?: boolean;
 }
 
-const CHIP_SCORE_DIVISOR = 20;
+const CHIP_BONUS_CAP = 300;
+const CHIP_DECIMALS = 1_000_000_000_000_000_000n;
+
+function getChipUnits(score: number, bonusUnits = 0): number {
+  const safeScore = Math.max(0, Math.floor(score));
+  const tier1 = Math.min(safeScore, 12_000);
+  const tier2 = Math.max(0, Math.min(safeScore, 25_000) - 12_000);
+  const tier3 = Math.max(0, safeScore - 25_000);
+  return Math.floor(tier1 / 10)
+    + Math.floor(tier2 / 20)
+    + Math.floor(tier3 / 30)
+    + Math.min(Math.max(0, Math.floor(bonusUnits)), CHIP_BONUS_CAP);
+}
 
 function getLevelThreshold(level: number): number {
   if (level <= 1) return 66;
@@ -27,7 +42,7 @@ function getLevelThreshold(level: number): number {
 
 function getChipsAtLevel(level: number, effectiveRate: number): number {
   const score = getLevelThreshold(level);
-  return (score / CHIP_SCORE_DIVISOR) * effectiveRate;
+  return getChipUnits(score) * effectiveRate;
 }
 
 function getBreakevenLevel(chipsNeeded: number, effectiveRate: number): number | null {
@@ -44,14 +59,70 @@ function getBreakevenLevel(chipsNeeded: number, effectiveRate: number): number |
   return null;
 }
 
+function formatChipAmount(amount?: bigint): string {
+  if (amount === undefined) {
+    return "Pending";
+  }
+
+  const whole = amount / CHIP_DECIMALS;
+  const remainder = amount % CHIP_DECIMALS;
+
+  if (remainder === 0n) {
+    return whole.toLocaleString();
+  }
+
+  const cents = (remainder * 100n) / CHIP_DECIMALS;
+  return `${whole.toLocaleString()}.${cents.toString().padStart(2, "0")}`;
+}
+
+function RewardPoolRows({
+  gameplayPoolRemaining,
+  charmPoolRemaining,
+  isLoadingRewardPools,
+}: {
+  gameplayPoolRemaining?: bigint;
+  charmPoolRemaining?: bigint;
+  isLoadingRewardPools?: boolean;
+}) {
+  const gameplayLabel = isLoadingRewardPools
+    ? "Loading"
+    : formatChipAmount(gameplayPoolRemaining);
+  const charmLabel = isLoadingRewardPools
+    ? "Loading"
+    : formatChipAmount(charmPoolRemaining);
+
+  return (
+    <div style={styles.pools}>
+      <div style={styles.poolRow}>
+        <span style={styles.poolLabel}>Gameplay pool</span>
+        <span style={styles.poolValue}>{gameplayLabel} CHIP</span>
+      </div>
+      <div style={styles.poolRow}>
+        <span style={styles.poolLabel}>Charm pool</span>
+        <span style={styles.poolValue}>{charmLabel} CHIP</span>
+      </div>
+    </div>
+  );
+}
+
 export function BreakevenBreakdown({
   entryUsd,
   chipEmissionRate,
   chipBoostMultiplier,
   chipsPerUsdc,
   isLoadingPrice,
+  gameplayPoolRemaining,
+  charmPoolRemaining,
+  isLoadingRewardPools = false,
 }: BreakevenBreakdownProps) {
   const effectiveRate = chipEmissionRate * chipBoostMultiplier;
+  const poolRows = (
+    <RewardPoolRows
+      gameplayPoolRemaining={gameplayPoolRemaining}
+      charmPoolRemaining={charmPoolRemaining}
+      isLoadingRewardPools={isLoadingRewardPools}
+    />
+  );
 
   if (effectiveRate === 0) {
     return (
@@ -59,6 +130,7 @@ export function BreakevenBreakdown({
         <div style={styles.header}>CHIP Rewards</div>
         <div style={styles.card}>
           <span style={styles.muted}>Rewards currently paused</span>
+          {poolRows}
         </div>
       </motion.div>
     );
@@ -71,6 +143,7 @@ export function BreakevenBreakdown({
         <div style={styles.card}>
           <span style={{ ...styles.muted, color: "#4ADE80", fontSize: "10px" }}>FREE SESSION</span>
           <span style={styles.muted}>All CHIP earned is profit</span>
+          {poolRows}
         </div>
       </motion.div>
     );
@@ -84,6 +157,7 @@ export function BreakevenBreakdown({
         <div style={styles.header}>CHIP Rewards</div>
         <div style={styles.card}>
           <span style={styles.muted}>Loading CHIP price...</span>
+          {poolRows}
         </div>
       </motion.div>
     );
@@ -96,9 +170,10 @@ export function BreakevenBreakdown({
         <div style={styles.card}>
           <div style={styles.row}>
             <span style={styles.label}>Rate</span>
-            <span style={styles.muted}>{effectiveRate} CHIP per {CHIP_SCORE_DIVISOR} score</span>
+            <span style={styles.muted}>Tiered CHIP rewards</span>
           </div>
           <span style={{ ...styles.muted, fontSize: "8px" }}>CHIP price unavailable</span>
+          {poolRows}
         </div>
       </motion.div>
     );
@@ -200,10 +275,12 @@ export function BreakevenBreakdown({
               1 CHIP = {chipPriceUsd < 0.01 ? chipPriceUsd.toFixed(5) : chipPriceUsd.toFixed(4)} USD
             </span>
             <span style={styles.muted}>
-              {effectiveRate} CHIP / {CHIP_SCORE_DIVISOR} score
+              Tiered curve
             </span>
           </div>
         </div>
+
+        {poolRows}
       </div>
     </motion.div>
   );
@@ -250,6 +327,34 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     gap: "12px",
+  },
+  pools: {
+    borderTop: "1px solid rgba(255,132,28,0.12)",
+    marginTop: "8px",
+    paddingTop: "8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  poolRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "8px",
+  },
+  poolLabel: {
+    fontFamily: "'PressStart2P', monospace",
+    fontSize: "7px",
+    color: "rgba(255,255,255,0.35)",
+    lineHeight: 1.5,
+    textTransform: "uppercase",
+  },
+  poolValue: {
+    fontFamily: "'PressStart2P', monospace",
+    fontSize: "7px",
+    color: "rgba(255,255,255,0.72)",
+    lineHeight: 1.5,
+    textAlign: "right",
   },
   label: {
     fontFamily: "'PressStart2P', monospace",

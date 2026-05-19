@@ -1,7 +1,7 @@
 use bundle::models::index::Bundle;
 use dojo::event::EventStorage;
 use dojo::model::{Model, ModelStorage};
-use dojo::world::WorldStorage;
+use dojo::world::{WorldStorage, WorldStorageTrait};
 use ekubo::components::clear::IClearDispatcher;
 use ekubo::interfaces::router::IRouterDispatcher;
 use starknet::ContractAddress;
@@ -14,13 +14,15 @@ use crate::events::index::{
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
 use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
+use crate::interfaces::rewards_vault::IRewardsVaultDispatcher;
 use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
     BeastSessionsUsed, Config, Item, PendingCharmLoadout, PlayerSessionEntry,
-    PlayerSessions, PlayerStreak, Session, SessionCharmDebt, SessionCharmEntry,
+    PlayerSessions, PlayerStreak, RewardPools, Session, SessionCharmDebt, SessionCharmEntry,
     SessionCharmLoadout, SessionCharms, SessionInventory, SessionItemEntry, SessionItemIndex,
     SessionMarket, SessionChipBonus, SessionItemPurchaseCount, SpinResult, TokenPairId,
 };
+use crate::systems::rewards_vault::NAME as REWARDS_VAULT_NAME;
 
 #[derive(Copy, Drop)]
 pub struct Store {
@@ -69,6 +71,11 @@ pub impl StoreImpl of StoreTrait {
                 Model::<Config>::ptr_from_keys(WORLD_RESOURCE), selector!("charm_nft"),
             );
         ICharmDispatcher { contract_address: charm_nft }
+    }
+
+    fn rewards_vault_disp(self: @Store) -> IRewardsVaultDispatcher {
+        let rewards_vault = self.world.dns_address(@REWARDS_VAULT_NAME()).expect('RewardsVault missing');
+        IRewardsVaultDispatcher { contract_address: rewards_vault }
     }
 
     fn relic_disp(self: @Store) -> IRelicDispatcher {
@@ -173,6 +180,18 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_session_chip_bonus(mut self: Store, bonus: @SessionChipBonus) {
         self.world.write_model(bonus)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Reward Pools
+    // ═══════════════════════════════════════════════════════════════════
+
+    fn reward_pools(self: @Store) -> RewardPools {
+        self.world.read_model(WORLD_RESOURCE)
+    }
+
+    fn set_reward_pools(mut self: Store, pools: @RewardPools) {
+        self.world.write_model(pools)
     }
 
     // ═══════════════════════════════════════════════════════════════════

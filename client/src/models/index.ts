@@ -1,8 +1,12 @@
 export {
   CONFIG_MODEL_NAME,
+  REWARD_POOLS_MODEL_NAME,
   ConfigModel,
+  RewardPoolsModel,
   type Config,
   type RawConfig,
+  type RawRewardPools,
+  type RewardPools,
 } from "@/models/config";
 export {
   ITEM_MODEL_NAME,

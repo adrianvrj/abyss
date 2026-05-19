@@ -52,7 +52,7 @@
     },
     {
       "address": "0x51d8401eef82153d10179238f5221489d0b4faae88c8b0b071734f44e647dd8",
-      "class_hash": "0x4270f26db73292f4b73404a0c433ab3c0bce51e5b73d4239c1d6ea8ec5cc1c5",
+      "class_hash": "0x42185c6297b31205df4e3d00a4c22016f7895deb4b9abe1f4d6d8fc54830c66",
       "init_calldata": [
         "0x34d6ca32770267000000",
         "0x0",
@@ -132,7 +132,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x4b9d628cde9f99abe0a2de091d5c88110d7bf07447f6d0192c6d440ab4a784f",
+      "class_hash": "0x57f15342d15f3af8350578f55cf6da91ae7bd4e02f24cf469ebcf9fb4de1e24",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -180,8 +180,27 @@
       ]
     },
     {
+      "address": "0x54a8f1c1e388ede80245f7aa959cd7bc0ccbc950b86267eb816b05a762f488c",
+      "class_hash": "0x61a647845dcfbf8aa2254e27844595bd829f81ebbbc402817874b38bbffb097",
+      "init_calldata": [],
+      "tag": "ABYSS-RewardsVault",
+      "selector": "0x71f3355a8aacb68310833d24b006638ab90f688ce6a5d3d3eb6d69e53d3bc36",
+      "systems": [
+        "dojo_init",
+        "set_reward_pools",
+        "move_reward_reserve_to_pool",
+        "set_authorized_caller",
+        "pay_gameplay",
+        "pay_charm",
+        "upgrade",
+        "grant_role",
+        "revoke_role",
+        "renounce_role"
+      ]
+    },
+    {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x60711bededf6f1fa68752e81fb11b653dfabd48138e65ec509fd2d85e98f861",
+      "class_hash": "0x5ff282c5ccc496acbaef35dccd792473f7771e3ff44230df5064e1eda063bf0",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -233,7 +252,7 @@
     },
     {
       "address": "0x3ae02dcabcb2707c81ae02199f736698137a65703dcfa912a3535775a62a67b",
-      "class_hash": "0x65278a533c321b6f062b5daf81eb6cdd7c2b4d96790bb87f3cd9f7fbffd5a38",
+      "class_hash": "0x70453a0475058eb512220a25983e305352543b2d72dc4128ce11e04863826f1",
       "init_calldata": [],
       "tag": "ABYSS-Streak",
       "selector": "0x78dc31fbdcb9796c60122a04ee9218ed2e633fe3bebdffe6ce43dcd7fde3d3a",
@@ -654,6 +673,43 @@
       "class_hash": "0x67a8205a50743a68624456d1fbd90d494588f9f1e79e9c2bb1d0f5ec808db18",
       "tag": "ABYSS-PlayerStreak",
       "selector": "0x750ae5a647660a5e40f3e6c4c47bf2e600081fba9e49756ec1bb21ef0eefa42"
+    },
+    {
+      "members": [
+        {
+          "name": "world_resource",
+          "type": "core::felt252",
+          "key": true
+        },
+        {
+          "name": "gameplay_remaining",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "charm_remaining",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "reserve_remaining",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "gameplay_paid",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "charm_paid",
+          "type": "core::integer::u256",
+          "key": false
+        }
+      ],
+      "class_hash": "0x403e07e583d512f4d0774d598b4091b39b8b9afac528f97f764b8decdc69713",
+      "tag": "ABYSS-RewardPools",
+      "selector": "0x6a49f6c09b83a7b16f7ce33258137ff0781a39bdcef0e3e01c00402ca3ef9b0"
     },
     {
       "members": [
@@ -3295,6 +3351,164 @@
       ]
     },
     {
+      "type": "interface",
+      "name": "abyss_game::interfaces::rewards_vault::IRewardsVault",
+      "items": [
+        {
+          "type": "function",
+          "name": "set_reward_pools",
+          "inputs": [
+            {
+              "name": "gameplay_remaining",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "charm_remaining",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "reserve_remaining",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "move_reward_reserve_to_pool",
+          "inputs": [
+            {
+              "name": "to_gameplay",
+              "type": "core::bool"
+            },
+            {
+              "name": "amount",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "set_authorized_caller",
+          "inputs": [
+            {
+              "name": "caller",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "authorized",
+              "type": "core::bool"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "pay_gameplay",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "calculated_amount",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "pay_charm",
+          "inputs": [
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "rarity",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "token_id",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "calculated_amount",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "get_reward_pools",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "abyss_game::models::index::RewardPools"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_gameplay_remaining",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_charm_remaining",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_reserve_remaining",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u256"
+            }
+          ],
+          "state_mutability": "view"
+        }
+      ]
+    },
+    {
       "type": "struct",
       "name": "abyss_game::models::index::BeastSessionsUsed",
       "members": [
@@ -3895,6 +4109,62 @@
         {
           "name": "loot_claim_nonce",
           "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::RewardPools",
+      "members": [
+        {
+          "name": "world_resource",
+          "type": "core::felt252"
+        },
+        {
+          "name": "gameplay_remaining",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_remaining",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "reserve_remaining",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "gameplay_paid",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_paid",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::RewardPoolsValue",
+      "members": [
+        {
+          "name": "gameplay_remaining",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_remaining",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "reserve_remaining",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "gameplay_paid",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_paid",
+          "type": "core::integer::u256"
         }
       ]
     },
@@ -4661,6 +4931,12 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_PlayerStreak::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::models::index::m_RewardPools::Event",
       "kind": "enum",
       "variants": []
     },
@@ -5787,6 +6063,144 @@
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
           "kind": "flat"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::rewards_vault::RewardsVault::CharmChipsPaid",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "kind": "key"
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "kind": "key"
+        },
+        {
+          "name": "rarity",
+          "type": "core::integer::u8",
+          "kind": "data"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256",
+          "kind": "data"
+        },
+        {
+          "name": "calculated_amount",
+          "type": "core::integer::u256",
+          "kind": "data"
+        },
+        {
+          "name": "paid_amount",
+          "type": "core::integer::u256",
+          "kind": "data"
+        },
+        {
+          "name": "charm_remaining",
+          "type": "core::integer::u256",
+          "kind": "data"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::rewards_vault::RewardsVault::Event",
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "UpgradeableEvent",
+          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+          "kind": "nested"
+        },
+        {
+          "name": "WorldProviderEvent",
+          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+          "kind": "nested"
+        },
+        {
+          "name": "AccessControlEvent",
+          "type": "openzeppelin_access::accesscontrol::accesscontrol::AccessControlComponent::Event",
+          "kind": "flat"
+        },
+        {
+          "name": "SRC5Event",
+          "type": "openzeppelin_introspection::src5::SRC5Component::Event",
+          "kind": "flat"
+        },
+        {
+          "name": "GameplayChipsPaid",
+          "type": "abyss_game::systems::rewards_vault::RewardsVault::GameplayChipsPaid",
+          "kind": "nested"
+        },
+        {
+          "name": "CharmChipsPaid",
+          "type": "abyss_game::systems::rewards_vault::RewardsVault::CharmChipsPaid",
+          "kind": "nested"
+        },
+        {
+          "name": "RewardReserveMoved",
+          "type": "abyss_game::systems::rewards_vault::RewardsVault::RewardReserveMoved",
+          "kind": "nested"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::rewards_vault::RewardsVault::GameplayChipsPaid",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "session_id",
+          "type": "core::integer::u32",
+          "kind": "key"
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "kind": "key"
+        },
+        {
+          "name": "calculated_amount",
+          "type": "core::integer::u256",
+          "kind": "data"
+        },
+        {
+          "name": "paid_amount",
+          "type": "core::integer::u256",
+          "kind": "data"
+        },
+        {
+          "name": "gameplay_remaining",
+          "type": "core::integer::u256",
+          "kind": "data"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::rewards_vault::RewardsVault::RewardReserveMoved",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "to_pool",
+          "type": "core::integer::u8",
+          "kind": "data"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u256",
+          "kind": "data"
+        },
+        {
+          "name": "reserve_remaining",
+          "type": "core::integer::u256",
+          "kind": "data"
         }
       ]
     },

@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useNetwork } from "@starknet-react/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ConfigApi } from "@/api/torii/config";
+import { ConfigApi, RewardPoolsApi } from "@/api/torii/config";
 import { initToriiClient } from "@/api/torii/client";
 import { subscribeEntities } from "@/api/torii/subscribe";
 import {
@@ -20,7 +20,7 @@ import {
   getWorldAddress,
   toChainIdHex,
 } from "@/config";
-import type { Config } from "@/models";
+import type { Config, RewardPools } from "@/models";
 
 type EntitiesProviderProps = {
   children: React.ReactNode;
@@ -30,6 +30,7 @@ type EntitiesProviderState = {
   chainId: string;
   client?: torii.ToriiClient;
   config?: Config;
+  rewardPools?: RewardPools;
   rpcUrl: string;
   toriiUrl: string;
   worldAddress: string;
@@ -48,10 +49,14 @@ export function EntitiesProvider({
   const { chain } = useNetwork();
   const queryClient = useQueryClient();
   const [client, setClient] = useState<torii.ToriiClient>();
-  const subscriptionRef = useRef<torii.Subscription | null>(null);
+  const subscriptionRef = useRef<{ cancel: () => void } | null>(null);
   const chainId = toChainIdHex(chain?.id ?? DEFAULT_CHAIN_ID);
   const queryKey = useMemo(
     () => [...ConfigApi.keys.singleton(), chainId] as const,
+    [chainId],
+  );
+  const rewardPoolsQueryKey = useMemo(
+    () => [...RewardPoolsApi.keys.singleton(), chainId] as const,
     [chainId],
   );
 
@@ -97,6 +102,21 @@ export function EntitiesProvider({
     enabled: !!client,
   });
 
+  const {
+    data: rewardPools,
+    isLoading: isRewardPoolsLoading,
+    refetch: refetchRewardPools,
+  } = useQuery<RewardPools | undefined>({
+    queryKey: rewardPoolsQueryKey,
+    queryFn: async () => {
+      if (!client) {
+        return undefined;
+      }
+      return RewardPoolsApi.fetch(client);
+    },
+    enabled: !!client,
+  });
+
   const handleConfigUpdate = useCallback(
     (entities: torii.Entity[]) => {
       const parsed = ConfigApi.parse(entities);
@@ -107,6 +127,16 @@ export function EntitiesProvider({
     [queryClient, queryKey],
   );
 
+  const handleRewardPoolsUpdate = useCallback(
+    (entities: torii.Entity[]) => {
+      const parsed = RewardPoolsApi.parse(entities);
+      if (parsed) {
+        queryClient.setQueryData(rewardPoolsQueryKey, parsed);
+      }
+    },
+    [queryClient, rewardPoolsQueryKey],
+  );
+
   useEffect(() => {
     if (!client) {
       return undefined;
@@ -115,21 +145,32 @@ export function EntitiesProvider({
     let cancelled = false;
 
     const run = async () => {
-      const subscription = await subscribeEntities(
+      const configSubscription = await subscribeEntities(
         client,
         ConfigApi.query().build().clause,
         handleConfigUpdate,
       );
+      const rewardPoolsSubscription = await subscribeEntities(
+        client,
+        RewardPoolsApi.query().build().clause,
+        handleRewardPoolsUpdate,
+      );
 
       if (cancelled) {
-        subscription.cancel();
+        configSubscription.cancel();
+        rewardPoolsSubscription.cancel();
         return;
       }
 
       if (subscriptionRef.current) {
         subscriptionRef.current.cancel();
       }
-      subscriptionRef.current = subscription;
+      subscriptionRef.current = {
+        cancel: () => {
+          configSubscription.cancel();
+          rewardPoolsSubscription.cancel();
+        },
+      };
     };
 
     run().catch((error: unknown) => {
@@ -143,26 +184,27 @@ export function EntitiesProvider({
         subscriptionRef.current = null;
       }
     };
-  }, [client, handleConfigUpdate]);
+  }, [client, handleConfigUpdate, handleRewardPoolsUpdate]);
 
   const refresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
+    await Promise.all([refetch(), refetchRewardPools()]);
+  }, [refetch, refetchRewardPools]);
 
   const status: EntitiesProviderState["status"] = useMemo(() => {
     if (isError) {
       return "error";
     }
-    if (!client || isLoading) {
+    if (!client || isLoading || isRewardPoolsLoading) {
       return "loading";
     }
     return "success";
-  }, [client, isError, isLoading]);
+  }, [client, isError, isLoading, isRewardPoolsLoading]);
 
   const value: EntitiesProviderState = {
     chainId,
     client,
     config,
+    rewardPools,
     rpcUrl: getRpcUrl(chainId),
     toriiUrl: getToriiUrl(chainId),
     worldAddress: getWorldAddress(chainId),

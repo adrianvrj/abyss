@@ -11,6 +11,7 @@ pub mod systems {
     pub mod play;
     pub mod relic;
     pub mod relic_nft_contract;
+    pub mod rewards_vault;
     pub mod setup;
     pub mod streak_system;
     pub mod token;
@@ -55,6 +56,7 @@ pub mod interfaces {
         pub mod erc721;
         pub mod pragma;
         pub mod relic_nft;
+        pub mod rewards_vault;
         pub mod vrf;
 }
 

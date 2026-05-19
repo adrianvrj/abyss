@@ -25,8 +25,10 @@ pub mod Streak {
         recovered_streak_count, streak_loot_rarity_from_roll, utc_day_from_timestamp,
         STREAK_LOOT_CHARM_SESSION_ID_SENTINEL, STREAK_RECOVER_CHIP_COST,
     };
+    use crate::helpers::play_payout::get_charm_chip_reward_amount;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::interfaces::rewards_vault::IRewardsVaultDispatcherTrait;
     use crate::models::index::PlayerStreak;
     use crate::store::StoreTrait;
     use crate::systems::token::{IChipDispatcher, IChipDispatcherTrait};
@@ -79,6 +81,15 @@ pub mod Streak {
             let token_id = charm_disp.mint_random_charm_of_rarity(caller, rarity, seed);
 
             let charm_meta = charm_disp.get_charm_metadata(token_id);
+            let rewards_vault = store.rewards_vault_disp();
+            rewards_vault
+                .pay_charm(
+                    caller,
+                    STREAK_LOOT_CHARM_SESSION_ID_SENTINEL,
+                    rarity,
+                    token_id,
+                    get_charm_chip_reward_amount(rarity),
+                );
 
             ps.streak_count = 0;
             ps.last_increment_day_id = 0;

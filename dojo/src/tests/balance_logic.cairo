@@ -8,6 +8,7 @@ use crate::helpers::relic_types::get_relic_type_info;
 use crate::helpers::scoring::get_level_threshold;
 use crate::models::index::Item;
 use crate::systems::play::{get_chip_payout_amount, get_total_chip_units};
+use crate::helpers::play_payout::get_charm_chip_reward_amount;
 
 fn find_item(item_id: u32) -> Item {
     let items = get_all_items();
@@ -225,11 +226,31 @@ fn test_666_probability_ramps_harder_in_late_game() {
 
 #[test]
 fn test_diamond_chip_bonus_is_included_in_final_chip_payout() {
-    assert(get_total_chip_units(45, 3) == 5, 'total chip units');
+    assert(get_total_chip_units(45, 3) == 7, 'total chip units');
 
     let payout = get_chip_payout_amount(45, 3, 1, 1);
-    assert(payout == 5_000_000_000_000_000_000_u256, 'bonus payout amount');
+    assert(payout == 7_000_000_000_000_000_000_u256, 'bonus payout amount');
 
     let boosted_payout = get_chip_payout_amount(80, 2, 3, 2);
-    assert(boosted_payout == 36_000_000_000_000_000_000_u256, 'boosted payout amount');
+    assert(boosted_payout == 60_000_000_000_000_000_000_u256, 'boosted payout amount');
+}
+
+#[test]
+fn test_tiered_chip_payout_curve_matches_rewards_refactor() {
+    assert(get_total_chip_units(12_000, 0) == 1_200, '12k score payout');
+    assert(get_total_chip_units(25_000, 0) == 1_850, '25k score payout');
+    assert(get_total_chip_units(91_073, 0) == 4_052, 'top run payout');
+    assert(get_total_chip_units(25_000, 350) == 2_150, 'bonus cap payout');
+}
+
+#[test]
+fn test_charm_chip_rewards_match_rarity_table() {
+    assert(get_charm_chip_reward_amount(0) == 60_000_000_000_000_000_000_u256, 'common reward');
+    assert(get_charm_chip_reward_amount(1) == 240_000_000_000_000_000_000_u256, 'rare reward');
+    assert(get_charm_chip_reward_amount(2) == 800_000_000_000_000_000_000_u256, 'epic reward');
+    assert(
+        get_charm_chip_reward_amount(3) == 1_500_000_000_000_000_000_000_u256,
+        'legend reward',
+    );
+    assert(get_charm_chip_reward_amount(99) == 0, 'invalid reward');
 }

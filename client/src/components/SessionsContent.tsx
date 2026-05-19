@@ -422,7 +422,7 @@ export function SessionsContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [isClaimed, setIsClaimed] = useState(false);
-    const { client, config } = useEntities();
+    const { client, config, rewardPools, status: entitiesStatus } = useEntities();
     const { chipsPerUsdc, isLoading: isLoadingPrice } = useChipPrice();
     const [beastSessions, setBeastSessions] = useState(0);
     const [configuringSession, setConfiguringSession] = useState<SessionInfo | null>(null);
@@ -1684,6 +1684,9 @@ export function SessionsContent() {
                             chipBoostMultiplier={config.chipBoostMultiplier}
                             chipsPerUsdc={chipsPerUsdc}
                             isLoadingPrice={isLoadingPrice}
+                            gameplayPoolRemaining={rewardPools?.gameplayRemaining}
+                            charmPoolRemaining={rewardPools?.charmRemaining}
+                            isLoadingRewardPools={entitiesStatus === "loading" && !rewardPools}
                         />
                     );
                 })()}

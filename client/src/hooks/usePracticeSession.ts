@@ -24,7 +24,20 @@ const PRACTICE_RELICS: OwnedRelic[] = [
 
 const EMPTY_ITEMS: ContractItem[] = [];
 const EMPTY_PATTERNS: Pattern[] = [];
-const CHIP_SCORE_DIVISOR = 20;
+const CHIP_BONUS_CAP = 300;
+
+function getChipUnits(scoreValue: number, bonusUnits = 0) {
+  const safeScore = Math.max(0, Math.floor(scoreValue));
+  const tier1 = Math.min(safeScore, 12_000);
+  const tier2 = Math.max(0, Math.min(safeScore, 25_000) - 12_000);
+  const tier3 = Math.max(0, safeScore - 25_000);
+  const safeBonusUnits = Math.min(Math.max(0, Math.floor(bonusUnits)), CHIP_BONUS_CAP);
+
+  return Math.floor(tier1 / 10)
+    + Math.floor(tier2 / 20)
+    + Math.floor(tier3 / 30)
+    + safeBonusUnits;
+}
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -114,11 +127,10 @@ export function usePracticeSession() {
   const calculatePracticeChipPayout = useCallback(async (scoreValue: number, diamondBonusUnits: number) => {
     try {
       const { emissionRate, boostMultiplier } = await loadChipEconomyConfig();
-      const baseUnits = Math.floor(Math.max(0, scoreValue) / CHIP_SCORE_DIVISOR);
-      return (baseUnits + Math.max(0, diamondBonusUnits)) * emissionRate * boostMultiplier;
+      return getChipUnits(scoreValue, diamondBonusUnits) * emissionRate * boostMultiplier;
     } catch (error) {
       console.warn("Failed to resolve chip economy config for practice payout", error);
-      return Math.floor(Math.max(0, scoreValue) / CHIP_SCORE_DIVISOR) + Math.max(0, diamondBonusUnits);
+      return getChipUnits(scoreValue, diamondBonusUnits);
     }
   }, [loadChipEconomyConfig]);
 

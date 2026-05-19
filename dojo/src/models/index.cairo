@@ -160,6 +160,18 @@ pub struct SessionChipBonus {
 
 #[dojo::model]
 #[derive(Copy, Drop, Serde)]
+pub struct RewardPools {
+    #[key]
+    pub world_resource: felt252,
+    pub gameplay_remaining: u256,
+    pub charm_remaining: u256,
+    pub reserve_remaining: u256,
+    pub gameplay_paid: u256,
+    pub charm_paid: u256,
+}
+
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
 pub struct SessionItemPurchaseCount {
     #[key]
     pub session_id: u32,

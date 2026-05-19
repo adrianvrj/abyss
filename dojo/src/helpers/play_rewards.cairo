@@ -1,4 +1,3 @@
-use core::num::traits::Zero;
 use core::poseidon::poseidon_hash_span;
 use starknet::ContractAddress;
 
@@ -6,10 +5,10 @@ use crate::helpers::inventory::InventoryImpl;
 use crate::helpers::play_charm_odds::{
     get_charm_drop_chance_from_score_and_luck, get_charm_rarity_from_score_and_roll,
 };
-use crate::helpers::play_payout::get_chip_payout_amount;
+use crate::helpers::play_payout::{get_charm_chip_reward_amount, get_chip_payout_amount};
 use crate::helpers::streak::{advance_player_streak, utc_day_from_timestamp};
 use crate::interfaces::charm_nft::ICharmDispatcherTrait;
-use crate::interfaces::erc20::IERC20DispatcherTrait;
+use crate::interfaces::rewards_vault::IRewardsVaultDispatcherTrait;
 use crate::models::index::Session;
 use crate::store::{Store, StoreTrait};
 
@@ -26,12 +25,12 @@ pub fn process_end_session_rewards(
             config.chip_boost_multiplier,
         );
 
-        let zero_addr: ContractAddress = Zero::zero();
-        if chip_amount > 0 && config.chip_token != zero_addr {
-            let chip_disp = store.chip_disp();
-            chip_disp.mint(session.player_address, chip_amount);
+        if chip_amount > 0 {
+            let rewards_vault = store.rewards_vault_disp();
+            rewards_vault.pay_gameplay(session.player_address, session_id, chip_amount);
         }
 
+        let zero_addr: ContractAddress = 0.try_into().unwrap();
         if config.charm_nft != zero_addr {
             let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
             let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
@@ -54,6 +53,15 @@ pub fn process_end_session_rewards(
                 let token_id = charm_disp
                     .mint_random_charm_of_rarity(session.player_address, rarity, charm_seed);
                 let charm_meta = charm_disp.get_charm_metadata(token_id);
+                let rewards_vault = store.rewards_vault_disp();
+                rewards_vault
+                    .pay_charm(
+                        session.player_address,
+                        session_id,
+                        rarity,
+                        token_id,
+                        get_charm_chip_reward_amount(rarity),
+                    );
                 store
                     .emit_charm_minted(
                         @crate::events::index::CharmMinted {

@@ -21,6 +21,7 @@ default = "ABYSS"
     "ABYSS-Setup",
     "ABYSS-Play",
     "ABYSS-Streak",
+    "ABYSS-RewardsVault",
     "ABYSS-GoldenChip",
     "ABYSS-Market",
     "ABYSS-Relic",

@@ -6,6 +6,7 @@ import {
 } from "@/models/shared";
 
 export const CONFIG_MODEL_NAME = "Config";
+export const REWARD_POOLS_MODEL_NAME = "RewardPools";
 
 export interface RawConfig {
   world_resource: PrimitiveValue<string>;
@@ -99,6 +100,24 @@ export interface Config {
   poolSqrt: bigint;
 }
 
+export interface RawRewardPools {
+  world_resource: PrimitiveValue<string>;
+  gameplay_remaining: PrimitiveValue<string>;
+  charm_remaining: PrimitiveValue<string>;
+  reserve_remaining: PrimitiveValue<string>;
+  gameplay_paid: PrimitiveValue<string>;
+  charm_paid: PrimitiveValue<string>;
+}
+
+export interface RewardPools {
+  worldResource: string;
+  gameplayRemaining: bigint;
+  charmRemaining: bigint;
+  reserveRemaining: bigint;
+  gameplayPaid: bigint;
+  charmPaid: bigint;
+}
+
 export const ConfigModel = {
   getModelName() {
     return CONFIG_MODEL_NAME;
@@ -152,6 +171,26 @@ export const ConfigModel = {
       poolTickSpacing: toBigInt(data.pool_tick_spacing),
       poolExtension: toAddress(data.pool_extension),
       poolSqrt: toBigInt(data.pool_sqrt),
+    };
+  },
+};
+
+export const RewardPoolsModel = {
+  getModelName() {
+    return REWARD_POOLS_MODEL_NAME;
+  },
+  parse(data: RawRewardPools | undefined | null): RewardPools | undefined {
+    if (!data) {
+      return undefined;
+    }
+
+    return {
+      worldResource: `0x${toBigInt(data.world_resource).toString(16)}`,
+      gameplayRemaining: toBigInt(data.gameplay_remaining),
+      charmRemaining: toBigInt(data.charm_remaining),
+      reserveRemaining: toBigInt(data.reserve_remaining),
+      gameplayPaid: toBigInt(data.gameplay_paid),
+      charmPaid: toBigInt(data.charm_paid),
     };
   },
 };

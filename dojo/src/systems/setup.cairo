@@ -121,7 +121,7 @@ pub mod Setup {
         DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
         DEFAULT_SCORE_SEVEN, NAMESPACE, PATTERN_D3_MULT, PATTERN_H3_MULT, PATTERN_H4_MULT,
         PATTERN_H5_MULT, PATTERN_V3_MULT, RELIC_BASE_URI, REVENUE_PRIZE_PCT, REVENUE_TEAM_PCT,
-        REVENUE_TREASURY_PCT, WORLD_RESOURCE,
+        REVENUE_TREASURY_PCT, SESSION_ENTRY_PRICE_USD, WORLD_RESOURCE,
     };
     use crate::interfaces::charm_nft::{ICharmDispatcher, ICharmDispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicDispatcherTrait};
@@ -483,7 +483,7 @@ pub mod Setup {
             chip_emission_rate: DEFAULT_CHIP_EMISSION_RATE,
             chip_boost_multiplier: DEFAULT_CHIP_BOOST_MULTIPLIER,
             // Pricing
-            entry_price_usd: 2000000, // 2 USDC (6 decimals)
+            entry_price_usd: SESSION_ENTRY_PRICE_USD,
             // Counters
             total_sessions: 0,
             total_competitive_sessions: 0,
