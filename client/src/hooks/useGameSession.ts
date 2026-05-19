@@ -136,9 +136,9 @@ function getChipUnits(scoreValue: number, bonusUnits = 0) {
     const tier3 = Math.max(0, safeScore - 25_000);
     const safeBonusUnits = Math.min(Math.max(0, Math.floor(bonusUnits)), CHIP_BONUS_CAP);
 
-    return Math.floor(tier1 / 10)
-        + Math.floor(tier2 / 20)
-        + Math.floor(tier3 / 30)
+    return Math.floor(tier1 / 8)
+        + Math.floor(tier2 / 12)
+        + Math.floor(tier3 / 18)
         + safeBonusUnits;
 }
 

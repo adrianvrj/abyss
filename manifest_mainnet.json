@@ -265,12 +265,13 @@
     },
     {
       "address": "0xabacec30b172f0c17c1db76e0beec8a4ea39b3cf633406b25a09f75225cf07",
-      "class_hash": "0x5448a44cb48fab3e171377781ec7db9e82c39737ac0d79a17c0deac28f3d020",
+      "class_hash": "0x31b965442333386ca8acf4bd968f17fcc835e09873716009d0e85d6e09ccb0f",
       "init_calldata": [],
       "tag": "ABYSS-Treasury",
       "selector": "0x72689885a6f7a8f2db029679189ea00550d416058e3f0b0692e58417d2a8c19",
       "systems": [
         "dojo_init",
+        "mint_chip_to_rewards_vault",
         "upgrade",
         "grant_role",
         "revoke_role",
@@ -6950,6 +6951,41 @@
       ]
     },
     {
+      "type": "interface",
+      "name": "abyss_game::systems::treasury::ITreasury",
+      "items": [
+        {
+          "type": "function",
+          "name": "mint_chip_to_rewards_vault",
+          "inputs": [
+            {
+              "name": "amount",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::treasury::Treasury::ChipVaultMinted",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "rewards_vault",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "kind": "key"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u256",
+          "kind": "data"
+        }
+      ]
+    },
+    {
       "type": "event",
       "name": "abyss_game::systems::treasury::Treasury::Event",
       "kind": "enum",
@@ -6973,6 +7009,11 @@
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
           "kind": "flat"
+        },
+        {
+          "name": "ChipVaultMinted",
+          "type": "abyss_game::systems::treasury::Treasury::ChipVaultMinted",
+          "kind": "nested"
         }
       ]
     },

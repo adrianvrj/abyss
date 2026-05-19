@@ -715,6 +715,15 @@ function GameStage({
                     charmName={game.mintedCharmInfo.name}
                     charmImage={game.mintedCharmInfo.image}
                     rarity={game.mintedCharmInfo.rarity}
+                    chipRewardAmount={game.mintedCharmInfo.rarity === "Common"
+                        ? 60
+                        : game.mintedCharmInfo.rarity === "Rare"
+                            ? 240
+                            : game.mintedCharmInfo.rarity === "Epic"
+                                ? 800
+                                : game.mintedCharmInfo.rarity === "Legendary"
+                                    ? 1500
+                                    : 0}
                     onComplete={() => {
                         game.setShowCharmAnimation(false);
                         game.setMintedCharmInfo(null);

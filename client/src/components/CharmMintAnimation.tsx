@@ -6,15 +6,34 @@ interface CharmMintAnimationProps {
     charmName: string;
     charmImage: string;
     rarity: string;
+    chipRewardAmount?: number;
     onComplete: () => void;
+}
+
+function getCharmChipRewardAmount(rarity: string) {
+    switch (rarity.toLowerCase()) {
+        case 'common':
+            return 60;
+        case 'rare':
+            return 240;
+        case 'epic':
+            return 800;
+        case 'legendary':
+            return 1500;
+        default:
+            return 0;
+    }
 }
 
 export default function CharmMintAnimation({
     charmName,
     charmImage,
+    rarity,
+    chipRewardAmount,
     onComplete
 }: CharmMintAnimationProps) {
     const [phase, setPhase] = useState<'enter' | 'hold' | 'exit'>('enter');
+    const rewardAmount = chipRewardAmount ?? getCharmChipRewardAmount(rarity);
 
     useEffect(() => {
         const holdTimer = setTimeout(() => setPhase('hold'), 600);
@@ -111,6 +130,36 @@ export default function CharmMintAnimation({
                     }}>
                         {charmName}
                     </div>
+
+                    {rewardAmount > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                            animate={{
+                                opacity: phase === 'hold' ? 1 : 0,
+                                y: phase === 'hold' ? 0 : 10,
+                                scale: phase === 'hold' ? 1 : 0.92,
+                            }}
+                            transition={{ delay: 0.72, duration: 0.35 }}
+                            style={{
+                                alignSelf: 'center',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                padding: '10px 14px',
+                                border: '1px solid rgba(255, 132, 28, 0.65)',
+                                borderRadius: '6px',
+                                background: 'rgba(255, 132, 28, 0.08)',
+                                color: '#FFD36A',
+                                fontSize: '12px',
+                                lineHeight: 1.4,
+                                boxShadow: '0 0 26px rgba(255, 132, 28, 0.16)',
+                            }}
+                        >
+                            <span style={{ color: 'rgba(255,255,255,0.45)' }}>+</span>
+                            <span>{rewardAmount.toLocaleString()} CHIP</span>
+                        </motion.div>
+                    )}
 
                     <div style={{
                         fontSize: '10px',
