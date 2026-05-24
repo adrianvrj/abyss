@@ -31,7 +31,9 @@ type CharmLoadoutRow = {
 };
 
 const TOP_LIMIT = 25;
-export type LeaderboardWindow = "all-time" | "weekly";
+export type LeaderboardWindow = "all-time" | "weekly" | "tournament";
+const TOURNAMENT_START_SECONDS = Date.UTC(2026, 4, 25, 0, 0, 0) / 1000;
+const TOURNAMENT_END_SECONDS = Date.UTC(2026, 5, 1, 0, 0, 0) / 1000;
 
 export interface LeaderboardEntry {
   username: string;
@@ -128,6 +130,35 @@ function sessionIdPredicate(alias: string, sessionIds: number[]) {
   return values.size > 0 ? `${alias}.session_id IN (${Array.from(values).join(",")})` : "1 = 0";
 }
 
+function timestampLowerBoundPredicate(alias: string, column: string, startSeconds: number) {
+  const plainHex = `0x${startSeconds.toString(16)}`;
+  const paddedHex = `0x${startSeconds.toString(16).padStart(16, "0")}`;
+  const field = `${alias}.${column}`;
+
+  return `AND (
+          (${field} LIKE '0x%' AND (${field} >= '${plainHex}' OR ${field} >= '${paddedHex}'))
+          OR (${field} NOT LIKE '0x%' AND CAST(${field} AS INTEGER) >= ${startSeconds})
+        )`;
+}
+
+function timestampRangePredicate(alias: string, column: string, startSeconds: number, endSeconds: number) {
+  const startPlainHex = `0x${startSeconds.toString(16)}`;
+  const endPlainHex = `0x${endSeconds.toString(16)}`;
+  const startPaddedHex = `0x${startSeconds.toString(16).padStart(16, "0")}`;
+  const endPaddedHex = `0x${endSeconds.toString(16).padStart(16, "0")}`;
+  const field = `${alias}.${column}`;
+
+  return `AND (
+          (
+            ${field} LIKE '0x%' AND (
+              (${field} >= '${startPlainHex}' AND ${field} < '${endPlainHex}')
+              OR (${field} >= '${startPaddedHex}' AND ${field} < '${endPaddedHex}')
+            )
+          )
+          OR (${field} NOT LIKE '0x%' AND CAST(${field} AS INTEGER) >= ${startSeconds} AND CAST(${field} AS INTEGER) < ${endSeconds})
+        )`;
+}
+
 async function hydrateBuilds(
   client: ReturnType<typeof initGrpcClient>,
   entries: LeaderboardEntry[],
@@ -211,20 +242,16 @@ export const LeaderboardApi = {
       '${paddedHexId}'
     )`;
     const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-    const weekHex = `0x${sevenDaysAgo.toString(16)}`;
-    const paddedWeekHex = `0x${sevenDaysAgo.toString(16).padStart(16, "0")}`;
     const leaderboardScoreWindowWhere = window === "weekly"
-      ? `AND (
-          (s.timestamp LIKE '0x%' AND (s.timestamp >= '${weekHex}' OR s.timestamp >= '${paddedWeekHex}'))
-          OR (s.timestamp NOT LIKE '0x%' AND CAST(s.timestamp AS INTEGER) >= ${sevenDaysAgo})
-        )`
-      : "";
+      ? timestampLowerBoundPredicate("s", "timestamp", sevenDaysAgo)
+      : window === "tournament"
+        ? timestampRangePredicate("s", "timestamp", TOURNAMENT_START_SECONDS, TOURNAMENT_END_SECONDS)
+        : "";
     const sessionWindowWhere = window === "weekly"
-      ? `AND (
-          (s.created_at LIKE '0x%' AND (s.created_at >= '${weekHex}' OR s.created_at >= '${paddedWeekHex}'))
-          OR (s.created_at NOT LIKE '0x%' AND CAST(s.created_at AS INTEGER) >= ${sevenDaysAgo})
-        )`
-      : "";
+      ? timestampLowerBoundPredicate("s", "created_at", sevenDaysAgo)
+      : window === "tournament"
+        ? timestampRangePredicate("s", "created_at", TOURNAMENT_START_SECONDS, TOURNAMENT_END_SECONDS)
+        : "";
 
     // Aggregate in SQL and only return the top players. This means the join
     // against `controllers` happens against a tiny grouped result instead of

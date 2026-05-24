@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getLeaderboard, LeaderboardEntry } from "@/utils/abyssContract";
@@ -16,11 +16,29 @@ const headerStyle: React.CSSProperties = {
     color: "#FF841C",
 };
 
+const DISCORD_INVITE_URL = "https://discord.gg/UspD94Z5p7";
+const TOURNAMENT_START_MS = Date.UTC(2026, 4, 25, 0, 0, 0);
+const TOURNAMENT_END_MS = Date.UTC(2026, 5, 1, 0, 0, 0);
+const TOURNAMENT_PRIZES = [
+    { place: "1st", prize: "50 USDC" },
+    { place: "2nd", prize: "30 USDC" },
+    { place: "3rd", prize: "20 USDC" },
+];
+
+function formatCountdown(ms: number) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function Leaderboard() {
     const navigate = useNavigate();
     const { address, connector } = useController();
     const { chainId } = useEntities();
     const [selectedWindow, setSelectedWindow] = useState<LeaderboardWindow>("weekly");
+    const [now, setNow] = useState(() => Date.now());
 
     const { data: entries = [], isLoading } = useQuery<LeaderboardEntry[]>({
         queryKey: [...LeaderboardApi.keys.all(chainId, selectedWindow), "top10"],
@@ -31,6 +49,12 @@ export function Leaderboard() {
 
     const leaderboardData = useMemo(() => entries.slice(0, 10), [entries]);
     const loading = isLoading;
+    const isTournament = selectedWindow === "tournament";
+
+    useEffect(() => {
+        const interval = window.setInterval(() => setNow(Date.now()), 1000);
+        return () => window.clearInterval(interval);
+    }, []);
 
     const handleOpenProfile = useCallback(() => {
         try {
@@ -55,6 +79,24 @@ export function Leaderboard() {
 
     const isCurrentUser = (addr: string) => {
         return address && addr.toLowerCase() === address.toLowerCase();
+    };
+
+    const handleDiscord = useCallback(() => {
+        window.open(DISCORD_INVITE_URL, "_blank", "noopener,noreferrer");
+    }, []);
+
+    const getWindowDescription = () => {
+        if (selectedWindow === "weekly") return "Best runs from the last 7 days.";
+        if (selectedWindow === "tournament") {
+            if (now < TOURNAMENT_START_MS) {
+                return `STARTING IN: ${formatCountdown(TOURNAMENT_START_MS - now)}`;
+            }
+            if (now < TOURNAMENT_END_MS) {
+                return `ENDING: ${formatCountdown(TOURNAMENT_END_MS - now)}`;
+            }
+            return "TOURNAMENT ENDED";
+        }
+        return "Best runs across the current season.";
     };
 
     const renderBuild = (entry: LeaderboardEntry) => {
@@ -180,7 +222,7 @@ export function Leaderboard() {
                     aria-label="Leaderboard window"
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
+                        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
                         gap: 8,
                         marginBottom: 14,
                         padding: 4,
@@ -190,9 +232,10 @@ export function Leaderboard() {
                     }}
                 >
                     {([
+                        ["tournament", "Tournament"],
                         ["weekly", "Weekly"],
                         ["all-time", "All time"],
-                    ] as const).map(([window, label]) => {
+                    ] as [LeaderboardWindow, string][]).map(([window, label]) => {
                         const active = selectedWindow === window;
                         return (
                             <button
@@ -209,7 +252,7 @@ export function Leaderboard() {
                                     color: active ? "#f6efe6" : "rgba(255,255,255,0.62)",
                                     cursor: "pointer",
                                     fontFamily: "'PressStart2P', monospace",
-                                    fontSize: 9,
+                                    fontSize: label.length > 9 ? 7 : 9,
                                     textTransform: "uppercase",
                                 }}
                             >
@@ -225,10 +268,94 @@ export function Leaderboard() {
                         fontSize: 13,
                         color: "rgba(212,203,191,0.72)",
                         textAlign: "center",
+                        lineHeight: 1.55,
                     }}
                 >
-                    {selectedWindow === "weekly" ? "Best runs from the last 7 days." : "Best runs across the current season."}
+                    {getWindowDescription()}
                 </div>
+                {isTournament && (
+                    <div
+                        style={{
+                            marginBottom: 14,
+                            padding: 12,
+                            border: "1px solid rgba(255, 132, 28, 0.28)",
+                            borderRadius: 8,
+                            background: "rgba(255, 132, 28, 0.045)",
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                                gap: 8,
+                                marginBottom: 12,
+                            }}
+                        >
+                            {TOURNAMENT_PRIZES.map((reward) => (
+                                <div
+                                    key={reward.place}
+                                    style={{
+                                        minHeight: 54,
+                                        padding: "10px 6px",
+                                        border: "1px solid rgba(255, 132, 28, 0.24)",
+                                        borderRadius: 6,
+                                        background: "rgba(0,0,0,0.22)",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 6,
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            fontFamily: "'PressStart2P', monospace",
+                                            fontSize: 8,
+                                            color: "rgba(255,132,28,0.88)",
+                                        }}
+                                    >
+                                        {reward.place}
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontFamily: "'PressStart2P', monospace",
+                                            fontSize: 9,
+                                            color: "rgba(246,239,230,0.86)",
+                                            textAlign: "center",
+                                            lineHeight: 1.45,
+                                        }}
+                                    >
+                                        {reward.prize}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleDiscord}
+                            style={{
+                                width: "100%",
+                                minHeight: 38,
+                                border: "1px solid rgba(255,255,255,0.16)",
+                                borderRadius: 6,
+                                background: "rgba(255,255,255,0.035)",
+                                color: "rgba(246,239,230,0.78)",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 8,
+                                fontFamily: "var(--font-body)",
+                                fontSize: 12,
+                            }}
+                        >
+                            <svg width="18" height="18" aria-hidden="true">
+                                <use href="/icons.svg#discord-icon" />
+                            </svg>
+                            Join Discord to claim tournament rewards
+                        </button>
+                    </div>
+                )}
                 {loading ? (
                     <div style={{
                         display: "flex",
@@ -287,6 +414,9 @@ export function Leaderboard() {
                                     const isPodium = index < 3;
                                     const isCurrent = isCurrentUser(entry.player_address);
                                     const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+                                    const prize = isTournament ? TOURNAMENT_PRIZES[index]?.prize : undefined;
+                                    const podiumBorder = isTournament ? "rgba(255, 132, 28, 0.28)" : medalColors[index];
+                                    const podiumScoreColor = isTournament ? "#FF841C" : "#FFD700";
 
                                     return (
                                         <motion.div
@@ -302,13 +432,13 @@ export function Leaderboard() {
                                                 background: isCurrent
                                                     ? "rgba(255, 132, 28, 0.15)"
                                                     : isPodium
-                                                        ? "rgba(255, 215, 0, 0.05)"
+                                                        ? isTournament ? "rgba(255, 132, 28, 0.055)" : "rgba(255, 215, 0, 0.05)"
                                                         : "rgba(255, 255, 255, 0.03)",
                                                 borderRadius: "8px",
                                                 border: isCurrent
                                                     ? "2px solid #FF841C"
                                                     : isPodium
-                                                        ? `2px solid ${medalColors[index]}`
+                                                        ? `2px solid ${podiumBorder}`
                                                         : "1px solid rgba(255, 255, 255, 0.1)",
                                             }}
                                         >
@@ -316,14 +446,17 @@ export function Leaderboard() {
                                                 width: "32px",
                                                 height: "32px",
                                                 borderRadius: "50%",
-                                                background: isPodium ? medalColors[index] : "rgba(255, 255, 255, 0.1)",
+                                                background: isPodium
+                                                    ? isTournament ? "rgba(255,132,28,0.16)" : medalColors[index]
+                                                    : "rgba(255, 255, 255, 0.1)",
+                                                border: isPodium && isTournament ? "1px solid rgba(255,132,28,0.34)" : "none",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
                                                 marginRight: "12px",
                                             }}>
                                                 {isPodium ? (
-                                                    <Trophy size={14} color={index === 0 ? "#000" : "#fff"} />
+                                                    <Trophy size={14} color={isTournament ? "#FF841C" : index === 0 ? "#000" : "#fff"} />
                                                 ) : (
                                                     <span style={{
                                                         fontFamily: "'PressStart2P', monospace",
@@ -348,16 +481,33 @@ export function Leaderboard() {
                                                 {renderBuild(entry)}
                                             </div>
 
-                                            <span style={{
+                                            <div style={{
                                                 width: "80px",
                                                 textAlign: "right",
-                                                fontFamily: "'PressStart2P', monospace",
-                                                fontSize: isPodium ? "12px" : "10px",
-                                                color: isPodium ? "#FFD700" : "#fff",
-                                                fontWeight: isPodium ? "bold" : "normal",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                alignItems: "flex-end",
+                                                gap: 4,
                                             }}>
-                                                {entry.best_score}
-                                            </span>
+                                                <span style={{
+                                                    fontFamily: "'PressStart2P', monospace",
+                                                    fontSize: isPodium ? "12px" : "10px",
+                                                    color: isPodium ? podiumScoreColor : "#fff",
+                                                    fontWeight: isPodium ? "bold" : "normal",
+                                                }}>
+                                                    {entry.best_score}
+                                                </span>
+                                                {prize && (
+                                                    <span style={{
+                                                        fontFamily: "'PressStart2P', monospace",
+                                                        fontSize: 7,
+                                                        color: "rgba(255,132,28,0.74)",
+                                                        lineHeight: 1.2,
+                                                    }}>
+                                                        {prize}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </motion.div>
                                     );
                                 })
