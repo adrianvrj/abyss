@@ -412,7 +412,7 @@ export function SessionsContent() {
         claimBeastSession,
         isReady,
     } = useAbyssGame(account);
-    const { claimFreeSessionBundle, equipCharms, setPendingCharmLoadout, claimStreakLoot, recoverStreak } =
+    const { claimFreeSessionBundle, equipCharms, setPendingCharmLoadout, claimStreakLoot, recoverStreak, mintGoldenChip } =
         useAbyssActions();
     const chainId = chain?.id ?? DEFAULT_CHAIN_ID;
     const charmLoadout = useCharmLoadout(account?.address, chainId);
@@ -437,6 +437,7 @@ export function SessionsContent() {
     const [nowMs, setNowMs] = useState(() => Date.now());
     const [playerStreak, setPlayerStreak] = useState<PlayerStreakState | null>(null);
     const [isStreakActionPending, setIsStreakActionPending] = useState(false);
+    const [isMintingGoldenChip, setIsMintingGoldenChip] = useState(false);
     const [hasMoreBelow, setHasMoreBelow] = useState(false);
     const [isActiveRunsVisible, setIsActiveRunsVisible] = useState(false);
     const sessionsListViewTrackedRef = useRef(false);
@@ -1137,6 +1138,29 @@ export function SessionsContent() {
         refreshBundles,
     ]);
 
+    const handleMintGoldenChip = useCallback(async () => {
+        if (!account || isMintingGoldenChip) {
+            return;
+        }
+        setIsMintingGoldenChip(true);
+        try {
+            const receipt = await mintGoldenChip();
+            captureAbyss("golden_chip_mint_completed", {
+                chain_id: chainId,
+                transaction_hash: receipt.transactionHash,
+            });
+            await loadSessions();
+        } catch (error) {
+            console.error("Failed to mint Golden Chip:", error);
+            captureAbyss("golden_chip_mint_failed", {
+                chain_id: chainId,
+                error_message: error instanceof Error ? error.message : "unknown",
+            });
+        } finally {
+            setIsMintingGoldenChip(false);
+        }
+    }, [account, chainId, isMintingGoldenChip, loadSessions, mintGoldenChip]);
+
     const handleClaimStreakLoot = useCallback(async () => {
         try {
             setIsStreakActionPending(true);
@@ -1755,6 +1779,25 @@ export function SessionsContent() {
                                 ? goldenChipRuns > 0 ? "Claim Golden Run" : "Claimed"
                                 : hasDelegateGoldenChip ? "Move Chip to Controller" : "No Golden Chip"}
                         </motion.button>
+                        {!hasAnyGoldenChip && (
+                            <motion.button
+                                style={{
+                                    ...styles.perkAction,
+                                    marginTop: 8,
+                                    opacity: (isMintingGoldenChip || !account) ? 0.6 : 1,
+                                    cursor: (isMintingGoldenChip || !account) ? "default" : "pointer",
+                                    color: "#FFD36A",
+                                    borderColor: "#FFD36A",
+                                    background: "#1B1000",
+                                }}
+                                onClick={handleMintGoldenChip}
+                                disabled={isMintingGoldenChip || !account}
+                                whileHover={!(isMintingGoldenChip || !account) ? { scale: 1.03 } : {}}
+                                whileTap={!(isMintingGoldenChip || !account) ? { scale: 0.97 } : {}}
+                            >
+                                {isMintingGoldenChip ? "Minting..." : "Mint Golden Chip ($150 USDC)"}
+                            </motion.button>
+                        )}
                     </div>
                 </motion.div>
 
