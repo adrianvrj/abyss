@@ -98,7 +98,7 @@
     },
     {
       "address": "0x5c375d8908c6e4d29520208a6c28ffe6b0564406137f8debff2b36ac1150ffe",
-      "class_hash": "0x1ba0432d98efd3a174367898f4bdac51bc21a2def10745032c5f4cd2305e272",
+      "class_hash": "0x483e6fba3cb18b2454c01ae8cec4e2ae0807db48f0b387d4f6eac10f650ec03",
       "init_calldata": [],
       "tag": "ABYSS-GoldenChip",
       "selector": "0x666f73eb680fb8aa6ccd8a10331295177fd70b71ec1745e8bbe7c1db3ed5437",
@@ -106,7 +106,7 @@
         "dojo_init",
         "mint",
         "admin_mint",
-        "consume_weekly_runs",
+        "consume_daily_runs",
         "set_max_supply",
         "set_base_uri",
         "set_mint_price",
@@ -200,7 +200,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x5ff282c5ccc496acbaef35dccd792473f7771e3ff44230df5064e1eda063bf0",
+      "class_hash": "0x32fe97a4d601a234dc2ee1dd40833efc1e3e68bd45e088b9ab1549961fbb32e",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -5276,7 +5276,7 @@
         },
         {
           "type": "function",
-          "name": "consume_weekly_runs",
+          "name": "consume_daily_runs",
           "inputs": [
             {
               "name": "player",
@@ -5292,7 +5292,7 @@
         },
         {
           "type": "function",
-          "name": "get_available_weekly_runs",
+          "name": "get_available_daily_runs",
           "inputs": [
             {
               "name": "player",
@@ -5308,7 +5308,7 @@
         },
         {
           "type": "function",
-          "name": "get_weekly_claimed",
+          "name": "get_daily_claimed",
           "inputs": [
             {
               "name": "player",

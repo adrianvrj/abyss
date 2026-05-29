@@ -136,7 +136,7 @@ fn seed_config(ref world: dojo::world::WorldStorage) {
 }
 
 #[test]
-fn golden_chip_consumes_two_weekly_runs_without_stacking() {
+fn golden_chip_consumes_daily_run_without_stacking() {
     let (mut world, golden_chip_address, setup_address, treasury_address) = golden_chip_world();
     seed_config(ref world);
 
@@ -150,10 +150,10 @@ fn golden_chip_consumes_two_weekly_runs_without_stacking() {
     golden_chip.mint();
     golden_chip.mint();
 
-    assert_eq!(golden_chip.get_available_weekly_runs(player), 2);
+    assert_eq!(golden_chip.get_available_daily_runs(player), 1);
     start_cheat_caller_address(golden_chip_address, setup_address);
-    golden_chip.consume_weekly_runs(player, 2);
-    assert_eq!(golden_chip.get_available_weekly_runs(player), 0);
+    golden_chip.consume_daily_runs(player, 1);
+    assert_eq!(golden_chip.get_available_daily_runs(player), 0);
 }
 
 #[test]
@@ -167,7 +167,7 @@ fn golden_chip_admin_mint_grants_holder_benefit_without_payment() {
     start_cheat_caller_address(golden_chip_address, treasury_address);
     golden_chip.admin_mint(player, 2);
 
-    assert_eq!(golden_chip.get_available_weekly_runs(player), 2);
+    assert_eq!(golden_chip.get_available_daily_runs(player), 1);
 }
 
 #[test]
@@ -198,8 +198,8 @@ fn golden_chip_admin_mint_respects_max_supply() {
 }
 
 #[test]
-#[should_panic(expected: ('Weekly limit exceeded',))]
-fn golden_chip_rejects_third_weekly_run() {
+#[should_panic(expected: ('Daily limit exceeded',))]
+fn golden_chip_rejects_second_daily_run() {
     let (mut world, golden_chip_address, setup_address, treasury_address) = golden_chip_world();
     seed_config(ref world);
 
@@ -212,12 +212,12 @@ fn golden_chip_rejects_third_weekly_run() {
     start_cheat_caller_address(golden_chip_address, player);
     golden_chip.mint();
     start_cheat_caller_address(golden_chip_address, setup_address);
-    golden_chip.consume_weekly_runs(player, 2);
-    golden_chip.consume_weekly_runs(player, 1);
+    golden_chip.consume_daily_runs(player, 1);
+    golden_chip.consume_daily_runs(player, 1);
 }
 
 #[test]
-#[should_panic(expected: ('Weekly limit exceeded',))]
+#[should_panic(expected: ('Daily limit exceeded',))]
 fn golden_chip_rejects_non_holder_claim() {
     let (mut world, golden_chip_address, setup_address, _) = golden_chip_world();
     seed_config(ref world);
@@ -226,7 +226,7 @@ fn golden_chip_rejects_non_holder_claim() {
     let golden_chip = IGoldenChipDispatcher { contract_address: golden_chip_address };
 
     start_cheat_caller_address(golden_chip_address, setup_address);
-    golden_chip.consume_weekly_runs(player, 1);
+    golden_chip.consume_daily_runs(player, 1);
 }
 
 #[test]
@@ -243,5 +243,5 @@ fn golden_chip_rejects_direct_consume() {
 
     start_cheat_caller_address(golden_chip_address, player);
     golden_chip.mint();
-    golden_chip.consume_weekly_runs(player, 1);
+    golden_chip.consume_daily_runs(player, 1);
 }

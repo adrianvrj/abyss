@@ -104,8 +104,8 @@ pub const SESSION_ENTRY_PRICE_USD: u256 = 1_000_000;
 // Golden Chip NFT
 pub const GOLDEN_CHIP_MINT_PRICE: u256 = 150_000_000;
 pub const GOLDEN_CHIP_INITIAL_SUPPLY: u32 = 200;
-pub const GOLDEN_CHIP_WEEKLY_RUNS: u32 = 2;
-pub const GOLDEN_CHIP_WEEK_SECONDS: u64 = 604800;
+pub const GOLDEN_CHIP_DAILY_RUNS: u32 = 1;
+pub const GOLDEN_CHIP_DAY_SECONDS: u64 = 86400;
 
 // Revenue distribution (out of 100)
 pub const REVENUE_PRIZE_PCT: u32 = 70;

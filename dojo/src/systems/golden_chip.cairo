@@ -9,9 +9,9 @@ pub fn NAME() -> ByteArray {
 pub trait IGoldenChip<TContractState> {
     fn mint(ref self: TContractState) -> u256;
     fn admin_mint(ref self: TContractState, to: ContractAddress, quantity: u32);
-    fn consume_weekly_runs(ref self: TContractState, player: ContractAddress, quantity: u32);
-    fn get_available_weekly_runs(self: @TContractState, player: ContractAddress) -> u32;
-    fn get_weekly_claimed(self: @TContractState, player: ContractAddress, epoch: u64) -> u32;
+    fn consume_daily_runs(ref self: TContractState, player: ContractAddress, quantity: u32);
+    fn get_available_daily_runs(self: @TContractState, player: ContractAddress) -> u32;
+    fn get_daily_claimed(self: @TContractState, player: ContractAddress, epoch: u64) -> u32;
     fn get_mint_price(self: @TContractState) -> u256;
     fn get_max_supply(self: @TContractState) -> u32;
     fn set_max_supply(ref self: TContractState, max_supply: u32);
@@ -36,8 +36,8 @@ pub mod GoldenChip {
     };
     use starknet::{ContractAddress, get_caller_address};
     use crate::constants::{
-        GOLDEN_CHIP_BASE_URI, GOLDEN_CHIP_INITIAL_SUPPLY, GOLDEN_CHIP_MINT_PRICE,
-        GOLDEN_CHIP_WEEK_SECONDS, GOLDEN_CHIP_WEEKLY_RUNS, NAMESPACE,
+        GOLDEN_CHIP_BASE_URI, GOLDEN_CHIP_DAILY_RUNS, GOLDEN_CHIP_DAY_SECONDS,
+        GOLDEN_CHIP_INITIAL_SUPPLY, GOLDEN_CHIP_MINT_PRICE, NAMESPACE,
     };
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::store::StoreTrait;
@@ -70,7 +70,7 @@ pub mod GoldenChip {
         next_token_id: u64,
         max_supply: u32,
         mint_price: u256,
-        weekly_claimed: Map<(ContractAddress, u64), u32>,
+        daily_claimed: Map<(ContractAddress, u64), u32>,
     }
 
     #[event]
@@ -85,7 +85,7 @@ pub mod GoldenChip {
     }
 
     fn current_epoch() -> u64 {
-        starknet::get_block_timestamp() / GOLDEN_CHIP_WEEK_SECONDS
+        starknet::get_block_timestamp() / GOLDEN_CHIP_DAY_SECONDS
     }
 
     fn split_amounts(
@@ -279,7 +279,7 @@ pub mod GoldenChip {
             };
         }
 
-        fn consume_weekly_runs(
+        fn consume_daily_runs(
             ref self: ContractState, player: ContractAddress, quantity: u32,
         ) {
             let caller = get_caller_address();
@@ -288,29 +288,29 @@ pub mod GoldenChip {
             assert(caller == setup_address, 'Only setup can consume');
             assert(quantity > 0, 'Invalid quantity');
 
-            let available = Self::get_available_weekly_runs(@self, player);
-            assert(quantity <= available, 'Weekly limit exceeded');
+            let available = Self::get_available_daily_runs(@self, player);
+            assert(quantity <= available, 'Daily limit exceeded');
 
             let epoch = current_epoch();
-            let claimed = self.weekly_claimed.entry((player, epoch)).read();
-            self.weekly_claimed.entry((player, epoch)).write(claimed + quantity);
+            let claimed = self.daily_claimed.entry((player, epoch)).read();
+            self.daily_claimed.entry((player, epoch)).write(claimed + quantity);
         }
 
-        fn get_available_weekly_runs(self: @ContractState, player: ContractAddress) -> u32 {
+        fn get_available_daily_runs(self: @ContractState, player: ContractAddress) -> u32 {
             if self.erc721.balance_of(player) == 0 {
                 return 0;
             }
 
-            let claimed = self.weekly_claimed.entry((player, current_epoch())).read();
-            if claimed >= GOLDEN_CHIP_WEEKLY_RUNS {
+            let claimed = self.daily_claimed.entry((player, current_epoch())).read();
+            if claimed >= GOLDEN_CHIP_DAILY_RUNS {
                 0
             } else {
-                GOLDEN_CHIP_WEEKLY_RUNS - claimed
+                GOLDEN_CHIP_DAILY_RUNS - claimed
             }
         }
 
-        fn get_weekly_claimed(self: @ContractState, player: ContractAddress, epoch: u64) -> u32 {
-            self.weekly_claimed.entry((player, epoch)).read()
+        fn get_daily_claimed(self: @ContractState, player: ContractAddress, epoch: u64) -> u32 {
+            self.daily_claimed.entry((player, epoch)).read()
         }
 
         fn get_mint_price(self: @ContractState) -> u256 {

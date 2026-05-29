@@ -14,8 +14,10 @@ import {
   getRelicAddress,
   getWorldAddress,
   getSetupAddress,
+  getGoldenChipAddress,
   tryGetStreakAddress,
 } from "@/config";
+import { getGoldenChipMintPrice } from "@/api/rpc/goldenChip";
 import { CONTRACTS } from "@/lib/constants";
 import { STREAK_RECOVER_CHIP_WEI } from "@/api/rpc/streak";
 import { parseReceiptEvents } from "@/utils/gameEvents";
@@ -65,6 +67,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
   const relicAddress = useMemo(() => getRelicAddress(chainId), [chainId]);
   const charmAddress = useMemo(() => getCharmAddress(chainId), [chainId]);
   const chipAddress = useMemo(() => getChipAddress(chainId), [chainId]);
+  const goldenChipAddress = useMemo(() => getGoldenChipAddress(chainId), [chainId]);
   const streakAddress = useMemo(() => tryGetStreakAddress(chainId), [chainId]);
 
   const receiptEventContracts = useMemo(() => {
@@ -479,6 +482,43 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     [executeCalls, playAddress],
   );
 
+  const mintGoldenChip = useCallback(async () => {
+    if (!account) {
+      throw new Error("Wallet not connected");
+    }
+
+    const config = await getGameConfig(chainId).catch((error) => {
+      console.warn("failed to fetch game config before golden chip mint, using fallback token", error);
+      return null;
+    });
+    const paymentToken = config?.quoteToken || CONTRACTS.USDC_TOKEN;
+    const price = await getGoldenChipMintPrice(chainId);
+
+    const calls: ExecuteCall[] = [];
+    if (price > 0n) {
+      calls.push({
+        contractAddress: paymentToken,
+        entrypoint: "approve",
+        calldata: CallData.compile([goldenChipAddress, ...toUint256(price)]),
+      });
+    }
+    calls.push({
+      contractAddress: goldenChipAddress,
+      entrypoint: "mint",
+      calldata: [],
+    });
+
+    const receipt = await executeCalls(calls);
+    captureAbyss("golden_chip_minted", {
+      player_address: account.address,
+      chain_id: chainId,
+      payment_token: paymentToken,
+      price: price.toString(),
+      transaction_hash: receipt.transactionHash,
+    });
+    return receipt;
+  }, [account, chainId, executeCalls, goldenChipAddress]);
+
   const claimStreakLoot = useCallback(async () => {
     if (!account) {
       throw new Error("Wallet not connected");
@@ -531,8 +571,10 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     relicAddress,
     charmAddress,
     chipAddress,
+    goldenChipAddress,
     streakAddress,
     createSession,
+    mintGoldenChip,
     claimFreeSessionBundle,
     setPendingCharmLoadout,
     equipCharms,

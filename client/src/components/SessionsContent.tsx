@@ -37,12 +37,12 @@ interface SessionInfo {
     totalSpins: number;
 }
 
-const GOLDEN_CHIP_WEEK_SECONDS = 604800;
+const GOLDEN_CHIP_DAY_SECONDS = 86400;
 
 function getGoldenChipResetMs(nowMs = Date.now()) {
     const nowSeconds = Math.floor(nowMs / 1000);
-    const nextEpoch = Math.floor(nowSeconds / GOLDEN_CHIP_WEEK_SECONDS) + 1;
-    return nextEpoch * GOLDEN_CHIP_WEEK_SECONDS * 1000;
+    const nextEpoch = Math.floor(nowSeconds / GOLDEN_CHIP_DAY_SECONDS) + 1;
+    return nextEpoch * GOLDEN_CHIP_DAY_SECONDS * 1000;
 }
 
 function formatGoldenChipResetCountdown(resetMs: number, nowMs: number) {
@@ -1700,7 +1700,7 @@ export function SessionsContent() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
                 >
-                    <div style={styles.perksHeader}>Golden Chip Weekly Runs</div>
+                    <div style={styles.perksHeader}>Golden Chip Daily Runs</div>
                     <div style={styles.perkCard}>
                         <div style={styles.perkTitleRow}>
                             <span style={styles.perkTitle}>Golden Chip</span>
@@ -1716,7 +1716,7 @@ export function SessionsContent() {
                             }}>
                                 {hasControllerGoldenChip
                                     ? goldenChipRuns > 0
-                                        ? `${goldenChipRuns} WEEKLY RUN${goldenChipRuns !== 1 ? "S" : ""}`
+                                        ? `${goldenChipRuns} DAILY RUN${goldenChipRuns !== 1 ? "S" : ""}`
                                         : "CLAIMED"
                                     : hasDelegateGoldenChip
                                         ? "TRANSFER NEEDED"
@@ -1726,8 +1726,8 @@ export function SessionsContent() {
                         <div style={styles.perkBody}>
                             {hasControllerGoldenChip
                                 ? goldenChipRuns > 0
-                                    ? "Your Controller has Golden Chip weekly runs available. Claim one run at a time through Cartridge."
-                                    : "Your Golden Chip weekly runs are claimed for this cycle."
+                                    ? "Your Controller has Golden Chip daily runs available. Claim one run at a time through Cartridge."
+                                    : "Your Golden Chip daily runs are claimed for today."
                                 : hasDelegateGoldenChip
                                     ? "Golden Chip detected on your owner wallet. Transfer it to your Controller account to claim runs in-game."
                                     : "No Golden Chip detected on this Controller account."}

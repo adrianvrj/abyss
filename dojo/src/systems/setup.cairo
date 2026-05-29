@@ -194,7 +194,7 @@ pub mod Setup {
                     .dns_address(@GOLDEN_CHIP_NAME())
                     .expect('GoldenChip not found!');
                 let golden_chip = IGoldenChipDispatcher { contract_address: golden_chip_address };
-                golden_chip.consume_weekly_runs(recipient, quantity);
+                golden_chip.consume_daily_runs(recipient, quantity);
             }
             contract_state.purchase.execute(world, bundle_id, quantity);
 
@@ -284,14 +284,14 @@ pub mod Setup {
         quote_token: ContractAddress, chip_token: ContractAddress, image_uri: ByteArray,
     ) -> ByteArray {
         let item = BundleItemTrait::new(
-            name: "Golden Chip Weekly Run",
-            description: "Claim a weekly free Abyss run with a Golden Chip",
+            name: "Golden Chip Daily Run",
+            description: "Claim a daily free Abyss run with a Golden Chip",
             image_uri: image_uri.clone(),
         );
 
         BundleMetadataTrait::new(
-            name: "Golden Chip Weekly Runs",
-            description: "Golden Chip holders can claim up to 2 free Abyss runs per week",
+            name: "Golden Chip Daily Runs",
+            description: "Golden Chip holders can claim 1 free Abyss run per day",
             image_uri: image_uri,
             items: array![item].span(),
             tokens: session_payment_tokens(quote_token, chip_token),

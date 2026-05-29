@@ -245,9 +245,21 @@ export async function getAvailableGoldenChipRuns(
   const goldenChipAddress = getGoldenChipAddress(chainId);
   const result = await provider.callContract({
     contractAddress: goldenChipAddress,
-    entrypoint: "get_available_weekly_runs",
+    entrypoint: "get_available_daily_runs",
     calldata: [playerAddress],
   });
 
   return Number(result[0] ?? 0);
+}
+
+export async function getGoldenChipMintPrice(chainId: ChainLike) {
+  const provider = getRpcProvider(chainId);
+  const goldenChipAddress = getGoldenChipAddress(chainId);
+  const result = await provider.callContract({
+    contractAddress: goldenChipAddress,
+    entrypoint: "get_mint_price",
+    calldata: [],
+  });
+
+  return parseUint256(result);
 }

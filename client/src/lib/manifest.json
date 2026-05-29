@@ -98,7 +98,7 @@
     },
     {
       "address": "0x5c375d8908c6e4d29520208a6c28ffe6b0564406137f8debff2b36ac1150ffe",
-      "class_hash": "0x1ba0432d98efd3a174367898f4bdac51bc21a2def10745032c5f4cd2305e272",
+      "class_hash": "0x483e6fba3cb18b2454c01ae8cec4e2ae0807db48f0b387d4f6eac10f650ec03",
       "init_calldata": [],
       "tag": "ABYSS-GoldenChip",
       "selector": "0x666f73eb680fb8aa6ccd8a10331295177fd70b71ec1745e8bbe7c1db3ed5437",
@@ -106,7 +106,7 @@
         "dojo_init",
         "mint",
         "admin_mint",
-        "consume_weekly_runs",
+        "consume_daily_runs",
         "set_max_supply",
         "set_base_uri",
         "set_mint_price",
@@ -132,7 +132,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x57f15342d15f3af8350578f55cf6da91ae7bd4e02f24cf469ebcf9fb4de1e24",
+      "class_hash": "0x1a4612f0c194b7355981c48592247100f88cf010e4ab8d30cf136c38ed20500",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -200,7 +200,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x5ff282c5ccc496acbaef35dccd792473f7771e3ff44230df5064e1eda063bf0",
+      "class_hash": "0x32fe97a4d601a234dc2ee1dd40833efc1e3e68bd45e088b9ab1549961fbb32e",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -265,12 +265,13 @@
     },
     {
       "address": "0xabacec30b172f0c17c1db76e0beec8a4ea39b3cf633406b25a09f75225cf07",
-      "class_hash": "0x5448a44cb48fab3e171377781ec7db9e82c39737ac0d79a17c0deac28f3d020",
+      "class_hash": "0x31b965442333386ca8acf4bd968f17fcc835e09873716009d0e85d6e09ccb0f",
       "init_calldata": [],
       "tag": "ABYSS-Treasury",
       "selector": "0x72689885a6f7a8f2db029679189ea00550d416058e3f0b0692e58417d2a8c19",
       "systems": [
         "dojo_init",
+        "mint_chip_to_rewards_vault",
         "upgrade",
         "grant_role",
         "revoke_role",
@@ -5275,7 +5276,7 @@
         },
         {
           "type": "function",
-          "name": "consume_weekly_runs",
+          "name": "consume_daily_runs",
           "inputs": [
             {
               "name": "player",
@@ -5291,7 +5292,7 @@
         },
         {
           "type": "function",
-          "name": "get_available_weekly_runs",
+          "name": "get_available_daily_runs",
           "inputs": [
             {
               "name": "player",
@@ -5307,7 +5308,7 @@
         },
         {
           "type": "function",
-          "name": "get_weekly_claimed",
+          "name": "get_daily_claimed",
           "inputs": [
             {
               "name": "player",
@@ -6950,6 +6951,41 @@
       ]
     },
     {
+      "type": "interface",
+      "name": "abyss_game::systems::treasury::ITreasury",
+      "items": [
+        {
+          "type": "function",
+          "name": "mint_chip_to_rewards_vault",
+          "inputs": [
+            {
+              "name": "amount",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::treasury::Treasury::ChipVaultMinted",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "rewards_vault",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "kind": "key"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u256",
+          "kind": "data"
+        }
+      ]
+    },
+    {
       "type": "event",
       "name": "abyss_game::systems::treasury::Treasury::Event",
       "kind": "enum",
@@ -6973,6 +7009,11 @@
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
           "kind": "flat"
+        },
+        {
+          "name": "ChipVaultMinted",
+          "type": "abyss_game::systems::treasury::Treasury::ChipVaultMinted",
+          "kind": "nested"
         }
       ]
     },
