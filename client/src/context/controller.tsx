@@ -41,14 +41,16 @@ export function ControllerProvider({ children }: PropsWithChildren) {
   const [delegateAddress, setDelegateAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isConnected || !address) {
-      setUsername(null);
-      setDelegateAddress(null);
-      return;
-    }
-
     let cancelled = false;
     (async () => {
+      if (!isConnected || !address) {
+        if (!cancelled) {
+          setUsername(null);
+          setDelegateAddress(null);
+        }
+        return;
+      }
+
       const [nextUsername, nextDelegate] = await Promise.all([
         Promise.resolve(controllerConnector.username?.()).catch(() => undefined),
         controllerConnector.delegateAccount?.().catch(() => null),
