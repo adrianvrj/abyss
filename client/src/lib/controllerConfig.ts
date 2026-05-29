@@ -109,48 +109,6 @@ export const sessionPolicies: SessionPolicies = {
   },
 };
 
-export const CONTROLLER_SESSION_VERSION = JSON.stringify({
-  preset: CONTROLLER_PRESET || null,
-  rpcUrl: CONTROLLER_RPC_URL,
-  slot: cartridgeSlot,
-  play: PLAY_ADDRESS,
-  market: MARKET_ADDRESS,
-  relic: RELIC_ADDRESS,
-  vrf: VRF_ADDRESS,
-  relicNft: CONTRACTS.RELIC_NFT,
-});
-
-function getControllerSessionStorageKey(address: string) {
-  return `abyss:controller-session:${address.toLowerCase()}`;
-}
-
-function readStoredSessionVersion(address: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    return window.localStorage.getItem(getControllerSessionStorageKey(address));
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredSessionVersion(address: string, version: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      getControllerSessionStorageKey(address),
-      version,
-    );
-  } catch {
-    // Ignore localStorage write failures in private browsing or sandboxed iframes.
-  }
-}
-
 export function buildControllerOptions(defaultChainId: string): ControllerOptions {
   return {
     defaultChainId,
@@ -163,40 +121,14 @@ export function buildControllerOptions(defaultChainId: string): ControllerOption
   };
 }
 
-export function getControllerConnectorConfigKey(defaultChainId: string) {
-  return JSON.stringify({
-    defaultChainId,
-    options: buildControllerOptions(defaultChainId),
-  });
-}
+let controllerConnectorSingleton: ControllerConnector | null = null;
 
-export async function ensureControllerSession(
-  connector: unknown,
-  address?: string,
-) {
-  if (!address) {
-    return;
+/** Shared official Cartridge connector instance, registered with starknet-react. */
+export function getControllerConnector(): ControllerConnector {
+  if (!controllerConnectorSingleton) {
+    controllerConnectorSingleton = new ControllerConnector(
+      buildControllerOptions(DEFAULT_CHAIN_ID),
+    );
   }
-
-  if (readStoredSessionVersion(address) === CONTROLLER_SESSION_VERSION) {
-    return;
-  }
-
-  const controllerConnector = connector as ControllerConnector | null | undefined;
-  const controller = controllerConnector?.controller;
-
-  if (CONTROLLER_PRESET) {
-    writeStoredSessionVersion(address, CONTROLLER_SESSION_VERSION);
-    return;
-  }
-
-  if (!controller?.updateSession) {
-    return;
-  }
-
-  await controller.updateSession({
-    policies: sessionPolicies,
-  });
-
-  writeStoredSessionVersion(address, CONTROLLER_SESSION_VERSION);
+  return controllerConnectorSingleton;
 }

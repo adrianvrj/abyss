@@ -1,6 +1,7 @@
 import { createContext } from "react";
+import type ControllerConnector from "@cartridge/connector/controller";
 
-export type StarkZapAccountAdapter = {
+export type ControllerAccountAdapter = {
   address: string;
   execute: (
     calls:
@@ -15,16 +16,16 @@ export type StarkZapAccountAdapter = {
   };
 };
 
-export type StarkZapConnectorAdapter = {
+export type ControllerConnectorAdapter = {
   id: "controller";
   name: string;
-  controller: unknown;
+  controller: ControllerConnector["controller"];
   delegateAccount?: () => Promise<string | null>;
 };
 
-export type StarkZapControllerContextValue = {
-  account: StarkZapAccountAdapter | null;
-  connector: StarkZapConnectorAdapter | null;
+export type ControllerContextValue = {
+  account: ControllerAccountAdapter | null;
+  connector: ControllerConnectorAdapter | null;
   address: string | undefined;
   delegateAddress: string | null;
   username: string | null;
@@ -36,5 +37,4 @@ export type StarkZapControllerContextValue = {
   disconnect: () => Promise<void>;
 };
 
-export const StarkZapControllerContext =
-  createContext<StarkZapControllerContextValue | null>(null);
+export const ControllerContext = createContext<ControllerContextValue | null>(null);

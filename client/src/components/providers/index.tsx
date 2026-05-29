@@ -5,13 +5,13 @@ import { queryClient } from "@/lib/queryClient";
 import { EntitiesProvider } from "@/context/entities";
 import { BundlesProvider } from "@/context/bundles";
 import { PracticeProvider } from "@/context/practice";
-import { StarkZapControllerProvider } from "@/context/starkzap";
+import { ControllerProvider } from "@/context/controller";
 
 export function Providers({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
             <StarknetProvider>
-                <StarkZapControllerProvider>
+                <ControllerProvider>
                     <PracticeProvider>
                         <EntitiesProvider>
                             <BundlesProvider>
@@ -19,7 +19,7 @@ export function Providers({ children }: PropsWithChildren) {
                             </BundlesProvider>
                         </EntitiesProvider>
                     </PracticeProvider>
-                </StarkZapControllerProvider>
+                </ControllerProvider>
             </StarknetProvider>
         </QueryClientProvider>
     );

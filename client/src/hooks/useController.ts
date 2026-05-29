@@ -1,15 +1,15 @@
 import { useContext } from "react";
 import {
-    StarkZapControllerContext,
-    type StarkZapControllerContextValue,
-} from "@/lib/starkzapControllerContext";
+    ControllerContext,
+    type ControllerContextValue,
+} from "@/lib/controllerContext";
 
-export type UseControllerReturn = StarkZapControllerContextValue;
+export type UseControllerReturn = ControllerContextValue;
 
 export function useController(): UseControllerReturn {
-    const context = useContext(StarkZapControllerContext);
+    const context = useContext(ControllerContext);
     if (!context) {
-        throw new Error("useController must be used within StarkZapControllerProvider");
+        throw new Error("useController must be used within ControllerProvider");
     }
     return context;
 }
