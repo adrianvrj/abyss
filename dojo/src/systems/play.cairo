@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use crate::models::index::{Config, Item, Session, SessionMarket, SpinResult};
 
 pub use crate::helpers::play_charm_odds::{
-    get_charm_drop_chance_from_score_and_luck, get_charm_rarity_from_score_and_roll,
+    get_charm_drop_chance_from_score, get_charm_rarity_from_score_and_roll,
 };
 pub use crate::helpers::play_payout::{get_chip_payout_amount, get_total_chip_units};
 
