@@ -6,7 +6,7 @@ use crate::helpers::charm_types::{
 };
 use crate::helpers::grid::normalize_spin_luck;
 use crate::systems::play::{
-    get_charm_drop_chance_from_score_and_luck, get_charm_rarity_from_score_and_roll,
+    get_charm_drop_chance_from_score, get_charm_rarity_from_score_and_roll,
 };
 use crate::systems::charm::{
     CHARM_FORGE_PRICE_CHIP, get_charm_reroll_base_rarity, get_charm_reroll_result_rarity,
@@ -549,9 +549,9 @@ fn test_spin_luck_normalizes_from_raw_fortune() {
 
 #[test]
 fn test_charm_drop_chance_is_more_conservative() {
-    assert(get_charm_drop_chance_from_score_and_luck(1000, 20) == 17, 'mid run chance');
-    assert(get_charm_drop_chance_from_score_and_luck(2000, 40) == 34, 'strong run chance');
-    assert(get_charm_drop_chance_from_score_and_luck(5000, 140) == 60, 'drop chance cap');
+    assert(get_charm_drop_chance_from_score(1000) == 7, 'mid run chance');
+    assert(get_charm_drop_chance_from_score(2000) == 14, 'strong run chance');
+    assert(get_charm_drop_chance_from_score(9000) == 50, 'drop chance cap');
 }
 
 fn assert_score_rarity_odds(

@@ -1,8 +1,8 @@
 #[inline(always)]
-pub fn get_charm_drop_chance_from_score_and_luck(score: u32, effective_luck: u32) -> u32 {
-    let mut total_chance = (score / 140) + (effective_luck / 2);
-    if total_chance > 60 {
-        total_chance = 60;
+pub fn get_charm_drop_chance_from_score(score: u32) -> u32 {
+    let mut total_chance = score / 140;
+    if total_chance > 50 {
+        total_chance = 50;
     }
     total_chance
 }

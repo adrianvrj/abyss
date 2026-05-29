@@ -1,9 +1,8 @@
 use core::poseidon::poseidon_hash_span;
 use starknet::ContractAddress;
 
-use crate::helpers::inventory::InventoryImpl;
 use crate::helpers::play_charm_odds::{
-    get_charm_drop_chance_from_score_and_luck, get_charm_rarity_from_score_and_roll,
+    get_charm_drop_chance_from_score, get_charm_rarity_from_score_and_roll,
 };
 use crate::helpers::play_payout::{get_charm_chip_reward_amount, get_chip_payout_amount};
 use crate::helpers::streak::{advance_player_streak, utc_day_from_timestamp};
@@ -32,11 +31,7 @@ pub fn process_end_session_rewards(
 
         let zero_addr: ContractAddress = 0.try_into().unwrap();
         if config.charm_nft != zero_addr {
-            let charm_ids = InventoryImpl::collect_session_charm_ids(@store, session_id);
-            let effective_luck = InventoryImpl::calculate_effective_luck_with_charm_ids(
-                @store, session_id, charm_ids.span(), @session,
-            );
-            let total_chance = get_charm_drop_chance_from_score_and_luck(session.score, effective_luck);
+            let total_chance = get_charm_drop_chance_from_score(session.score);
 
             let charm_seed = poseidon_hash_span(
                 array![session_id.into(), random_word, session.player_address.into()].span(),
