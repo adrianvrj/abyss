@@ -168,11 +168,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 7,
                 name: 'Nerd Glasses',
-                description: '+6% seven probability',
+                description: '+8% seven probability',
                 price: 1,
                 sell_price: 0,
                 effect_type: 2,
-                effect_value: 6,
+                effect_value: 8,
                 target_symbol: 'seven',
             },
         );
@@ -182,11 +182,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 11,
                 name: 'Ghost Mask',
-                description: '+9% seven probability',
+                description: '+11% seven probability',
                 price: 3,
                 sell_price: 1,
                 effect_type: 2,
-                effect_value: 9,
+                effect_value: 11,
                 target_symbol: 'seven',
             },
         );
@@ -224,11 +224,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 34,
                 name: 'Devil Train',
-                description: '+10% seven probability',
+                description: '+12% seven probability',
                 price: 4,
                 sell_price: 2,
                 effect_type: 2,
-                effect_value: 10,
+                effect_value: 12,
                 target_symbol: 'seven',
             },
         );
@@ -239,11 +239,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 2,
                 name: 'Milk',
-                description: '+2 dia score +1 chip',
+                description: '+3 dia score +1 chip',
                 price: 1,
                 sell_price: 0,
                 effect_type: 3,
-                effect_value: 2,
+                effect_value: 3,
                 target_symbol: 'diamond',
             },
         );
@@ -267,11 +267,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 26,
                 name: 'Rune',
-                description: '+3 dia score +2 chip',
+                description: '+4 dia score +2 chip',
                 price: 3,
                 sell_price: 1,
                 effect_type: 3,
-                effect_value: 3,
+                effect_value: 4,
                 target_symbol: 'diamond',
             },
         );
@@ -295,11 +295,11 @@ pub fn get_all_items() -> Array<Item> {
             Item {
                 item_id: 35,
                 name: 'Fake Dollar',
-                description: '+4 dia score +3 chip',
+                description: '+5 dia score +3 chip',
                 price: 4,
                 sell_price: 1,
                 effect_type: 3,
-                effect_value: 4,
+                effect_value: 5,
                 target_symbol: 'diamond',
             },
         );
