@@ -246,6 +246,7 @@ export function Market() {
 
     return (
         <div style={styles.page}>
+            <div style={styles.inner}>
             <div style={styles.topbar}>
                 <button style={styles.back} onClick={() => navigate("/")}>
                     <ArrowLeft size={20} />
@@ -401,6 +402,7 @@ export function Market() {
                     </div>
                 </>
             )}
+            </div>
         </div>
     );
 }
@@ -411,14 +413,14 @@ const ACCENT = "#FF841C";
 
 const styles: Record<string, React.CSSProperties> = {
     page: {
-        minHeight: "100vh",
+        height: "100vh",
+        overflowY: "auto",
         background: "#0a0a0a",
         color: "#fff",
         padding: "16px 16px 80px",
         fontFamily: "'PressStart2P', monospace",
-        maxWidth: 1040,
-        margin: "0 auto",
     },
+    inner: { maxWidth: 1040, margin: "0 auto" },
     topbar: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
     back: { background: "none", border: `1px solid ${BORDER}`, color: ACCENT, cursor: "pointer", padding: "8px 10px", lineHeight: 0 },
     balance: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, border: `1px solid ${BORDER}`, padding: "8px 12px" },
