@@ -356,3 +356,29 @@ pub struct BeastSessionsUsed {
     pub player: ContractAddress,
     pub count: u32,
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHARM MARKET - P2P charm listings priced in $CHIP
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmListing {
+    #[key]
+    pub listing_id: u64,
+    pub seller: ContractAddress,
+    pub token_id: u256,
+    pub charm_id: u32,
+    pub price: u256,
+    pub active: bool,
+    pub created_at: u64,
+}
+
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmMarketState {
+    #[key]
+    pub world_resource: felt252,
+    pub next_listing_id: u64,
+    pub active_count: u32,
+}

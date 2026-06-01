@@ -173,6 +173,19 @@ export function getCharmAddress(chainId?: ChainLike) {
   return getContractAddress(chainId, NAMESPACE, "Charm");
 }
 
+export function getCharmMarketAddress(chainId?: ChainLike) {
+  return getContractAddress(chainId, NAMESPACE, "CharmMarket");
+}
+
+/** Returns `undefined` if `ABYSS-CharmMarket` is not in the synced manifest (pre-migration). */
+export function tryGetCharmMarketAddress(chainId?: ChainLike): string | undefined {
+  try {
+    return getContractAddress(chainId ?? DEFAULT_CHAIN_ID, NAMESPACE, "CharmMarket");
+  } catch {
+    return undefined;
+  }
+}
+
 export function getRelicNftAddress(chainId?: ChainLike) {
   return getContractAddress(chainId, NAMESPACE, "RelicNFT");
 }

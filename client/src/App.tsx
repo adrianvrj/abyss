@@ -18,6 +18,7 @@ const SessionsContent = lazy(() => import("@/components/SessionsContent").then(m
 const Leaderboard = lazy(() => import("@/components/Leaderboard").then(m => ({ default: m.Leaderboard })));
 const Relics = lazy(() => import("@/components/Relics").then(m => ({ default: m.Relics })));
 const Charms = lazy(() => import("@/components/Charms").then(m => ({ default: m.Charms })));
+const Market = lazy(() => import("@/components/Market").then(m => ({ default: m.Market })));
 
 // Loading component
 function MenuLoading() {
@@ -136,6 +137,7 @@ function App() {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/relics" element={<Relics />} />
             <Route path="/charms" element={<Charms />} />
+            <Route path="/market" element={<Market />} />
             <Route path="/game" element={<GameRoute />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

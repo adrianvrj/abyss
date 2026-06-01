@@ -137,6 +137,7 @@ pub mod Charm {
     #[abi(embed_v0)]
     impl AccessControlImpl =
         AccessControlComponent::AccessControlImpl<ContractState>;
+    #[abi(embed_v0)]
     impl ERC721StandardImpl = ERC721Component::ERC721Impl<ContractState>;
     impl ERC721InternalImpl = ERC721Component::InternalImpl<ContractState>;
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;

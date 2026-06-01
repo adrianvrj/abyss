@@ -16,6 +16,8 @@ import {
   getSetupAddress,
   getGoldenChipAddress,
   tryGetStreakAddress,
+  getCharmMarketAddress,
+  tryGetCharmMarketAddress,
 } from "@/config";
 import { getGoldenChipMintPrice } from "@/api/rpc/goldenChip";
 import { CONTRACTS } from "@/lib/constants";
@@ -69,14 +71,20 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
   const chipAddress = useMemo(() => getChipAddress(chainId), [chainId]);
   const goldenChipAddress = useMemo(() => getGoldenChipAddress(chainId), [chainId]);
   const streakAddress = useMemo(() => tryGetStreakAddress(chainId), [chainId]);
+  const charmMarketAddress = useMemo(() => tryGetCharmMarketAddress(chainId), [chainId]);
 
   const receiptEventContracts = useMemo(() => {
+    // Keep indices 0-4 stable (world, play, market, relic, charm) — the receipt
+    // parser resolves CharmMarket at index 5.
     const list = [worldAddress, playAddress, marketAddress, relicAddress, charmAddress];
+    if (charmMarketAddress) {
+      list.push(charmMarketAddress);
+    }
     if (streakAddress) {
       list.push(streakAddress);
     }
     return list;
-  }, [worldAddress, playAddress, marketAddress, relicAddress, charmAddress, streakAddress]);
+  }, [worldAddress, playAddress, marketAddress, relicAddress, charmAddress, charmMarketAddress, streakAddress]);
 
   const waitForReceipt = useCallback(
     async (transactionHash: string) => {
@@ -446,6 +454,87 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     [account, charmAddress, executeCalls],
   );
 
+  const listCharm = useCallback(
+    async (tokenId: bigint, priceChipWei: bigint) => {
+      if (!account) {
+        throw new Error("Wallet not connected");
+      }
+      const market = charmMarketAddress ?? getCharmMarketAddress(chainId);
+      const receipt = await executeCalls([
+        {
+          contractAddress: charmAddress,
+          entrypoint: "approve",
+          calldata: CallData.compile([market, ...toUint256(tokenId)]),
+        },
+        {
+          contractAddress: market,
+          entrypoint: "list_charm",
+          calldata: CallData.compile([...toUint256(tokenId), ...toUint256(priceChipWei)]),
+        },
+      ]);
+      captureAbyss("charm_listed", {
+        player_address: account.address,
+        token_id: tokenId.toString(),
+        price: priceChipWei.toString(),
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
+    },
+    [account, chainId, charmAddress, charmMarketAddress, executeCalls],
+  );
+
+  const buyCharm = useCallback(
+    async (listingId: number | bigint, priceChipWei: bigint) => {
+      if (!account) {
+        throw new Error("Wallet not connected");
+      }
+      const market = charmMarketAddress ?? getCharmMarketAddress(chainId);
+      const receipt = await executeCalls([
+        {
+          contractAddress: chipAddress,
+          entrypoint: "approve",
+          calldata: CallData.compile([market, ...toUint256(priceChipWei)]),
+        },
+        {
+          contractAddress: market,
+          entrypoint: "buy_charm",
+          calldata: CallData.compile([listingId.toString()]),
+        },
+      ]);
+      captureAbyss("charm_bought", {
+        player_address: account.address,
+        listing_id: listingId.toString(),
+        price: priceChipWei.toString(),
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
+    },
+    [account, chainId, charmMarketAddress, chipAddress, executeCalls],
+  );
+
+  const cancelListing = useCallback(
+    async (listingId: number | bigint) => {
+      if (!account) {
+        throw new Error("Wallet not connected");
+      }
+      const market = charmMarketAddress ?? getCharmMarketAddress(chainId);
+      const receipt = await executeCalls([
+        {
+          contractAddress: market,
+          entrypoint: "cancel_listing",
+          calldata: CallData.compile([listingId.toString()]),
+        },
+      ]);
+      captureAbyss("charm_listing_cancelled", {
+        player_address: account.address,
+        listing_id: listingId.toString(),
+        transaction_hash: receipt.transactionHash,
+      });
+      return receipt;
+    },
+    [account, chainId, charmMarketAddress, executeCalls],
+  );
+
   const endSession = useCallback(
     async (sessionId: number) => {
       const receipt = await executeCalls([
@@ -573,6 +662,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     chipAddress,
     goldenChipAddress,
     streakAddress,
+    charmMarketAddress,
     createSession,
     mintGoldenChip,
     claimFreeSessionBundle,
@@ -585,6 +675,9 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     equipRelic,
     activateRelic,
     rerollCharms,
+    listCharm,
+    buyCharm,
+    cancelListing,
     endSession,
     claimChips,
     claimStreakLoot,

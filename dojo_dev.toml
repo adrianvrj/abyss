@@ -24,6 +24,7 @@ default = "ABYSS"
     "ABYSS-RewardsVault",
     "ABYSS-GoldenChip",
     "ABYSS-Market",
+    "ABYSS-CharmMarket",
     "ABYSS-Relic",
     "ABYSS-Treasury"
 ]

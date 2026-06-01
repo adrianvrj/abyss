@@ -22,13 +22,14 @@ order_inits = [
   "ABYSS-Play",
   "ABYSS-GoldenChip",
   "ABYSS-Market",
+  "ABYSS-CharmMarket",
   "ABYSS-Relic",
   "ABYSS-Treasury",
 ]
 disable_multicall = true
 
 [writers]
-"ABYSS" = ["ABYSS-Setup", "ABYSS-Collection", "ABYSS-Play", "ABYSS-Streak", "ABYSS-RewardsVault", "ABYSS-GoldenChip", "ABYSS-Market", "ABYSS-Relic", "ABYSS-Treasury"]
+"ABYSS" = ["ABYSS-Setup", "ABYSS-Collection", "ABYSS-Play", "ABYSS-Streak", "ABYSS-RewardsVault", "ABYSS-GoldenChip", "ABYSS-Market", "ABYSS-CharmMarket", "ABYSS-Relic", "ABYSS-Treasury"]
 
 [owners]
 "ABYSS" = ["ABYSS-Collection", "ABYSS-Chip", "ABYSS-RelicNFT", "ABYSS-GoldenChip"]

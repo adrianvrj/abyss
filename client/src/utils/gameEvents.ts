@@ -84,6 +84,29 @@ export interface CharmRerolledEvent {
     resultRarity: number;
 }
 
+export interface CharmListedEvent {
+    seller: string;
+    listingId: number;
+    tokenId: bigint;
+    charmId: number;
+    price: bigint;
+}
+
+export interface CharmSoldEvent {
+    buyer: string;
+    seller: string;
+    listingId: number;
+    tokenId: bigint;
+    charmId: number;
+    price: bigint;
+}
+
+export interface CharmDelistedEvent {
+    seller: string;
+    listingId: number;
+    tokenId: bigint;
+}
+
 export interface CharmDebtCollectedEvent {
     sessionId: number;
     charmId: number;
@@ -179,6 +202,9 @@ export interface ParsedEvents {
     relicEquipped: RelicEquippedEvent | null;
     charmMinted: CharmMintedEvent | null;
     charmRerolled: CharmRerolledEvent | null;
+    charmListed: CharmListedEvent | null;
+    charmSold: CharmSoldEvent | null;
+    charmDelisted: CharmDelistedEvent | null;
     charmDebtCollected: CharmDebtCollectedEvent[];
     charmDebtPaid: CharmDebtPaidEvent[];
     charmDebtDefaulted: CharmDebtDefaultedEvent[];
@@ -217,6 +243,9 @@ const EVENT_SELECTORS = {
     RelicEquipped: hash.getSelectorFromName('RelicEquipped'),
     CharmMinted: hash.getSelectorFromName('CharmMinted'),
     CharmRerolled: hash.getSelectorFromName('CharmRerolled'),
+    CharmListed: hash.getSelectorFromName('CharmListed'),
+    CharmSold: hash.getSelectorFromName('CharmSold'),
+    CharmDelisted: hash.getSelectorFromName('CharmDelisted'),
     CharmDebtCollected: hash.getSelectorFromName('CharmDebtCollected'),
     CharmDebtPaid: hash.getSelectorFromName('CharmDebtPaid'),
     CharmDebtDefaulted: hash.getSelectorFromName('CharmDebtDefaulted'),
@@ -620,6 +649,66 @@ function parseCharmRerolledEvent(
     }
 }
 
+// CharmMarket dojo events are unwrapped to fieldValues (key members excluded).
+// CharmListed fields:  [listing_id, token_id.low, token_id.high, charm_id, price.low, price.high]
+function parseCharmListedEvent(
+    fieldValues: Array<string | bigint | number>,
+    keyValues: Array<string | bigint | number> = [],
+): CharmListedEvent | null {
+    if (!fieldValues || fieldValues.length < 6) return null;
+    try {
+        return {
+            seller: normalizeAddress(keyValues[0]) ?? '',
+            listingId: feltToNumber(fieldValues[0]),
+            tokenId: feltToBigInt(fieldValues[1]) + (feltToBigInt(fieldValues[2]) << BigInt(128)),
+            charmId: feltToNumber(fieldValues[3]),
+            price: feltToBigInt(fieldValues[4]) + (feltToBigInt(fieldValues[5]) << BigInt(128)),
+        };
+    } catch (e) {
+        console.error('Failed to parse CharmListed event:', e);
+        return null;
+    }
+}
+
+// CharmSold fields: [seller, listing_id, token_id.low, token_id.high, charm_id, price.low, price.high]
+function parseCharmSoldEvent(
+    fieldValues: Array<string | bigint | number>,
+    keyValues: Array<string | bigint | number> = [],
+): CharmSoldEvent | null {
+    if (!fieldValues || fieldValues.length < 7) return null;
+    try {
+        return {
+            buyer: normalizeAddress(keyValues[0]) ?? '',
+            seller: normalizeAddress(fieldValues[0]) ?? '',
+            listingId: feltToNumber(fieldValues[1]),
+            tokenId: feltToBigInt(fieldValues[2]) + (feltToBigInt(fieldValues[3]) << BigInt(128)),
+            charmId: feltToNumber(fieldValues[4]),
+            price: feltToBigInt(fieldValues[5]) + (feltToBigInt(fieldValues[6]) << BigInt(128)),
+        };
+    } catch (e) {
+        console.error('Failed to parse CharmSold event:', e);
+        return null;
+    }
+}
+
+// CharmDelisted fields: [listing_id, token_id.low, token_id.high]
+function parseCharmDelistedEvent(
+    fieldValues: Array<string | bigint | number>,
+    keyValues: Array<string | bigint | number> = [],
+): CharmDelistedEvent | null {
+    if (!fieldValues || fieldValues.length < 3) return null;
+    try {
+        return {
+            seller: normalizeAddress(keyValues[0]) ?? '',
+            listingId: feltToNumber(fieldValues[0]),
+            tokenId: feltToBigInt(fieldValues[1]) + (feltToBigInt(fieldValues[2]) << BigInt(128)),
+        };
+    } catch (e) {
+        console.error('Failed to parse CharmDelisted event:', e);
+        return null;
+    }
+}
+
 function parseCharmDebtCollectedEvent(eventData: Array<string | bigint | number>): CharmDebtCollectedEvent | null {
     if (!eventData || eventData.length < 5) return null;
     try {
@@ -707,6 +796,9 @@ export function hasParsedEvents(events: ParsedEvents): boolean {
         events.relicEquipped ||
         events.charmMinted ||
         events.charmRerolled ||
+        events.charmListed ||
+        events.charmSold ||
+        events.charmDelisted ||
         events.charmDebtCollected.length > 0 ||
         events.charmDebtPaid.length > 0 ||
         events.charmDebtDefaulted.length > 0 ||
@@ -731,6 +823,9 @@ function parseNormalizedEvents(
         relicEquipped: null,
         charmMinted: null,
         charmRerolled: null,
+        charmListed: null,
+        charmSold: null,
+        charmDelisted: null,
         charmDebtCollected: [],
         charmDebtPaid: [],
         charmDebtDefaulted: [],
@@ -757,6 +852,7 @@ function parseNormalizedEvents(
     const marketAddress = normalizeAddress(sourceList[2]);
     const relicAddress = normalizeAddress(sourceList[3]);
     const charmAddress = normalizeAddress(sourceList[4]);
+    const charmMarketAddress = normalizeAddress(sourceList[5]);
 
     for (const event of events) {
         if (allowedAddresses && event.fromAddress !== null && event.fromAddress !== undefined) {
@@ -906,6 +1002,24 @@ function parseNormalizedEvents(
                 const parsed = parseCharmRerolledEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
                 if (parsed) {
                     result.charmRerolled = parsed;
+                }
+            } else if (emitterAddress === charmMarketAddress) {
+                // Disambiguate the three CharmMarket events by serialized field length.
+                if (dojoEvent.fieldValues.length === 6) {
+                    const parsed = parseCharmListedEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
+                    if (parsed) {
+                        result.charmListed = parsed;
+                    }
+                } else if (dojoEvent.fieldValues.length === 7) {
+                    const parsed = parseCharmSoldEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
+                    if (parsed) {
+                        result.charmSold = parsed;
+                    }
+                } else if (dojoEvent.fieldValues.length === 3) {
+                    const parsed = parseCharmDelistedEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
+                    if (parsed) {
+                        result.charmDelisted = parsed;
+                    }
                 }
             } else if (emitterAddress === playAddress && findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.CharmDebtCollected) >= 0) {
                 const parsed = parseCharmDebtCollectedEvent(dojoEvent.fieldValues);

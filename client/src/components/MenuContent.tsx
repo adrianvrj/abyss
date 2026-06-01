@@ -265,6 +265,19 @@ export function MenuContent() {
                         </motion.button>
                     )}
 
+                    {/* Market */}
+                    <motion.button
+                        style={styles.menuOption}
+                        onClick={() => {
+                            captureAbyss("menu_navigate", { destination: "market" });
+                            navigate("/market");
+                        }}
+                        whileHover={{ color: "#FF841C" }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        market
+                    </motion.button>
+
                     {/* Leaderboard */}
                     <motion.button
                         style={styles.menuOption}

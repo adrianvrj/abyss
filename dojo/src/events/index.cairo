@@ -255,3 +255,39 @@ pub struct CashOutResolved {
     pub player: ContractAddress,
     pub succeeded: bool,
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHARM MARKET EVENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmListed {
+    #[key]
+    pub seller: ContractAddress,
+    pub listing_id: u64,
+    pub token_id: u256,
+    pub charm_id: u32,
+    pub price: u256,
+}
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmSold {
+    #[key]
+    pub buyer: ContractAddress,
+    pub seller: ContractAddress,
+    pub listing_id: u64,
+    pub token_id: u256,
+    pub charm_id: u32,
+    pub price: u256,
+}
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct CharmDelisted {
+    #[key]
+    pub seller: ContractAddress,
+    pub listing_id: u64,
+    pub token_id: u256,
+}

@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
-      "class_hash": "0x6145c9e83546a3638fcb65c77e3c3a72bbfc06266d4a4e2827ee12db22c9875",
+      "class_hash": "0x6b232aae7e2a1508165660f679a2ddcea414b5a735cba278261b2280c528f69",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -47,7 +47,24 @@
         "upgrade",
         "grant_role",
         "revoke_role",
-        "renounce_role"
+        "renounce_role",
+        "safe_transfer_from",
+        "transfer_from",
+        "approve",
+        "set_approval_for_all"
+      ]
+    },
+    {
+      "address": "0x26a4d188fddebd67f0bb8e711e8eec958abcd95ea76cb0b48d4eb4c655ae451",
+      "class_hash": "0x507793349d5fb814889a26c5fbe193d35e424f933c904565d3a1b6a8c502f54",
+      "init_calldata": [],
+      "tag": "ABYSS-CharmMarket",
+      "selector": "0x73de6f6b304414dfd78f360d4c5ce789aade949174cc05167c0b5329a64e54c",
+      "systems": [
+        "list_charm",
+        "buy_charm",
+        "cancel_listing",
+        "upgrade"
       ]
     },
     {
@@ -200,7 +217,7 @@
     },
     {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x32fe97a4d601a234dc2ee1dd40833efc1e3e68bd45e088b9ab1549961fbb32e",
+      "class_hash": "0x27e011ecdb707459797c88113739be788f0845bdd5128584ae6f42e5b6b6bbd",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -297,6 +314,70 @@
       "class_hash": "0x14d58a2d0936b6a6b56410952509d4318ab8dcf5f873c5269383ba03f7a1e03",
       "tag": "ABYSS-BeastSessionsUsed",
       "selector": "0x50579fc30a7b9f3ba63cc336db4954bbc18c3eb64234d63f11b6afaa4a86496"
+    },
+    {
+      "members": [
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64",
+          "key": true
+        },
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": false
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "active",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "created_at",
+          "type": "core::integer::u64",
+          "key": false
+        }
+      ],
+      "class_hash": "0x43b9e5cb8409d8e8bbf56b22177dc32b8fa2eccd9427a901b70e8dc1fb732cb",
+      "tag": "ABYSS-CharmListing",
+      "selector": "0x59667bd7df1572429a80acc6be136ad25b57ec9970e61b527b7ddcb6121d1c6"
+    },
+    {
+      "members": [
+        {
+          "name": "world_resource",
+          "type": "core::felt252",
+          "key": true
+        },
+        {
+          "name": "next_listing_id",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "active_count",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x67a5aeafcaca1a2fd7e099bc45385153f811b714a09712373a16c4a987ac4d6",
+      "tag": "ABYSS-CharmMarketState",
+      "selector": "0x40e32f7981939aa8d194b323210e1ffc218f881c6b51d167332150a3644004"
     },
     {
       "members": [
@@ -1368,6 +1449,60 @@
     {
       "members": [
         {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256",
+          "key": false
+        }
+      ],
+      "class_hash": "0x76f4e18ef0c4d65600f358aabf637250a158dcea5c58a661e287c479e7107ac",
+      "tag": "ABYSS-CharmDelisted",
+      "selector": "0x489479fb19b42ec409bafff20bd5a95be3ea122f94c5ff017bbea13b77c037c"
+    },
+    {
+      "members": [
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256",
+          "key": false
+        }
+      ],
+      "class_hash": "0x3d912f7b76bf4f97f3a25587703368c241283b62f34f6a26716ec748f7838d3",
+      "tag": "ABYSS-CharmListed",
+      "selector": "0x454bf665279914b92dc600121e375d354ec1fbb6a9eec0572396da2e4ab372d"
+    },
+    {
+      "members": [
+        {
           "name": "session_id",
           "type": "core::integer::u32",
           "key": true
@@ -1396,6 +1531,43 @@
       "class_hash": "0x60ea2bc0651c113dfde3ab8e9919853ed06e884c113e8d19886457c19038970",
       "tag": "ABYSS-CharmMinted",
       "selector": "0x1a7416437d22abf96fb5d2dd0a39d991f23c0b4d3c06ec04a09dd029e38c998"
+    },
+    {
+      "members": [
+        {
+          "name": "buyer",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": false
+        },
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256",
+          "key": false
+        }
+      ],
+      "class_hash": "0xb6d4508816c43651eb77627e8246585f34f487e90beb464abb7622f9a03002",
+      "tag": "ABYSS-CharmSold",
+      "selector": "0x63b925140b0f499fe229a603304d8b2b607ad2b0b3ef71b20505862cb1603ca"
     },
     {
       "members": [
@@ -2128,6 +2300,86 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::events::index::CharmDelisted",
+      "members": [
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::CharmDelistedValue",
+      "members": [
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::CharmListed",
+      "members": [
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::CharmListedValue",
+      "members": [
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::events::index::CharmMinted",
       "members": [
         {
@@ -2166,6 +2418,62 @@
         },
         {
           "name": "token_id",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::CharmSold",
+      "members": [
+        {
+          "name": "buyer",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::CharmSoldValue",
+      "members": [
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "price",
           "type": "core::integer::u256"
         }
       ]
@@ -2886,7 +3194,25 @@
     },
     {
       "type": "event",
+      "name": "abyss_game::events::index::e_CharmDelisted::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::events::index::e_CharmListed::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
       "name": "abyss_game::events::index::e_CharmMinted::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::events::index::e_CharmSold::Event",
       "kind": "enum",
       "variants": []
     },
@@ -3529,6 +3855,102 @@
       "members": [
         {
           "name": "count",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::CharmListing",
+      "members": [
+        {
+          "name": "listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "active",
+          "type": "core::bool"
+        },
+        {
+          "name": "created_at",
+          "type": "core::integer::u64"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::CharmListingValue",
+      "members": [
+        {
+          "name": "seller",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "token_id",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "charm_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "price",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "active",
+          "type": "core::bool"
+        },
+        {
+          "name": "created_at",
+          "type": "core::integer::u64"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::CharmMarketState",
+      "members": [
+        {
+          "name": "world_resource",
+          "type": "core::felt252"
+        },
+        {
+          "name": "next_listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "active_count",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::CharmMarketStateValue",
+      "members": [
+        {
+          "name": "next_listing_id",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "active_count",
           "type": "core::integer::u32"
         }
       ]
@@ -4901,6 +5323,18 @@
     },
     {
       "type": "event",
+      "name": "abyss_game::models::index::m_CharmListing::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::models::index::m_CharmMarketState::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
       "name": "abyss_game::models::index::m_Config::Event",
       "kind": "enum",
       "variants": []
@@ -5100,6 +5534,73 @@
           "name": "CharmRerolled",
           "type": "abyss_game::systems::charm::Charm::CharmRerolled",
           "kind": "nested"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::charm_market::CharmMarket::Event",
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "UpgradeableEvent",
+          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+          "kind": "nested"
+        },
+        {
+          "name": "WorldProviderEvent",
+          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+          "kind": "nested"
+        }
+      ]
+    },
+    {
+      "type": "interface",
+      "name": "abyss_game::systems::charm_market::ICharmMarket",
+      "items": [
+        {
+          "type": "function",
+          "name": "list_charm",
+          "inputs": [
+            {
+              "name": "token_id",
+              "type": "core::integer::u256"
+            },
+            {
+              "name": "price",
+              "type": "core::integer::u256"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u64"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "buy_charm",
+          "inputs": [
+            {
+              "name": "listing_id",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "cancel_listing",
+          "inputs": [
+            {
+              "name": "listing_id",
+              "type": "core::integer::u64"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
         }
       ]
     },
