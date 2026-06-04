@@ -38,7 +38,8 @@ pub fn check_horizontal_line(
     g: Span<u8>,
     start: u32,
     symbol_scores: (u32, u32, u32, u32, u32),
-    bonuses: (u32, u32, u32) // (h3_bonus, h4_bonus, h5_bonus)
+    bonuses: (u32, u32, u32), // (h3_bonus, h4_bonus, h5_bonus) percentage bonuses
+    mult_add: u32 // flat snowball add to the base multiplier, in hundredths
 ) -> (u32, u8, u8) {
     let (h3_bonus, h4_bonus, h5_bonus) = bonuses;
     let s0 = *g.at(start);
@@ -47,7 +48,8 @@ pub fn check_horizontal_line(
     let s3 = *g.at(start + 3);
     let s4 = *g.at(start + 4);
 
-    // Check for 5 in a row: points * 5 * 6 = points * 30
+    // Check for 5 in a row: points * 5 * 6 = points * 30. (Snowball does not
+    // apply to 4/5-in-a-row — already huge and very rare — to keep bytecode small.)
     if s0 == s1 && s1 == s2 && s2 == s3 && s3 == s4 {
         let base = get_score_from_snapshot(s0, symbol_scores) * 30;
         return (apply_percentage_bonus(base, h5_bonus), 1, s0);
@@ -64,28 +66,30 @@ pub fn check_horizontal_line(
         return (apply_percentage_bonus(base, h4_bonus), 1, s1);
     }
 
-    // Check for 3 in a row: (points * 3 * 3) / 2 = (points * 9) / 2
+    // Check for 3 in a row: points * 4.5 (450 hundredths = 3 cells * 1.5x mult).
+    // mult_add (centi-multiplier) is scaled by the 3-cell count so a +8 accumulator
+    // raises the effective multiplier by exactly +0.08x.
     if s0 == s1 && s1 == s2 {
-        let base = (get_score_from_snapshot(s0, symbol_scores) * 9) / 2;
+        let base = get_score_from_snapshot(s0, symbol_scores) * (450 + mult_add * 3) / 100;
         return (apply_percentage_bonus(base, h3_bonus), 1, s0);
     }
 
     if s1 == s2 && s2 == s3 {
-        let base = (get_score_from_snapshot(s1, symbol_scores) * 9) / 2;
+        let base = get_score_from_snapshot(s1, symbol_scores) * (450 + mult_add * 3) / 100;
         return (apply_percentage_bonus(base, h3_bonus), 1, s1);
     }
 
     if s2 == s3 && s3 == s4 {
-        let base = (get_score_from_snapshot(s2, symbol_scores) * 9) / 2;
+        let base = get_score_from_snapshot(s2, symbol_scores) * (450 + mult_add * 3) / 100;
         return (apply_percentage_bonus(base, h3_bonus), 1, s2);
-    } // Check for 3 in a row: (points * 3 * 3) / 2 = (points * 9) / 2
+    }
 
     (0, 0, 0)
 }
 
 /// Check all vertical patterns and track match counts.
 pub fn check_vertical_patterns_with_matches(
-    g: Span<u8>, symbol_scores: (u32, u32, u32, u32, u32), vert_bonus: u32,
+    g: Span<u8>, symbol_scores: (u32, u32, u32, u32, u32), vert_bonus: u32, mult_add: u32,
 ) -> (u32, u8, u32, u32, u32, u32, u32) {
     let mut total_score: u32 = 0;
     let mut patterns_count: u8 = 0;
@@ -102,7 +106,7 @@ pub fn check_vertical_patterns_with_matches(
         let s2 = *g.at(i + 10);
         if s0 == s1 && s1 == s2 {
             let symbol = s0;
-            let base = get_score_from_snapshot(symbol, symbol_scores) * 6;
+            let base = get_score_from_snapshot(symbol, symbol_scores) * (600 + mult_add * 3) / 100;
             total_score += apply_percentage_bonus(base, vert_bonus);
             patterns_count += 1;
             accumulate_symbol_match_counts(symbol, 1, ref m7, ref md, ref mc, ref m_coin, ref ml);
@@ -115,7 +119,7 @@ pub fn check_vertical_patterns_with_matches(
 
 /// Check all diagonal patterns and track match counts.
 pub fn check_diagonal_patterns_with_matches(
-    g: Span<u8>, symbol_scores: (u32, u32, u32, u32, u32), diag_bonus: u32,
+    g: Span<u8>, symbol_scores: (u32, u32, u32, u32, u32), diag_bonus: u32, mult_add: u32,
 ) -> (u32, u8, u32, u32, u32, u32, u32) {
     let mut total_score: u32 = 0;
     let mut patterns_count: u8 = 0;
@@ -133,7 +137,7 @@ pub fn check_diagonal_patterns_with_matches(
         let s2 = *g.at(j + 12);
         if s0 == s1 && s1 == s2 {
             let symbol = s0;
-            let base = (get_score_from_snapshot(symbol, symbol_scores) * 15) / 2;
+            let base = get_score_from_snapshot(symbol, symbol_scores) * (750 + mult_add * 3) / 100;
             total_score += apply_percentage_bonus(base, diag_bonus);
             patterns_count += 1;
             accumulate_symbol_match_counts(symbol, 1, ref m7, ref md, ref mc, ref m_coin, ref ml);
@@ -149,7 +153,7 @@ pub fn check_diagonal_patterns_with_matches(
         let s2 = *g.at(k + 8);
         if s0 == s1 && s1 == s2 {
             let symbol = s0;
-            let base = (get_score_from_snapshot(symbol, symbol_scores) * 15) / 2;
+            let base = get_score_from_snapshot(symbol, symbol_scores) * (750 + mult_add * 3) / 100;
             total_score += apply_percentage_bonus(base, diag_bonus);
             patterns_count += 1;
             accumulate_symbol_match_counts(symbol, 1, ref m7, ref md, ref mc, ref m_coin, ref ml);

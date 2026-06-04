@@ -267,6 +267,7 @@ pub mod Play {
             let coin_probability_penalty = spin_modifiers.coin_probability_penalty;
             let retrigger_bonuses = spin_modifiers.retrigger_bonuses;
             let pattern_bonuses = spin_modifiers.pattern_bonuses;
+            let pattern_mult_adds = spin_modifiers.pattern_mult_adds;
             let symbol_scores = spin_modifiers.symbol_scores;
             let probability_666 = get_level_666_probability(session.level);
 
@@ -282,6 +283,7 @@ pub mod Play {
                 probability_666,
                 retrigger_bonuses,
                 pattern_bonuses,
+                pattern_mult_adds,
                 symbol_scores,
                 force_jackpot,
             );
@@ -374,6 +376,11 @@ pub mod Play {
 
                 session_chip_bonus.bonus_units +=
                     md * spin_modifiers.diamond_chip_bonus_per_pattern;
+
+                // Grow snowball charms from this spin's matched-pattern counts.
+                InternalImpl::grow_snowball_stacks(
+                    @store, ref session, session_id, m7, md, mc, m_coin, ml,
+                );
             }
 
             InternalImpl::process_debt_pledges(
@@ -618,7 +625,11 @@ pub mod Play {
         fn get_session_luck(self: @ContractState, session_id: u32) -> u32 {
             let world = self.world(@NAMESPACE());
             let store = StoreTrait::new(world);
-            InventoryImpl::calculate_effective_luck(@store, session_id)
+            // Reuse the spin modifier path so the reported luck matches exactly what
+            // the next spin will use (incl. persistent-item counting). Avoids a
+            // second, slightly-divergent luck computation in this contract.
+            let session = store.session(session_id);
+            InventoryImpl::get_spin_cycle_modifiers(@store, session_id, @session).effective_luck
         }
 
         fn get_session_inventory_count(self: @ContractState, session_id: u32) -> u32 {
@@ -801,6 +812,51 @@ pub mod Play {
                 );
         }
 
+        /// Grow snowball charm accumulators on the session from this spin's
+        /// per-symbol matched-pattern counts. Reuses the shared get_charm_type_info
+        /// lookup to avoid adding a second metadata table to the contract.
+        fn grow_snowball_stacks(
+            store: @Store,
+            ref session: Session,
+            session_id: u32,
+            m7: u32,
+            md: u32,
+            mc: u32,
+            m_coin: u32,
+            ml: u32,
+        ) {
+            let count = store.session_charms(session_id).count;
+            let mut i: u32 = 0;
+            while i != count {
+                let charm_id = store.session_charm_entry(session_id, i).charm_id;
+                let meta = crate::helpers::charm_types::get_charm_type_info(charm_id);
+                if meta.effect_type == crate::types::effect::CharmEffectType::PatternSnowball {
+                    // effect_value = increment, effect_value_2 = trigger symbol,
+                    // condition_type = target (1=H, 2=V, 3=D).
+                    let hits = if meta.effect_value_2 == 1 {
+                        m7
+                    } else if meta.effect_value_2 == 2 {
+                        md
+                    } else if meta.effect_value_2 == 3 {
+                        mc
+                    } else if meta.effect_value_2 == 4 {
+                        m_coin
+                    } else {
+                        ml
+                    };
+                    let growth = meta.effect_value * hits;
+                    if meta.condition_type == 1 {
+                        session.snowball_h_add += growth;
+                    } else if meta.condition_type == 2 {
+                        session.snowball_v_add += growth;
+                    } else {
+                        session.snowball_d_add += growth;
+                    }
+                }
+                i += 1;
+            }
+        }
+
         fn process_debt_pledges(
             ref store: Store,
             ref session: Session,
@@ -929,6 +985,9 @@ pub mod Play {
                 score_cherry: DEFAULT_SCORE_CHERRY,
                 score_coin: DEFAULT_SCORE_COIN,
                 score_lemon: DEFAULT_SCORE_LEMON,
+                snowball_h_add: 0,
+                snowball_v_add: 0,
+                snowball_d_add: 0,
             };
             store.set_session(@session);
             store.set_session_chip_bonus(@SessionChipBonus { session_id, bonus_units: 0 });

@@ -45,6 +45,7 @@ export interface SessionData {
   blocked666: boolean;
   tickets: number;
   symbolScores: number[];
+  snowballAdds: { horizontal: number; vertical: number; diagonal: number };
 }
 
 export interface SpinResult {
@@ -512,6 +513,11 @@ export function useAbyssGame(accountOverride?: AccountLike | null) {
             Number(result[21] ?? 0),
             Number(result[22] ?? 0),
           ],
+          snowballAdds: {
+            horizontal: Number(result[23] ?? 0),
+            vertical: Number(result[24] ?? 0),
+            diagonal: Number(result[25] ?? 0),
+          },
         };
       } catch (error) {
         console.error("Get session data error:", error);

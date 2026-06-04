@@ -9,7 +9,7 @@ import NewsModal from "@/components/modals/NewsModal";
 import { DEFAULT_CHAIN_ID, getToriiUrl, getWorldAddress } from "@/config";
 import { CONTROLLER_RPC_URL, cartridgeSlot } from "@/lib/controllerConfig";
 
-const NEWS_VERSION = "charms-21-27";
+const NEWS_VERSION = "charms-28-37";
 const NEWS_STORAGE_KEY = "abyss_seen_news_version";
 
 // Lazy load components

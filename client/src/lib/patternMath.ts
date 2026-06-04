@@ -99,14 +99,57 @@ export function getBoostedPatternMultiplier(
   return pattern.multiplier * (1 + bonuses[pattern.type] / 100) * retriggers[pattern.type];
 }
 
-export function applyPatternModifiers(patterns: Pattern[], items: ContractItem[]): Pattern[] {
+/** Snowball flat multiplier adds, in hundredths (matches on-chain Session fields). */
+export interface SnowballAdds {
+  horizontal: number;
+  vertical: number;
+  diagonal: number;
+}
+
+export const EMPTY_SNOWBALL_ADDS: SnowballAdds = {
+  horizontal: 0,
+  vertical: 0,
+  diagonal: 0,
+};
+
+// Pure pattern multiplier per type, in hundredths (config multiplier * 100).
+// The snowball add is literal on this base, so a +8 accumulator raises the
+// effective multiplier by exactly +0.08x. Snowball only affects the 3-in-a-row
+// patterns (matches on-chain, which leaves 4/5-in-a-row and jackpot untouched).
+export const SNOWBALL_BASE_MULT_HUNDREDTHS: Partial<Record<PatternType, number>> = {
+  "horizontal-3": 150,
+  "vertical-3": 200,
+  "diagonal-3": 250,
+};
+
+export function snowballAddForType(type: PatternType, adds: SnowballAdds): number {
+  if (type === "horizontal-3") return adds.horizontal;
+  if (type === "vertical-3") return adds.vertical;
+  if (type === "diagonal-3") return adds.diagonal;
+  return 0;
+}
+
+export function applyPatternModifiers(
+  patterns: Pattern[],
+  items: ContractItem[],
+  snowballAdds: SnowballAdds = EMPTY_SNOWBALL_ADDS,
+): Pattern[] {
   const bonuses = getPatternBonusMap(items);
   const retriggers = getPatternRetriggerMap(items);
 
   return patterns.map((pattern) => {
     const bonus = bonuses[pattern.type] ?? 0;
     const retriggerMultiplier = retriggers[pattern.type] ?? 1;
-    const displayScore = Math.floor((pattern.score * (100 + bonus)) / 100);
+
+    // Snowball: raise the base multiplier by a flat amount before the % bonus.
+    const add = snowballAddForType(pattern.type, snowballAdds);
+    const baseMult = SNOWBALL_BASE_MULT_HUNDREDTHS[pattern.type];
+    const snowballScore =
+      add > 0 && baseMult
+        ? Math.floor((pattern.score * (baseMult + add)) / baseMult)
+        : pattern.score;
+
+    const displayScore = Math.floor((snowballScore * (100 + bonus)) / 100);
     const totalScore = displayScore * retriggerMultiplier;
 
     return {

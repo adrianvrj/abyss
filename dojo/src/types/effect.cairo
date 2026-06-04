@@ -27,6 +27,17 @@ pub mod CharmEffectType {
     pub const ExtraSpinWithLuck: u8 = 9;
     pub const ConditionalLuckBoost: u8 = 10;
     pub const DebtPledge: u8 = 12;
+    /// Snowball: each spin a pattern of the trigger symbol lands, the target
+    /// pattern type's base multiplier grows by a flat amount (in hundredths of a
+    /// multiplier), permanently for the session. No cap.
+    pub const PatternSnowball: u8 = 13;
+}
+
+/// Pattern type targets for PatternSnowball charms (stored in CharmMetadata.condition_type).
+pub mod SnowballPatternType {
+    pub const Horizontal: u8 = 1;
+    pub const Vertical: u8 = 2;
+    pub const Diagonal: u8 = 3;
 }
 
 /// Charm condition types - when passive effects activate

@@ -9,6 +9,10 @@ import {
 import {
     getPatternBonusMap,
     getPatternRetriggerMap,
+    snowballAddForType,
+    SNOWBALL_BASE_MULT_HUNDREDTHS,
+    EMPTY_SNOWBALL_ADDS,
+    type SnowballAdds,
 } from '@/lib/patternMath';
 import { CHIP_TOKEN_IMAGE_URL } from '@/lib/constants';
 import { getSymbolProbabilityDistribution } from '@/utils/itemEffects';
@@ -29,6 +33,7 @@ interface GameStatsPanelProps {
     itemsOverride?: ContractItem[];
     practiceMode?: boolean;
     diamondChipBonusUnits?: number;
+    snowballAdds?: SnowballAdds;
 }
 
 const symbolNameToType: Record<string, SymbolType> = {
@@ -57,6 +62,7 @@ export default function GameStatsPanel({
     itemsOverride = EMPTY_ARRAY,
     practiceMode = false,
     diamondChipBonusUnits = 0,
+    snowballAdds = EMPTY_SNOWBALL_ADDS,
 }: GameStatsPanelProps) {
     const [fetchedItems, setFetchedItems] = useState<ContractItem[]>([]);
     const [items, setItems] = useState<ContractItem[]>([]);
@@ -247,7 +253,7 @@ export default function GameStatsPanel({
             });
     }
 
-    function getModifiedPatterns(): (PatternMultiplier & { bonus: number; retrigger: number })[] {
+    function getModifiedPatterns(): (PatternMultiplier & { bonus: number; retrigger: number; snowballAdd: number })[] {
         const bonuses = getPatternBonusMap(items);
         const retriggers = getPatternRetriggerMap(items);
 
@@ -255,7 +261,18 @@ export default function GameStatsPanel({
             ...pm,
             bonus: bonuses[pm.type],
             retrigger: retriggers[pm.type],
+            snowballAdd: snowballAddForType(pm.type, snowballAdds),
         }));
+    }
+
+    // Snowball raises the displayed base multiplier proportionally, mirroring the
+    // scoring math: effective = base * (baseHundredths + add) / baseHundredths.
+    function getSnowballMultiplier(pm: PatternMultiplier & { snowballAdd: number }): number {
+        const baseHundredths = SNOWBALL_BASE_MULT_HUNDREDTHS[pm.type];
+        if (!baseHundredths || pm.snowballAdd <= 0) {
+            return pm.multiplier;
+        }
+        return (pm.multiplier * (baseHundredths + pm.snowballAdd)) / baseHundredths;
     }
 
     const modifiedSymbols = getModifiedSymbols();
@@ -463,8 +480,8 @@ export default function GameStatsPanel({
                 }}>
                     {modifiedPatterns.map(pm => {
                         const displayMultiplier =
-                            pm.multiplier * (1 + (patternBonuses[pm.type] ?? 0) / 100);
-                        const hasBoost = pm.bonus > 0 || pm.retrigger > 1;
+                            getSnowballMultiplier(pm) * (1 + (patternBonuses[pm.type] ?? 0) / 100);
+                        const hasBoost = pm.bonus > 0 || pm.retrigger > 1 || pm.snowballAdd > 0;
                         return (
                             <div
                                 key={pm.type}
@@ -484,7 +501,7 @@ export default function GameStatsPanel({
                                     gap: '2px',
                                 }}>
                                     <span style={{ color: hasBoost ? '#00FF64' : '#FFD700' }}>
-                                        x{displayMultiplier.toFixed(1)}
+                                        x{displayMultiplier.toFixed(pm.snowballAdd > 0 ? 2 : 1)}
                                     </span>
                                     {pm.retrigger > 1 && (
                                         <span style={{

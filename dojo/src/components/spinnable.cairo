@@ -11,6 +11,7 @@ pub impl SpinnableImpl of SpinnableTrait {
         probability_666: u32,
         retrigger_bonuses: (u32, u32, u32, u32, u32),
         pattern_bonuses: (u32, u32, u32, u32, u32, u32),
+        pattern_mult_adds: (u32, u32, u32),
         symbol_scores: (u32, u32, u32, u32, u32),
         force_jackpot: bool,
     ) -> (u32, u8, bool, bool, Array<u8>, u8, (u32, u32, u32, u32, u32)) {
@@ -30,6 +31,7 @@ pub impl SpinnableImpl of SpinnableTrait {
         // Calculate score from patterns
         let g = grid.span();
         let (h3_bonus, h4_bonus, h5_bonus, vert_bonus, diag_bonus, jp_bonus) = pattern_bonuses;
+        let (h_mult_add, v_mult_add, d_mult_add) = pattern_mult_adds;
         let (h3_retrigger, vert_retrigger, diag_retrigger, _, jackpot_retrigger) =
             retrigger_bonuses;
 
@@ -49,7 +51,7 @@ pub impl SpinnableImpl of SpinnableTrait {
         while row != 3 {
             let start = row * 5;
             let (score, pats, matched) = crate::helpers::patterns::check_horizontal_line(
-                g, start, symbol_scores, h_bonuses,
+                g, start, symbol_scores, h_bonuses, h_mult_add,
             );
             total_score += score * h3_retrigger;
             total_patterns += pats;
@@ -76,7 +78,7 @@ pub impl SpinnableImpl of SpinnableTrait {
         // Vertical patterns
         let (v_score, v_pats, vm7, vmd, vmc, vm_coin, vml) =
             crate::helpers::patterns::check_vertical_patterns_with_matches(
-            g, symbol_scores, vert_bonus,
+            g, symbol_scores, vert_bonus, v_mult_add,
         );
         total_score += v_score * vert_retrigger;
         total_patterns += v_pats;
@@ -92,7 +94,7 @@ pub impl SpinnableImpl of SpinnableTrait {
         // Diagonal patterns
         let (d_score, d_pats, dm7, dmd, dmc, dm_coin, dml) =
             crate::helpers::patterns::check_diagonal_patterns_with_matches(
-            g, symbol_scores, diag_bonus,
+            g, symbol_scores, diag_bonus, d_mult_add,
         );
         total_score += d_score * diag_retrigger;
         total_patterns += d_pats;

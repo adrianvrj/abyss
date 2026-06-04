@@ -1,10 +1,14 @@
 use crate::interfaces::charm_nft::CharmMetadata;
-use crate::types::effect::{CharmConditionType, CharmEffectType};
+use crate::types::effect::{CharmConditionType, CharmEffectType, SnowballPatternType};
+use crate::types::symbol::SymbolType;
 
 /// Internal dispatch for charm attributes. Returns
 /// (name, description, effect_type, effect_value, effect_value_2, condition_type, rarity, shop_cost).
 /// Dispatched via a balanced binary split (avg ~log2(27) comparisons vs linear).
 fn charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
+    if charm_id >= 28 {
+        return snowball_charm_attrs(charm_id);
+    }
     if charm_id <= 14 {
         if charm_id <= 5 {
             if charm_id == 1 {
@@ -78,9 +82,38 @@ fn charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
     }
 }
 
+/// Attributes for the snowball charms (28-37). Encoding for PatternSnowball:
+///   effect_value   = flat multiplier increment per trigger hit (hundredths, +0.10x = 10)
+///   effect_value_2 = trigger symbol (SymbolType)
+///   condition_type = target pattern type (SnowballPatternType)
+fn snowball_charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
+    let t = CharmEffectType::PatternSnowball;
+    if charm_id == 28 {
+        ('Lemon Squeezer', 'Lemon H +0.08x', t, 8, SymbolType::LEMON.into(), SnowballPatternType::Horizontal, 0, 1)
+    } else if charm_id == 29 {
+        ('Buster Sword', 'Cherry V +0.10x', t, 10, SymbolType::CHERRY.into(), SnowballPatternType::Vertical, 0, 1)
+    } else if charm_id == 30 {
+        ('Question Block', 'Seven D +0.10x', t, 10, SymbolType::SEVEN.into(), SnowballPatternType::Diagonal, 0, 1)
+    } else if charm_id == 31 {
+        ('Dessert Eagle', 'Diamond H +0.12x', t, 12, SymbolType::DIAMOND.into(), SnowballPatternType::Horizontal, 0, 1)
+    } else if charm_id == 32 {
+        ('Hourglass', 'Seven H +0.15x', t, 15, SymbolType::SEVEN.into(), SnowballPatternType::Horizontal, 1, 2)
+    } else if charm_id == 33 {
+        ('Maraschino Jar', 'Cherry D +0.15x', t, 15, SymbolType::CHERRY.into(), SnowballPatternType::Diagonal, 1, 2)
+    } else if charm_id == 34 {
+        ('Combustible Lemon', 'Lemon V +0.18x', t, 18, SymbolType::LEMON.into(), SnowballPatternType::Vertical, 1, 2)
+    } else if charm_id == 35 {
+        ('Jolly Chimp', 'Lemon D +0.25x', t, 25, SymbolType::LEMON.into(), SnowballPatternType::Diagonal, 2, 3)
+    } else if charm_id == 36 {
+        ('Leprechauns Pot', 'Diamond V +0.30x', t, 30, SymbolType::DIAMOND.into(), SnowballPatternType::Vertical, 2, 3)
+    } else {
+        ('Beherit', 'Diamond D +0.40x', t, 40, SymbolType::DIAMOND.into(), SnowballPatternType::Diagonal, 3, 4)
+    }
+}
+
 pub fn get_charm_type_info(charm_id: u32) -> CharmMetadata {
     assert(charm_id >= 1, 'Invalid charm');
-    assert(charm_id <= 27, 'Invalid charm');
+    assert(charm_id <= 37, 'Invalid charm');
 
     let (name, description, effect_type, effect_value, effect_value_2, condition_type, rarity, shop_cost) =
         charm_attrs(charm_id);
@@ -348,13 +381,13 @@ fn _legacy_charm_info(charm_id: u32) -> CharmMetadata {
 
 pub fn get_charm_ids_by_rarity(rarity: u8) -> Array<u32> {
     if rarity == 0 {
-        return array![1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23];
+        return array![1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23, 28, 29, 30, 31];
     } else if rarity == 1 {
-        return array![9, 10, 11, 12, 13, 14, 24, 25];
+        return array![9, 10, 11, 12, 13, 14, 24, 25, 32, 33, 34];
     } else if rarity == 2 {
-        return array![15, 16, 17, 18, 26];
+        return array![15, 16, 17, 18, 26, 35, 36];
     } else if rarity == 3 {
-        return array![19, 20, 27];
+        return array![19, 20, 27, 37];
     }
 
     array![]
@@ -473,7 +506,11 @@ pub fn calculate_effective_luck_from_charm_ids(
             luck += last_spin_patterns.into() * val;
         }
 
-        if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
+        // Snowball charms reuse condition_type for their target pattern (1/2/3),
+        // which collides with the luck condition types — skip them.
+        if charm_meta.effect_type == CharmEffectType::PatternSnowball {
+            // no luck contribution
+        } else if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
             if last_spin_patterns == 0 {
                 luck += val;
             }

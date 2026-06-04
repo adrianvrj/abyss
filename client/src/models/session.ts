@@ -37,6 +37,9 @@ export interface RawSession {
   score_cherry: PrimitiveValue<string>;
   score_coin: PrimitiveValue<string>;
   score_lemon: PrimitiveValue<string>;
+  snowball_h_add: PrimitiveValue<string>;
+  snowball_v_add: PrimitiveValue<string>;
+  snowball_d_add: PrimitiveValue<string>;
 }
 
 export interface Session {
@@ -58,6 +61,8 @@ export interface Session {
   blocked666ThisSession: boolean;
   tickets: number;
   symbolScores: [number, number, number, number, number];
+  // Snowball charm accumulators (hundredths of a multiplier) for H/V/D patterns.
+  snowballAdds: { horizontal: number; vertical: number; diagonal: number };
 }
 
 export interface RawSpinResult {
@@ -195,6 +200,11 @@ export const SessionModel = {
         toNumber(data.score_coin),
         toNumber(data.score_lemon),
       ],
+      snowballAdds: {
+        horizontal: toNumber(data.snowball_h_add),
+        vertical: toNumber(data.snowball_v_add),
+        diagonal: toNumber(data.snowball_d_add),
+      },
     };
   },
 };

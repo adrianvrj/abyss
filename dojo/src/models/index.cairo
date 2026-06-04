@@ -95,6 +95,12 @@ pub struct Session {
     pub score_cherry: u32,
     pub score_coin: u32,
     pub score_lemon: u32,
+    // Snowball charm accumulators: flat adds (hundredths of a multiplier) applied
+    // to each pattern type's base multiplier. Grow as snowball charms' trigger
+    // symbols form patterns; never reset within a session.
+    pub snowball_h_add: u32,
+    pub snowball_v_add: u32,
+    pub snowball_d_add: u32,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

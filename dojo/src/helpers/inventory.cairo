@@ -22,6 +22,9 @@ pub struct SpinCycleModifiers {
     pub coin_probability_penalty: u32,
     pub retrigger_bonuses: (u32, u32, u32, u32, u32),
     pub pattern_bonuses: (u32, u32, u32, u32, u32, u32),
+    // Snowball flat multiplier adds (hundredths) for (horizontal, vertical, diagonal),
+    // the accumulated values applied to this spin's scoring.
+    pub pattern_mult_adds: (u32, u32, u32),
     pub symbol_scores: (u32, u32, u32, u32, u32),
     pub direct_score_bonuses: (u32, u32, u32, u32, u32),
     pub diamond_chip_bonus_per_pattern: u32,
@@ -295,10 +298,15 @@ pub impl InventoryImpl of InventoryTrait {
         let mut diag_retrigger: u32 = 1;
         let mut all_retrigger: u32 = 1;
         let mut jackpot_retrigger: u32 = 1;
+        // Snowball aggregates live on the session; grown post-spin in play.
+        let h_mult_add: u32 = session.snowball_h_add;
+        let v_mult_add: u32 = session.snowball_v_add;
+        let d_mult_add: u32 = session.snowball_d_add;
 
         let mut j: u32 = 0;
         while j != charm_count {
             let charm_id = store.session_charm_entry(session_id, j).charm_id;
+
             if charm_id == 26 {
                 has_boxing_globes = true;
             } else if charm_id == 27 {
@@ -344,7 +352,11 @@ pub impl InventoryImpl of InventoryTrait {
                     conditional_luck += last_spin.patterns_count.into() * val;
                 }
 
-                if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
+                // Snowball charms reuse condition_type for their target pattern
+                // (1/2/3), which collides with the luck condition types — skip them.
+                if charm_meta.effect_type == CharmEffectType::PatternSnowball {
+                    // no luck contribution
+                } else if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
                     no_pattern_bonus += val;
                     if last_spin.patterns_count == 0 {
                         conditional_luck += val;
@@ -407,6 +419,7 @@ pub impl InventoryImpl of InventoryTrait {
                 h3_retrigger, vert_retrigger, diag_retrigger, all_retrigger, jackpot_retrigger,
             ),
             pattern_bonuses: (h3, h4, h5, vert, diag, jp),
+            pattern_mult_adds: (h_mult_add, v_mult_add, d_mult_add),
             symbol_scores: (
                 session.score_seven,
                 session.score_diamond,

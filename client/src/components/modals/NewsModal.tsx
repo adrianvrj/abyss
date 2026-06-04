@@ -1,7 +1,7 @@
 import ModalWrapper from "./ModalWrapper";
 import { STATIC_CHARM_DEFINITIONS } from "@/lib/charmCatalog";
 
-const NEW_CHARM_IDS = [21, 22, 23, 24, 25, 26, 27];
+const NEW_CHARM_IDS = [28, 29, 30, 31, 32, 33, 34, 35, 36, 37];
 
 interface NewsModalProps {
     onClose: () => void;
@@ -16,14 +16,15 @@ export default function NewsModal({ onClose }: NewsModalProps) {
                 <section className="news-hero" aria-labelledby="news-title">
                     <div className="news-release-stamp">
                         <span>Update</span>
-                        <strong>Charms 21-27</strong>
+                        <strong>Charms 28-37</strong>
                     </div>
                     <div className="news-hero-copy">
                         <span className="news-kicker">New in the Abyss</span>
-                        <h3 id="news-title">Seven charms joined the pool.</h3>
+                        <h3 id="news-title">Ten snowball charms joined the pool.</h3>
                         <p>
-                            Fresh build paths are live: duplicate verticals, spin-plus-luck pieces,
-                            inventory scaling, and two debt-pledge charms for riskier runs.
+                            A new build path: snowball charms permanently grow a pattern's
+                            multiplier every time their trigger symbol lands. Stack a symbol's
+                            odds and watch one pattern type spiral all run long.
                         </p>
                     </div>
                 </section>
@@ -34,15 +35,15 @@ export default function NewsModal({ onClose }: NewsModalProps) {
                         <ul>
                             <li>
                                 <strong>New range</strong>
-                                <span>Charm IDs 21 through 27 can now appear.</span>
+                                <span>Charm IDs 28 through 37 can now appear.</span>
                             </li>
                             <li>
-                                <strong>New triggers</strong>
-                                <span>Vertical retriggers and geometry payouts open new routes.</span>
+                                <strong>Snowball scaling</strong>
+                                <span>Each trigger-symbol pattern permanently raises one pattern type's multiplier.</span>
                             </li>
                             <li>
-                                <strong>New debt builds</strong>
-                                <span>Pledge score during the run, then cash it back on the right hit.</span>
+                                <strong>Build around a symbol</strong>
+                                <span>Boost a symbol's odds, then let its patterns compound — no cap.</span>
                             </li>
                         </ul>
                     </div>

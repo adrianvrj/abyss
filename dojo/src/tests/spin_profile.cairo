@@ -35,6 +35,7 @@ fn profile_execute_spin_hot_path() {
     let probability_bonuses = (8, 5, 3, 2, 1);
     let retrigger_bonuses = (2, 2, 2, 2, 1);
     let pattern_bonuses = (25, 40, 75, 30, 35, 50);
+    let pattern_mult_adds = (0, 0, 0);
     let symbol_scores = (7, 5, 4, 3, 2);
 
     let mut checksum: felt252 = 0;
@@ -50,6 +51,7 @@ fn profile_execute_spin_hot_path() {
             18,
             retrigger_bonuses,
             pattern_bonuses,
+            pattern_mult_adds,
             symbol_scores,
             false,
         );
@@ -417,6 +419,9 @@ fn seed_market_purchase_mask(
                 score_cherry: DEFAULT_SCORE_CHERRY,
                 score_coin: DEFAULT_SCORE_COIN,
                 score_lemon: DEFAULT_SCORE_LEMON,
+                snowball_h_add: 0,
+                snowball_v_add: 0,
+                snowball_d_add: 0,
             },
         );
     world
@@ -613,6 +618,9 @@ fn seed_request_spin_profile_session(
                 score_cherry: DEFAULT_SCORE_CHERRY,
                 score_coin: DEFAULT_SCORE_COIN,
                 score_lemon: DEFAULT_SCORE_LEMON,
+                snowball_h_add: 0,
+                snowball_v_add: 0,
+                snowball_d_add: 0,
             },
         );
     world
@@ -686,6 +694,9 @@ fn seed_biblia_blocked_666_session(
                 score_cherry: DEFAULT_SCORE_CHERRY,
                 score_coin: DEFAULT_SCORE_COIN,
                 score_lemon: DEFAULT_SCORE_LEMON,
+                snowball_h_add: 0,
+                snowball_v_add: 0,
+                snowball_d_add: 0,
             },
         );
     world
@@ -903,6 +914,9 @@ fn seed_refresh_market_profile_session(
                 score_cherry: DEFAULT_SCORE_CHERRY,
                 score_coin: DEFAULT_SCORE_COIN,
                 score_lemon: DEFAULT_SCORE_LEMON,
+                snowball_h_add: 0,
+                snowball_v_add: 0,
+                snowball_d_add: 0,
             },
         );
     world

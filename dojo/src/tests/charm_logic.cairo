@@ -12,6 +12,7 @@ use crate::systems::charm::{
     CHARM_FORGE_PRICE_CHIP, get_charm_reroll_base_rarity, get_charm_reroll_result_rarity,
 };
 use crate::types::effect::{CharmConditionType, CharmEffectType};
+use crate::types::symbol::SymbolType;
 
 fn assert_charm_meta(
     charm_id: u32,
@@ -335,17 +336,39 @@ fn test_all_charm_metadata_definitions() {
 
 #[test]
 fn test_charm_ids_grouped_by_rarity() {
-    assert_u32_array_eq(get_charm_ids_by_rarity(0), array![1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23]);
-    assert_u32_array_eq(get_charm_ids_by_rarity(1), array![9, 10, 11, 12, 13, 14, 24, 25]);
-    assert_u32_array_eq(get_charm_ids_by_rarity(2), array![15, 16, 17, 18, 26]);
-    assert_u32_array_eq(get_charm_ids_by_rarity(3), array![19, 20, 27]);
+    assert_u32_array_eq(
+        get_charm_ids_by_rarity(0), array![1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23, 28, 29, 30, 31],
+    );
+    assert_u32_array_eq(
+        get_charm_ids_by_rarity(1), array![9, 10, 11, 12, 13, 14, 24, 25, 32, 33, 34],
+    );
+    assert_u32_array_eq(get_charm_ids_by_rarity(2), array![15, 16, 17, 18, 26, 35, 36]);
+    assert_u32_array_eq(get_charm_ids_by_rarity(3), array![19, 20, 27, 37]);
     assert_u32_array_eq(get_charm_ids_by_rarity(99), array![]);
 }
 
 #[test]
 #[should_panic(expected: ('Invalid charm',))]
 fn test_charm_id_above_expanded_range_rejected() {
-    get_charm_type_info(28);
+    get_charm_type_info(38);
+}
+
+#[test]
+fn test_snowball_charm_metadata() {
+    // 28 Lemon Squeezer: lemon -> horizontal, +0.08x.
+    let lemon = get_charm_type_info(28);
+    assert(lemon.effect_type == CharmEffectType::PatternSnowball, 'bad effect type');
+    assert(lemon.effect_value == 8, 'bad increment');
+    assert(lemon.effect_value_2 == SymbolType::LEMON.into(), 'bad trigger symbol');
+    assert(lemon.condition_type == 1, 'bad target pattern');
+
+    // 37 Beherit: diamond -> diagonal, +0.40x, legendary.
+    let beherit = get_charm_type_info(37);
+    assert(beherit.effect_type == CharmEffectType::PatternSnowball, 'bad beherit type');
+    assert(beherit.effect_value == 40, 'bad beherit increment');
+    assert(beherit.effect_value_2 == SymbolType::DIAMOND.into(), 'bad beherit symbol');
+    assert(beherit.condition_type == 3, 'bad beherit target');
+    assert(beherit.rarity == 3, 'bad beherit rarity');
 }
 
 #[test]
@@ -423,6 +446,16 @@ fn test_debt_charms_do_not_contribute_luck() {
     let charm_ids = array![26, 27];
     let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 4, 3, 200, 1, true);
     assert(luck == 0, 'debt gave luck');
+}
+
+#[test]
+fn test_snowball_charms_do_not_contribute_luck() {
+    // 28/29/30 store target pattern 1/2/3 in condition_type, which collides with
+    // the luck condition types. With conditions that WOULD trigger (no patterns
+    // last spin, low spins, items in inventory), they must still give 0 luck.
+    let charm_ids = array![28, 29, 30];
+    let luck = calculate_effective_luck_from_charm_ids(charm_ids.span(), 0, 3, 1, 200, 1, true);
+    assert(luck == 0, 'snowball gave luck');
 }
 
 #[test]

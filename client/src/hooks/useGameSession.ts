@@ -248,6 +248,10 @@ export function useGameSession(sessionId: string | null) {
     const [scoreBonuses, setScoreBonuses] = useState<ScoreBonuses>({ seven: 0, diamond: 0, cherry: 0, coin: 0, lemon: 0 });
     const scoreBonusesRef = useRef(scoreBonuses);
     const symbolScoresRef = useRef(symbolScores);
+    // Snowball accumulators (hundredths) mirrored from the on-chain session so the
+    // per-pattern breakdown matches the actual scored total.
+    const snowballAddsRef = useRef({ horizontal: 0, vertical: 0, diagonal: 0 });
+    const [snowballAdds, setSnowballAdds] = useState({ horizontal: 0, vertical: 0, diagonal: 0 });
     const scoreMultiplierRef = useRef(1);
     const previousLevelRef = useRef<number>(1);
     const lastKnownTotalSpinsRef = useRef<number>(0);
@@ -600,6 +604,10 @@ export function useGameSession(sessionId: string | null) {
             });
 
             setSymbolScores(data.symbolScores);
+            if (data.snowballAdds) {
+                snowballAddsRef.current = data.snowballAdds;
+                setSnowballAdds(data.snowballAdds);
+            }
             setBlocked666(data.blocked666);
             if (data.relicPendingEffect !== undefined) setPendingRelicEffect(data.relicPendingEffect);
 
@@ -936,7 +944,7 @@ export function useGameSession(sessionId: string | null) {
 
                     try {
                         const sessionItems = await resolveInventoryItems(Number(sessionId));
-                        detectedPatterns = applyPatternModifiers(detectedPatterns, sessionItems);
+                        detectedPatterns = applyPatternModifiers(detectedPatterns, sessionItems, snowballAddsRef.current);
                     } catch {
                         /* ignore */
                     }
@@ -1124,7 +1132,7 @@ export function useGameSession(sessionId: string | null) {
 
                         try {
                             const sessionItems = await resolveInventoryItems(Number(sessionId));
-                            detectedPatterns = applyPatternModifiers(basePatterns, sessionItems);
+                            detectedPatterns = applyPatternModifiers(basePatterns, sessionItems, snowballAddsRef.current);
                         } catch {
                             /* ignore */
                         }
@@ -1361,7 +1369,7 @@ export function useGameSession(sessionId: string | null) {
         level, score, threshold, risk, tickets, spinsRemaining,
         isSessionActive, grid, isSpinning, hasSpunOnce, error,
         showLevelUp, isInitialLoading, patterns, showingPatterns,
-        symbolScores, blocked666, pendingRelicEffect,
+        symbolScores, snowballAdds, blocked666, pendingRelicEffect,
         setScore, setTickets, setSpinsRemaining, setShowingPatterns, setSymbolScores,
 
         // Preloaded data

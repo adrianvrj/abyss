@@ -470,6 +470,11 @@ export function usePracticeSession() {
     patterns,
     showingPatterns,
     symbolScores: run?.symbolScores ?? [7, 5, 4, 3, 2],
+    snowballAdds: {
+      horizontal: run?.snowballHAdd ?? 0,
+      vertical: run?.snowballVAdd ?? 0,
+      diagonal: run?.snowballDAdd ?? 0,
+    },
     blocked666: run?.blocked666 ?? false,
     pendingRelicEffect: run?.pendingRelicEffect ?? null,
     setScore: noopNumberSetter,

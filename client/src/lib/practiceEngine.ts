@@ -7,9 +7,15 @@ import {
   type CharmLuckContext,
   mergeCharmDisplayData,
   type CharmContractMetadata,
+  getSnowballConfig,
+  SnowballPatternType,
 } from "@/lib/charmRules";
 import { getStaticCharmDefinition } from "@/lib/charmCatalog";
-import { applyPatternModifiers } from "@/lib/patternMath";
+import {
+  applyPatternModifiers,
+  EMPTY_SNOWBALL_ADDS,
+  type SnowballAdds,
+} from "@/lib/patternMath";
 import { ContractItem, ItemEffectType } from "@/utils/abyssContract";
 import { DEFAULT_GAME_CONFIG } from "@/utils/GameConfig";
 import { getItemImage } from "@/utils/itemImages";
@@ -73,6 +79,11 @@ export interface PracticeRunState {
   lastSpinPatternCount: number;
   charmDebtScores: Record<number, number>;
   consecutive666Count: number;
+  // Snowball accumulators (hundredths of a multiplier) added to each pattern
+  // type's base multiplier; grow as snowball charms' trigger symbols form patterns.
+  snowballHAdd: number;
+  snowballVAdd: number;
+  snowballDAdd: number;
 }
 
 export interface PracticeSpinOutcome {
@@ -234,6 +245,18 @@ function getPracticeCharmMetadata(charmId: number): CharmContractMetadata | null
     case 25: return { ...base, effectType: CharmEffectType.ExtraSpinWithLuck, effectValue: 2, effectValue2: 28, conditionType: CharmConditionType.None };
     case 26: return { ...base, effectType: CharmEffectType.DebtPledge, effectValue: 5, effectValue2: 10, conditionType: CharmConditionType.Consecutive666 };
     case 27: return { ...base, effectType: CharmEffectType.DebtPledge, effectValue: 10, effectValue2: 12, conditionType: CharmConditionType.AllPatternTypesSameSpin };
+    // Snowball charms (28-37): effectValue = increment (hundredths), effectValue2 = trigger
+    // symbol (1=seven..5=lemon), conditionType = target pattern (1=H, 2=V, 3=D).
+    case 28: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 8, effectValue2: 5, conditionType: 1 };
+    case 29: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 10, effectValue2: 3, conditionType: 2 };
+    case 30: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 10, effectValue2: 1, conditionType: 3 };
+    case 31: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 12, effectValue2: 2, conditionType: 1 };
+    case 32: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 15, effectValue2: 1, conditionType: 1 };
+    case 33: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 15, effectValue2: 3, conditionType: 3 };
+    case 34: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 18, effectValue2: 5, conditionType: 2 };
+    case 35: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 25, effectValue2: 5, conditionType: 3 };
+    case 36: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 30, effectValue2: 2, conditionType: 2 };
+    case 37: return { ...base, effectType: CharmEffectType.PatternSnowball, effectValue: 40, effectValue2: 2, conditionType: 3 };
     default: return null;
   }
 }
@@ -578,9 +601,14 @@ function withDerivedState(state: PracticeRunState): PracticeRunState {
   };
 }
 
-function getPatternsForGrid(grid: number[], items: ContractItem[], symbolScores: number[]) {
+function getPatternsForGrid(
+  grid: number[],
+  items: ContractItem[],
+  symbolScores: number[],
+  snowballAdds: SnowballAdds = EMPTY_SNOWBALL_ADDS,
+) {
   const basePatterns = detectPatterns(grid, DEFAULT_GAME_CONFIG, undefined, symbolScores);
-  const modifiedPatterns = applyPatternModifiers(basePatterns, items);
+  const modifiedPatterns = applyPatternModifiers(basePatterns, items, snowballAdds);
   return modifiedPatterns.filter((pattern) => pattern.score > 0);
 }
 
@@ -656,6 +684,9 @@ export function createPracticeRun(runId: number, seed: number, charmLoadout: num
     lastSpinPatternCount: 0,
     charmDebtScores: {},
     consecutive666Count: 0,
+    snowballHAdd: 0,
+    snowballVAdd: 0,
+    snowballDAdd: 0,
   });
 }
 
@@ -729,7 +760,12 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
   }
 
   const symbolScores = [...state.symbolScores];
-  const patterns = getPatternsForGrid(spin.grid, inventoryItems, symbolScores);
+  const currentSnowball: SnowballAdds = {
+    horizontal: state.snowballHAdd,
+    vertical: state.snowballVAdd,
+    diagonal: state.snowballDAdd,
+  };
+  const patterns = getPatternsForGrid(spin.grid, inventoryItems, symbolScores, currentSnowball);
   const baseScoreGained = is666 ? 0 : patterns.reduce((sum, pattern) => sum + pattern.score, 0);
   const scoreGained = luckyWasActive && !is666 ? baseScoreGained * 5 : baseScoreGained;
   const matchCounts = [0, 0, 0, 0, 0];
@@ -738,6 +774,24 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
     const idx = symbolTypeMap[p.symbolId];
     if (idx !== undefined) matchCounts[idx] += 1;
   });
+
+  // Grow snowball accumulators from this spin's matches (skip on a busted 666 spin).
+  let nextSnowballH = state.snowballHAdd;
+  let nextSnowballV = state.snowballVAdd;
+  let nextSnowballD = state.snowballDAdd;
+  if (!is666) {
+    for (const item of inventoryItems) {
+      const config = getSnowballConfig(item.charmInfo?.metadata);
+      if (!config) continue;
+      const symbolIndex = symbolTypeMap[config.symbol];
+      if (symbolIndex === undefined) continue;
+      const growth = config.increment * matchCounts[symbolIndex];
+      if (growth === 0) continue;
+      if (config.target === SnowballPatternType.Horizontal) nextSnowballH += growth;
+      else if (config.target === SnowballPatternType.Vertical) nextSnowballV += growth;
+      else if (config.target === SnowballPatternType.Diagonal) nextSnowballD += growth;
+    }
+  }
 
   // Accumulate DirectScoreBonus per pattern hit (only if not 666)
   let updatedScores = symbolScores;
@@ -762,6 +816,9 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
       (is666 ? 0 : matchCounts[1] * getDiamondChipBonusUnits(inventoryItems)),
     lastSpinPatternCount: is666 ? 0 : patterns.length,
     consecutive666Count: is666 ? state.consecutive666Count + 1 : 0,
+    snowballHAdd: nextSnowballH,
+    snowballVAdd: nextSnowballV,
+    snowballDAdd: nextSnowballD,
     charmDebtScores: debtScores,
     sessionRevision: state.sessionRevision + 1,
     inventoryRevision:

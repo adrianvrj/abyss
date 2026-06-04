@@ -354,6 +354,7 @@ function GameStage({
                                 practiceMode={practiceMode}
                                 itemsOverride={game.initialInventoryItems}
                                 diamondChipBonusUnits={game.diamondChipBonusUnits}
+                                snowballAdds={game.snowballAdds}
                             />
                         </div>
                     </div>
@@ -543,6 +544,7 @@ function GameStage({
                         practiceMode={practiceMode}
                         itemsOverride={game.initialInventoryItems}
                         diamondChipBonusUnits={game.diamondChipBonusUnits}
+                        snowballAdds={game.snowballAdds}
                     />
                     <div className="sidebar-buttons">
                         {game.equippedRelic && (

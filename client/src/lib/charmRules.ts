@@ -6,6 +6,15 @@ export enum CharmEffectType {
   ExtraSpinWithLuck = 9,
   ConditionalLuckBoost = 10,
   DebtPledge = 12,
+  PatternSnowball = 13,
+}
+
+// Snowball target pattern (stored in CharmContractMetadata.conditionType for
+// PatternSnowball charms). Mirrors on-chain SnowballPatternType.
+export enum SnowballPatternType {
+  Horizontal = 1,
+  Vertical = 2,
+  Diagonal = 3,
 }
 
 export enum CharmConditionType {
@@ -179,6 +188,10 @@ export function describeCharmEffect(metadata: CharmContractMetadata | null) {
     return describeDebtPledge(metadata);
   }
 
+  if (metadata.effectType === CharmEffectType.PatternSnowball) {
+    return describeSnowball(metadata);
+  }
+
   if (metadata.effectType === CharmEffectType.PatternRetrigger) {
     if (metadata.effectValue2 === 0) {
       return `All non-jackpot patterns trigger x${metadata.effectValue}`;
@@ -234,6 +247,12 @@ export function getCharmLuckEntries(
   context: CharmLuckContext,
 ) {
   if (!metadata) {
+    return [] as CharmLuckEntry[];
+  }
+
+  // Snowball charms reuse conditionType to store their target pattern (1/2/3),
+  // which collides with CharmConditionType. They grant no luck — bail out.
+  if (metadata.effectType === CharmEffectType.PatternSnowball) {
     return [] as CharmLuckEntry[];
   }
 
@@ -352,6 +371,47 @@ export function getCharmPatternRetriggerBonuses(
     diagonal,
     jackpot,
   };
+}
+
+const SNOWBALL_SYMBOL_LABEL: Record<number, string> = {
+  1: "Seven",
+  2: "Diamond",
+  3: "Cherry",
+  4: "Coin",
+  5: "Lemon",
+};
+
+const SNOWBALL_TARGET_LABEL: Record<number, string> = {
+  [SnowballPatternType.Horizontal]: "horizontal",
+  [SnowballPatternType.Vertical]: "vertical",
+  [SnowballPatternType.Diagonal]: "diagonal",
+};
+
+export interface SnowballConfig {
+  symbol: number; // trigger symbol (1=seven..5=lemon)
+  target: SnowballPatternType;
+  increment: number; // hundredths of a multiplier per matched pattern
+}
+
+/** Extract the snowball config from charm metadata, or null if not a snowball charm. */
+export function getSnowballConfig(
+  metadata: CharmContractMetadata | null | undefined,
+): SnowballConfig | null {
+  if (!metadata || metadata.effectType !== CharmEffectType.PatternSnowball) {
+    return null;
+  }
+  return {
+    symbol: metadata.effectValue2,
+    target: metadata.conditionType as SnowballPatternType,
+    increment: metadata.effectValue,
+  };
+}
+
+function describeSnowball(metadata: CharmContractMetadata) {
+  const symbol = SNOWBALL_SYMBOL_LABEL[metadata.effectValue2] ?? "Symbol";
+  const target = SNOWBALL_TARGET_LABEL[metadata.conditionType] ?? "pattern";
+  const inc = (metadata.effectValue / 100).toFixed(2);
+  return `${symbol} patterns: +${inc}x ${target} multiplier per hit (stacks all session)`;
 }
 
 export function mergeCharmDisplayData({
