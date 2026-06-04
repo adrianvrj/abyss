@@ -7,12 +7,11 @@ import {
   type CharmLuckContext,
   mergeCharmDisplayData,
   type CharmContractMetadata,
-  getSnowballConfig,
-  SnowballPatternType,
 } from "@/lib/charmRules";
 import { getStaticCharmDefinition } from "@/lib/charmCatalog";
 import {
   applyPatternModifiers,
+  growSnowballAdds,
   EMPTY_SNOWBALL_ADDS,
   type SnowballAdds,
 } from "@/lib/patternMath";
@@ -775,22 +774,16 @@ export function spinPracticeRun(state: PracticeRunState): PracticeSpinOutcome {
     if (idx !== undefined) matchCounts[idx] += 1;
   });
 
-  // Grow snowball accumulators from this spin's matches (skip on a busted 666 spin).
+  // Grow snowball accumulators from this spin's matches (skip on a busted 666 spin),
+  // mirroring the on-chain growth via the shared helper.
   let nextSnowballH = state.snowballHAdd;
   let nextSnowballV = state.snowballVAdd;
   let nextSnowballD = state.snowballDAdd;
   if (!is666) {
-    for (const item of inventoryItems) {
-      const config = getSnowballConfig(item.charmInfo?.metadata);
-      if (!config) continue;
-      const symbolIndex = symbolTypeMap[config.symbol];
-      if (symbolIndex === undefined) continue;
-      const growth = config.increment * matchCounts[symbolIndex];
-      if (growth === 0) continue;
-      if (config.target === SnowballPatternType.Horizontal) nextSnowballH += growth;
-      else if (config.target === SnowballPatternType.Vertical) nextSnowballV += growth;
-      else if (config.target === SnowballPatternType.Diagonal) nextSnowballD += growth;
-    }
+    const grown = growSnowballAdds(currentSnowball, patterns, inventoryItems);
+    nextSnowballH = grown.horizontal;
+    nextSnowballV = grown.vertical;
+    nextSnowballD = grown.diagonal;
   }
 
   // Accumulate DirectScoreBonus per pattern hit (only if not 666)

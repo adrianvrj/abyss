@@ -41,6 +41,11 @@ pub struct SpinCompleted {
     pub score_coin: u32,
     pub score_lemon: u32,
     pub chip_bonus_units: u32,
+    // Post-spin snowball accumulators (hundredths) so the client can sync the
+    // pattern-multiplier growth straight from the event.
+    pub snowball_h_add: u32,
+    pub snowball_v_add: u32,
+    pub snowball_d_add: u32,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

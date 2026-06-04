@@ -16,6 +16,7 @@ export interface SpinCompletedEvent {
     currentLuck: number;
     symbolScores: number[];
     chipBonusUnits: number;
+    snowballAdds: { horizontal: number; vertical: number; diagonal: number };
 }
 
 export interface ItemPurchasedEvent {
@@ -426,6 +427,13 @@ function parseSpinCompletedEvent(
                 feltToNumber(eventData[offset + 13], 2),
             ],
             chipBonusUnits: eventData.length > offset + 14 ? feltToNumber(eventData[offset + 14]) : 0,
+            snowballAdds: eventData.length > offset + 17
+                ? {
+                    horizontal: feltToNumber(eventData[offset + 15]),
+                    vertical: feltToNumber(eventData[offset + 16]),
+                    diagonal: feltToNumber(eventData[offset + 17]),
+                }
+                : { horizontal: 0, vertical: 0, diagonal: 0 },
         };
     } catch (e) {
         console.error('Failed to parse SpinCompleted event:', e);

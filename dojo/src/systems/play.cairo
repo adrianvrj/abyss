@@ -501,6 +501,9 @@ pub mod Play {
                         score_coin: session.score_coin,
                         score_lemon: session.score_lemon,
                         chip_bonus_units: session_chip_bonus.bonus_units,
+                        snowball_h_add: session.snowball_h_add,
+                        snowball_v_add: session.snowball_v_add,
+                        snowball_d_add: session.snowball_d_add,
                     },
                 );
             if biblia_used {

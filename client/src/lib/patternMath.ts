@@ -2,7 +2,11 @@ import type { PatternMultiplier, PatternType } from "@/utils/GameConfig";
 import type { Pattern } from "@/utils/patternDetector";
 import type { ContractItem } from "@/utils/abyssContract";
 import { ItemEffectType } from "@/utils/abyssContract";
-import { getCharmPatternRetriggerBonuses } from "@/lib/charmRules";
+import {
+  getCharmPatternRetriggerBonuses,
+  getSnowballConfig,
+  SnowballPatternType,
+} from "@/lib/charmRules";
 
 type PatternBonusMap = Record<PatternType, number>;
 type PatternRetriggerMap = Record<PatternType, number>;
@@ -127,6 +131,42 @@ export function snowballAddForType(type: PatternType, adds: SnowballAdds): numbe
   if (type === "vertical-3") return adds.vertical;
   if (type === "diagonal-3") return adds.diagonal;
   return 0;
+}
+
+// Maps grid symbol id (1=seven..5=lemon) to the snowball match-count index.
+const SNOWBALL_SYMBOL_INDEX: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
+
+/**
+ * Advance snowball accumulators from a spin's matched patterns, mirroring the
+ * on-chain `grow_snowball_stacks` logic: each snowball charm adds
+ * `increment * (matched patterns of its trigger symbol)` to its target pattern
+ * type. `patterns` must be this spin's scored patterns (skip on a busted 666).
+ */
+export function growSnowballAdds(
+  current: SnowballAdds,
+  patterns: Pattern[],
+  items: ContractItem[],
+): SnowballAdds {
+  const matchCounts = [0, 0, 0, 0, 0];
+  patterns.forEach((p) => {
+    const idx = SNOWBALL_SYMBOL_INDEX[p.symbolId];
+    if (idx !== undefined) matchCounts[idx] += 1;
+  });
+
+  let { horizontal, vertical, diagonal } = current;
+  for (const item of items) {
+    const config = getSnowballConfig(item.charmInfo?.metadata);
+    if (!config) continue;
+    const symbolIndex = SNOWBALL_SYMBOL_INDEX[config.symbol];
+    if (symbolIndex === undefined) continue;
+    const growth = config.increment * matchCounts[symbolIndex];
+    if (growth === 0) continue;
+    if (config.target === SnowballPatternType.Horizontal) horizontal += growth;
+    else if (config.target === SnowballPatternType.Vertical) vertical += growth;
+    else if (config.target === SnowballPatternType.Diagonal) diagonal += growth;
+  }
+
+  return { horizontal, vertical, diagonal };
 }
 
 export function applyPatternModifiers(

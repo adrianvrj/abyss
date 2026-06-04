@@ -944,7 +944,15 @@ export function useGameSession(sessionId: string | null) {
 
                     try {
                         const sessionItems = await resolveInventoryItems(Number(sessionId));
+                        // Apply this spin's per-pattern breakdown with the PRE-spin
+                        // accumulator (matches what was scored on-chain)...
                         detectedPatterns = applyPatternModifiers(detectedPatterns, sessionItems, snowballAddsRef.current);
+                        // ...then sync the accumulator to the post-spin value carried
+                        // by the SpinCompleted event for the next spin / stats panel.
+                        if (spin.snowballAdds) {
+                            snowballAddsRef.current = spin.snowballAdds;
+                            setSnowballAdds(spin.snowballAdds);
+                        }
                     } catch {
                         /* ignore */
                     }
