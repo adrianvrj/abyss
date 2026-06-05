@@ -1,5 +1,6 @@
 import { hash } from 'starknet';
 import { CONTRACTS } from '@/lib/constants';
+import manifest from '@/lib/manifest.json';
 
 // Event types
 export interface SpinCompletedEvent {
@@ -234,6 +235,13 @@ type DojoEventEnvelope = {
     fieldValues: Array<string | bigint | number>;
 };
 
+type EventSelector = string | readonly string[];
+
+type ManifestEvent = {
+    tag?: string;
+    selector?: string;
+};
+
 export interface PrizeClaimedEvent {
     seasonId: number;
     player: string;
@@ -241,26 +249,50 @@ export interface PrizeClaimedEvent {
     amount: bigint;
 }
 
-// Event selectors
+function eventSelector(eventName: string): EventSelector {
+    const plainSelector = hash.getSelectorFromName(eventName);
+    const manifestSelector = ((manifest as { events?: ManifestEvent[] }).events ?? [])
+        .find((event) => event.tag === `ABYSS-${eventName}`)
+        ?.selector;
+
+    if (!manifestSelector) {
+        return plainSelector;
+    }
+
+    try {
+        if (BigInt(manifestSelector) === BigInt(plainSelector)) {
+            return plainSelector;
+        }
+    } catch {
+        if (manifestSelector === plainSelector) {
+            return plainSelector;
+        }
+    }
+
+    return [manifestSelector, plainSelector];
+}
+
+// Event selectors. Dojo events use manifest namespaced selectors like
+// `ABYSS-SpinCompleted`; keep the plain selector as a compatibility fallback.
 const EVENT_SELECTORS = {
-    PrizeClaimed: hash.getSelectorFromName('PrizeClaimed'),
-    SpinCompleted: hash.getSelectorFromName('SpinCompleted'),
-    ItemPurchased: hash.getSelectorFromName('ItemPurchased'),
-    ItemSold: hash.getSelectorFromName('ItemSold'),
-    MarketRefreshed: hash.getSelectorFromName('MarketRefreshed'),
-    RelicActivated: hash.getSelectorFromName('RelicActivated'),
-    PhantomActivated: hash.getSelectorFromName('PhantomActivated'),
-    RelicEquipped: hash.getSelectorFromName('RelicEquipped'),
-    CharmMinted: hash.getSelectorFromName('CharmMinted'),
-    CharmRerolled: hash.getSelectorFromName('CharmRerolled'),
-    CharmListed: hash.getSelectorFromName('CharmListed'),
-    CharmSold: hash.getSelectorFromName('CharmSold'),
-    CharmDelisted: hash.getSelectorFromName('CharmDelisted'),
-    CharmDebtCollected: hash.getSelectorFromName('CharmDebtCollected'),
-    CharmDebtPaid: hash.getSelectorFromName('CharmDebtPaid'),
-    CharmDebtDefaulted: hash.getSelectorFromName('CharmDebtDefaulted'),
-    BibliaDiscarded: hash.getSelectorFromName('BibliaDiscarded'),
-    CashOutResolved: hash.getSelectorFromName('CashOutResolved'),
+    PrizeClaimed: eventSelector('PrizeClaimed'),
+    SpinCompleted: eventSelector('SpinCompleted'),
+    ItemPurchased: eventSelector('ItemPurchased'),
+    ItemSold: eventSelector('ItemSold'),
+    MarketRefreshed: eventSelector('MarketRefreshed'),
+    RelicActivated: eventSelector('RelicActivated'),
+    PhantomActivated: eventSelector('PhantomActivated'),
+    RelicEquipped: eventSelector('RelicEquipped'),
+    CharmMinted: eventSelector('CharmMinted'),
+    CharmRerolled: eventSelector('CharmRerolled'),
+    CharmListed: eventSelector('CharmListed'),
+    CharmSold: eventSelector('CharmSold'),
+    CharmDelisted: eventSelector('CharmDelisted'),
+    CharmDebtCollected: eventSelector('CharmDebtCollected'),
+    CharmDebtPaid: eventSelector('CharmDebtPaid'),
+    CharmDebtDefaulted: eventSelector('CharmDebtDefaulted'),
+    BibliaDiscarded: eventSelector('BibliaDiscarded'),
+    CashOutResolved: eventSelector('CashOutResolved'),
 };
 
 function feltToNumber(value: string | bigint | number | undefined | null, fallback = 0): number {
@@ -581,23 +613,26 @@ function parseRelicEquippedEvent(eventData: Array<string | bigint | number>): Re
     }
 }
 
-function findSelectorIndex(keys: Array<string | bigint | number> | undefined, selector: string): number {
+function selectorMatches(value: string | bigint | number, selector: string): boolean {
+    try {
+        return BigInt(value) === BigInt(selector);
+    } catch {
+        return value === selector;
+    }
+}
+
+function findSelectorIndex(keys: Array<string | bigint | number> | undefined, selector: EventSelector): number {
     if (!keys?.length) {
         return -1;
     }
 
-    return keys.findIndex((key) => {
-        try {
-            return BigInt(key) === BigInt(selector);
-        } catch {
-            return key === selector;
-        }
-    });
+    const candidates = Array.isArray(selector) ? selector : [selector];
+    return keys.findIndex((key) => candidates.some((candidate) => selectorMatches(key, candidate)));
 }
 
 function readSessionIdFromKeys(
     keys: Array<string | bigint | number> | undefined,
-    selector: string,
+    selector: EventSelector,
 ): number {
     if (!keys?.length) {
         return 0;
