@@ -157,6 +157,19 @@ export function getSetupAddress(chainId?: ChainLike) {
   return getContractAddress(chainId, NAMESPACE, "Setup");
 }
 
+export function getSeasonAddress(chainId?: ChainLike) {
+  return getContractAddress(chainId, NAMESPACE, "SeasonManager");
+}
+
+/** Returns `undefined` if `ABYSS-Season` is not in the synced manifest (pre-migration). */
+export function tryGetSeasonAddress(chainId?: ChainLike): string | undefined {
+  try {
+    return getContractAddress(chainId ?? DEFAULT_CHAIN_ID, NAMESPACE, "SeasonManager");
+  } catch {
+    return undefined;
+  }
+}
+
 export function getTreasuryAddress(chainId?: ChainLike) {
   return getContractAddress(chainId, NAMESPACE, "Treasury");
 }

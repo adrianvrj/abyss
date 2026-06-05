@@ -59,6 +59,49 @@ pub struct Config {
     pub pool_tick_spacing: u128,
     pub pool_extension: ContractAddress,
     pub pool_sqrt: u256,
+    // ── Season / leaderboard prize fields
+    // ──────────────────────────────────
+    // IMPORTANT: these are appended at the END of the struct. Dojo model
+    // upgrades only accept new members added after the existing layout — never
+    // insert fields in the middle (it rejects the schema upgrade on migration).
+    pub prize_percentage: u8,
+    // Destination for the leaderboard prize cut (the Season contract, which
+    // holds the USDC pool and settles claims).
+    pub prize_receiver: ContractAddress,
+    // Active-season cursor.
+    pub current_season_id: u32,
+    pub season_end_ts: u64,
+    pub active_leaderboard_id: felt252,
+    // Total prize USDC allocated to finished seasons but not yet claimed. Lets
+    // us derive a finished season's pool as `balance - prize_outstanding`
+    // without writing storage on every purchase.
+    pub prize_outstanding: u256,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SEASON - Per-season competitive leaderboard prize record
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::model]
+#[derive(Copy, Drop, Serde)]
+pub struct SeasonInfo {
+    #[key]
+    pub season_id: u32,
+    pub leaderboard_id: felt252,
+    pub end_ts: u64,
+    // Snapshotted USDC pool, set once when the season is finalized (rolled).
+    pub pool_amount: u256,
+    pub finalized: bool,
+    // Bit r set => the prize for rank r (0=1st,1=2nd,2=3rd) has been claimed.
+    pub claimed_mask: u8,
+    // Running top-3 sessions (id + final score). Maintained on each score
+    // submission so prize claims never need to read the heap leaderboard.
+    pub top1_session: u32,
+    pub top1_score: u32,
+    pub top2_session: u32,
+    pub top2_score: u32,
+    pub top3_session: u32,
+    pub top3_score: u32,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

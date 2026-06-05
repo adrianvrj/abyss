@@ -2,9 +2,10 @@ import { initGrpcClient } from "@/api/torii/client";
 
 type ChainLike = bigint | string | undefined | null;
 
-// Bumped to 2 to wipe the leaderboard for a new season. When bumping again,
-// keep this in sync with `LEADERBOARD_ID` in `dojo/src/systems/play.cairo`.
-const LEADERBOARD_ID = Number(import.meta.env.VITE_LEADERBOARD_ID ?? "2");
+// Default leaderboard id (season 1). Seasons each have their own on-chain
+// `leaderboard_id`; pass the active season's id to `fetchAll` to render the
+// current season's board. Falls back to this env value when unknown.
+const DEFAULT_LEADERBOARD_ID = Number(import.meta.env.VITE_LEADERBOARD_ID ?? "2");
 
 type SqlValue = string | number | bigint | null | undefined;
 
@@ -222,22 +223,27 @@ async function hydrateBuilds(
 
 export const LeaderboardApi = {
   keys: {
-    all: (chainId?: ChainLike, window: LeaderboardWindow = "all-time") =>
-      ["leaderboard", chainId?.toString() ?? "default", window] as const,
+    all: (
+      chainId?: ChainLike,
+      window: LeaderboardWindow = "all-time",
+      leaderboardId: number = DEFAULT_LEADERBOARD_ID,
+    ) =>
+      ["leaderboard", chainId?.toString() ?? "default", window, leaderboardId] as const,
   },
   async fetchAll(
     chainId?: ChainLike,
     window: LeaderboardWindow = "all-time",
+    leaderboardId: number = DEFAULT_LEADERBOARD_ID,
   ): Promise<LeaderboardEntry[]> {
     const client = initGrpcClient(chainId);
 
     // Torii stores felt252 fields as zero-padded hex strings (e.g.
     // "0x000...0002"). Match any plausible encoding the indexer might use.
-    const hexId = LEADERBOARD_ID.toString(16);
+    const hexId = leaderboardId.toString(16);
     const paddedHexId = `0x${hexId.padStart(64, "0")}`;
     const leaderboardIdMatch = `s.leaderboard_id IN (
-      ${LEADERBOARD_ID},
-      '${LEADERBOARD_ID}',
+      ${leaderboardId},
+      '${leaderboardId}',
       '0x${hexId}',
       '${paddedHexId}'
     )`;

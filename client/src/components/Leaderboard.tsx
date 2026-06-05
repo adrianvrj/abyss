@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getLeaderboard, LeaderboardEntry } from "@/utils/abyssContract";
 import { LeaderboardApi, type LeaderboardWindow } from "@/api/torii/leaderboard";
+import { getActiveSeason, type RpcSeason } from "@/api/rpc/season";
 import { ArrowLeft, Trophy, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useController } from "@/hooks/useController";
+import { useAbyssActions } from "@/hooks/actions";
 import { useEntities } from "@/context/entities";
 import { STATIC_CHARM_DEFINITIONS } from "@/lib/charmCatalog";
 import { getItemImage } from "@/utils/itemImages";
@@ -17,13 +19,6 @@ const headerStyle: React.CSSProperties = {
 };
 
 const DISCORD_INVITE_URL = "https://discord.gg/UspD94Z5p7";
-const TOURNAMENT_START_MS = Date.UTC(2026, 4, 25, 0, 0, 0);
-const TOURNAMENT_END_MS = Date.UTC(2026, 5, 1, 0, 0, 0);
-const TOURNAMENT_PRIZES = [
-    { place: "1st", prize: "50 USDC" },
-    { place: "2nd", prize: "30 USDC" },
-    { place: "3rd", prize: "20 USDC" },
-];
 
 function formatCountdown(ms: number) {
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -39,17 +34,55 @@ export function Leaderboard() {
     const { chainId } = useEntities();
     const [selectedWindow, setSelectedWindow] = useState<LeaderboardWindow>("weekly");
     const [now, setNow] = useState(() => Date.now());
+    const { claimPrize, seasonAddress } = useAbyssActions();
+    const [claiming, setClaiming] = useState(false);
+    const [claimMessage, setClaimMessage] = useState<string | null>(null);
+
+    // Active season drives the tournament tab: its on-chain leaderboard_id scopes
+    // the board, its end_ts the countdown, and its pool the prize amounts.
+    const { data: season } = useQuery<RpcSeason>({
+        queryKey: ["season", "active", chainId?.toString() ?? "default"],
+        queryFn: () => getActiveSeason(chainId),
+        enabled: Boolean(seasonAddress),
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
+
+    const seasonLeaderboardId = useMemo(() => {
+        if (!season?.leaderboardId) return undefined;
+        try {
+            return Number(BigInt(season.leaderboardId));
+        } catch {
+            return undefined;
+        }
+    }, [season?.leaderboardId]);
+
+    const isTournament = selectedWindow === "tournament";
 
     const { data: entries = [], isLoading } = useQuery<LeaderboardEntry[]>({
-        queryKey: [...LeaderboardApi.keys.all(chainId, selectedWindow), "top10"],
-        queryFn: () => getLeaderboard(chainId, selectedWindow),
+        queryKey: [
+            ...LeaderboardApi.keys.all(
+                chainId,
+                isTournament ? "all-time" : selectedWindow,
+                isTournament ? seasonLeaderboardId : undefined,
+            ),
+            "top10",
+        ],
+        // Tournament board is scoped purely by the season's leaderboard_id (each
+        // season has a fresh id), so query "all-time" with that id.
+        queryFn: () =>
+            getLeaderboard(
+                chainId,
+                isTournament ? "all-time" : selectedWindow,
+                isTournament ? seasonLeaderboardId : undefined,
+            ),
+        enabled: !isTournament || seasonLeaderboardId !== undefined,
         staleTime: 30_000,
         refetchOnWindowFocus: false,
     });
 
     const leaderboardData = useMemo(() => entries.slice(0, 10), [entries]);
     const loading = isLoading;
-    const isTournament = selectedWindow === "tournament";
 
     useEffect(() => {
         const interval = window.setInterval(() => setNow(Date.now()), 1000);
@@ -85,16 +118,52 @@ export function Leaderboard() {
         window.open(DISCORD_INVITE_URL, "_blank", "noopener,noreferrer");
     }, []);
 
+    const seasonEndMs = season ? season.endTs * 1000 : null;
+    const seasonEnded = seasonEndMs != null && now >= seasonEndMs;
+    const poolUsdc = season ? Number(season.poolAmount) / 1e6 : 0;
+
+    const tournamentPrizes = useMemo(() => {
+        const splits: [string, number][] = [["1st", 0.5], ["2nd", 0.3], ["3rd", 0.2]];
+        return splits.map(([place, pct]) => ({
+            place,
+            prize: poolUsdc > 0 ? `${(poolUsdc * pct).toFixed(2)} USDC` : `${pct * 100}%`,
+        }));
+    }, [poolUsdc]);
+
+    // The connected player's rank in the current season board (0-indexed). Only
+    // the top 3 can claim, and only once the season has ended.
+    const userRank = useMemo(() => {
+        if (!address) return -1;
+        return leaderboardData.findIndex(
+            (e) => e.player_address.toLowerCase() === address.toLowerCase(),
+        );
+    }, [address, leaderboardData]);
+    const canClaim = isTournament && seasonEnded && userRank >= 0 && userRank < 3;
+
+    const handleClaim = useCallback(async () => {
+        if (!season) return;
+        setClaiming(true);
+        setClaimMessage(null);
+        try {
+            const receipt = await claimPrize(season.seasonId);
+            const amt = receipt.events.prizeClaimed?.amount ?? 0n;
+            setClaimMessage(`Claimed ${(Number(amt) / 1e6).toFixed(2)} USDC 🎉`);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setClaimMessage(msg.includes("No prize") ? "Nothing to claim" : "Claim failed");
+        } finally {
+            setClaiming(false);
+        }
+    }, [season, claimPrize]);
+
     const getWindowDescription = () => {
         if (selectedWindow === "weekly") return "Best runs from the last 7 days.";
         if (selectedWindow === "tournament") {
-            if (now < TOURNAMENT_START_MS) {
-                return `STARTING IN: ${formatCountdown(TOURNAMENT_START_MS - now)}`;
+            if (!season) return "Loading season…";
+            if (seasonEndMs != null && now < seasonEndMs) {
+                return `SEASON ${season.seasonId} ENDS: ${formatCountdown(seasonEndMs - now)}`;
             }
-            if (now < TOURNAMENT_END_MS) {
-                return `ENDING: ${formatCountdown(TOURNAMENT_END_MS - now)}`;
-            }
-            return "TOURNAMENT ENDED";
+            return `SEASON ${season.seasonId} ENDED`;
         }
         return "Best runs across the current season.";
     };
@@ -291,7 +360,7 @@ export function Leaderboard() {
                                 marginBottom: 12,
                             }}
                         >
-                            {TOURNAMENT_PRIZES.map((reward) => (
+                            {tournamentPrizes.map((reward) => (
                                 <div
                                     key={reward.place}
                                     style={{
@@ -330,30 +399,62 @@ export function Leaderboard() {
                                 </div>
                             ))}
                         </div>
-                        <button
-                            type="button"
-                            onClick={handleDiscord}
-                            style={{
-                                width: "100%",
-                                minHeight: 38,
-                                border: "1px solid rgba(255,255,255,0.16)",
-                                borderRadius: 6,
-                                background: "rgba(255,255,255,0.035)",
-                                color: "rgba(246,239,230,0.78)",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 8,
-                                fontFamily: "var(--font-body)",
-                                fontSize: 12,
-                            }}
-                        >
-                            <svg width="18" height="18" aria-hidden="true">
-                                <use href="/icons.svg#discord-icon" />
-                            </svg>
-                            Join Discord to claim tournament rewards
-                        </button>
+                        {seasonEnded ? (
+                            <button
+                                type="button"
+                                onClick={handleClaim}
+                                disabled={!canClaim || claiming}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 38,
+                                    border: "1px solid rgba(255,132,28,0.5)",
+                                    borderRadius: 6,
+                                    background: canClaim ? "rgba(255,132,28,0.18)" : "rgba(255,255,255,0.035)",
+                                    color: canClaim ? "#FF841C" : "rgba(246,239,230,0.5)",
+                                    cursor: canClaim && !claiming ? "pointer" : "default",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 8,
+                                    fontFamily: "var(--font-body)",
+                                    fontSize: 12,
+                                }}
+                            >
+                                <Trophy size={16} aria-hidden="true" />
+                                {claiming
+                                    ? "Claiming…"
+                                    : claimMessage
+                                        ? claimMessage
+                                        : canClaim
+                                            ? `Claim prize (#${userRank + 1})`
+                                            : "Only the top 3 can claim"}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleDiscord}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 38,
+                                    border: "1px solid rgba(255,255,255,0.16)",
+                                    borderRadius: 6,
+                                    background: "rgba(255,255,255,0.035)",
+                                    color: "rgba(246,239,230,0.78)",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 8,
+                                    fontFamily: "var(--font-body)",
+                                    fontSize: 12,
+                                }}
+                            >
+                                <svg width="18" height="18" aria-hidden="true">
+                                    <use href="/icons.svg#discord-icon" />
+                                </svg>
+                                Join Discord for season updates
+                            </button>
+                        )}
                     </div>
                 )}
                 {loading ? (

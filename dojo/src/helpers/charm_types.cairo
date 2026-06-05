@@ -3,7 +3,8 @@ use crate::types::effect::{CharmConditionType, CharmEffectType, SnowballPatternT
 use crate::types::symbol::SymbolType;
 
 /// Internal dispatch for charm attributes. Returns
-/// (name, description, effect_type, effect_value, effect_value_2, condition_type, rarity, shop_cost).
+/// (name, description, effect_type, effect_value, effect_value_2, condition_type, rarity,
+/// shop_cost).
 /// Dispatched via a balanced binary split (avg ~log2(27) comparisons vs linear).
 fn charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
     if charm_id >= 28 {
@@ -12,71 +13,323 @@ fn charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
     if charm_id <= 14 {
         if charm_id <= 5 {
             if charm_id == 1 {
-                ('Whisper Stone', 'Luck +10', CharmEffectType::LuckBoost, 10, 0, CharmConditionType::None, 0, 1)
+                (
+                    'Whisper Stone',
+                    'Luck +10',
+                    CharmEffectType::LuckBoost,
+                    10,
+                    0,
+                    CharmConditionType::None,
+                    0,
+                    1,
+                )
             } else if charm_id == 2 {
-                ('Faded Coin', 'Luck +12', CharmEffectType::LuckBoost, 12, 0, CharmConditionType::None, 0, 1)
+                (
+                    'Faded Coin',
+                    'Luck +12',
+                    CharmEffectType::LuckBoost,
+                    12,
+                    0,
+                    CharmConditionType::None,
+                    0,
+                    1,
+                )
             } else if charm_id == 3 {
-                ('Broken Mirror', 'No pat +18', CharmEffectType::ConditionalLuckBoost, 18, 0, CharmConditionType::NoPatternLastSpin, 0, 1)
+                (
+                    'Broken Mirror',
+                    'No pat +18',
+                    CharmEffectType::ConditionalLuckBoost,
+                    18,
+                    0,
+                    CharmConditionType::NoPatternLastSpin,
+                    0,
+                    1,
+                )
             } else if charm_id == 4 {
-                ('Dusty Hourglass', 'Low spins +20', CharmEffectType::ConditionalLuckBoost, 20, 0, CharmConditionType::LowSpinsRemaining, 0, 1)
+                (
+                    'Dusty Hourglass',
+                    'Low spins +20',
+                    CharmEffectType::ConditionalLuckBoost,
+                    20,
+                    0,
+                    CharmConditionType::LowSpinsRemaining,
+                    0,
+                    1,
+                )
             } else {
-                ('Cracked Skull', 'Luck +14', CharmEffectType::LuckBoost, 14, 0, CharmConditionType::None, 0, 1)
+                (
+                    'Cracked Skull',
+                    'Luck +14',
+                    CharmEffectType::LuckBoost,
+                    14,
+                    0,
+                    CharmConditionType::None,
+                    0,
+                    1,
+                )
             }
         } else if charm_id <= 10 {
             if charm_id == 6 {
-                ('Rusty Key', 'Per item +8', CharmEffectType::ConditionalLuckBoost, 8, 0, CharmConditionType::PerItemInInventory, 0, 1)
+                (
+                    'Rusty Key',
+                    'Per item +8',
+                    CharmEffectType::ConditionalLuckBoost,
+                    8,
+                    0,
+                    CharmConditionType::PerItemInInventory,
+                    0,
+                    1,
+                )
             } else if charm_id == 7 {
-                ('Moth Wing', 'Luck +16', CharmEffectType::LuckBoost, 16, 0, CharmConditionType::None, 0, 1)
+                (
+                    'Moth Wing',
+                    'Luck +16',
+                    CharmEffectType::LuckBoost,
+                    16,
+                    0,
+                    CharmConditionType::None,
+                    0,
+                    1,
+                )
             } else if charm_id == 8 {
-                ('Bone Dice', 'Low score +22', CharmEffectType::ConditionalLuckBoost, 22, 0, CharmConditionType::LowScore, 0, 1)
+                (
+                    'Bone Dice',
+                    'Low score +22',
+                    CharmEffectType::ConditionalLuckBoost,
+                    22,
+                    0,
+                    CharmConditionType::LowScore,
+                    0,
+                    1,
+                )
             } else if charm_id == 9 {
-                ('Soul Fragment', 'Luck +24', CharmEffectType::LuckBoost, 24, 0, CharmConditionType::None, 1, 1)
+                (
+                    'Soul Fragment',
+                    'Luck +24',
+                    CharmEffectType::LuckBoost,
+                    24,
+                    0,
+                    CharmConditionType::None,
+                    1,
+                    1,
+                )
             } else {
-                ('Cursed Pendant', 'H3 x2', CharmEffectType::PatternRetrigger, 2, 1, CharmConditionType::None, 1, 2)
+                (
+                    'Cursed Pendant',
+                    'H3 x2',
+                    CharmEffectType::PatternRetrigger,
+                    2,
+                    1,
+                    CharmConditionType::None,
+                    1,
+                    2,
+                )
             }
         } else {
             if charm_id == 11 {
-                ('Shadow Lantern', '+14 base, lvl4 +18', CharmEffectType::LuckBoost, 14, 18, CharmConditionType::HighLevel, 1, 1)
+                (
+                    'Shadow Lantern',
+                    '+14 base, lvl4 +18',
+                    CharmEffectType::LuckBoost,
+                    14,
+                    18,
+                    CharmConditionType::HighLevel,
+                    1,
+                    1,
+                )
             } else if charm_id == 12 {
-                ('Ethereal Chain', 'Pattern +12', CharmEffectType::ConditionalLuckBoost, 12, 0, CharmConditionType::None, 1, 1)
+                (
+                    'Ethereal Chain',
+                    'Pattern +12',
+                    CharmEffectType::ConditionalLuckBoost,
+                    12,
+                    0,
+                    CharmConditionType::None,
+                    1,
+                    1,
+                )
             } else if charm_id == 13 {
-                ('Void Compass', '+2 spin +25', CharmEffectType::ExtraSpinWithLuck, 2, 25, CharmConditionType::None, 1, 2)
+                (
+                    'Void Compass',
+                    '+2 spin +25',
+                    CharmEffectType::ExtraSpinWithLuck,
+                    2,
+                    25,
+                    CharmConditionType::None,
+                    1,
+                    2,
+                )
             } else if charm_id == 14 {
-                ('Demons Tooth', 'Diag x2', CharmEffectType::PatternRetrigger, 2, 3, CharmConditionType::None, 1, 3)
+                (
+                    'Demons Tooth',
+                    'Diag x2',
+                    CharmEffectType::PatternRetrigger,
+                    2,
+                    3,
+                    CharmConditionType::None,
+                    1,
+                    3,
+                )
             } else {
-                ('Demons Tooth', 'Diag x2', CharmEffectType::PatternRetrigger, 2, 3, CharmConditionType::None, 1, 3)
+                (
+                    'Demons Tooth',
+                    'Diag x2',
+                    CharmEffectType::PatternRetrigger,
+                    2,
+                    3,
+                    CharmConditionType::None,
+                    1,
+                    3,
+                )
             }
         }
     } else {
         if charm_id <= 20 {
             if charm_id == 15 {
-                ('Abyssal Eye', 'Luck +38', CharmEffectType::LuckBoost, 38, 0, CharmConditionType::None, 2, 3)
+                (
+                    'Abyssal Eye',
+                    'Luck +38',
+                    CharmEffectType::LuckBoost,
+                    38,
+                    0,
+                    CharmConditionType::None,
+                    2,
+                    3,
+                )
             } else if charm_id == 16 {
-                ('Phoenix Feather', '+3 spin +20', CharmEffectType::ExtraSpinWithLuck, 3, 20, CharmConditionType::None, 2, 3)
+                (
+                    'Phoenix Feather',
+                    '+3 spin +20',
+                    CharmEffectType::ExtraSpinWithLuck,
+                    3,
+                    20,
+                    CharmConditionType::None,
+                    2,
+                    3,
+                )
             } else if charm_id == 17 {
-                ('Reapers Mark', 'NoJP x2', CharmEffectType::PatternRetrigger, 2, 0, CharmConditionType::None, 2, 4)
+                (
+                    'Reapers Mark',
+                    'NoJP x2',
+                    CharmEffectType::PatternRetrigger,
+                    2,
+                    0,
+                    CharmConditionType::None,
+                    2,
+                    4,
+                )
             } else if charm_id == 18 {
-                ('Chaos Orb', '+12 base, block666 +140', CharmEffectType::ConditionalLuckBoost, 140, 0, CharmConditionType::Blocked666, 2, 4)
+                (
+                    'Chaos Orb',
+                    '+12 base, block666 +140',
+                    CharmEffectType::ConditionalLuckBoost,
+                    140,
+                    0,
+                    CharmConditionType::Blocked666,
+                    2,
+                    4,
+                )
             } else if charm_id == 19 {
-                ('Soul Abyss', 'Luck +45', CharmEffectType::LuckBoost, 45, 0, CharmConditionType::None, 3, 5)
+                (
+                    'Soul Abyss',
+                    'Luck +45',
+                    CharmEffectType::LuckBoost,
+                    45,
+                    0,
+                    CharmConditionType::None,
+                    3,
+                    5,
+                )
             } else {
-                ('Void Heart', '+2 spin +80', CharmEffectType::ExtraSpinWithLuck, 2, 80, CharmConditionType::None, 3, 5)
+                (
+                    'Void Heart',
+                    '+2 spin +80',
+                    CharmEffectType::ExtraSpinWithLuck,
+                    2,
+                    80,
+                    CharmConditionType::None,
+                    3,
+                    5,
+                )
             }
         } else {
             if charm_id == 21 {
-                ('Big Diamond', 'Luck +15', CharmEffectType::LuckBoost, 15, 0, CharmConditionType::None, 0, 1)
+                (
+                    'Big Diamond',
+                    'Luck +15',
+                    CharmEffectType::LuckBoost,
+                    15,
+                    0,
+                    CharmConditionType::None,
+                    0,
+                    1,
+                )
             } else if charm_id == 22 {
-                ('Supernova Nacho', 'No pat +22', CharmEffectType::ConditionalLuckBoost, 22, 0, CharmConditionType::NoPatternLastSpin, 0, 1)
+                (
+                    'Supernova Nacho',
+                    'No pat +22',
+                    CharmEffectType::ConditionalLuckBoost,
+                    22,
+                    0,
+                    CharmConditionType::NoPatternLastSpin,
+                    0,
+                    1,
+                )
             } else if charm_id == 23 {
-                ('Magic Bean', 'Per item +9', CharmEffectType::ConditionalLuckBoost, 9, 0, CharmConditionType::PerItemInInventory, 0, 1)
+                (
+                    'Magic Bean',
+                    'Per item +9',
+                    CharmEffectType::ConditionalLuckBoost,
+                    9,
+                    0,
+                    CharmConditionType::PerItemInInventory,
+                    0,
+                    1,
+                )
             } else if charm_id == 24 {
-                ('Ice King Crown', 'Vert x2', CharmEffectType::PatternRetrigger, 2, 2, CharmConditionType::None, 1, 2)
+                (
+                    'Ice King Crown',
+                    'Vert x2',
+                    CharmEffectType::PatternRetrigger,
+                    2,
+                    2,
+                    CharmConditionType::None,
+                    1,
+                    2,
+                )
             } else if charm_id == 25 {
-                ('Antimatter', '+2 spin +28', CharmEffectType::ExtraSpinWithLuck, 2, 28, CharmConditionType::None, 1, 2)
+                (
+                    'Antimatter',
+                    '+2 spin +28',
+                    CharmEffectType::ExtraSpinWithLuck,
+                    2,
+                    28,
+                    CharmConditionType::None,
+                    1,
+                    2,
+                )
             } else if charm_id == 26 {
-                ('Boxing Globes', 'Debt 5, 666x2 pays x10', CharmEffectType::DebtPledge, 5, 10, CharmConditionType::Consecutive666, 2, 3)
+                (
+                    'Boxing Globes',
+                    'Debt 5, 666x2 pays x10',
+                    CharmEffectType::DebtPledge,
+                    5,
+                    10,
+                    CharmConditionType::Consecutive666,
+                    2,
+                    3,
+                )
             } else {
-                ('Morellonomicon', 'Debt 10, HVD pays x12', CharmEffectType::DebtPledge, 10, 12, CharmConditionType::AllPatternTypesSameSpin, 3, 3)
+                (
+                    'Morellonomicon',
+                    'Debt 10, HVD pays x12',
+                    CharmEffectType::DebtPledge,
+                    10,
+                    12,
+                    CharmConditionType::AllPatternTypesSameSpin,
+                    3,
+                    3,
+                )
             }
         }
     }
@@ -89,25 +342,115 @@ fn charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
 fn snowball_charm_attrs(charm_id: u32) -> (felt252, felt252, u8, u32, u32, u8, u8, u32) {
     let t = CharmEffectType::PatternSnowball;
     if charm_id == 28 {
-        ('Lemon Squeezer', 'Lemon H +0.08x', t, 8, SymbolType::LEMON.into(), SnowballPatternType::Horizontal, 0, 1)
+        (
+            'Lemon Squeezer',
+            'Lemon H +0.08x',
+            t,
+            8,
+            SymbolType::LEMON.into(),
+            SnowballPatternType::Horizontal,
+            0,
+            1,
+        )
     } else if charm_id == 29 {
-        ('Buster Sword', 'Cherry V +0.10x', t, 10, SymbolType::CHERRY.into(), SnowballPatternType::Vertical, 0, 1)
+        (
+            'Buster Sword',
+            'Cherry V +0.10x',
+            t,
+            10,
+            SymbolType::CHERRY.into(),
+            SnowballPatternType::Vertical,
+            0,
+            1,
+        )
     } else if charm_id == 30 {
-        ('Question Block', 'Seven D +0.10x', t, 10, SymbolType::SEVEN.into(), SnowballPatternType::Diagonal, 0, 1)
+        (
+            'Question Block',
+            'Seven D +0.10x',
+            t,
+            10,
+            SymbolType::SEVEN.into(),
+            SnowballPatternType::Diagonal,
+            0,
+            1,
+        )
     } else if charm_id == 31 {
-        ('Dessert Eagle', 'Diamond H +0.12x', t, 12, SymbolType::DIAMOND.into(), SnowballPatternType::Horizontal, 0, 1)
+        (
+            'Dessert Eagle',
+            'Diamond H +0.12x',
+            t,
+            12,
+            SymbolType::DIAMOND.into(),
+            SnowballPatternType::Horizontal,
+            0,
+            1,
+        )
     } else if charm_id == 32 {
-        ('Hourglass', 'Seven H +0.15x', t, 15, SymbolType::SEVEN.into(), SnowballPatternType::Horizontal, 1, 2)
+        (
+            'Hourglass',
+            'Seven H +0.15x',
+            t,
+            15,
+            SymbolType::SEVEN.into(),
+            SnowballPatternType::Horizontal,
+            1,
+            2,
+        )
     } else if charm_id == 33 {
-        ('Maraschino Jar', 'Cherry D +0.15x', t, 15, SymbolType::CHERRY.into(), SnowballPatternType::Diagonal, 1, 2)
+        (
+            'Maraschino Jar',
+            'Cherry D +0.15x',
+            t,
+            15,
+            SymbolType::CHERRY.into(),
+            SnowballPatternType::Diagonal,
+            1,
+            2,
+        )
     } else if charm_id == 34 {
-        ('Combustible Lemon', 'Lemon V +0.18x', t, 18, SymbolType::LEMON.into(), SnowballPatternType::Vertical, 1, 2)
+        (
+            'Combustible Lemon',
+            'Lemon V +0.18x',
+            t,
+            18,
+            SymbolType::LEMON.into(),
+            SnowballPatternType::Vertical,
+            1,
+            2,
+        )
     } else if charm_id == 35 {
-        ('Jolly Chimp', 'Lemon D +0.25x', t, 25, SymbolType::LEMON.into(), SnowballPatternType::Diagonal, 2, 3)
+        (
+            'Jolly Chimp',
+            'Lemon D +0.25x',
+            t,
+            25,
+            SymbolType::LEMON.into(),
+            SnowballPatternType::Diagonal,
+            2,
+            3,
+        )
     } else if charm_id == 36 {
-        ('Leprechauns Pot', 'Diamond V +0.30x', t, 30, SymbolType::DIAMOND.into(), SnowballPatternType::Vertical, 2, 3)
+        (
+            'Leprechauns Pot',
+            'Diamond V +0.30x',
+            t,
+            30,
+            SymbolType::DIAMOND.into(),
+            SnowballPatternType::Vertical,
+            2,
+            3,
+        )
     } else {
-        ('Beherit', 'Diamond D +0.40x', t, 40, SymbolType::DIAMOND.into(), SnowballPatternType::Diagonal, 3, 4)
+        (
+            'Beherit',
+            'Diamond D +0.40x',
+            t,
+            40,
+            SymbolType::DIAMOND.into(),
+            SnowballPatternType::Diagonal,
+            3,
+            4,
+        )
     }
 }
 
@@ -115,8 +458,19 @@ pub fn get_charm_type_info(charm_id: u32) -> CharmMetadata {
     assert(charm_id >= 1, 'Invalid charm');
     assert(charm_id <= 37, 'Invalid charm');
 
-    let (name, description, effect_type, effect_value, effect_value_2, condition_type, rarity, shop_cost) =
-        charm_attrs(charm_id);
+    let (
+        name,
+        description,
+        effect_type,
+        effect_value,
+        effect_value_2,
+        condition_type,
+        rarity,
+        shop_cost,
+    ) =
+        charm_attrs(
+        charm_id,
+    );
     CharmMetadata {
         charm_id,
         name,
@@ -508,8 +862,7 @@ pub fn calculate_effective_luck_from_charm_ids(
 
         // Snowball charms reuse condition_type for their target pattern (1/2/3),
         // which collides with the luck condition types — skip them.
-        if charm_meta.effect_type == CharmEffectType::PatternSnowball {
-            // no luck contribution
+        if charm_meta.effect_type == CharmEffectType::PatternSnowball { // no luck contribution
         } else if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
             if last_spin_patterns == 0 {
                 luck += val;
@@ -557,7 +910,11 @@ pub fn get_debt_pledge_config(charm_id: u32) -> (bool, u32, u32, u8) {
 pub fn preview_debt_collection(
     score: u32, total_score: u32, stored_score: u32, collect_amount: u32,
 ) -> (u32, u32, u32, u32) {
-    let collected = if score < collect_amount { score } else { collect_amount };
+    let collected = if score < collect_amount {
+        score
+    } else {
+        collect_amount
+    };
     (score - collected, total_score, stored_score + collected, collected)
 }
 

@@ -13,6 +13,7 @@ pub mod systems {
     pub mod relic;
     pub mod relic_nft_contract;
     pub mod rewards_vault;
+    pub mod season;
     pub mod setup;
     pub mod streak_system;
     pub mod token;
@@ -41,6 +42,7 @@ pub mod helpers {
     pub mod probability;
     pub mod relic_types;
     pub mod scoring;
+    pub mod season;
     pub mod streak;
 }
 
@@ -53,12 +55,12 @@ pub mod types {
 
 pub mod interfaces {
     pub mod charm_nft;
-        pub mod erc20;
-        pub mod erc721;
-        pub mod pragma;
-        pub mod relic_nft;
-        pub mod rewards_vault;
-        pub mod vrf;
+    pub mod erc20;
+    pub mod erc721;
+    pub mod pragma;
+    pub mod relic_nft;
+    pub mod rewards_vault;
+    pub mod vrf;
 }
 
 pub mod components {
@@ -67,13 +69,13 @@ pub mod components {
 }
 
 #[cfg(test)]
-    pub mod tests {
-        pub mod balance_logic;
-        pub mod charm_logic;
-        pub mod charm_market_logic;
-        pub mod golden_chip;
-        pub mod pattern_logic;
-        pub mod setup;
-        pub mod spin_profile;
-        pub mod streak_logic;
+pub mod tests {
+    pub mod balance_logic;
+    pub mod charm_logic;
+    pub mod charm_market_logic;
+    pub mod golden_chip;
+    pub mod pattern_logic;
+    pub mod setup;
+    pub mod spin_profile;
+    pub mod streak_logic;
 }

@@ -11,8 +11,8 @@ pub trait IRelic<T> {
 
 #[dojo::contract]
 pub mod Relic {
-    use starknet::{ContractAddress, get_caller_address};
     use core::poseidon::poseidon_hash_span;
+    use starknet::{ContractAddress, get_caller_address};
     use crate::constants::{MAX_CURRENT_SPINS, NAMESPACE};
     use crate::events::index::{MarketRefreshed, PhantomActivated, RelicActivated};
     use crate::helpers::inventory::InventoryImpl;
@@ -31,7 +31,9 @@ pub mod Relic {
 
     fn dojo_init(ref self: ContractState) {}
 
-    fn roll_phantom_bonus_spins(session_id: u32, caller: ContractAddress, current_spin_marker: u32) -> u32 {
+    fn roll_phantom_bonus_spins(
+        session_id: u32, caller: ContractAddress, current_spin_marker: u32,
+    ) -> u32 {
         let seed = poseidon_hash_span(
             array![session_id.into(), caller.into(), current_spin_marker.into(), 2.into()].span(),
         );
@@ -130,8 +132,13 @@ pub mod Relic {
             } else if effect == RelicEffectType::ResetSpins {
                 let bonus_spins = roll_phantom_bonus_spins(session_id, caller, current_spin_marker);
                 let next_spins = session.spins_remaining + bonus_spins;
-                session.spins_remaining =
-                    if next_spins > MAX_CURRENT_SPINS { MAX_CURRENT_SPINS } else { next_spins };
+                session
+                    .spins_remaining =
+                        if next_spins > MAX_CURRENT_SPINS {
+                            MAX_CURRENT_SPINS
+                        } else {
+                            next_spins
+                        };
                 store
                     .emit_phantom_activated(
                         @PhantomActivated {

@@ -24,9 +24,18 @@ pub trait ISetup<T> {
     fn set_burn_percentage(ref self: T, percentage: u8);
     fn set_treasury_percentage(ref self: T, percentage: u8);
     fn set_team_percentage(ref self: T, percentage: u8);
+    fn set_prize_percentage(ref self: T, percentage: u8);
     fn set_distribution(
-        ref self: T, burn_percentage: u8, treasury_percentage: u8, team_percentage: u8,
+        ref self: T,
+        burn_percentage: u8,
+        treasury_percentage: u8,
+        team_percentage: u8,
+        prize_percentage: u8,
     );
+    // Bootstraps the season cursor + Season(1) on an EXISTING world after a model
+    // upgrade (dojo_init only runs on fresh worlds). Pass leaderboard_id = 2 to
+    // keep the current global leaderboard as season 1.
+    fn init_season(ref self: T, leaderboard_id: felt252);
     fn set_ekubo_router(ref self: T, address: ContractAddress);
     fn set_pool_fee(ref self: T, fee: u128);
     fn set_pool_tick_spacing(ref self: T, tick_spacing: u128);
@@ -120,12 +129,13 @@ pub mod Setup {
         CHARM_BASE_URI, DEFAULT_CHIP_BOOST_MULTIPLIER, DEFAULT_CHIP_EMISSION_RATE,
         DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
         DEFAULT_SCORE_SEVEN, NAMESPACE, PATTERN_D3_MULT, PATTERN_H3_MULT, PATTERN_H4_MULT,
-        PATTERN_H5_MULT, PATTERN_V3_MULT, RELIC_BASE_URI, REVENUE_PRIZE_PCT, REVENUE_TEAM_PCT,
-        REVENUE_TREASURY_PCT, SESSION_ENTRY_PRICE_USD, WORLD_RESOURCE,
+        PATTERN_H5_MULT, PATTERN_V3_MULT, RELIC_BASE_URI, REVENUE_BURN_PCT, REVENUE_PRIZE_PCT,
+        REVENUE_TEAM_PCT, REVENUE_TREASURY_PCT, SEASON_1_LEADERBOARD_ID, SEASON_DURATION,
+        SESSION_ENTRY_PRICE_USD, WORLD_RESOURCE,
     };
     use crate::interfaces::charm_nft::{ICharmDispatcher, ICharmDispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicDispatcherTrait};
-    use crate::models::index::{Config, Item, TokenPairId};
+    use crate::models::index::{Config, Item, SeasonInfo, TokenPairId};
     use crate::store::StoreTrait;
     use crate::systems::charm::NAME as CHARM_NAME;
     use crate::systems::golden_chip::{
@@ -133,6 +143,7 @@ pub mod Setup {
     };
     use crate::systems::play::{IPlayDispatcher, IPlayDispatcherTrait, NAME as PLAY_NAME};
     use crate::systems::relic_nft_contract::NAME as RELIC_NFT_NAME;
+    use crate::systems::season::NAME as SEASON_NAME;
     use crate::systems::token::NAME as CHIP_NAME;
     use super::*;
 
@@ -183,10 +194,7 @@ pub mod Setup {
         ) {
             let mut contract_state = self.get_contract_mut();
             let world = contract_state.world(@NAMESPACE());
-            let is_golden_chip_bundle = contract_state
-                .golden_chip_bundles
-                .entry(bundle_id)
-                .read();
+            let is_golden_chip_bundle = contract_state.golden_chip_bundles.entry(bundle_id).read();
             if is_golden_chip_bundle {
                 assert(recipient == get_caller_address(), 'GoldenChip: recipient mismatch');
 
@@ -224,12 +232,13 @@ pub mod Setup {
     }
 
     fn assert_valid_distribution(
-        burn_percentage: u8, treasury_percentage: u8, team_percentage: u8,
+        burn_percentage: u8, treasury_percentage: u8, team_percentage: u8, prize_percentage: u8,
     ) {
-        assert(
-            burn_percentage.into() + treasury_percentage.into() + team_percentage.into() == 100,
-            'Invalid split',
-        );
+        let sum: u32 = burn_percentage.into()
+            + treasury_percentage.into()
+            + team_percentage.into()
+            + prize_percentage.into();
+        assert(sum == 100, 'Invalid split');
     }
 
     fn session_payment_tokens(
@@ -436,10 +445,13 @@ pub mod Setup {
         let items = crate::helpers::items::get_all_items();
         let len = items.len();
         assert_valid_distribution(
-            REVENUE_PRIZE_PCT.try_into().unwrap(),
+            REVENUE_BURN_PCT.try_into().unwrap(),
             REVENUE_TREASURY_PCT.try_into().unwrap(),
             REVENUE_TEAM_PCT.try_into().unwrap(),
+            REVENUE_PRIZE_PCT.try_into().unwrap(),
         );
+        let season_address = world.dns_address(@SEASON_NAME()).expect('Season contract not found!');
+        let season_end_ts = starknet::get_block_timestamp() + SEASON_DURATION;
         let mut i: u32 = 0;
         while i < len {
             store.set_item(items.at(i));
@@ -489,16 +501,43 @@ pub mod Setup {
             total_competitive_sessions: 0,
             total_items: len,
             // Revenue split + swap config
-            burn_percentage: REVENUE_PRIZE_PCT.try_into().unwrap(),
+            burn_percentage: REVENUE_BURN_PCT.try_into().unwrap(),
             treasury_percentage: REVENUE_TREASURY_PCT.try_into().unwrap(),
             team_percentage: REVENUE_TEAM_PCT.try_into().unwrap(),
+            prize_percentage: REVENUE_PRIZE_PCT.try_into().unwrap(),
             ekubo_router: 0.try_into().unwrap(),
             pool_fee: 0,
             pool_tick_spacing: 0,
             pool_extension: 0.try_into().unwrap(),
             pool_sqrt: 0,
+            // Leaderboard prize pool + active-season cursor
+            prize_receiver: season_address,
+            current_season_id: 1,
+            season_end_ts,
+            active_leaderboard_id: SEASON_1_LEADERBOARD_ID,
+            prize_outstanding: 0,
         };
         store.set_config(@config);
+
+        // Bootstrap season 1 on the pre-existing global leaderboard so current
+        // scores carry over. The pool accumulates from purchases made hereafter.
+        store
+            .set_season(
+                @SeasonInfo {
+                    season_id: 1,
+                    leaderboard_id: SEASON_1_LEADERBOARD_ID,
+                    end_ts: season_end_ts,
+                    pool_amount: 0,
+                    finalized: false,
+                    claimed_mask: 0,
+                    top1_session: 0,
+                    top1_score: 0,
+                    top2_session: 0,
+                    top2_score: 0,
+                    top3_session: 0,
+                    top3_score: 0,
+                },
+            );
 
         let charm = ICharmDispatcher { contract_address: charm_nft };
         charm.set_base_uri(CHARM_BASE_URI());
@@ -681,7 +720,10 @@ pub mod Setup {
             let mut store = StoreTrait::new(world);
             let mut config = store.config();
             assert_valid_distribution(
-                percentage, config.treasury_percentage, config.team_percentage,
+                percentage,
+                config.treasury_percentage,
+                config.team_percentage,
+                config.prize_percentage,
             );
             config.burn_percentage = percentage;
             store.set_config(@config);
@@ -692,7 +734,9 @@ pub mod Setup {
             let world = self.world(@NAMESPACE());
             let mut store = StoreTrait::new(world);
             let mut config = store.config();
-            assert_valid_distribution(config.burn_percentage, percentage, config.team_percentage);
+            assert_valid_distribution(
+                config.burn_percentage, percentage, config.team_percentage, config.prize_percentage,
+            );
             config.treasury_percentage = percentage;
             store.set_config(@config);
         }
@@ -703,9 +747,27 @@ pub mod Setup {
             let mut store = StoreTrait::new(world);
             let mut config = store.config();
             assert_valid_distribution(
-                config.burn_percentage, config.treasury_percentage, percentage,
+                config.burn_percentage,
+                config.treasury_percentage,
+                percentage,
+                config.prize_percentage,
             );
             config.team_percentage = percentage;
+            store.set_config(@config);
+        }
+
+        fn set_prize_percentage(ref self: ContractState, percentage: u8) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let mut config = store.config();
+            assert_valid_distribution(
+                config.burn_percentage,
+                config.treasury_percentage,
+                config.team_percentage,
+                percentage,
+            );
+            config.prize_percentage = percentage;
             store.set_config(@config);
         }
 
@@ -714,16 +776,55 @@ pub mod Setup {
             burn_percentage: u8,
             treasury_percentage: u8,
             team_percentage: u8,
+            prize_percentage: u8,
         ) {
             self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
-            assert_valid_distribution(burn_percentage, treasury_percentage, team_percentage);
+            assert_valid_distribution(
+                burn_percentage, treasury_percentage, team_percentage, prize_percentage,
+            );
             let world = self.world(@NAMESPACE());
             let mut store = StoreTrait::new(world);
             let mut config = store.config();
             config.burn_percentage = burn_percentage;
             config.treasury_percentage = treasury_percentage;
             config.team_percentage = team_percentage;
+            config.prize_percentage = prize_percentage;
             store.set_config(@config);
+        }
+
+        fn init_season(ref self: ContractState, leaderboard_id: felt252) {
+            self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
+            let world = self.world(@NAMESPACE());
+            let mut store = StoreTrait::new(world);
+            let season_address = world
+                .dns_address(@SEASON_NAME())
+                .expect('Season contract not found!');
+            let end_ts = starknet::get_block_timestamp() + SEASON_DURATION;
+
+            let mut config = store.config();
+            config.prize_receiver = season_address;
+            config.current_season_id = 1;
+            config.season_end_ts = end_ts;
+            config.active_leaderboard_id = leaderboard_id;
+            store.set_config(@config);
+
+            store
+                .set_season(
+                    @SeasonInfo {
+                        season_id: 1,
+                        leaderboard_id,
+                        end_ts,
+                        pool_amount: 0,
+                        finalized: false,
+                        claimed_mask: 0,
+                        top1_session: 0,
+                        top1_score: 0,
+                        top2_session: 0,
+                        top2_score: 0,
+                        top3_session: 0,
+                        top3_score: 0,
+                    },
+                );
         }
 
         fn set_ekubo_router(ref self: ContractState, address: ContractAddress) {
@@ -961,15 +1062,11 @@ pub mod Setup {
             self.bundle.update_metadata(world, bundle_id, metadata);
         }
 
-        fn admin_mint_session(
-            ref self: ContractState, recipient: ContractAddress, quantity: u32,
-        ) {
+        fn admin_mint_session(ref self: ContractState, recipient: ContractAddress, quantity: u32) {
             self.accesscontrol.assert_only_role(DEFAULT_ADMIN_ROLE);
 
             let world = self.world(@NAMESPACE());
-            let play_address = world
-                .dns_address(@PLAY_NAME())
-                .expect('Play contract not found!');
+            let play_address = world.dns_address(@PLAY_NAME()).expect('Play contract not found!');
             let play = IPlayDispatcher { contract_address: play_address };
             play.mint_session(recipient, quantity);
         }
@@ -993,13 +1090,13 @@ pub mod Setup {
 
         #[test]
         fn distribution_validation_accepts_hundred_percent_split() {
-            assert_valid_distribution(50, 30, 20);
+            assert_valid_distribution(50, 0, 25, 25);
         }
 
         #[test]
         #[should_panic(expected: ('Invalid split',))]
         fn distribution_validation_rejects_invalid_split() {
-            assert_valid_distribution(50, 30, 10);
+            assert_valid_distribution(50, 30, 10, 5);
         }
     }
 }

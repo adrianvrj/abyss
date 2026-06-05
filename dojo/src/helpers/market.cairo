@@ -88,9 +88,7 @@ pub impl MarketImpl of MarketTrait {
         2 + ((refresh_count * (refresh_count + 3)) / 2)
     }
 
-    fn has_recent_market_item(
-        recent_items: (u32, u32, u32, u32, u32, u32), target: u32,
-    ) -> bool {
+    fn has_recent_market_item(recent_items: (u32, u32, u32, u32, u32, u32), target: u32) -> bool {
         let (item_1, item_2, item_3, item_4, item_5, item_6) = recent_items;
         target != 0
             && (item_1 == target
@@ -137,9 +135,7 @@ pub impl MarketImpl of MarketTrait {
         (count, charm_id_1, charm_id_2, charm_id_3)
     }
 
-    fn get_loadout_charm_at(
-        loadout_charm_ids: (u32, u32, u32, u32), index: u32,
-    ) -> u32 {
+    fn get_loadout_charm_at(loadout_charm_ids: (u32, u32, u32, u32), index: u32) -> u32 {
         let (_, charm_id_1, charm_id_2, charm_id_3) = loadout_charm_ids;
         if index == 0 {
             charm_id_1
@@ -234,9 +230,7 @@ pub impl MarketImpl of MarketTrait {
         // Only fetch session charms when we might actually consult them — charm candidates
         // are only generated when the loadout is non-empty.
         let session_charm_ids: Array<u32> = if loadout_charm_count > 0 {
-            crate::helpers::inventory::InventoryImpl::collect_session_charm_ids(
-                @store, session_id,
-            )
+            crate::helpers::inventory::InventoryImpl::collect_session_charm_ids(@store, session_id)
         } else {
             array![]
         };
@@ -274,9 +268,8 @@ pub impl MarketImpl of MarketTrait {
                         nonce + (attempts * 100),
                     );
 
-                is_duplicate =
-                    candidate != 0
-                        && Self::has_generated_value(
+                is_duplicate = candidate != 0
+                    && Self::has_generated_value(
                         generated_count,
                         item_slot_1,
                         item_slot_2,

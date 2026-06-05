@@ -1,5 +1,4 @@
 use starknet::ContractAddress;
-
 use crate::models::index::PlayerStreak;
 use crate::store::{Store, StoreTrait};
 
@@ -41,10 +40,8 @@ pub fn advance_player_streak_state(mut ps: PlayerStreak, today: u32) -> PlayerSt
         return ps;
     }
 
-    let gap = ps.last_increment_day_id != 0
-        && today > ps.last_increment_day_id + 1
-        && ps.streak_count > 0
-        && ps.streak_count < 7;
+    let gap = ps.last_increment_day_id != 0 && today > ps.last_increment_day_id
+        + 1 && ps.streak_count > 0 && ps.streak_count < 7;
 
     if gap {
         ps.recover_prior_count = ps.streak_count;

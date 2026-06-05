@@ -1,10 +1,10 @@
 use starknet::ContractAddress;
-use crate::models::index::{Config, Item, Session, SessionMarket, SpinResult};
 
 pub use crate::helpers::play_charm_odds::{
     get_charm_drop_chance_from_score, get_charm_rarity_from_score_and_roll,
 };
 pub use crate::helpers::play_payout::{get_chip_payout_amount, get_total_chip_units};
+use crate::models::index::{Config, Item, Session, SessionMarket, SpinResult};
 
 #[inline]
 pub fn NAME() -> ByteArray {
@@ -46,7 +46,7 @@ pub mod Play {
     use core::num::traits::Zero;
     use core::poseidon::poseidon_hash_span;
     use dojo::world::WorldStorageTrait;
-    use leaderboard::components::rankable::RankableComponent;
+    use leaderboard::store::StoreTrait as LeaderboardStoreTrait;
     use openzeppelin::access::accesscontrol::AccessControlComponent;
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::{ContractAddress, get_caller_address};
@@ -54,6 +54,7 @@ pub mod Play {
         DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
         DEFAULT_SCORE_SEVEN, DEFAULT_SPINS, DEFAULT_TICKETS, NAMESPACE,
     };
+    use crate::events::index::{CharmDebtCollected, CharmDebtDefaulted, CharmDebtPaid};
     use crate::helpers::inventory::InventoryImpl;
     use crate::helpers::items::get_item_purchase_price;
     use crate::helpers::pricing::PricingImpl;
@@ -62,7 +63,6 @@ pub mod Play {
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::interfaces::relic_nft::{IRelicERC721Dispatcher, IRelicERC721DispatcherTrait};
     use crate::interfaces::vrf::{IVrfProviderDispatcherTrait, Source};
-    use crate::events::index::{CharmDebtCollected, CharmDebtDefaulted, CharmDebtPaid};
     use crate::models::index::{
         Config, Item, PlayerSessionEntry, Session, SessionCharmDebt, SessionChipBonus,
         SessionItemPurchaseCount, SessionMarket, SpinResult,
@@ -71,11 +71,11 @@ pub mod Play {
     use crate::systems::collection_system::{
         ICollectionDispatcher, ICollectionDispatcherTrait, NAME as COLLECTION_NAME,
     };
+    use crate::systems::season::{ISeasonDispatcher, ISeasonDispatcherTrait};
     use crate::systems::setup::NAME as SETUP_NAME;
     use crate::types::effect::RelicEffectType;
     use super::IPlay;
 
-    const LEADERBOARD_ID: felt252 = 2;
     const BIBLIA_ITEM_ID: u32 = 40;
     const CASH_OUT_ITEM_ID: u32 = 41;
     // Components
@@ -84,8 +84,6 @@ pub mod Play {
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     #[abi(embed_v0)]
     impl SRC5ExternalImpl = SRC5Component::SRC5Impl<ContractState>;
-    component!(path: RankableComponent, storage: rankable, event: RankableEvent);
-    impl RankableInternalImpl = RankableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
@@ -93,8 +91,6 @@ pub mod Play {
         accesscontrol: AccessControlComponent::Storage,
         #[substorage(v0)]
         src5: SRC5Component::Storage,
-        #[substorage(v0)]
-        rankable: RankableComponent::Storage,
     }
 
     #[event]
@@ -104,8 +100,6 @@ pub mod Play {
         AccessControlEvent: AccessControlComponent::Event,
         #[flat]
         SRC5Event: SRC5Component::Event,
-        #[flat]
-        RankableEvent: RankableComponent::Event,
     }
 
     fn dojo_init(ref self: ContractState) {
@@ -199,9 +193,21 @@ pub mod Play {
                 charm_ids, owned.span(),
             );
 
-            let c1 = if charm_ids.len() > 0 { *charm_ids.at(0) } else { 0 };
-            let c2 = if charm_ids.len() > 1 { *charm_ids.at(1) } else { 0 };
-            let c3 = if charm_ids.len() > 2 { *charm_ids.at(2) } else { 0 };
+            let c1 = if charm_ids.len() > 0 {
+                *charm_ids.at(0)
+            } else {
+                0
+            };
+            let c2 = if charm_ids.len() > 1 {
+                *charm_ids.at(1)
+            } else {
+                0
+            };
+            let c3 = if charm_ids.len() > 2 {
+                *charm_ids.at(2)
+            } else {
+                0
+            };
             store
                 .set_pending_charm_loadout(
                     @crate::models::index::PendingCharmLoadout {
@@ -226,9 +232,21 @@ pub mod Play {
             );
 
             // Write loadout as a market whitelist. Missing slots default to 0.
-            let c1 = if charm_ids.len() > 0 { *charm_ids.at(0) } else { 0 };
-            let c2 = if charm_ids.len() > 1 { *charm_ids.at(1) } else { 0 };
-            let c3 = if charm_ids.len() > 2 { *charm_ids.at(2) } else { 0 };
+            let c1 = if charm_ids.len() > 0 {
+                *charm_ids.at(0)
+            } else {
+                0
+            };
+            let c2 = if charm_ids.len() > 1 {
+                *charm_ids.at(1)
+            } else {
+                0
+            };
+            let c3 = if charm_ids.len() > 2 {
+                *charm_ids.at(2)
+            } else {
+                0
+            };
             store
                 .set_session_charm_loadout(
                     @crate::models::index::SessionCharmLoadout {
@@ -261,7 +279,9 @@ pub mod Play {
             let random_word = vrf.consume_random(Source::Nonce(caller));
 
             let previous_spin = store.spin_result(session_id);
-            let spin_modifiers = InventoryImpl::get_spin_cycle_modifiers(@store, session_id, @session);
+            let spin_modifiers = InventoryImpl::get_spin_cycle_modifiers(
+                @store, session_id, @session,
+            );
             let luck = spin_modifiers.effective_luck;
             let prob_bonuses = spin_modifiers.probability_bonuses;
             let coin_probability_penalty = spin_modifiers.coin_probability_penalty;
@@ -272,7 +292,12 @@ pub mod Play {
             let probability_666 = get_level_666_probability(session.level);
 
             let (
-                score_gained, pats_count, mut is_666, is_jackpot, grid, pattern_type_mask,
+                score_gained,
+                pats_count,
+                mut is_666,
+                is_jackpot,
+                grid,
+                pattern_type_mask,
                 (m7, md, mc, m_coin, ml),
             ) =
                 crate::components::spinnable::SpinnableImpl::execute_spin(
@@ -322,7 +347,8 @@ pub mod Play {
                     if biblia_inventory.quantity > 0 {
                         let biblia_seed = poseidon_hash_span(
                             array![
-                                session_id.into(), random_word, caller.into(), BIBLIA_ITEM_ID.into(),
+                                session_id.into(), random_word, caller.into(),
+                                BIBLIA_ITEM_ID.into(),
                             ]
                                 .span(),
                         );
@@ -347,9 +373,7 @@ pub mod Play {
                 store
                     .emit_cash_out_resolved(
                         @crate::events::index::CashOutResolved {
-                            session_id,
-                            player: caller,
-                            succeeded: cash_out_succeeded,
+                            session_id, player: caller, succeeded: cash_out_succeeded,
                         },
                     );
             }
@@ -374,8 +398,8 @@ pub mod Play {
                 session.score_coin += m_coin * b_coin;
                 session.score_lemon += ml * bl;
 
-                session_chip_bonus.bonus_units +=
-                    md * spin_modifiers.diamond_chip_bonus_per_pattern;
+                session_chip_bonus.bonus_units += md
+                    * spin_modifiers.diamond_chip_bonus_per_pattern;
 
                 // Grow snowball charms from this spin's matched-pattern counts.
                 InternalImpl::grow_snowball_stacks(
@@ -510,9 +534,7 @@ pub mod Play {
                 store
                     .emit_biblia_discarded(
                         @crate::events::index::BibliaDiscarded {
-                            session_id,
-                            player: caller,
-                            discarded: biblia_discarded,
+                            session_id, player: caller, discarded: biblia_discarded,
                         },
                     );
             }
@@ -666,7 +688,9 @@ pub mod Play {
             store.session_charm_debt(session_id, charm_id).stored_score
         }
 
-        fn get_session_item_purchase_price(self: @ContractState, session_id: u32, item_id: u32) -> u32 {
+        fn get_session_item_purchase_price(
+            self: @ContractState, session_id: u32, item_id: u32,
+        ) -> u32 {
             let world = self.world(@NAMESPACE());
             let store = StoreTrait::new(world);
             let item = store.item(item_id);
@@ -754,7 +778,11 @@ pub mod Play {
             charm_id: u32,
             collect_amount: u32,
         ) -> u32 {
-            let collected = if session.score < collect_amount { session.score } else { collect_amount };
+            let collected = if session.score < collect_amount {
+                session.score
+            } else {
+                collect_amount
+            };
             if collected == 0 {
                 return store.session_charm_debt(session_id, charm_id).stored_score;
             }
@@ -895,10 +923,7 @@ pub mod Play {
         }
 
         fn default_debt_for_charm(
-            ref store: Store,
-            session_id: u32,
-            player: ContractAddress,
-            charm_id: u32,
+            ref store: Store, session_id: u32, player: ContractAddress, charm_id: u32,
         ) {
             let debt = store.session_charm_debt(session_id, charm_id);
             if debt.stored_score == 0 {
@@ -933,10 +958,7 @@ pub mod Play {
         }
 
         fn default_debt_pledges_for_ids(
-            ref store: Store,
-            session_id: u32,
-            player: ContractAddress,
-            charm_ids: Span<u32>,
+            ref store: Store, session_id: u32, player: ContractAddress, charm_ids: Span<u32>,
         ) {
             let mut i: u32 = 0;
             while i != charm_ids.len() {
@@ -1020,9 +1042,7 @@ pub mod Play {
                 );
 
             let sm = store.session_market(session_id);
-            crate::helpers::market::MarketImpl::refresh_market(
-                ref store, sm, session_id, player,
-            );
+            crate::helpers::market::MarketImpl::refresh_market(ref store, sm, session_id, player);
             store.emit_session_created(session_id, player, true);
             session_id
         }
@@ -1034,16 +1054,22 @@ pub mod Play {
             player: ContractAddress,
             score: u32,
         ) {
-            self
-                .rankable
+            // Delegate season rollover + prize top-3 tracking to the Season
+            // contract (its address is Config.prize_receiver), which returns the
+            // active leaderboard id. Then emit the arcade LeaderboardScore event
+            // directly (Torii indexes it for the UI board — no on-chain heap, so
+            // Play stays well under the contract size limit).
+            let store = StoreTrait::new(world);
+            let season_address = store.config().prize_receiver;
+            let leaderboard_id = ISeasonDispatcher { contract_address: season_address }
+                .record_score(session_id, player, score);
+            LeaderboardStoreTrait::new(world)
                 .submit(
-                    world: world,
-                    leaderboard_id: LEADERBOARD_ID,
-                    game_id: session_id.into(),
-                    player_id: player.into(),
-                    score: score.into(),
-                    time: starknet::get_block_timestamp(),
-                    to_store: true,
+                    leaderboard_id,
+                    session_id.into(),
+                    player.into(),
+                    score.into(),
+                    starknet::get_block_timestamp(),
                 );
         }
 

@@ -20,8 +20,8 @@ pub mod Market {
     use crate::helpers::market::MarketImpl;
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
     use crate::models::index::SessionItemPurchaseCount;
-    use crate::types::effect::ItemEffectType;
     use crate::store::StoreTrait;
+    use crate::types::effect::ItemEffectType;
     use super::*;
 
     #[inline(always)]
@@ -114,8 +114,13 @@ pub mod Market {
                 session.tickets -= purchase_price;
                 if item.effect_type == ItemEffectType::SpinBonus {
                     let next_spins = session.spins_remaining + item.effect_value;
-                    session.spins_remaining =
-                        if next_spins > MAX_CURRENT_SPINS { MAX_CURRENT_SPINS } else { next_spins };
+                    session
+                        .spins_remaining =
+                            if next_spins > MAX_CURRENT_SPINS {
+                                MAX_CURRENT_SPINS
+                            } else {
+                                next_spins
+                            };
                 } else {
                     let existing = store.inventory(session_id, item_id);
                     assert(existing.quantity == 0, 'Item already owned');
@@ -128,9 +133,7 @@ pub mod Market {
                     store
                         .set_session_item_purchase_count(
                             @SessionItemPurchaseCount {
-                                session_id,
-                                item_id,
-                                count: purchase_count.count,
+                                session_id, item_id, count: purchase_count.count,
                             },
                         );
                 }

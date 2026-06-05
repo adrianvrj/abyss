@@ -18,9 +18,7 @@ pub trait ICharm<TContractState> {
     fn get_player_charms(self: @TContractState, player: ContractAddress) -> Array<u256>;
     fn get_charm_metadata(self: @TContractState, token_id: u256) -> CharmMetadata;
     fn get_charm_type_info(self: @TContractState, charm_id: u32) -> CharmMetadata;
-    fn get_charm_forge_cost_in_token(
-        self: @TContractState, payment_token: ContractAddress,
-    ) -> u256;
+    fn get_charm_forge_cost_in_token(self: @TContractState, payment_token: ContractAddress) -> u256;
     fn set_base_uri(ref self: TContractState, base_uri: ByteArray);
     fn get_base_uri(self: @TContractState) -> ByteArray;
     fn reroll_charms(

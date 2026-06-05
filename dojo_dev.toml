@@ -26,5 +26,6 @@ default = "ABYSS"
     "ABYSS-Market",
     "ABYSS-CharmMarket",
     "ABYSS-Relic",
-    "ABYSS-Treasury"
+    "ABYSS-Treasury",
+    "ABYSS-SeasonManager"
 ]

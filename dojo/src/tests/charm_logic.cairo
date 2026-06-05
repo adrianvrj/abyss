@@ -1,16 +1,13 @@
 use crate::helpers::charm_types::{
     calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
     get_charm_ids_by_rarity, get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
-    get_debt_pledge_config, preview_debt_collection, preview_debt_payout,
-    should_pay_debt_pledge,
+    get_debt_pledge_config, preview_debt_collection, preview_debt_payout, should_pay_debt_pledge,
 };
 use crate::helpers::grid::normalize_spin_luck;
-use crate::systems::play::{
-    get_charm_drop_chance_from_score, get_charm_rarity_from_score_and_roll,
-};
 use crate::systems::charm::{
     CHARM_FORGE_PRICE_CHIP, get_charm_reroll_base_rarity, get_charm_reroll_result_rarity,
 };
+use crate::systems::play::{get_charm_drop_chance_from_score, get_charm_rarity_from_score_and_roll};
 use crate::types::effect::{CharmConditionType, CharmEffectType};
 use crate::types::symbol::SymbolType;
 
@@ -47,13 +44,7 @@ fn assert_u32_array_eq(actual: Array<u32>, expected: Array<u32>) {
 }
 
 fn assert_reroll_odds_row(
-    rarity_1: u8,
-    rarity_2: u8,
-    rarity_3: u8,
-    common: u32,
-    rare: u32,
-    epic: u32,
-    legendary: u32,
+    rarity_1: u8, rarity_2: u8, rarity_3: u8, common: u32, rare: u32, epic: u32, legendary: u32,
 ) {
     assert(common + rare + epic + legendary == 100, 'bad odds sum');
     let rare_start = common;
@@ -62,22 +53,14 @@ fn assert_reroll_odds_row(
 
     if common > 0 {
         assert_eq!(get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, 0), 0);
-        assert_eq!(
-            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, common - 1), 0,
-        );
+        assert_eq!(get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, common - 1), 0);
     }
     if rare > 0 {
-        assert_eq!(
-            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, rare_start), 1,
-        );
-        assert_eq!(
-            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, epic_start - 1), 1,
-        );
+        assert_eq!(get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, rare_start), 1);
+        assert_eq!(get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, epic_start - 1), 1);
     }
     if epic > 0 {
-        assert_eq!(
-            get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, epic_start), 2,
-        );
+        assert_eq!(get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, epic_start), 2);
         assert_eq!(
             get_charm_reroll_result_rarity(rarity_1, rarity_2, rarity_3, legendary_start - 1), 2,
         );
@@ -159,7 +142,15 @@ fn test_all_charm_metadata_definitions() {
         1,
     );
     assert_charm_meta(
-        7, 'Moth Wing', 'Luck +16', CharmEffectType::LuckBoost, 16, 0, CharmConditionType::None, 0, 1,
+        7,
+        'Moth Wing',
+        'Luck +16',
+        CharmEffectType::LuckBoost,
+        16,
+        0,
+        CharmConditionType::None,
+        0,
+        1,
     );
     assert_charm_meta(
         8,
@@ -305,32 +296,81 @@ fn test_all_charm_metadata_definitions() {
         5,
     );
     assert_charm_meta(
-        21, 'Big Diamond', 'Luck +15', CharmEffectType::LuckBoost, 15, 0,
-        CharmConditionType::None, 0, 1,
+        21,
+        'Big Diamond',
+        'Luck +15',
+        CharmEffectType::LuckBoost,
+        15,
+        0,
+        CharmConditionType::None,
+        0,
+        1,
     );
     assert_charm_meta(
-        22, 'Supernova Nacho', 'No pat +22', CharmEffectType::ConditionalLuckBoost, 22, 0,
-        CharmConditionType::NoPatternLastSpin, 0, 1,
+        22,
+        'Supernova Nacho',
+        'No pat +22',
+        CharmEffectType::ConditionalLuckBoost,
+        22,
+        0,
+        CharmConditionType::NoPatternLastSpin,
+        0,
+        1,
     );
     assert_charm_meta(
-        23, 'Magic Bean', 'Per item +9', CharmEffectType::ConditionalLuckBoost, 9, 0,
-        CharmConditionType::PerItemInInventory, 0, 1,
+        23,
+        'Magic Bean',
+        'Per item +9',
+        CharmEffectType::ConditionalLuckBoost,
+        9,
+        0,
+        CharmConditionType::PerItemInInventory,
+        0,
+        1,
     );
     assert_charm_meta(
-        24, 'Ice King Crown', 'Vert x2', CharmEffectType::PatternRetrigger, 2, 2,
-        CharmConditionType::None, 1, 2,
+        24,
+        'Ice King Crown',
+        'Vert x2',
+        CharmEffectType::PatternRetrigger,
+        2,
+        2,
+        CharmConditionType::None,
+        1,
+        2,
     );
     assert_charm_meta(
-        25, 'Antimatter', '+2 spin +28', CharmEffectType::ExtraSpinWithLuck, 2, 28,
-        CharmConditionType::None, 1, 2,
+        25,
+        'Antimatter',
+        '+2 spin +28',
+        CharmEffectType::ExtraSpinWithLuck,
+        2,
+        28,
+        CharmConditionType::None,
+        1,
+        2,
     );
     assert_charm_meta(
-        26, 'Boxing Globes', 'Debt 5, 666x2 pays x10', CharmEffectType::DebtPledge, 5, 10,
-        CharmConditionType::Consecutive666, 2, 3,
+        26,
+        'Boxing Globes',
+        'Debt 5, 666x2 pays x10',
+        CharmEffectType::DebtPledge,
+        5,
+        10,
+        CharmConditionType::Consecutive666,
+        2,
+        3,
     );
     assert_charm_meta(
-        27, 'Morellonomicon', 'Debt 10, HVD pays x12', CharmEffectType::DebtPledge, 10, 12,
-        CharmConditionType::AllPatternTypesSameSpin, 3, 3,
+        27,
+        'Morellonomicon',
+        'Debt 10, HVD pays x12',
+        CharmEffectType::DebtPledge,
+        10,
+        12,
+        CharmConditionType::AllPatternTypesSameSpin,
+        3,
+        3,
     );
 }
 
@@ -587,13 +627,7 @@ fn test_charm_drop_chance_is_more_conservative() {
     assert(get_charm_drop_chance_from_score(9000) == 50, 'drop chance cap');
 }
 
-fn assert_score_rarity_odds(
-    score: u32,
-    common: u32,
-    rare: u32,
-    epic: u32,
-    legendary: u32,
-) {
+fn assert_score_rarity_odds(score: u32, common: u32, rare: u32, epic: u32, legendary: u32) {
     assert(common + rare + epic + legendary == 100, 'bad score odds sum');
     let rare_start = common;
     let epic_start = common + rare;

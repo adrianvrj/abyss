@@ -85,11 +85,7 @@ pub mod CharmMarket {
             world
                 .emit_event(
                     @CharmListed {
-                        seller: caller,
-                        listing_id,
-                        token_id,
-                        charm_id: charm_meta.charm_id,
-                        price,
+                        seller: caller, listing_id, token_id, charm_id: charm_meta.charm_id, price,
                     },
                 );
 
@@ -175,9 +171,7 @@ pub mod CharmMarket {
 
             world
                 .emit_event(
-                    @CharmDelisted {
-                        seller: caller, listing_id, token_id: listing.token_id,
-                    },
+                    @CharmDelisted { seller: caller, listing_id, token_id: listing.token_id },
                 );
         }
     }

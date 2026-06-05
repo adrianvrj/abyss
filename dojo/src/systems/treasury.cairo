@@ -10,12 +10,8 @@ pub trait ITreasury<TContractState> {
 
 #[starknet::interface]
 trait IAccessControl<TContractState> {
-    fn has_role(
-        self: @TContractState, role: felt252, account: starknet::ContractAddress,
-    ) -> bool;
-    fn grant_role(
-        ref self: TContractState, role: felt252, account: starknet::ContractAddress,
-    );
+    fn has_role(self: @TContractState, role: felt252, account: starknet::ContractAddress) -> bool;
+    fn grant_role(ref self: TContractState, role: felt252, account: starknet::ContractAddress);
 }
 
 #[dojo::contract]
@@ -28,8 +24,7 @@ pub mod Treasury {
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::store::StoreTrait;
     use crate::systems::rewards_vault::NAME as REWARDS_VAULT_NAME;
-    use super::{IAccessControlDispatcher, IAccessControlDispatcherTrait, ITreasury};
-    use super::*;
+    use super::{*, IAccessControlDispatcher, IAccessControlDispatcherTrait, ITreasury};
 
     const CHIP_MINTER_ROLE: felt252 = selector!("MINTER_ROLE");
 

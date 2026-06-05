@@ -18,6 +18,7 @@ import {
   tryGetStreakAddress,
   getCharmMarketAddress,
   tryGetCharmMarketAddress,
+  tryGetSeasonAddress,
 } from "@/config";
 import { getGoldenChipMintPrice } from "@/api/rpc/goldenChip";
 import { CONTRACTS } from "@/lib/constants";
@@ -72,6 +73,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
   const goldenChipAddress = useMemo(() => getGoldenChipAddress(chainId), [chainId]);
   const streakAddress = useMemo(() => tryGetStreakAddress(chainId), [chainId]);
   const charmMarketAddress = useMemo(() => tryGetCharmMarketAddress(chainId), [chainId]);
+  const seasonAddress = useMemo(() => tryGetSeasonAddress(chainId), [chainId]);
 
   const receiptEventContracts = useMemo(() => {
     // Keep indices 0-4 stable (world, play, market, relic, charm) — the receipt
@@ -83,8 +85,13 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     if (streakAddress) {
       list.push(streakAddress);
     }
+    // Season is appended last; PrizeClaimed is matched by selector (not index),
+    // so its position here only matters for the address filter.
+    if (seasonAddress) {
+      list.push(seasonAddress);
+    }
     return list;
-  }, [worldAddress, playAddress, marketAddress, relicAddress, charmAddress, charmMarketAddress, streakAddress]);
+  }, [worldAddress, playAddress, marketAddress, relicAddress, charmAddress, charmMarketAddress, streakAddress, seasonAddress]);
 
   const waitForReceipt = useCallback(
     async (transactionHash: string) => {
@@ -650,6 +657,31 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     ]);
   }, [account, chipAddress, executeCalls, streakAddress]);
 
+  const claimPrize = useCallback(
+    async (seasonId: number) => {
+      if (!account) {
+        throw new Error("Wallet not connected");
+      }
+      if (!seasonAddress) {
+        throw new Error("Season contract unavailable (migrate + sync manifest)");
+      }
+      const receipt = await executeCalls([
+        {
+          contractAddress: seasonAddress,
+          entrypoint: "claim_prize",
+          calldata: CallData.compile([seasonId]),
+        },
+      ]);
+      captureAbyss("season_prize_claimed", {
+        season_id: seasonId,
+        amount: receipt.events.prizeClaimed?.amount?.toString() ?? null,
+        ranks_mask: receipt.events.prizeClaimed?.ranksMask ?? null,
+      });
+      return receipt;
+    },
+    [account, executeCalls, seasonAddress],
+  );
+
   return {
     account,
     chainId,
@@ -663,6 +695,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     goldenChipAddress,
     streakAddress,
     charmMarketAddress,
+    seasonAddress,
     createSession,
     mintGoldenChip,
     claimFreeSessionBundle,
@@ -682,6 +715,7 @@ export function useAbyssActions(accountOverride?: AccountLike | null) {
     claimChips,
     claimStreakLoot,
     recoverStreak,
+    claimPrize,
     waitForReceipt,
   };
 }

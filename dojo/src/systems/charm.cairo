@@ -37,9 +37,7 @@ pub fn get_charm_reroll_base_rarity(rarity_1: u8, rarity_2: u8, rarity_3: u8) ->
     anchor
 }
 
-fn get_charm_reroll_cumulative_odds(rarity_1: u8, rarity_2: u8, rarity_3: u8) -> (
-    u32, u32, u32,
-) {
+fn get_charm_reroll_cumulative_odds(rarity_1: u8, rarity_2: u8, rarity_3: u8) -> (u32, u32, u32) {
     let (low, mid, high) = sort_charm_reroll_rarities(rarity_1, rarity_2, rarity_3);
 
     if low == 0 && mid == 0 && high == 0 {
@@ -85,9 +83,7 @@ fn get_charm_reroll_cumulative_odds(rarity_1: u8, rarity_2: u8, rarity_3: u8) ->
     }
 }
 
-pub fn get_charm_reroll_result_rarity(
-    rarity_1: u8, rarity_2: u8, rarity_3: u8, roll: u32,
-) -> u8 {
+pub fn get_charm_reroll_result_rarity(rarity_1: u8, rarity_2: u8, rarity_3: u8, roll: u32) -> u8 {
     let (common_max, rare_max, epic_max) = get_charm_reroll_cumulative_odds(
         rarity_1, rarity_2, rarity_3,
     );
@@ -105,20 +101,20 @@ pub fn get_charm_reroll_result_rarity(
 
 #[dojo::contract]
 pub mod Charm {
-    use dojo::world::WorldStorageTrait;
     use core::poseidon::poseidon_hash_span;
+    use dojo::world::WorldStorageTrait;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::interfaces::token::erc721::{IERC721, IERC721Metadata};
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
-    use starknet::{ContractAddress, get_caller_address};
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
+    use starknet::{ContractAddress, get_caller_address};
     use crate::constants::NAMESPACE;
     use crate::helpers::charm_types::{get_charm_ids_by_rarity, get_charm_type_info};
-    use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::interfaces::charm_nft::{CharmMetadata, ICharm};
+    use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::store::StoreTrait;
     use crate::systems::play::NAME as PLAY_NAME;
     use crate::systems::setup::NAME as SETUP_NAME;
@@ -354,11 +350,8 @@ pub mod Charm {
 
             let seed = poseidon_hash_span(
                 array![
-                    caller.into(),
-                    token_id_1.low.into(),
-                    token_id_2.low.into(),
-                    token_id_3.low.into(),
-                    starknet::get_block_timestamp().into(),
+                    caller.into(), token_id_1.low.into(), token_id_2.low.into(),
+                    token_id_3.low.into(), starknet::get_block_timestamp().into(),
                     self.next_token_id.read().into(),
                 ]
                     .span(),
@@ -382,18 +375,19 @@ pub mod Charm {
             let new_charm_id = *charm_ids.at(index);
             let new_token_id = InternalImpl::mint_charm_internal(ref self, caller, new_charm_id);
 
-            self.emit(
-                CharmRerolled {
-                    player: caller,
-                    token_id_1,
-                    token_id_2,
-                    token_id_3,
-                    new_token_id,
-                    new_charm_id,
-                    base_rarity,
-                    result_rarity,
-                },
-            );
+            self
+                .emit(
+                    CharmRerolled {
+                        player: caller,
+                        token_id_1,
+                        token_id_2,
+                        token_id_3,
+                        new_token_id,
+                        new_charm_id,
+                        base_rarity,
+                        result_rarity,
+                    },
+                );
 
             new_token_id
         }

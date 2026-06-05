@@ -120,7 +120,12 @@ pub impl SpinnableImpl of SpinnableTrait {
         }
 
         (
-            total_score, total_patterns, is_666, is_jackpot, grid, pattern_type_mask,
+            total_score,
+            total_patterns,
+            is_666,
+            is_jackpot,
+            grid,
+            pattern_type_mask,
             (m7, md, mc, m_coin, ml),
         )
     }

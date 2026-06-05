@@ -1,5 +1,4 @@
 use starknet::ContractAddress;
-
 use crate::helpers::streak::{advance_player_streak_state, recovered_streak_count};
 use crate::models::index::PlayerStreak;
 

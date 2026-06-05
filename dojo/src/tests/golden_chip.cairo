@@ -1,13 +1,3 @@
-use crate::constants::{
-    DEFAULT_CHIP_BOOST_MULTIPLIER, DEFAULT_CHIP_EMISSION_RATE, DEFAULT_SCORE_CHERRY,
-    DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON, DEFAULT_SCORE_SEVEN,
-    NAMESPACE, PATTERN_D3_MULT, PATTERN_H3_MULT, PATTERN_H4_MULT, PATTERN_H5_MULT,
-    PATTERN_V3_MULT, REVENUE_PRIZE_PCT, REVENUE_TEAM_PCT, REVENUE_TREASURY_PCT, WORLD_RESOURCE,
-};
-use crate::models::index::Config;
-use crate::systems::golden_chip::{
-    IGoldenChipDispatcher, IGoldenChipDispatcherTrait,
-};
 use core::result::ResultTrait;
 use dojo::model::ModelStorageTest;
 use dojo::utils::{bytearray_hash, selector_from_names};
@@ -17,6 +7,14 @@ use dojo_cairo_test::world::{
 };
 use snforge_std::{DeclareResultTrait, declare, start_cheat_caller_address};
 use starknet::{ClassHash, ContractAddress};
+use crate::constants::{
+    DEFAULT_CHIP_BOOST_MULTIPLIER, DEFAULT_CHIP_EMISSION_RATE, DEFAULT_SCORE_CHERRY,
+    DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON, DEFAULT_SCORE_SEVEN, NAMESPACE,
+    PATTERN_D3_MULT, PATTERN_H3_MULT, PATTERN_H4_MULT, PATTERN_H5_MULT, PATTERN_V3_MULT,
+    REVENUE_BURN_PCT, REVENUE_PRIZE_PCT, REVENUE_TEAM_PCT, REVENUE_TREASURY_PCT, WORLD_RESOURCE,
+};
+use crate::models::index::Config;
+use crate::systems::golden_chip::{IGoldenChipDispatcher, IGoldenChipDispatcherTrait};
 
 fn declared_class_hash(name: ByteArray) -> ClassHash {
     let declared = declare(name).unwrap();
@@ -24,8 +22,9 @@ fn declared_class_hash(name: ByteArray) -> ClassHash {
     (*contract_class).class_hash
 }
 
-fn golden_chip_world(
-) -> (dojo::world::WorldStorage, ContractAddress, ContractAddress, ContractAddress) {
+fn golden_chip_world() -> (
+    dojo::world::WorldStorage, ContractAddress, ContractAddress, ContractAddress,
+) {
     let world_class_hash = declared_class_hash("world");
     let resources = array![
         TestResource::Model(declared_class_hash("m_Config")),
@@ -47,8 +46,8 @@ fn golden_chip_world(
     ];
 
     let world = spawn_test_world(
-        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
-            .span(),
+        world_class_hash,
+        array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }].span(),
     );
 
     let collection_def = ContractDefTrait::new(@NAMESPACE(), @"Collection")
@@ -123,14 +122,20 @@ fn seed_config(ref world: dojo::world::WorldStorage) {
                 total_sessions: 0,
                 total_competitive_sessions: 0,
                 total_items: 0,
-                burn_percentage: REVENUE_PRIZE_PCT.try_into().unwrap(),
+                burn_percentage: REVENUE_BURN_PCT.try_into().unwrap(),
                 treasury_percentage: REVENUE_TREASURY_PCT.try_into().unwrap(),
                 team_percentage: REVENUE_TEAM_PCT.try_into().unwrap(),
+                prize_percentage: REVENUE_PRIZE_PCT.try_into().unwrap(),
                 ekubo_router: 0.try_into().unwrap(),
                 pool_fee: 0,
                 pool_tick_spacing: 0,
                 pool_extension: 0.try_into().unwrap(),
                 pool_sqrt: 0,
+                prize_receiver: 0.try_into().unwrap(),
+                current_season_id: 1,
+                season_end_ts: 0,
+                active_leaderboard_id: 2,
+                prize_outstanding: 0,
             },
         );
 }

@@ -174,6 +174,22 @@ pub struct SessionEnded {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PRIZE CLAIMED - Season leaderboard prize payout
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[dojo::event]
+#[derive(Copy, Drop, Serde)]
+pub struct PrizeClaimed {
+    #[key]
+    pub season_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    // Bitmask of ranks claimed in this call (bit 0=1st, 1=2nd, 2=3rd).
+    pub ranks_mask: u8,
+    pub amount: u256,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CHARM MINTED
 // ═══════════════════════════════════════════════════════════════════════════
 

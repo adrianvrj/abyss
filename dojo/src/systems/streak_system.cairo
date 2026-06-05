@@ -1,5 +1,4 @@
 use starknet::ContractAddress;
-
 use crate::models::index::PlayerStreak;
 
 #[inline]
@@ -19,13 +18,12 @@ pub mod Streak {
     use core::num::traits::Zero;
     use core::poseidon::poseidon_hash_span;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-
     use crate::constants::NAMESPACE;
-    use crate::helpers::streak::{
-        recovered_streak_count, streak_loot_rarity_from_roll, utc_day_from_timestamp,
-        STREAK_LOOT_CHARM_SESSION_ID_SENTINEL, STREAK_RECOVER_CHIP_COST,
-    };
     use crate::helpers::play_payout::get_charm_chip_reward_amount;
+    use crate::helpers::streak::{
+        STREAK_LOOT_CHARM_SESSION_ID_SENTINEL, STREAK_RECOVER_CHIP_COST, recovered_streak_count,
+        streak_loot_rarity_from_roll, utc_day_from_timestamp,
+    };
     use crate::interfaces::charm_nft::ICharmDispatcherTrait;
     use crate::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::interfaces::rewards_vault::IRewardsVaultDispatcherTrait;
@@ -64,9 +62,7 @@ pub mod Streak {
             ps.loot_claim_nonce += 1;
             let seed = poseidon_hash_span(
                 array![
-                    caller.into(),
-                    loot_day.into(),
-                    ps.loot_claim_nonce.into(),
+                    caller.into(), loot_day.into(), ps.loot_claim_nonce.into(),
                     starknet::get_block_timestamp().into(),
                 ]
                     .span(),

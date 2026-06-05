@@ -2,13 +2,13 @@ use crate::constants::{
     DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
     DEFAULT_SCORE_SEVEN,
 };
-use crate::models::index::Session;
 // No imports from index needed currently as reported by compiler.
 use crate::helpers::charm_types::{
     calculate_base_luck_from_charm_ids, calculate_effective_luck_from_charm_ids,
     get_charm_retrigger_bonuses_for_ids, get_charm_type_info,
 };
 use crate::helpers::items::{get_item_diamond_chip_bonus, get_item_runtime_effect};
+use crate::models::index::Session;
 use crate::store::{Store, StoreTrait};
 use crate::types::effect::{CharmConditionType, CharmEffectType, ItemEffectType};
 
@@ -121,7 +121,11 @@ pub impl InventoryImpl of InventoryTrait {
             }
             i += 1;
         }
-        let adjusted_coin = if anti_coin_penalty >= p_coin { 0 } else { p_coin - anti_coin_penalty };
+        let adjusted_coin = if anti_coin_penalty >= p_coin {
+            0
+        } else {
+            p_coin - anti_coin_penalty
+        };
         (p7, pd, pc, adjusted_coin, pl)
     }
 
@@ -354,8 +358,8 @@ pub impl InventoryImpl of InventoryTrait {
 
                 // Snowball charms reuse condition_type for their target pattern
                 // (1/2/3), which collides with the luck condition types — skip them.
-                if charm_meta.effect_type == CharmEffectType::PatternSnowball {
-                    // no luck contribution
+                if charm_meta
+                    .effect_type == CharmEffectType::PatternSnowball { // no luck contribution
                 } else if charm_meta.condition_type == CharmConditionType::NoPatternLastSpin {
                     no_pattern_bonus += val;
                     if last_spin.patterns_count == 0 {
@@ -375,12 +379,11 @@ pub impl InventoryImpl of InventoryTrait {
                         conditional_luck += val;
                     }
                 } else if charm_meta.condition_type == CharmConditionType::HighLevel {
-                    let high_level_conditional_bonus =
-                        if charm_meta.effect_value_2 > 0 {
-                            charm_meta.effect_value_2
-                        } else {
-                            val
-                        };
+                    let high_level_conditional_bonus = if charm_meta.effect_value_2 > 0 {
+                        charm_meta.effect_value_2
+                    } else {
+                        val
+                    };
                     high_level_bonus += high_level_conditional_bonus;
                     if session.level >= 4 {
                         conditional_luck += high_level_conditional_bonus;
@@ -451,9 +454,8 @@ pub impl InventoryImpl of InventoryTrait {
         blocked_666_this_session: bool,
     ) -> u32 {
         let spin_modifiers = *spin_modifiers;
-        let mut luck =
-            spin_modifiers.base_luck
-                + last_spin_patterns.into() * spin_modifiers.pattern_luck_per_pattern;
+        let mut luck = spin_modifiers.base_luck
+            + last_spin_patterns.into() * spin_modifiers.pattern_luck_per_pattern;
 
         if last_spin_patterns == 0 {
             luck += spin_modifiers.no_pattern_bonus;
@@ -491,9 +493,7 @@ pub impl InventoryImpl of InventoryTrait {
     }
 
     /// Get retrigger bonuses from charms
-    fn get_charm_retrigger_bonuses(store: @Store, session_id: u32) -> (
-        u32, u32, u32, u32, u32,
-    ) {
+    fn get_charm_retrigger_bonuses(store: @Store, session_id: u32) -> (u32, u32, u32, u32, u32) {
         let charm_ids = Self::collect_session_charm_ids(store, session_id);
         get_charm_retrigger_bonuses_for_ids(charm_ids.span())
     }

@@ -211,6 +211,7 @@ export interface ParsedEvents {
     charmDebtDefaulted: CharmDebtDefaultedEvent[];
     bibliaDiscarded: BibliaDiscardedEvent | null;
     cashOutResolved: CashOutResolvedEvent | null;
+    prizeClaimed: PrizeClaimedEvent | null;
     models: ReceiptModelEvents;
 }
 
@@ -233,8 +234,16 @@ type DojoEventEnvelope = {
     fieldValues: Array<string | bigint | number>;
 };
 
+export interface PrizeClaimedEvent {
+    seasonId: number;
+    player: string;
+    ranksMask: number;
+    amount: bigint;
+}
+
 // Event selectors
 const EVENT_SELECTORS = {
+    PrizeClaimed: hash.getSelectorFromName('PrizeClaimed'),
     SpinCompleted: hash.getSelectorFromName('SpinCompleted'),
     ItemPurchased: hash.getSelectorFromName('ItemPurchased'),
     ItemSold: hash.getSelectorFromName('ItemSold'),
@@ -717,6 +726,26 @@ function parseCharmDelistedEvent(
     }
 }
 
+// PrizeClaimed (Season contract dojo event).
+// keys:   [season_id, player]   fields: [ranks_mask, amount.low, amount.high]
+function parsePrizeClaimedEvent(
+    fieldValues: Array<string | bigint | number>,
+    keyValues: Array<string | bigint | number> = [],
+): PrizeClaimedEvent | null {
+    if (!fieldValues || fieldValues.length < 3) return null;
+    try {
+        return {
+            seasonId: feltToNumber(keyValues[0]),
+            player: normalizeAddress(keyValues[1]) ?? '',
+            ranksMask: feltToNumber(fieldValues[0]),
+            amount: feltToBigInt(fieldValues[1]) + (feltToBigInt(fieldValues[2]) << BigInt(128)),
+        };
+    } catch (e) {
+        console.error('Failed to parse PrizeClaimed event:', e);
+        return null;
+    }
+}
+
 function parseCharmDebtCollectedEvent(eventData: Array<string | bigint | number>): CharmDebtCollectedEvent | null {
     if (!eventData || eventData.length < 5) return null;
     try {
@@ -812,6 +841,7 @@ export function hasParsedEvents(events: ParsedEvents): boolean {
         events.charmDebtDefaulted.length > 0 ||
         events.bibliaDiscarded ||
         events.cashOutResolved ||
+        events.prizeClaimed ||
         events.itemsPurchased.length > 0 ||
         events.itemsSold.length > 0,
     );
@@ -839,6 +869,7 @@ function parseNormalizedEvents(
         charmDebtDefaulted: [],
         bibliaDiscarded: null,
         cashOutResolved: null,
+        prizeClaimed: null,
         models: {
             session: null,
             spinResult: null,
@@ -1011,6 +1042,13 @@ function parseNormalizedEvents(
                 if (parsed) {
                     result.charmRerolled = parsed;
                 }
+            } else if (findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.PrizeClaimed) >= 0) {
+                // PrizeClaimed is emitted by the Season contract — identify it by
+                // selector so it doesn't depend on the source-address ordering.
+                const parsed = parsePrizeClaimedEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
+                if (parsed) {
+                    result.prizeClaimed = parsed;
+                }
             } else if (emitterAddress === charmMarketAddress) {
                 // Disambiguate the three CharmMarket events by serialized field length.
                 if (dojoEvent.fieldValues.length === 6) {
@@ -1097,6 +1135,7 @@ export function parseReceiptEvents(
             charmDebtDefaulted: [],
             bibliaDiscarded: null,
             cashOutResolved: null,
+            prizeClaimed: null,
             models: {
                 session: null,
                 spinResult: null,

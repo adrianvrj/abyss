@@ -8,8 +8,8 @@ use starknet::ContractAddress;
 use crate::constants::WORLD_RESOURCE;
 use crate::events::index::{
     BibliaDiscarded, CashOutResolved, CharmDebtCollected, CharmDebtDefaulted, CharmDebtPaid,
-    CharmMinted, ItemPurchased, ItemSold, MarketRefreshed, PhantomActivated, RelicActivated,
-    RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
+    CharmMinted, ItemPurchased, ItemSold, MarketRefreshed, PhantomActivated, PrizeClaimed,
+    RelicActivated, RelicEquipped, SessionCreated, SessionEnded, SpinCompleted,
 };
 use crate::interfaces::charm_nft::ICharmDispatcher;
 use crate::interfaces::erc20::IERC20Dispatcher;
@@ -17,10 +17,10 @@ use crate::interfaces::relic_nft::{IRelicDispatcher, IRelicERC721Dispatcher};
 use crate::interfaces::rewards_vault::IRewardsVaultDispatcher;
 use crate::interfaces::vrf::IVrfProviderDispatcher;
 use crate::models::index::{
-    BeastSessionsUsed, Config, Item, PendingCharmLoadout, PlayerSessionEntry,
-    PlayerSessions, PlayerStreak, RewardPools, Session, SessionCharmDebt, SessionCharmEntry,
-    SessionCharmLoadout, SessionCharms, SessionInventory, SessionItemEntry, SessionItemIndex,
-    SessionMarket, SessionChipBonus, SessionItemPurchaseCount, SpinResult, TokenPairId,
+    BeastSessionsUsed, Config, Item, PendingCharmLoadout, PlayerSessionEntry, PlayerSessions,
+    PlayerStreak, RewardPools, SeasonInfo, Session, SessionCharmDebt, SessionCharmEntry,
+    SessionCharmLoadout, SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry,
+    SessionItemIndex, SessionItemPurchaseCount, SessionMarket, SpinResult, TokenPairId,
 };
 use crate::systems::rewards_vault::NAME as REWARDS_VAULT_NAME;
 
@@ -74,7 +74,10 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn rewards_vault_disp(self: @Store) -> IRewardsVaultDispatcher {
-        let rewards_vault = self.world.dns_address(@REWARDS_VAULT_NAME()).expect('RewardsVault missing');
+        let rewards_vault = self
+            .world
+            .dns_address(@REWARDS_VAULT_NAME())
+            .expect('RewardsVault missing');
         IRewardsVaultDispatcher { contract_address: rewards_vault }
     }
 
@@ -124,6 +127,18 @@ pub impl StoreImpl of StoreTrait {
 
     fn set_config(mut self: Store, config: @Config) {
         self.world.write_model(config)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Season
+    // ═══════════════════════════════════════════════════════════════════
+
+    fn season(self: @Store, season_id: u32) -> SeasonInfo {
+        self.world.read_model(season_id)
+    }
+
+    fn set_season(mut self: Store, season: @SeasonInfo) {
+        self.world.write_model(season)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -419,6 +434,10 @@ pub impl StoreImpl of StoreTrait {
     }
 
     fn emit_cash_out_resolved(mut self: Store, event: @CashOutResolved) {
+        self.world.emit_event(event);
+    }
+
+    fn emit_prize_claimed(mut self: Store, event: @PrizeClaimed) {
         self.world.emit_event(event);
     }
 }

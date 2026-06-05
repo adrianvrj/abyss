@@ -10,14 +10,9 @@ pub trait IRewardsVault<TContractState> {
         reserve_remaining: u256,
     );
     fn move_reward_reserve_to_pool(ref self: TContractState, to_gameplay: bool, amount: u256);
-    fn set_authorized_caller(
-        ref self: TContractState, caller: ContractAddress, authorized: bool,
-    );
+    fn set_authorized_caller(ref self: TContractState, caller: ContractAddress, authorized: bool);
     fn pay_gameplay(
-        ref self: TContractState,
-        player: ContractAddress,
-        session_id: u32,
-        calculated_amount: u256,
+        ref self: TContractState, player: ContractAddress, session_id: u32, calculated_amount: u256,
     ) -> u256;
     fn pay_charm(
         ref self: TContractState,

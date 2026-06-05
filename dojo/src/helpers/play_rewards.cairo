@@ -1,6 +1,5 @@
 use core::poseidon::poseidon_hash_span;
 use starknet::ContractAddress;
-
 use crate::helpers::play_charm_odds::{
     get_charm_drop_chance_from_score, get_charm_rarity_from_score_and_roll,
 };

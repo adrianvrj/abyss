@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x3190f22c7401a4b8c7e1720607f70b135d9a0deb018d55ddceda69ca4032955",
-      "class_hash": "0x6b232aae7e2a1508165660f679a2ddcea414b5a735cba278261b2280c528f69",
+      "class_hash": "0x5288f8bac5236e7f69f345e33de2410bc1155ebfa5ab5372ed7a7508e834ba8",
       "init_calldata": [],
       "tag": "ABYSS-Charm",
       "selector": "0x5081068dd11dad3de22b76e531b911cddfb2952edf41b0a0ab01dcb11d432bc",
@@ -56,7 +56,7 @@
     },
     {
       "address": "0x26a4d188fddebd67f0bb8e711e8eec958abcd95ea76cb0b48d4eb4c655ae451",
-      "class_hash": "0x507793349d5fb814889a26c5fbe193d35e424f933c904565d3a1b6a8c502f54",
+      "class_hash": "0x78493ddca1e6ebb4f079b0555d4f342503b850ca8c34c4be6293c4e194b431f",
       "init_calldata": [],
       "tag": "ABYSS-CharmMarket",
       "selector": "0x73de6f6b304414dfd78f360d4c5ce789aade949174cc05167c0b5329a64e54c",
@@ -93,7 +93,7 @@
     },
     {
       "address": "0x1f995659f54a1ef5ede1eb5b542a12bf51102948df68fa53de0fcb93ebffc50",
-      "class_hash": "0x36d91e686ebd134d2c9405ed8ae9d726f8915cf133fdf6b8ba84ba885eb2e2f",
+      "class_hash": "0x5d8a631ab55d070795d376bb94b66e405c9c4f1bee5d2564b565381efd534f",
       "init_calldata": [],
       "tag": "ABYSS-Collection",
       "selector": "0x48dc5cab3bba1cdf905e5fb31643b635e3109c2acacc65b4a5f18a3e2a48e82",
@@ -115,7 +115,7 @@
     },
     {
       "address": "0x5c375d8908c6e4d29520208a6c28ffe6b0564406137f8debff2b36ac1150ffe",
-      "class_hash": "0x483e6fba3cb18b2454c01ae8cec4e2ae0807db48f0b387d4f6eac10f650ec03",
+      "class_hash": "0x761288e7e6b42c05fb10e4066e7cfba15a809260bab0deb53d7fc5442d3e768",
       "init_calldata": [],
       "tag": "ABYSS-GoldenChip",
       "selector": "0x666f73eb680fb8aa6ccd8a10331295177fd70b71ec1745e8bbe7c1db3ed5437",
@@ -135,7 +135,7 @@
     },
     {
       "address": "0x20ad638ede68a2ca8dbae3a8b435b20b2b3b0bb0f89c915df9098c6c056a068",
-      "class_hash": "0x785def588635818de5e44e215ad101753245a310357e7b740abcea20eaecb24",
+      "class_hash": "0x71a052ca5e81273da89450d38a6cfe95865f7b26dbcc6b4d4bee378c408bb7a",
       "init_calldata": [],
       "tag": "ABYSS-Market",
       "selector": "0x4ae19f0b9d395544b63deb45f43c4814659ea71fd201dba753878561c364999",
@@ -149,7 +149,7 @@
     },
     {
       "address": "0xba6f9a31d95d0e43568e76eb313818dacdced553379f2b69a4cf12dde1b93e",
-      "class_hash": "0x1a4612f0c194b7355981c48592247100f88cf010e4ab8d30cf136c38ed20500",
+      "class_hash": "0x56be1562300c3bba0e7e9c8410839ddf077898047bb16a17df4a97b9c1e9513",
       "init_calldata": [],
       "tag": "ABYSS-Play",
       "selector": "0x544e6be393dc64bccd1becae3cf5e16e6df110b19b245bdeb65d24a61ddf7f2",
@@ -168,7 +168,7 @@
     },
     {
       "address": "0x2ab93cb0eafd6caeb21fdde287736eb0f3a8de70209e84b9513270c3ba0ecb8",
-      "class_hash": "0x38289305a4957bc920fecb633685758311e898a696aab8499e2cdd91d56959d",
+      "class_hash": "0x47e3386f78598b9867f9ad0cb63d69debecb18fb8ea86dc8296b1d9fcdee4da",
       "init_calldata": [],
       "tag": "ABYSS-Relic",
       "selector": "0xa20a826df7af70236c2a3febf427e78978fcc2d7a7c3f0211bda335f9db8e3",
@@ -181,7 +181,7 @@
     },
     {
       "address": "0x2cf918770eddece49440bb1a0f1d382f504caa38a40888dde582c997b8a55cb",
-      "class_hash": "0x594a7cb5375a7c77c0508425eb493f9b6970769bd8ee8a9f7c2d85d8e118fbb",
+      "class_hash": "0x516b4214f28f05c56da4dcafc85b0635ca4c9ba0a97250ab87d12512372a367",
       "init_calldata": [],
       "tag": "ABYSS-RelicNFT",
       "selector": "0x97d15de9c4ead772fb2d3798afa75e7e16c9245c172f119ea34cb9ab17b5c9",
@@ -198,7 +198,7 @@
     },
     {
       "address": "0x54a8f1c1e388ede80245f7aa959cd7bc0ccbc950b86267eb816b05a762f488c",
-      "class_hash": "0x61a647845dcfbf8aa2254e27844595bd829f81ebbbc402817874b38bbffb097",
+      "class_hash": "0x50b0eebe63e8963b57913a7bcdf3eb797843550ac9b81f754e4e284ba68d7cb",
       "init_calldata": [],
       "tag": "ABYSS-RewardsVault",
       "selector": "0x71f3355a8aacb68310833d24b006638ab90f688ce6a5d3d3eb6d69e53d3bc36",
@@ -216,8 +216,20 @@
       ]
     },
     {
+      "address": "0x1033bfca174a536ec13976e18d85be4eca83f654de26939154a08ded1f70382",
+      "class_hash": "0x6f2047d890f0a763c4121720f1abd34329159a42934e6d974a6fb5c77c962e",
+      "init_calldata": [],
+      "tag": "ABYSS-SeasonManager",
+      "selector": "0x6777d2a2c0c77d15270b75c657e17c1d66fda339a7913fc7f7cf7c28e992814",
+      "systems": [
+        "record_score",
+        "claim_prize",
+        "upgrade"
+      ]
+    },
+    {
       "address": "0x529c074ad9540d56a8d6e7086bb3d7a3d8ebaf60dbbf4abb1aeae336be833fe",
-      "class_hash": "0x27e011ecdb707459797c88113739be788f0845bdd5128584ae6f42e5b6b6bbd",
+      "class_hash": "0x697d4e1a6d7d8cba182da380f2df431988e0929f5302317fde6008a0b9def60",
       "init_calldata": [
         "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f",
         "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
@@ -244,7 +256,9 @@
         "set_burn_percentage",
         "set_treasury_percentage",
         "set_team_percentage",
+        "set_prize_percentage",
         "set_distribution",
+        "init_season",
         "set_ekubo_router",
         "set_pool_fee",
         "set_pool_tick_spacing",
@@ -269,7 +283,7 @@
     },
     {
       "address": "0x3ae02dcabcb2707c81ae02199f736698137a65703dcfa912a3535775a62a67b",
-      "class_hash": "0x70453a0475058eb512220a25983e305352543b2d72dc4128ce11e04863826f1",
+      "class_hash": "0x3250ba58e4895e545af9ff319acf40afb07c7449cb72ac35913486e1ca13eb7",
       "init_calldata": [],
       "tag": "ABYSS-Streak",
       "selector": "0x78dc31fbdcb9796c60122a04ee9218ed2e633fe3bebdffe6ce43dcd7fde3d3a",
@@ -282,7 +296,7 @@
     },
     {
       "address": "0xabacec30b172f0c17c1db76e0beec8a4ea39b3cf633406b25a09f75225cf07",
-      "class_hash": "0x31b965442333386ca8acf4bd968f17fcc835e09873716009d0e85d6e09ccb0f",
+      "class_hash": "0x31622ecce328d10451c1855434a3d8a7faadec891b35b4852d759da144da44f",
       "init_calldata": [],
       "tag": "ABYSS-Treasury",
       "selector": "0x72689885a6f7a8f2db029679189ea00550d416058e3f0b0692e58417d2a8c19",
@@ -595,9 +609,39 @@
           "name": "pool_sqrt",
           "type": "core::integer::u256",
           "key": false
+        },
+        {
+          "name": "prize_percentage",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "prize_receiver",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": false
+        },
+        {
+          "name": "current_season_id",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "season_end_ts",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "active_leaderboard_id",
+          "type": "core::felt252",
+          "key": false
+        },
+        {
+          "name": "prize_outstanding",
+          "type": "core::integer::u256",
+          "key": false
         }
       ],
-      "class_hash": "0x298ae85c107df58a869dba136b7e8777f00d708668f217787a6e93de4856100",
+      "class_hash": "0x72c6b3a81a4f1b46e1827f86175cb486be3cac0b6f6a54f77e532e58d5f3ebb",
       "tag": "ABYSS-Config",
       "selector": "0x5f1ad3b20b522f430149644fca6cb52d1d21ddee009e310669c599c3307927"
     },
@@ -796,6 +840,73 @@
     {
       "members": [
         {
+          "name": "season_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "leaderboard_id",
+          "type": "core::felt252",
+          "key": false
+        },
+        {
+          "name": "end_ts",
+          "type": "core::integer::u64",
+          "key": false
+        },
+        {
+          "name": "pool_amount",
+          "type": "core::integer::u256",
+          "key": false
+        },
+        {
+          "name": "finalized",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "claimed_mask",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "top1_session",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "top1_score",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "top2_session",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "top2_score",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "top3_session",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "top3_score",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x4acf80ad22ed79e461c01235d002033de4b954fc54c444ef15759425b3d2d78",
+      "tag": "ABYSS-SeasonInfo",
+      "selector": "0x100d24d037f92629882df85d2f8c78899cab90930612b9b4e847055dc9b36b0"
+    },
+    {
+      "members": [
+        {
           "name": "session_id",
           "type": "core::integer::u32",
           "key": true
@@ -904,9 +1015,24 @@
           "name": "score_lemon",
           "type": "core::integer::u32",
           "key": false
+        },
+        {
+          "name": "snowball_h_add",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "snowball_v_add",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "snowball_d_add",
+          "type": "core::integer::u32",
+          "key": false
         }
       ],
-      "class_hash": "0x6ef76a8d5a7558aaac61576b7cb709057e3269a4470eda98f20989bf6621d2f",
+      "class_hash": "0xe306faf6218527c6fadfbba4956a83f1903abf688e9c9b28661e1e2ce70281",
       "tag": "ABYSS-Session",
       "selector": "0x408ca588a52ba173cdb4bd5bc4c537bc1a4e7469233b88a310a49a4986093d7"
     },
@@ -1782,6 +1908,33 @@
     {
       "members": [
         {
+          "name": "season_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "ranks_mask",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u256",
+          "key": false
+        }
+      ],
+      "class_hash": "0x7821990e8c8ca2f35f9c728641bdc9a384ea0a0dd6dc187dcca879a45a091d8",
+      "tag": "ABYSS-PrizeClaimed",
+      "selector": "0xfbff358dcf5f37b7c76d1b11ec604aedb62c444e52b05d9f5fc42c58e3effe"
+    },
+    {
+      "members": [
+        {
           "name": "session_id",
           "type": "core::integer::u32",
           "key": true
@@ -2063,9 +2216,24 @@
           "name": "chip_bonus_units",
           "type": "core::integer::u32",
           "key": false
+        },
+        {
+          "name": "snowball_h_add",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "snowball_v_add",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "snowball_d_add",
+          "type": "core::integer::u32",
+          "key": false
         }
       ],
-      "class_hash": "0x6ba909ade776cd0759a75449ca80cc1235aabad327a8550216493545f55e570",
+      "class_hash": "0x4bfbf68167bc9b2761e32c9554f7b7679cb14256205f3d4b1494d042a040d9",
       "tag": "ABYSS-SpinCompleted",
       "selector": "0x6cc9b3e14b07cf6ea1d434d90a986c4f06058fb7df7f36083daea14a9409977"
     }
@@ -2736,6 +2904,42 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::events::index::PrizeClaimed",
+      "members": [
+        {
+          "name": "season_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "player",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "ranks_mask",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::events::index::PrizeClaimedValue",
+      "members": [
+        {
+          "name": "ranks_mask",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u256"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::events::index::RelicActivated",
       "members": [
         {
@@ -3033,6 +3237,18 @@
         {
           "name": "chip_bonus_units",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_h_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_v_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_d_add",
+          "type": "core::integer::u32"
         }
       ]
     },
@@ -3159,6 +3375,18 @@
         {
           "name": "chip_bonus_units",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_h_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_v_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_d_add",
+          "type": "core::integer::u32"
         }
       ]
     },
@@ -3237,6 +3465,12 @@
     {
       "type": "event",
       "name": "abyss_game::events::index::e_PhantomActivated::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::events::index::e_PrizeClaimed::Event",
       "kind": "enum",
       "variants": []
     },
@@ -4130,6 +4364,30 @@
         {
           "name": "pool_sqrt",
           "type": "core::integer::u256"
+        },
+        {
+          "name": "prize_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "prize_receiver",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "current_season_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "season_end_ts",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "active_leaderboard_id",
+          "type": "core::felt252"
+        },
+        {
+          "name": "prize_outstanding",
+          "type": "core::integer::u256"
         }
       ]
     },
@@ -4303,6 +4561,30 @@
         },
         {
           "name": "pool_sqrt",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "prize_percentage",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "prize_receiver",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "current_season_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "season_end_ts",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "active_leaderboard_id",
+          "type": "core::felt252"
+        },
+        {
+          "name": "prize_outstanding",
           "type": "core::integer::u256"
         }
       ]
@@ -4593,6 +4875,110 @@
     },
     {
       "type": "struct",
+      "name": "abyss_game::models::index::SeasonInfo",
+      "members": [
+        {
+          "name": "season_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "leaderboard_id",
+          "type": "core::felt252"
+        },
+        {
+          "name": "end_ts",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "pool_amount",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "finalized",
+          "type": "core::bool"
+        },
+        {
+          "name": "claimed_mask",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "top1_session",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top1_score",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top2_session",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top2_score",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top3_session",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top3_score",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "abyss_game::models::index::SeasonInfoValue",
+      "members": [
+        {
+          "name": "leaderboard_id",
+          "type": "core::felt252"
+        },
+        {
+          "name": "end_ts",
+          "type": "core::integer::u64"
+        },
+        {
+          "name": "pool_amount",
+          "type": "core::integer::u256"
+        },
+        {
+          "name": "finalized",
+          "type": "core::bool"
+        },
+        {
+          "name": "claimed_mask",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "top1_session",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top1_score",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top2_session",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top2_score",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top3_session",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "top3_score",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
       "name": "abyss_game::models::index::Session",
       "members": [
         {
@@ -4681,6 +5067,18 @@
         },
         {
           "name": "score_lemon",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_h_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_v_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_d_add",
           "type": "core::integer::u32"
         }
       ]
@@ -5104,6 +5502,18 @@
         {
           "name": "score_lemon",
           "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_h_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_v_add",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "snowball_d_add",
+          "type": "core::integer::u32"
         }
       ]
     },
@@ -5372,6 +5782,12 @@
     {
       "type": "event",
       "name": "abyss_game::models::index::m_RewardPools::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::models::index::m_SeasonInfo::Event",
       "kind": "enum",
       "variants": []
     },
@@ -6383,11 +6799,6 @@
           "name": "SRC5Event",
           "type": "openzeppelin_introspection::src5::SRC5Component::Event",
           "kind": "flat"
-        },
-        {
-          "name": "RankableEvent",
-          "type": "leaderboard::components::rankable::RankableComponent::Event",
-          "kind": "flat"
         }
       ]
     },
@@ -6708,6 +7119,92 @@
     },
     {
       "type": "interface",
+      "name": "abyss_game::systems::season::ISeason",
+      "items": [
+        {
+          "type": "function",
+          "name": "record_score",
+          "inputs": [
+            {
+              "name": "session_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "player",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "score",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::felt252"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "claim_prize",
+          "inputs": [
+            {
+              "name": "season_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "get_active_season",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "abyss_game::models::index::SeasonInfo"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_season",
+          "inputs": [
+            {
+              "name": "season_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "abyss_game::models::index::SeasonInfo"
+            }
+          ],
+          "state_mutability": "view"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "abyss_game::systems::season::SeasonManager::Event",
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "UpgradeableEvent",
+          "type": "dojo::contract::components::upgradeable::upgradeable_cpt::Event",
+          "kind": "nested"
+        },
+        {
+          "name": "WorldProviderEvent",
+          "type": "dojo::contract::components::world_provider::world_provider_cpt::Event",
+          "kind": "nested"
+        }
+      ]
+    },
+    {
+      "type": "interface",
       "name": "abyss_game::systems::setup::ISetup",
       "items": [
         {
@@ -6908,6 +7405,18 @@
         },
         {
           "type": "function",
+          "name": "set_prize_percentage",
+          "inputs": [
+            {
+              "name": "percentage",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "set_distribution",
           "inputs": [
             {
@@ -6921,6 +7430,22 @@
             {
               "name": "team_percentage",
               "type": "core::integer::u8"
+            },
+            {
+              "name": "prize_percentage",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "init_season",
+          "inputs": [
+            {
+              "name": "leaderboard_id",
+              "type": "core::felt252"
             }
           ],
           "outputs": [],
@@ -9654,12 +10179,6 @@
       ],
       "outputs": [],
       "state_mutability": "view"
-    },
-    {
-      "type": "event",
-      "name": "leaderboard::components::rankable::RankableComponent::Event",
-      "kind": "enum",
-      "variants": []
     },
     {
       "type": "struct",

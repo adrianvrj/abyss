@@ -9,10 +9,10 @@ pub mod RewardsVault {
     use dojo::world::WorldStorageTrait;
     use openzeppelin::access::accesscontrol::{AccessControlComponent, DEFAULT_ADMIN_ROLE};
     use openzeppelin::introspection::src5::SRC5Component;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use crate::constants::{
         CHARM_REWARD_POOL, GAMEPLAY_REWARD_POOL, NAMESPACE, REWARD_RESERVE_POOL, WORLD_RESOURCE,
     };
@@ -27,7 +27,8 @@ pub mod RewardsVault {
 
     component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
     #[abi(embed_v0)]
-    impl AccessControlImpl = AccessControlComponent::AccessControlImpl<ContractState>;
+    impl AccessControlImpl =
+        AccessControlComponent::AccessControlImpl<ContractState>;
     impl AccessControlInternalImpl = AccessControlComponent::InternalImpl<ContractState>;
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     #[abi(embed_v0)]
@@ -177,7 +178,12 @@ pub mod RewardsVault {
                 1
             };
             store.set_reward_pools(@pools);
-            self.emit(RewardReserveMoved { to_pool, amount, reserve_remaining: pools.reserve_remaining });
+            self
+                .emit(
+                    RewardReserveMoved {
+                        to_pool, amount, reserve_remaining: pools.reserve_remaining,
+                    },
+                );
         }
 
         fn set_authorized_caller(

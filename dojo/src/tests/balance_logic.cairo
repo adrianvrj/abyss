@@ -3,12 +3,12 @@ use crate::helpers::items::{
     BIBLIA_ITEM_ID, get_all_items, get_item_diamond_chip_bonus, get_item_purchase_price,
     get_item_runtime_effect,
 };
+use crate::helpers::play_payout::get_charm_chip_reward_amount;
 use crate::helpers::probability::get_666_probability;
 use crate::helpers::relic_types::get_relic_type_info;
 use crate::helpers::scoring::get_level_threshold;
 use crate::models::index::Item;
 use crate::systems::play::{get_chip_payout_amount, get_total_chip_units};
-use crate::helpers::play_payout::get_charm_chip_reward_amount;
 
 fn find_item(item_id: u32) -> Item {
     let items = get_all_items();
@@ -19,7 +19,7 @@ fn find_item(item_id: u32) -> Item {
             return item;
         }
         i += 1;
-    };
+    }
 
     assert(false, 'Item missing');
     *items.at(0)
@@ -248,9 +248,6 @@ fn test_charm_chip_rewards_match_rarity_table() {
     assert(get_charm_chip_reward_amount(0) == 60_000_000_000_000_000_000_u256, 'common reward');
     assert(get_charm_chip_reward_amount(1) == 240_000_000_000_000_000_000_u256, 'rare reward');
     assert(get_charm_chip_reward_amount(2) == 800_000_000_000_000_000_000_u256, 'epic reward');
-    assert(
-        get_charm_chip_reward_amount(3) == 1_500_000_000_000_000_000_000_u256,
-        'legend reward',
-    );
+    assert(get_charm_chip_reward_amount(3) == 1_500_000_000_000_000_000_000_u256, 'legend reward');
     assert(get_charm_chip_reward_amount(99) == 0, 'invalid reward');
 }

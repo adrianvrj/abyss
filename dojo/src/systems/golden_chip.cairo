@@ -279,9 +279,7 @@ pub mod GoldenChip {
             };
         }
 
-        fn consume_daily_runs(
-            ref self: ContractState, player: ContractAddress, quantity: u32,
-        ) {
+        fn consume_daily_runs(ref self: ContractState, player: ContractAddress, quantity: u32) {
             let caller = get_caller_address();
             let world = self.world(@NAMESPACE());
             let setup_address = world.dns_address(@SETUP_NAME()).expect('Setup not found!');

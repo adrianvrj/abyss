@@ -1,19 +1,3 @@
-use crate::components::spinnable::SpinnableImpl;
-use crate::constants::{
-    DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
-    DEFAULT_SCORE_SEVEN, NAMESPACE, WORLD_RESOURCE,
-};
-use crate::helpers::grid::generate_grid_from_random;
-use crate::helpers::inventory::InventoryImpl;
-use crate::models::index::{
-    Config, Item, PendingCharmLoadout, Session, SessionCharmEntry,
-    SessionCharmLoadout, SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry,
-    SessionItemIndex, SessionMarket, SpinResult,
-};
-use crate::store::StoreTrait;
-use crate::systems::market::{IMarketDispatcher, IMarketDispatcherTrait};
-use crate::systems::play::{IPlayDispatcher, IPlayDispatcherTrait};
-use crate::types::effect::{ItemEffectType, RelicEffectType};
 use core::option::OptionTrait;
 use core::result::ResultTrait;
 use core::traits::TryInto;
@@ -25,6 +9,22 @@ use dojo_cairo_test::world::{
 };
 use snforge_std::{DeclareResultTrait, declare, start_cheat_caller_address, start_mock_call};
 use starknet::{ClassHash, ContractAddress};
+use crate::components::spinnable::SpinnableImpl;
+use crate::constants::{
+    DEFAULT_SCORE_CHERRY, DEFAULT_SCORE_COIN, DEFAULT_SCORE_DIAMOND, DEFAULT_SCORE_LEMON,
+    DEFAULT_SCORE_SEVEN, NAMESPACE, WORLD_RESOURCE,
+};
+use crate::helpers::grid::generate_grid_from_random;
+use crate::helpers::inventory::InventoryImpl;
+use crate::models::index::{
+    Config, Item, PendingCharmLoadout, Session, SessionCharmEntry, SessionCharmLoadout,
+    SessionCharms, SessionChipBonus, SessionInventory, SessionItemEntry, SessionItemIndex,
+    SessionMarket, SpinResult,
+};
+use crate::store::StoreTrait;
+use crate::systems::market::{IMarketDispatcher, IMarketDispatcherTrait};
+use crate::systems::play::{IPlayDispatcher, IPlayDispatcherTrait};
+use crate::types::effect::{ItemEffectType, RelicEffectType};
 
 const PROFILE_ITERATIONS: u32 = 48;
 const REQUEST_SPIN_PROFILE_ITERATIONS: u32 = 16;
@@ -114,8 +114,7 @@ fn declared_class_hash(name: ByteArray) -> ClassHash {
     (*contract_class).class_hash
 }
 
-fn charm_loadout_session_world(
-) -> (dojo::world::WorldStorage, ContractAddress) {
+fn charm_loadout_session_world() -> (dojo::world::WorldStorage, ContractAddress) {
     let world_class_hash = declared_class_hash("world");
     let resources = array![
         TestResource::Model(declared_class_hash("m_Config")),
@@ -135,8 +134,8 @@ fn charm_loadout_session_world(
     ];
 
     let world = spawn_test_world(
-        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
-            .span(),
+        world_class_hash,
+        array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }].span(),
     );
 
     let collection_def = ContractDefTrait::new(@NAMESPACE(), @"Collection")
@@ -207,11 +206,17 @@ fn seed_charm_loadout_session_config(ref world: dojo::world::WorldStorage) {
                 burn_percentage: 0,
                 treasury_percentage: 0,
                 team_percentage: 0,
+                prize_percentage: 0,
                 ekubo_router: 0.try_into().unwrap(),
                 pool_fee: 0,
                 pool_tick_spacing: 0,
                 pool_extension: 0.try_into().unwrap(),
                 pool_sqrt: 0,
+                prize_receiver: 0.try_into().unwrap(),
+                current_season_id: 1,
+                season_end_ts: 0,
+                active_leaderboard_id: 2,
+                prize_outstanding: 0,
             },
         );
 }
@@ -231,9 +236,7 @@ fn pending_charm_loadout_persists_across_new_sessions() {
     seed_charm_loadout_session_config(ref world);
     world
         .write_model_test(
-            @PendingCharmLoadout {
-                player, charm_id_1: 3, charm_id_2: 7, charm_id_3: 15,
-            },
+            @PendingCharmLoadout { player, charm_id_1: 3, charm_id_2: 7, charm_id_3: 15 },
         );
     start_cheat_caller_address(play_address, player);
 
@@ -258,9 +261,7 @@ fn empty_pending_charm_loadout_clears_future_sessions() {
     seed_charm_loadout_session_config(ref world);
     world
         .write_model_test(
-            @PendingCharmLoadout {
-                player, charm_id_1: 3, charm_id_2: 7, charm_id_3: 15,
-            },
+            @PendingCharmLoadout { player, charm_id_1: 3, charm_id_2: 7, charm_id_3: 15 },
         );
     start_cheat_caller_address(play_address, player);
 
@@ -299,8 +300,8 @@ fn request_spin_profile_world() -> (dojo::world::WorldStorage, ContractAddress, 
     ];
 
     let world = spawn_test_world(
-        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
-            .span(),
+        world_class_hash,
+        array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }].span(),
     );
 
     let play_def = ContractDefTrait::new(@NAMESPACE(), @"Play")
@@ -330,8 +331,8 @@ fn market_purchased_mask_view_reads_slot_bits() {
         TestResource::Contract(declared_class_hash("Play")),
     ];
     let mut world = spawn_test_world(
-        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
-            .span(),
+        world_class_hash,
+        array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }].span(),
     );
     world.sync_perms_and_inits(array![ContractDefTrait::new(@NAMESPACE(), @"Play")].span());
     let play_address = world.dns_address(@"Play").expect('Play not found');
@@ -374,8 +375,8 @@ fn market_purchase_mask_world() -> (dojo::world::WorldStorage, ContractAddress) 
         TestResource::Contract(declared_class_hash("Market")),
     ];
     let world = spawn_test_world(
-        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
-            .span(),
+        world_class_hash,
+        array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }].span(),
     );
     let market_def = ContractDefTrait::new(@NAMESPACE(), @"Market")
         .with_writer_of(
@@ -528,11 +529,17 @@ fn seed_request_spin_profile_static_models(
                 burn_percentage: 0,
                 treasury_percentage: 0,
                 team_percentage: 0,
+                prize_percentage: 0,
                 ekubo_router: 0.try_into().unwrap(),
                 pool_fee: 0,
                 pool_tick_spacing: 0,
                 pool_extension: 0.try_into().unwrap(),
                 pool_sqrt: 0,
+                prize_receiver: 0.try_into().unwrap(),
+                current_season_id: 1,
+                season_end_ts: 0,
+                active_leaderboard_id: 2,
+                prize_outstanding: 0,
             },
         );
 
@@ -816,8 +823,8 @@ fn refresh_market_profile_world() -> (dojo::world::WorldStorage, ContractAddress
     ];
 
     let world = spawn_test_world(
-        world_class_hash, array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }]
-            .span(),
+        world_class_hash,
+        array![NamespaceDef { namespace: NAMESPACE(), resources: resources.span() }].span(),
     );
 
     let market_def = ContractDefTrait::new(@NAMESPACE(), @"Market")
@@ -877,11 +884,17 @@ fn seed_refresh_market_profile_static_models(ref world: dojo::world::WorldStorag
                 burn_percentage: 0,
                 treasury_percentage: 0,
                 team_percentage: 0,
+                prize_percentage: 0,
                 ekubo_router: 0.try_into().unwrap(),
                 pool_fee: 0,
                 pool_tick_spacing: 0,
                 pool_extension: 0.try_into().unwrap(),
                 pool_sqrt: 0,
+                prize_receiver: 0.try_into().unwrap(),
+                current_season_id: 1,
+                season_end_ts: 0,
+                active_leaderboard_id: 2,
+                prize_outstanding: 0,
             },
         );
 }
@@ -933,33 +946,35 @@ fn seed_refresh_market_profile_session(
                 purchased_mask: 0,
             },
         );
-    world.write_model_test(@SpinResult {
-        session_id,
-        cell_0: 0,
-        cell_1: 0,
-        cell_2: 0,
-        cell_3: 0,
-        cell_4: 0,
-        cell_5: 0,
-        cell_6: 0,
-        cell_7: 0,
-        cell_8: 0,
-        cell_9: 0,
-        cell_10: 0,
-        cell_11: 0,
-        cell_12: 0,
-        cell_13: 0,
-        cell_14: 0,
-        score: 0,
-        patterns_count: 0,
-        is_666: false,
-        is_jackpot: false,
-        is_pending: false,
-        biblia_used: false,
-    });
+    world
+        .write_model_test(
+            @SpinResult {
+                session_id,
+                cell_0: 0,
+                cell_1: 0,
+                cell_2: 0,
+                cell_3: 0,
+                cell_4: 0,
+                cell_5: 0,
+                cell_6: 0,
+                cell_7: 0,
+                cell_8: 0,
+                cell_9: 0,
+                cell_10: 0,
+                cell_11: 0,
+                cell_12: 0,
+                cell_13: 0,
+                cell_14: 0,
+                score: 0,
+                patterns_count: 0,
+                is_666: false,
+                is_jackpot: false,
+                is_pending: false,
+                biblia_used: false,
+            },
+        );
     world.write_model_test(@SessionItemIndex { session_id, count: 0 });
     world.write_model_test(@SessionCharms { session_id, count: 0 });
-
 }
 
 #[test]
@@ -1002,9 +1017,7 @@ fn is_charm_item(item_id: u32) -> bool {
     item_id >= 1001 && item_id <= 1100
 }
 
-fn loadout_contains(
-    loadout: SessionCharmLoadout, charm_item_id: u32,
-) -> bool {
+fn loadout_contains(loadout: SessionCharmLoadout, charm_item_id: u32) -> bool {
     if charm_item_id < 1001 {
         return false;
     }
@@ -1025,12 +1038,8 @@ fn assert_no_charms_in_market(market: SessionMarket) {
 
 fn assert_charms_limited_to_loadout(market: SessionMarket, loadout: SessionCharmLoadout) {
     let slots = array![
-        market.item_slot_1,
-        market.item_slot_2,
-        market.item_slot_3,
-        market.item_slot_4,
-        market.item_slot_5,
-        market.item_slot_6,
+        market.item_slot_1, market.item_slot_2, market.item_slot_3, market.item_slot_4,
+        market.item_slot_5, market.item_slot_6,
     ];
     let mut i: u32 = 0;
     while i < slots.len() {
@@ -1082,9 +1091,7 @@ fn refresh_market_explicit_empty_loadout_never_rolls_charms() {
         seed_refresh_market_profile_session(ref world, session_id, player);
         world
             .write_model_test(
-                @SessionCharmLoadout {
-                    session_id, charm_id_1: 0, charm_id_2: 0, charm_id_3: 0,
-                },
+                @SessionCharmLoadout { session_id, charm_id_1: 0, charm_id_2: 0, charm_id_3: 0 },
             );
         market.refresh_market(session_id);
 
@@ -1131,12 +1138,8 @@ fn refresh_market_populated_loadout_only_rolls_loadout_charms() {
         assert_charms_limited_to_loadout(refreshed, session_loadout);
 
         let slots = array![
-            refreshed.item_slot_1,
-            refreshed.item_slot_2,
-            refreshed.item_slot_3,
-            refreshed.item_slot_4,
-            refreshed.item_slot_5,
-            refreshed.item_slot_6,
+            refreshed.item_slot_1, refreshed.item_slot_2, refreshed.item_slot_3,
+            refreshed.item_slot_4, refreshed.item_slot_5, refreshed.item_slot_6,
         ];
         let mut k: u32 = 0;
         while k < slots.len() {
@@ -1144,10 +1147,10 @@ fn refresh_market_populated_loadout_only_rolls_loadout_charms() {
                 charm_sightings += 1;
             }
             k += 1;
-        };
+        }
 
         i += 1;
-    };
+    }
 
     // Sanity: across 24 refreshes with MARKET_CHARM_APPEAR_CHANCE non-zero we should
     // see the charm branch fire at least once. If this ever flakes, bump iterations.

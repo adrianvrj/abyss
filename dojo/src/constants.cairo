@@ -108,12 +108,30 @@ pub const GOLDEN_CHIP_DAILY_RUNS: u32 = 1;
 pub const GOLDEN_CHIP_DAY_SECONDS: u64 = 86400;
 
 // Revenue distribution (out of 100)
-pub const REVENUE_PRIZE_PCT: u32 = 70;
+// 50% buyback-burn · 25% project revenue (team) · 25% leaderboard prize pool
+pub const REVENUE_BURN_PCT: u32 = 50;
 pub const REVENUE_TREASURY_PCT: u32 = 0;
-pub const REVENUE_TEAM_PCT: u32 = 30;
+pub const REVENUE_TEAM_PCT: u32 = 25;
+pub const REVENUE_PRIZE_PCT: u32 = 25;
 
 // Leaderboard
 pub const LEADERBOARD_SIZE: u32 = 10;
+
+// ── Seasons
+// ──────────────────────────────────────────────────────────────
+// Monthly competitive seasons. The active season's top-3 sessions split the
+// accumulated USDC prize pool 50/30/20 once the season ends.
+pub const SEASON_DURATION: u64 = 2_592_000; // 30 days in seconds
+// Season 1 reuses the pre-existing global leaderboard so current scores carry
+// over. Subsequent seasons use LEADERBOARD_BASE_ID + season_id (a range that
+// will never collide with the legacy id 2).
+pub const SEASON_1_LEADERBOARD_ID: felt252 = 2;
+pub const LEADERBOARD_BASE_ID: felt252 = 1000;
+pub const LEADERBOARD_CAP: u8 = 100;
+// Prize split for season top-3 (out of 100).
+pub const PRIZE_PCT_RANK_1: u256 = 50;
+pub const PRIZE_PCT_RANK_2: u256 = 30;
+pub const PRIZE_PCT_RANK_3: u256 = 20;
 
 // Level thresholds
 pub const LEVEL_1_THRESHOLD: u32 = 66;

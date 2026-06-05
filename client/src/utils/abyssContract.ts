@@ -387,8 +387,9 @@ export interface LeaderboardEntry {
 export async function getLeaderboard(
   chainId: bigint | string = DEFAULT_CHAIN_ID,
   window: LeaderboardWindow = "all-time",
+  leaderboardId?: number,
 ): Promise<LeaderboardEntry[]> {
-  const entries = await LeaderboardApi.fetchAll(chainId, window);
+  const entries = await LeaderboardApi.fetchAll(chainId, window, leaderboardId);
   const mapped: LeaderboardEntry[] = entries.map((entry) => ({
     player_address: entry.player,
     username: entry.username,
