@@ -515,7 +515,7 @@ export function Leaderboard() {
                                     const isPodium = index < 3;
                                     const isCurrent = isCurrentUser(entry.player_address);
                                     const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
-                                    const prize = isTournament ? TOURNAMENT_PRIZES[index]?.prize : undefined;
+                                    const prize = isTournament ? tournamentPrizes[index]?.prize : undefined;
                                     const podiumBorder = isTournament ? "rgba(255, 132, 28, 0.28)" : medalColors[index];
                                     const podiumScoreColor = isTournament ? "#FF841C" : "#FFD700";
 
