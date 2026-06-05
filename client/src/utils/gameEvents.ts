@@ -1030,7 +1030,10 @@ function parseNormalizedEvents(
 
             if (
                 emitterAddress === playAddress &&
-                findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.SpinCompleted) >= 0
+                (
+                    findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.SpinCompleted) >= 0 ||
+                    findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompleted) >= 0
+                )
             ) {
                 // Match SpinCompleted by selector, not by field count — the struct
                 // grows over time (chip_bonus, snowball adds, …) and a hardcoded
