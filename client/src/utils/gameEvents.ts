@@ -399,7 +399,7 @@ function unwrapDojoEventData(eventData: Array<string | bigint | number>): DojoEv
 
     const fieldsStart = keysEnd + 1;
     const fieldsEnd = fieldsStart + fieldCount;
-    if (eventData.length < fieldsEnd) {
+    if (eventData.length !== fieldsEnd) {
         return null;
     }
 
@@ -939,90 +939,92 @@ function parseNormalizedEvents(
             }
         }
 
-        if (findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompleted) >= 0) {
+        const wrappedDojoEvent = unwrapDojoEventData(event.data);
+
+        if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.SpinCompleted) >= 0) {
             result.spinCompleted = parseSpinCompletedEvent(event.data, event.keys);
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.ItemPurchased) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.ItemPurchased) >= 0) {
             const parsed = parseItemPurchasedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.ItemPurchased);
                 result.itemsPurchased.push(parsed);
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.ItemSold) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.ItemSold) >= 0) {
             const parsed = parseItemSoldEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.ItemSold);
                 result.itemsSold.push(parsed);
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.MarketRefreshed) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.MarketRefreshed) >= 0) {
             const parsed = parseMarketRefreshedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.MarketRefreshed);
                 result.marketRefreshed = parsed;
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.RelicActivated) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.RelicActivated) >= 0) {
             const parsed = parseRelicActivatedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.RelicActivated);
                 result.relicActivated = parsed;
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.PhantomActivated) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.PhantomActivated) >= 0) {
             const parsed = parsePhantomActivatedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.PhantomActivated);
                 result.phantomActivated = parsed;
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.RelicEquipped) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.RelicEquipped) >= 0) {
             const parsed = parseRelicEquippedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.RelicEquipped);
                 result.relicEquipped = parsed;
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmMinted) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.CharmMinted) >= 0) {
             const parsed = parseCharmMintedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmMinted);
                 result.charmMinted = parsed;
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmRerolled) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.CharmRerolled) >= 0) {
             const parsed = parseCharmRerolledEvent(event.data, event.keys);
             if (parsed) {
                 result.charmRerolled = parsed;
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtCollected) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtCollected) >= 0) {
             const parsed = parseCharmDebtCollectedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmDebtCollected);
                 result.charmDebtCollected.push(parsed);
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtPaid) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtPaid) >= 0) {
             const parsed = parseCharmDebtPaidEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmDebtPaid);
                 result.charmDebtPaid.push(parsed);
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtDefaulted) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.CharmDebtDefaulted) >= 0) {
             const parsed = parseCharmDebtDefaultedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CharmDebtDefaulted);
                 result.charmDebtDefaulted.push(parsed);
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.BibliaDiscarded) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.BibliaDiscarded) >= 0) {
             const parsed = parseBibliaDiscardedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.BibliaDiscarded);
                 result.bibliaDiscarded = parsed;
             }
-        } else if (findSelectorIndex(event.keys, EVENT_SELECTORS.CashOutResolved) >= 0) {
+        } else if (!wrappedDojoEvent && findSelectorIndex(event.keys, EVENT_SELECTORS.CashOutResolved) >= 0) {
             const parsed = parseCashOutResolvedEvent(event.data);
             if (parsed) {
                 parsed.sessionId = readSessionIdFromKeys(event.keys, EVENT_SELECTORS.CashOutResolved);
                 result.cashOutResolved = parsed;
             }
-        } else {
-            const dojoEvent = unwrapDojoEventData(event.data);
+        } else if (wrappedDojoEvent) {
+            const dojoEvent = wrappedDojoEvent;
             const emitterAddress = normalizeAddress(event.keys[2]);
 
-            if (!dojoEvent || !emitterAddress) {
+            if (!emitterAddress) {
                 continue;
             }
 
