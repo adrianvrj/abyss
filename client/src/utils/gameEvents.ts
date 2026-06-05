@@ -17,10 +17,6 @@ export interface SpinCompletedEvent {
     symbolScores: number[];
     chipBonusUnits: number;
     snowballAdds: { horizontal: number; vertical: number; diagonal: number };
-    // Spendable session balance after this spin (session.score on-chain).
-    // Authoritative — use this for the displayed score. `undefined` for events
-    // emitted before this field existed (fall back to local accumulation).
-    newScore?: number;
 }
 
 export interface ItemPurchasedEvent {
@@ -447,9 +443,6 @@ function parseSpinCompletedEvent(
                     diagonal: feltToNumber(eventData[offset + 17]),
                 }
                 : { horizontal: 0, vertical: 0, diagonal: 0 },
-            // Authoritative spendable balance (session.score). Present only on
-            // events emitted by the updated contract.
-            newScore: eventData.length > offset + 18 ? feltToNumber(eventData[offset + 18]) : undefined,
         };
     } catch (e) {
         console.error('Failed to parse SpinCompleted event:', e);

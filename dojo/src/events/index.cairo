@@ -46,10 +46,6 @@ pub struct SpinCompleted {
     pub snowball_h_add: u32,
     pub snowball_v_add: u32,
     pub snowball_d_add: u32,
-    // Spendable session balance after this spin (= session.score). Diverges from
-    // new_total_score after market purchases, so the client must read this for
-    // the displayed score instead of accumulating score_gained locally.
-    pub new_score: u32,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

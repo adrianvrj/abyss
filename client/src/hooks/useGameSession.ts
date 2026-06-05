@@ -835,12 +835,10 @@ export function useGameSession(sessionId: string | null) {
                 setHasSpunOnce(true);
                 spinCountVisitRef.current += 1;
                 const spinOrdinal = spinCountVisitRef.current;
-                // Authoritative spendable balance straight from the event
-                // (session.score). Fall back to local accumulation only for
-                // legacy events that predate the new_score field.
-                const resolvedScore = latestDebtScoreEvent?.newScore
-                    ?? spin.newScore
-                    ?? (spin.is666 ? 0 : score + spin.scoreGained);
+                // Score straight from the event (authoritative on-chain value).
+                // No local accumulation — that drifts permanently if any event
+                // is ever missed.
+                const resolvedScore = latestDebtScoreEvent?.newScore ?? spin.newTotalScore;
                 // Always-on log (visible in prod) so the on-chain vs UI score can
                 // be diffed directly from the spin event.
                 console.log('[abyss spin score]', {
@@ -848,11 +846,9 @@ export function useGameSession(sessionId: string | null) {
                     prevUiScore: score,
                     scoreGained: spin.scoreGained,
                     is666: spin.is666,
-                    eventNewScore: spin.newScore,           // session.score (balance, authoritative)
-                    eventNewTotalScore: spin.newTotalScore, // session.total_score (leaderboard)
+                    eventNewTotalScore: spin.newTotalScore,
                     debtNewScore: latestDebtScoreEvent?.newScore,
                     chosenUiScore: resolvedScore,
-                    usedAuthoritative: (latestDebtScoreEvent?.newScore ?? spin.newScore) !== undefined,
                     grid: spin.grid,
                     newLevel: spin.newLevel,
                     spinsRemaining: spin.spinsRemaining,
@@ -1043,7 +1039,7 @@ export function useGameSession(sessionId: string | null) {
                         // `newTotalScore` is the lifetime/leaderboard score. The final
                         // session balance shown in game over and used for CHIP payout is
                         // `session.score`, which can be lower after market spending.
-                        const fallbackFinalBalance = latestDebtScoreEvent?.newScore ?? spin.newScore ?? (spin.is666 ? 0 : score + spin.scoreGained);
+                        const fallbackFinalBalance = latestDebtScoreEvent?.newScore ?? spin.newTotalScore;
                         const fallbackFinalLifetimeScore = latestDebtScoreEvent?.newTotalScore ?? spin.newTotalScore;
                         const finalDiamondBonus = spin.chipBonusUnits;
 
