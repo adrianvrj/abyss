@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getLeaderboard, LeaderboardEntry } from "@/utils/abyssContract";
 import { LeaderboardApi, type LeaderboardWindow } from "@/api/torii/leaderboard";
-import { getActiveSeason, type RpcSeason } from "@/api/rpc/season";
+import { getActiveSeason, getSeasonPoolLive, type RpcSeason } from "@/api/rpc/season";
 import { ArrowLeft, Trophy, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useController } from "@/hooks/useController";
@@ -43,6 +43,16 @@ export function Leaderboard() {
     const { data: season } = useQuery<RpcSeason>({
         queryKey: ["season", "active", chainId?.toString() ?? "default"],
         queryFn: () => getActiveSeason(chainId),
+        enabled: Boolean(seasonAddress),
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
+
+    // Live USDC pool held by the SeasonManager contract (the active season's
+    // on-chain pool_amount stays 0 until finalized).
+    const { data: livePool = 0n } = useQuery<bigint>({
+        queryKey: ["season", "pool", chainId?.toString() ?? "default"],
+        queryFn: () => getSeasonPoolLive(chainId),
         enabled: Boolean(seasonAddress),
         staleTime: 30_000,
         refetchOnWindowFocus: false,
@@ -120,7 +130,11 @@ export function Leaderboard() {
 
     const seasonEndMs = season ? season.endTs * 1000 : null;
     const seasonEnded = seasonEndMs != null && now >= seasonEndMs;
-    const poolUsdc = season ? Number(season.poolAmount) / 1e6 : 0;
+    // Prefer the finalized snapshot once the season has ended; otherwise show the
+    // live USDC balance accruing in the pool.
+    const poolUsdc = seasonEnded && season && season.poolAmount > 0n
+        ? Number(season.poolAmount) / 1e6
+        : Number(livePool) / 1e6;
 
     const tournamentPrizes = useMemo(() => {
         const splits: [string, number][] = [["1st", 0.5], ["2nd", 0.3], ["3rd", 0.2]];

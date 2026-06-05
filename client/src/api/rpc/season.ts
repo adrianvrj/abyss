@@ -1,4 +1,6 @@
 import { getRpcProvider } from "@/api/rpc/provider";
+import { getGameConfig } from "@/api/rpc/play";
+import { readUint256Balance } from "@/api/rpc/token";
 import { getSeasonAddress } from "@/config";
 
 type ChainLike = bigint | string | undefined | null;
@@ -47,6 +49,17 @@ export async function getActiveSeason(chainId: ChainLike): Promise<RpcSeason> {
     calldata: [],
   });
   return decodeSeason(result as string[]);
+}
+
+// Live prize pool = USDC currently held by the SeasonManager contract. The
+// active season's `pool_amount` stays 0 until it's finalized (snapshotted at
+// rollover), so for the running season we read the balance directly. This
+// reflects the 25%-of-entries accrual in real time and any manual USDC seeded
+// to the contract address.
+export async function getSeasonPoolLive(chainId: ChainLike): Promise<bigint> {
+  const seasonAddress = getSeasonAddress(chainId);
+  const { quoteToken } = await getGameConfig(chainId);
+  return readUint256Balance(chainId, quoteToken, seasonAddress);
 }
 
 export async function getSeason(chainId: ChainLike, seasonId: number): Promise<RpcSeason> {
