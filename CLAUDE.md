@@ -146,8 +146,8 @@ It tries two strategies per raw event:
 **2. Dojo-wrapped events** — `#[dojo::event]`s routed through the world fall into the `else` branch:
 - `unwrapDojoEventData(event.data)` decodes the envelope `[keyCount, ...keyValues, fieldCount, ...fieldValues]` into `{ keyValues, fieldValues }`.
 - The emitting contract is read from `event.keys[2]` (`normalizeAddress`).
-- Events are disambiguated by **(emitter address + `fieldValues.length`)**, e.g.:
-  - play + 30 → `SpinCompleted`
+- Events are disambiguated by **(emitter address + `fieldValues.length`)**, except `SpinCompleted` (and `PrizeClaimed`) which match by **selector in `keyValues`** — `SpinCompleted`'s field count grows over time (currently 33: 15 cells + 18), so gating it by length silently dropped the event. Prefer selector matching for any event whose schema may grow. E.g.:
+  - play + selector `SpinCompleted` → `SpinCompleted` (decoder is length-tolerant)
   - market + 7 → `ItemPurchased`; market + 5 → `ItemSold`; market|relic + 8 → `MarketRefreshed`
   - relic + 4 → `RelicActivated` (effectType ≤ 16) or `RelicEquipped`; relic + 2 → `PhantomActivated`
   - play + 4 → `CharmMinted`; charm + 11 → `CharmRerolled`

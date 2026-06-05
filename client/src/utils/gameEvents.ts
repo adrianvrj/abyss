@@ -991,7 +991,14 @@ function parseNormalizedEvents(
                 continue;
             }
 
-            if (emitterAddress === playAddress && dojoEvent.fieldValues.length === 30) {
+            if (
+                emitterAddress === playAddress &&
+                findSelectorIndex(dojoEvent.keyValues, EVENT_SELECTORS.SpinCompleted) >= 0
+            ) {
+                // Match SpinCompleted by selector, not by field count — the struct
+                // grows over time (chip_bonus, snowball adds, …) and a hardcoded
+                // length silently drops the event, leaving the client on its
+                // optimistic local score. parseSpinCompletedEvent is length-tolerant.
                 result.spinCompleted = parseSpinCompletedEvent(dojoEvent.fieldValues, dojoEvent.keyValues);
             } else if (emitterAddress === marketAddress && dojoEvent.fieldValues.length === 7) {
                 const parsed = parseItemPurchasedEvent(dojoEvent.fieldValues);
