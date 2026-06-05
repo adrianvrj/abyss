@@ -528,6 +528,7 @@ pub mod Play {
                         snowball_h_add: session.snowball_h_add,
                         snowball_v_add: session.snowball_v_add,
                         snowball_d_add: session.snowball_d_add,
+                        new_score: session.score,
                     },
                 );
             if biblia_used {
