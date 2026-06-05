@@ -33,8 +33,6 @@ type CharmLoadoutRow = {
 
 const TOP_LIMIT = 25;
 export type LeaderboardWindow = "all-time" | "weekly" | "tournament";
-const TOURNAMENT_START_SECONDS = Date.UTC(2026, 4, 25, 0, 0, 0) / 1000;
-const TOURNAMENT_END_SECONDS = Date.UTC(2026, 5, 1, 0, 0, 0) / 1000;
 
 export interface LeaderboardEntry {
   username: string;
@@ -142,24 +140,6 @@ function timestampLowerBoundPredicate(alias: string, column: string, startSecond
         )`;
 }
 
-function timestampRangePredicate(alias: string, column: string, startSeconds: number, endSeconds: number) {
-  const startPlainHex = `0x${startSeconds.toString(16)}`;
-  const endPlainHex = `0x${endSeconds.toString(16)}`;
-  const startPaddedHex = `0x${startSeconds.toString(16).padStart(16, "0")}`;
-  const endPaddedHex = `0x${endSeconds.toString(16).padStart(16, "0")}`;
-  const field = `${alias}.${column}`;
-
-  return `AND (
-          (
-            ${field} LIKE '0x%' AND (
-              (${field} >= '${startPlainHex}' AND ${field} < '${endPlainHex}')
-              OR (${field} >= '${startPaddedHex}' AND ${field} < '${endPaddedHex}')
-            )
-          )
-          OR (${field} NOT LIKE '0x%' AND CAST(${field} AS INTEGER) >= ${startSeconds} AND CAST(${field} AS INTEGER) < ${endSeconds})
-        )`;
-}
-
 async function hydrateBuilds(
   client: ReturnType<typeof initGrpcClient>,
   entries: LeaderboardEntry[],
@@ -227,13 +207,24 @@ export const LeaderboardApi = {
       chainId?: ChainLike,
       window: LeaderboardWindow = "all-time",
       leaderboardId: number = DEFAULT_LEADERBOARD_ID,
+      sinceSeconds?: number,
     ) =>
-      ["leaderboard", chainId?.toString() ?? "default", window, leaderboardId] as const,
+      [
+        "leaderboard",
+        chainId?.toString() ?? "default",
+        window,
+        leaderboardId,
+        sinceSeconds ?? 0,
+      ] as const,
   },
   async fetchAll(
     chainId?: ChainLike,
     window: LeaderboardWindow = "all-time",
     leaderboardId: number = DEFAULT_LEADERBOARD_ID,
+    // When set, only count scores at/after this UNIX timestamp. Used by the
+    // season (tournament) tab so the board starts fresh at the season's start
+    // and never shows scores from before it began.
+    sinceSeconds?: number,
   ): Promise<LeaderboardEntry[]> {
     const client = initGrpcClient(chainId);
 
@@ -248,15 +239,17 @@ export const LeaderboardApi = {
       '${paddedHexId}'
     )`;
     const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-    const leaderboardScoreWindowWhere = window === "weekly"
-      ? timestampLowerBoundPredicate("s", "timestamp", sevenDaysAgo)
-      : window === "tournament"
-        ? timestampRangePredicate("s", "timestamp", TOURNAMENT_START_SECONDS, TOURNAMENT_END_SECONDS)
+    // An explicit `sinceSeconds` (season start) takes precedence over the named
+    // window — it scopes the board to the current season by timestamp.
+    const leaderboardScoreWindowWhere = sinceSeconds !== undefined
+      ? timestampLowerBoundPredicate("s", "timestamp", sinceSeconds)
+      : window === "weekly"
+        ? timestampLowerBoundPredicate("s", "timestamp", sevenDaysAgo)
         : "";
-    const sessionWindowWhere = window === "weekly"
-      ? timestampLowerBoundPredicate("s", "created_at", sevenDaysAgo)
-      : window === "tournament"
-        ? timestampRangePredicate("s", "created_at", TOURNAMENT_START_SECONDS, TOURNAMENT_END_SECONDS)
+    const sessionWindowWhere = sinceSeconds !== undefined
+      ? timestampLowerBoundPredicate("s", "created_at", sinceSeconds)
+      : window === "weekly"
+        ? timestampLowerBoundPredicate("s", "created_at", sevenDaysAgo)
         : "";
 
     // Aggregate in SQL and only return the top players. This means the join

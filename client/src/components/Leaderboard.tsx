@@ -32,7 +32,7 @@ export function Leaderboard() {
     const navigate = useNavigate();
     const { address, connector } = useController();
     const { chainId } = useEntities();
-    const [selectedWindow, setSelectedWindow] = useState<LeaderboardWindow>("weekly");
+    const [selectedWindow, setSelectedWindow] = useState<LeaderboardWindow>("tournament");
     const [now, setNow] = useState(() => Date.now());
     const { claimPrize, seasonAddress } = useAbyssActions();
     const [claiming, setClaiming] = useState(false);
@@ -69,24 +69,31 @@ export function Leaderboard() {
 
     const isTournament = selectedWindow === "tournament";
 
+    // Season start = end_ts − 30 days. Used to scope the tournament board to the
+    // current season by timestamp, so scores from before it began never show.
+    const SEASON_DURATION_SECONDS = 30 * 24 * 60 * 60;
+    const seasonStartSeconds = season ? season.endTs - SEASON_DURATION_SECONDS : undefined;
+
     const { data: entries = [], isLoading } = useQuery<LeaderboardEntry[]>({
         queryKey: [
             ...LeaderboardApi.keys.all(
                 chainId,
                 isTournament ? "all-time" : selectedWindow,
                 isTournament ? seasonLeaderboardId : undefined,
+                isTournament ? seasonStartSeconds : undefined,
             ),
             "top10",
         ],
-        // Tournament board is scoped purely by the season's leaderboard_id (each
-        // season has a fresh id), so query "all-time" with that id.
+        // Tournament board: scope to the active season's leaderboard_id AND to
+        // scores at/after the season start (so pre-season scores never appear).
         queryFn: () =>
             getLeaderboard(
                 chainId,
                 isTournament ? "all-time" : selectedWindow,
                 isTournament ? seasonLeaderboardId : undefined,
+                isTournament ? seasonStartSeconds : undefined,
             ),
-        enabled: !isTournament || seasonLeaderboardId !== undefined,
+        enabled: !isTournament || (seasonLeaderboardId !== undefined && seasonStartSeconds !== undefined),
         staleTime: 30_000,
         refetchOnWindowFocus: false,
     });
@@ -244,7 +251,12 @@ export function Leaderboard() {
 
     return (
         <div style={{
-            minHeight: "100vh",
+            // The app body is fixed to the viewport (overflow:hidden), so this
+            // screen must be its own scroll container — otherwise long boards
+            // can't be scrolled.
+            height: "100vh",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
             background: "#000",
             padding: "20px",
             display: "flex",
@@ -305,7 +317,7 @@ export function Leaderboard() {
                     aria-label="Leaderboard window"
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                         gap: 8,
                         marginBottom: 14,
                         padding: 4,
@@ -315,8 +327,7 @@ export function Leaderboard() {
                     }}
                 >
                     {([
-                        ["tournament", "Tournament"],
-                        ["weekly", "Weekly"],
+                        ["tournament", "Season"],
                         ["all-time", "All time"],
                     ] as [LeaderboardWindow, string][]).map(([window, label]) => {
                         const active = selectedWindow === window;

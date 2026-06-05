@@ -388,8 +388,9 @@ export async function getLeaderboard(
   chainId: bigint | string = DEFAULT_CHAIN_ID,
   window: LeaderboardWindow = "all-time",
   leaderboardId?: number,
+  sinceSeconds?: number,
 ): Promise<LeaderboardEntry[]> {
-  const entries = await LeaderboardApi.fetchAll(chainId, window, leaderboardId);
+  const entries = await LeaderboardApi.fetchAll(chainId, window, leaderboardId, sinceSeconds);
   const mapped: LeaderboardEntry[] = entries.map((entry) => ({
     player_address: entry.player,
     username: entry.username,
