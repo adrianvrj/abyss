@@ -835,10 +835,10 @@ export function useGameSession(sessionId: string | null) {
                 setHasSpunOnce(true);
                 spinCountVisitRef.current += 1;
                 const spinOrdinal = spinCountVisitRef.current;
-                // Score straight from the event (authoritative on-chain value).
-                // No local accumulation — that drifts permanently if any event
-                // is ever missed.
-                const resolvedScore = latestDebtScoreEvent?.newScore ?? spin.newTotalScore;
+                // The SpinCompleted event only carries `new_total_score`, which is
+                // lifetime/leaderboard score. The playable balance is session.score:
+                // previous UI balance + this spin, unless a debt event adjusted it.
+                const resolvedScore = latestDebtScoreEvent?.newScore ?? (spin.is666 ? 0 : score + spin.scoreGained);
                 // Always-on log (visible in prod) so the on-chain vs UI score can
                 // be diffed directly from the spin event.
                 console.log('[abyss spin score]', {
@@ -848,6 +848,7 @@ export function useGameSession(sessionId: string | null) {
                     is666: spin.is666,
                     eventNewTotalScore: spin.newTotalScore,
                     debtNewScore: latestDebtScoreEvent?.newScore,
+                    derivedBalanceScore: spin.is666 ? 0 : score + spin.scoreGained,
                     chosenUiScore: resolvedScore,
                     grid: spin.grid,
                     newLevel: spin.newLevel,
@@ -1039,7 +1040,7 @@ export function useGameSession(sessionId: string | null) {
                         // `newTotalScore` is the lifetime/leaderboard score. The final
                         // session balance shown in game over and used for CHIP payout is
                         // `session.score`, which can be lower after market spending.
-                        const fallbackFinalBalance = latestDebtScoreEvent?.newScore ?? spin.newTotalScore;
+                        const fallbackFinalBalance = resolvedScore;
                         const fallbackFinalLifetimeScore = latestDebtScoreEvent?.newTotalScore ?? spin.newTotalScore;
                         const finalDiamondBonus = spin.chipBonusUnits;
 
