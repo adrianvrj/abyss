@@ -226,21 +226,21 @@ fn test_666_probability_ramps_harder_in_late_game() {
 
 #[test]
 fn test_diamond_chip_bonus_is_included_in_final_chip_payout() {
-    assert(get_total_chip_units(45, 3) == 8, 'total chip units');
+    assert(get_total_chip_units(45, 3) == 6, 'total chip units');
 
     let payout = get_chip_payout_amount(45, 3, 1, 1);
-    assert(payout == 8_000_000_000_000_000_000_u256, 'bonus payout amount');
+    assert(payout == 6_000_000_000_000_000_000_u256, 'bonus payout amount');
 
     let boosted_payout = get_chip_payout_amount(80, 2, 3, 2);
-    assert(boosted_payout == 72_000_000_000_000_000_000_u256, 'boosted payout amount');
+    assert(boosted_payout == 48_000_000_000_000_000_000_u256, 'boosted payout amount');
 }
 
 #[test]
 fn test_tiered_chip_payout_curve_matches_rewards_refactor() {
-    assert(get_total_chip_units(12_000, 0) == 1_500, '12k score payout');
-    assert(get_total_chip_units(25_000, 0) == 2_583, '25k score payout');
-    assert(get_total_chip_units(91_073, 0) == 6_253, 'top run payout');
-    assert(get_total_chip_units(25_000, 350) == 2_883, 'bonus cap payout');
+    assert(get_total_chip_units(12_000, 0) == 1_000, '12k score payout');
+    assert(get_total_chip_units(25_000, 0) == 1_722, '25k score payout');
+    assert(get_total_chip_units(91_073, 0) == 4_169, 'top run payout');
+    assert(get_total_chip_units(25_000, 350) == 2_022, 'bonus cap payout');
 }
 
 #[test]

@@ -2,9 +2,9 @@ use crate::constants::CHIP_UNIT;
 
 const SCORE_TIER_1_CAP: u32 = 12_000;
 const SCORE_TIER_2_CAP: u32 = 25_000;
-const SCORE_TIER_1_DIVISOR: u32 = 8;
-const SCORE_TIER_2_DIVISOR: u32 = 12;
-const SCORE_TIER_3_DIVISOR: u32 = 18;
+const SCORE_TIER_1_DIVISOR: u32 = 12;
+const SCORE_TIER_2_DIVISOR: u32 = 18;
+const SCORE_TIER_3_DIVISOR: u32 = 27;
 const CHIP_BONUS_UNIT_CAP: u32 = 300;
 
 #[inline(always)]
